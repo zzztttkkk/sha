@@ -37,7 +37,7 @@ type _ValidatorParser struct {
 }
 
 func (p *_ValidatorParser) Tag() string {
-	return "vld"
+	return "validator"
 }
 
 func (p *_ValidatorParser) OnField(field *reflect.StructField) bool {

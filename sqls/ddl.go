@@ -124,7 +124,7 @@ const (
 //
 // example:
 // type User {
-//     Id 		uint32  `ddl:"primary;notnull;incr;"`
+//     Identify 		uint32  `ddl:"primary;notnull;incr;"`
 // 	   Name 	string  `ddl:"unique;notnull;unique;L<50>"`
 //	   Address 	string  `ddl:"addr:notnull;L<120>"`
 //	   Age		int		`ddl:"notnull"`
@@ -160,7 +160,7 @@ func TableDefinition(modelType reflect.Type) string {
 			} else if field.length <= MysqlMaxCharLength {
 				buf.WriteString(fmt.Sprintf("char(%d)", field.length))
 			} else {
-				buf.WriteString(fmt.Sprintf("varvhar(%d)", field.length))
+				buf.WriteString(fmt.Sprintf("varchar(%d)", field.length))
 			}
 		} else {
 			buf.WriteString(field.t)

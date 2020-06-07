@@ -7,13 +7,19 @@ import (
 	"strings"
 )
 
-func ReflectMap(t reflect.Type, fn func(*reflect.StructField)) {
+func ReflectMap(t reflect.Type, fn func(*reflect.StructField), onStructField func(field *reflect.StructField) bool) {
 	num := t.NumField()
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
 
 		if field.Type.Kind() == reflect.Struct {
-			ReflectMap(field.Type, fn)
+			ok := true
+			if onStructField != nil {
+				ok = onStructField(&field)
+			}
+			if ok {
+				ReflectMap(field.Type, fn, onStructField)
+			}
 			continue
 		}
 
@@ -41,6 +47,9 @@ func ReflectKeys(rt reflect.Type, tag string, fn func(string) string) (lst []str
 				return
 			}
 			lst = append(lst, name)
+		},
+		func(field *reflect.StructField) bool {
+			return field.Tag.Get(tag) != "-"
 		},
 	)
 	return
@@ -114,6 +123,9 @@ func ReflectTags(p reflect.Type, parser TagParser) {
 				parser.OnAttr(key, val)
 			}
 			parser.OnDone()
+		},
+		func(field *reflect.StructField) bool {
+			return field.Tag.Get(tag) != "-"
 		},
 	)
 }

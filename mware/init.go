@@ -5,7 +5,7 @@ import (
 	"github.com/zzztttkkk/snow/redisc"
 )
 
-func Init(authenticator Authenticator) {
+func Init(authenticator UserReader) {
 	author = authenticator
 	redisClient = redisc.Client()
 	rateLimiter = redis_rate.NewLimiter(redisClient)

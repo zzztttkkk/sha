@@ -15,22 +15,20 @@ func JwtEncode(data jwt.Claims) string {
 }
 
 var signMethodError = fmt.Errorf("snow.secret.jwt: unexpected signing method")
-var JwtInvalidError = fmt.Errorf("snow.secret.jwt: invalid data")
 
 func JwtDecode(ts string) (jwt.Claims, error) {
-	token, err := jwt.Parse(ts, func(t *jwt.Token) (interface{}, error) {
-		_, ok := t.Method.(*jwt.SigningMethodHMAC)
-		if !ok {
-			return nil, signMethodError
-		}
-		return secretKey, nil
-	})
+	token, err := jwt.Parse(
+		ts,
+		func(t *jwt.Token) (interface{}, error) {
+			_, ok := t.Method.(*jwt.SigningMethodHMAC)
+			if !ok {
+				return nil, signMethodError
+			}
+			return secretKey, nil
+		},
+	)
 	if err != nil {
 		return nil, err
-	}
-
-	if !token.Valid {
-		return token.Claims, JwtInvalidError
 	}
 	return token.Claims, nil
 }

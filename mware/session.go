@@ -6,6 +6,8 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
 	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/snow/internal"
+	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/router"
 	"time"
 )
@@ -31,6 +33,14 @@ func GetSession(ctx *fasthttp.RequestCtx) *_SessionT {
 	s, ok := v.(*_SessionT)
 	if !ok {
 		return nil
+	}
+	return s
+}
+
+func GetSessionMust(ctx *fasthttp.RequestCtx) *_SessionT {
+	s := GetSession(ctx)
+	if s == nil {
+		panic(output.NewHttpError(fasthttp.StatusBadRequest, -1, ""))
 	}
 	return s
 }
@@ -80,9 +90,9 @@ func SessionHandler(ctx *fasthttp.RequestCtx) {
 	var sidKey string
 	var user User
 
-	user = GetUser(ctx)
+	user, _ = GetUser(ctx)
 	if user != nil {
-		uid = user.Id()
+		uid = user.Identify()
 		sidKey = makeUSidKey(uid)
 		sid, _ := redisClient.Get(sidKey).Bytes()
 		if len(sid) > 0 {
@@ -102,7 +112,7 @@ func SessionHandler(ctx *fasthttp.RequestCtx) {
 		if session.id == nil {
 			session.id = ctx.Request.Header.Peek(SessionInHeader)
 			if session.id == nil {
-				session.id = xid.New().Bytes()
+				session.id = internal.S2b(xid.New().String())
 				session.Set(".", 1)
 			}
 		}

@@ -46,7 +46,7 @@ func NewHttpError(httpCode, customErrno int, errmsg string) *_HttpErrorT {
 	}
 }
 
-var stdErrors = map[int]*_HttpErrorT{}
+var StdErrors = map[int]*_HttpErrorT{}
 
 func init() {
 	for v := 100; v < 550; v++ {
@@ -54,6 +54,6 @@ func init() {
 		if len(txt) < 1 {
 			continue
 		}
-		stdErrors[v] = NewHttpError(v, -1, "")
+		StdErrors[v] = NewHttpError(v, -1, txt)
 	}
 }

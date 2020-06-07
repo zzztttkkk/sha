@@ -8,37 +8,37 @@ import (
 )
 
 type User interface {
-	Id() int64
+	Identify() int64
 	Pointer() unsafe.Pointer
 }
 
-type Authenticator interface {
-	Auth(ctx *fasthttp.RequestCtx) (User, error)
+type UserReader interface {
+	Read(ctx *fasthttp.RequestCtx) (User, error)
 }
 
-var author Authenticator
+var author UserReader
 
 const userKey = "/u"
 
-func GetUser(ctx *fasthttp.RequestCtx) User {
+func GetUser(ctx *fasthttp.RequestCtx) (User, error) {
 	user, ok := ctx.UserValue(userKey).(User)
 	if ok {
-		return user
+		return user, nil
 	}
-	user, err := author.Auth(ctx)
+	user, err := author.Read(ctx)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	if user != nil {
 		ctx.SetUserValue(userKey, user)
 	}
-	return user
+	return user, nil
 }
 
 func GetUserMust(ctx *fasthttp.RequestCtx) User {
-	user := GetUser(ctx)
-	if user == nil {
-		panic(output.NewHttpError(fasthttp.StatusUnauthorized, -1, ""))
+	user, err := GetUser(ctx)
+	if err != nil || user == nil {
+		panic(output.StdErrors[fasthttp.StatusBadRequest])
 	}
 	return user
 }

@@ -67,9 +67,9 @@ func Error(ctx *fasthttp.RequestCtx, err error) {
 }
 
 func StdError(ctx *fasthttp.RequestCtx, code int) {
-	err := stdErrors[code]
+	err := StdErrors[code]
 	if err == nil {
-		err = stdErrors[fasthttp.StatusInternalServerError]
+		err = StdErrors[fasthttp.StatusInternalServerError]
 	}
 	Error(ctx, err)
 }

@@ -28,7 +28,7 @@ func GetRemoteIpHash(ctx *fasthttp.RequestCtx) string {
 	if v != nil {
 		return v.(string)
 	}
-	v = internal.B2s(secret.Md5CalcWithSecret(internal.S2b(GetRemoteIp(ctx))))
+	v = internal.B2s(secret.Md5.Calc(internal.S2b(GetRemoteIp(ctx))))
 	ctx.SetUserValue(ipHashKey, v)
 	return v.(string)
 }

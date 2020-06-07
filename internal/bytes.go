@@ -71,13 +71,13 @@ func B2I32(b []byte) int32 {
 	return S2I32(B2s(b))
 }
 
-type bytesPool struct {
+type BytesPool struct {
 	defaultSize int
 	poll        sync.Pool
 }
 
-func NewBytesPool(cap, size int) *bytesPool {
-	return &bytesPool{
+func NewBytesPool(cap, size int) *BytesPool {
+	return &BytesPool{
 		defaultSize: size,
 		poll: sync.Pool{
 			New: func() interface{} {
@@ -88,11 +88,11 @@ func NewBytesPool(cap, size int) *bytesPool {
 	}
 }
 
-func (bp *bytesPool) Get() *[]byte {
+func (bp *BytesPool) Get() *[]byte {
 	return bp.poll.Get().(*[]byte)
 }
 
-func (bp *bytesPool) Put(v *[]byte) {
+func (bp *BytesPool) Put(v *[]byte) {
 	sl := *v
 	if len(sl) != bp.defaultSize {
 		*v = sl[:bp.defaultSize]

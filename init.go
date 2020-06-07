@@ -10,8 +10,8 @@ import (
 )
 
 type Config struct {
-	IniFiles      []string
-	Authenticator mware.Authenticator
+	IniFiles   []string
+	UserReader mware.UserReader
 }
 
 func Init(config *Config) {
@@ -19,9 +19,10 @@ func Init(config *Config) {
 		ini.Load(fn)
 	}
 
+	ini.Init()
 	secret.Init()
 	output.Init()
 	sqls.Init()
 	redisc.Init()
-	mware.Init(config.Authenticator)
+	mware.Init(config.UserReader)
 }

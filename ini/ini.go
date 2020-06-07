@@ -84,16 +84,20 @@ func GetBool(key string) bool {
 	return strings.ToLower(v) == "true"
 }
 
+var (
+	mode int
+)
+
 func IsRelease() bool {
-	return MustGet("app.mode") == ModeRelease
+	return mode == 0
 }
 
 func IsDebug() bool {
-	return MustGet("app.mode") == ModeDebug
+	return mode == 1
 }
 
 func IsTest() bool {
-	return MustGet("app.mode") == ModeTest
+	return mode == 2
 }
 
 const (
