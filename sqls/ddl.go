@@ -2,7 +2,8 @@ package sqls
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/snow/internal"
+	"github.com/zzztttkkk/reflectx"
+	"github.com/zzztttkkk/snow/utils"
 	"reflect"
 	"strings"
 )
@@ -91,7 +92,7 @@ func (p *_DdlParser) OnAttr(key, val string) {
 	case "unique":
 		mf.unique = true
 	case "L", "length":
-		mf.length = int(internal.S2I32(val))
+		mf.length = int(utils.S2I32(val))
 	case "D", "default":
 		if len(val) > 0 {
 			mf.defaultValue = val
@@ -137,7 +138,7 @@ func TableDefinition(modelType reflect.Type) string {
 	}
 
 	parser := _DdlParser{}
-	internal.ReflectTags(modelType, &parser)
+	reflectx.Tags(modelType, &parser)
 
 	buf := strings.Builder{}
 	tableName := strings.ToLower(modelType.Name())

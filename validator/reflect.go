@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/internal"
+	"github.com/zzztttkkk/reflectx"
 	"github.com/zzztttkkk/snow/output"
+	"github.com/zzztttkkk/snow/utils"
 	"reflect"
 	"regexp"
 	"sort"
@@ -152,7 +153,7 @@ func getRules(p reflect.Type) _RuleSliceT {
 	}
 
 	parser := _ValidatorParser{}
-	internal.ReflectTags(p, &parser)
+	reflectx.Tags(p, &parser)
 	sort.Sort(parser.all)
 	rulesMap[p] = parser.all
 	return parser.all
@@ -209,7 +210,7 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 				output.StdError(ctx, fasthttp.StatusBadRequest)
 				return false
 			}
-			field.SetString(internal.B2s(v))
+			field.SetString(utils.B2s(v))
 		}
 	}
 

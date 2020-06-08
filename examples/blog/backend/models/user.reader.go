@@ -3,10 +3,10 @@ package models
 import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/internal"
 	"github.com/zzztttkkk/snow/mware"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/secret"
+	"github.com/zzztttkkk/snow/utils"
 	"unsafe"
 )
 
@@ -33,7 +33,7 @@ var UserReader = _UserReaderT(
 			return nil, output.StdErrors[fasthttp.StatusUnauthorized]
 		}
 
-		clm, e := secret.JwtDecode(internal.B2s(token))
+		clm, e := secret.JwtDecode(utils.B2s(token))
 		if e != nil {
 			return nil, output.StdErrors[fasthttp.StatusBadRequest]
 		}

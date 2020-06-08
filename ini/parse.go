@@ -3,7 +3,7 @@ package ini
 import (
 	"bufio"
 	"fmt"
-	"github.com/zzztttkkk/snow/internal"
+	"github.com/zzztttkkk/snow/utils"
 	"os"
 	"regexp"
 	"strings"
@@ -17,14 +17,14 @@ var iniNameRegexp = regexp.MustCompile(`\$\{[\w._]+}`)
 
 func doReplace(v string, currentSectionName string, currentResult map[string]string) string {
 	vs := iniEnvRegexp.ReplaceAllFunc(
-		internal.S2b(v),
+		utils.S2b(v),
 		func(bytes []byte) []byte {
 			name := string(bytes[5 : len(bytes)-1])
 			val := os.Getenv(name)
 			if len(val) < 1 {
 				panic(fmt.Errorf("snow.ini: env: `%s` not found", name))
 			}
-			return internal.S2b(val)
+			return utils.S2b(val)
 		},
 	)
 
@@ -44,11 +44,11 @@ func doReplace(v string, currentSectionName string, currentResult map[string]str
 			if len(_v) < 1 {
 				panic(fmt.Errorf("snow.ini: val: `%s` not found", name))
 			}
-			return internal.S2b(_v)
+			return utils.S2b(_v)
 		},
 	)
 
-	return internal.B2s(vs)
+	return utils.B2s(vs)
 }
 
 func parseIniFile(filename string) map[string]string {

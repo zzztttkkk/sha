@@ -6,14 +6,14 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
-	"github.com/zzztttkkk/snow/internal"
+	"github.com/zzztttkkk/snow/utils"
 	"hash"
 	"sync"
 )
 
 type _HashT struct {
 	pool   *sync.Pool
-	bytes  *internal.BytesPool
+	bytes  *utils.BytesPool
 	size   int
 	secret bool
 }
@@ -24,7 +24,7 @@ func NewHash(fn func() hash.Hash, withSecret bool) *_HashT {
 	size := t.Size() * 2
 	return &_HashT{
 		pool:   pool,
-		bytes:  internal.NewBytesPool(size, size),
+		bytes:  utils.NewBytesPool(size, size),
 		size:   size,
 		secret: withSecret,
 	}

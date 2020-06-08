@@ -3,7 +3,6 @@ package validator
 import (
 	"bytes"
 	"fmt"
-	"github.com/zzztttkkk/snow/internal"
 	"github.com/zzztttkkk/snow/utils"
 	"regexp"
 	"strconv"
@@ -50,7 +49,7 @@ func (rule *_RuleT) toBool(v []byte) bool {
 }
 
 func (rule *_RuleT) toI64(v []byte) (int64, bool) {
-	rv, err := strconv.ParseInt(internal.B2s(v), 10, 64)
+	rv, err := strconv.ParseInt(utils.B2s(v), 10, 64)
 	if err != nil {
 		return 0, false
 	}
@@ -69,7 +68,7 @@ func (rule *_RuleT) toI64(v []byte) (int64, bool) {
 }
 
 func (rule *_RuleT) toUI64(v []byte) (uint64, bool) {
-	rv, err := strconv.ParseUint(internal.B2s(v), 10, 64)
+	rv, err := strconv.ParseUint(utils.B2s(v), 10, 64)
 	if err != nil {
 		return 0, false
 	}

@@ -4,9 +4,9 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow/ini"
-	"github.com/zzztttkkk/snow/internal"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/secret"
+	"github.com/zzztttkkk/snow/utils"
 	"time"
 )
 
@@ -18,7 +18,7 @@ func toString(digits []byte) string {
 	for i, b := range digits {
 		s[i] = _t[b]
 	}
-	return internal.B2s(s)
+	return utils.B2s(s)
 }
 
 const (
@@ -70,7 +70,7 @@ func (s *_SessionT) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
 		return
 	}
 
-	if code != internal.B2s(v) {
+	if code != utils.B2s(v) {
 		return
 	}
 	ok = true

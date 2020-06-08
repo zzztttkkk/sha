@@ -4,7 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"github.com/zzztttkkk/snow/internal"
+	"github.com/zzztttkkk/snow/utils"
 )
 
 type JsonObject map[string]interface{}
@@ -28,7 +28,7 @@ func (f *JsonObject) Scan(src interface{}) error {
 	var bytes []byte
 	switch src.(type) {
 	case string:
-		bytes = internal.S2b(src.(string))
+		bytes = utils.S2b(src.(string))
 	case []byte:
 		bytes = src.([]byte)
 	default:
@@ -56,7 +56,7 @@ func (a *JsonArray) Scan(src interface{}) error {
 	var bytes []byte
 	switch src.(type) {
 	case string:
-		bytes = internal.S2b(src.(string))
+		bytes = utils.S2b(src.(string))
 	case []byte:
 		bytes = src.([]byte)
 	default:

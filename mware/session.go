@@ -6,9 +6,9 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/internal"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/router"
+	"github.com/zzztttkkk/snow/utils"
 	"time"
 )
 
@@ -112,7 +112,7 @@ func SessionHandler(ctx *fasthttp.RequestCtx) {
 		if session.id == nil {
 			session.id = ctx.Request.Header.Peek(SessionInHeader)
 			if session.id == nil {
-				session.id = internal.S2b(xid.New().String())
+				session.id = utils.S2b(xid.New().String())
 				session.Set(".", 1)
 			}
 		}
