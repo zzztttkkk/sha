@@ -54,13 +54,12 @@ func Error(ctx *fasthttp.RequestCtx, err error) {
 	ctx.Response.ResetBody()
 	ctx.SetContentTypeBytes(strApplicationJSON)
 
-	log.Println(errors.Wrap(err, 1).ErrorStack())
-
 	switch v := err.(type) {
 	case HttpError:
 		ctx.SetStatusCode(v.StatusCode())
 		toJson(ctx, v.Message())
 	default:
+		log.Println(errors.Wrap(err, 1).ErrorStack())
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		_, _ = ctx.Write(internalServerErrorMsg)
 	}

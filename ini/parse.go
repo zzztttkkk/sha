@@ -2,22 +2,35 @@ package ini
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/zzztttkkk/snow/utils"
+	"io/ioutil"
 	"os"
 	"regexp"
-	"strings"
 )
 
 //noinspection RegExpRedundantEscape
-var iniEnvRegexp = regexp.MustCompile(`\$ENV\{\w+}`)
+var iniEnvRegexp = regexp.MustCompile(`^\$ENV\{\w+}$`)
 
 //noinspection RegExpRedundantEscape
-var iniNameRegexp = regexp.MustCompile(`\$\{[\w._]+}`)
+var iniNameRegexp = regexp.MustCompile(`^\$\{[\w._]+}$`)
 
-func doReplace(v string, currentSectionName string, currentResult map[string]string) string {
+func doReplace(v []byte, currentSectionName string, currentResult map[string][]byte) []byte {
+	if bytes.HasPrefix(v, []byte("file://")) {
+		file, err := os.Open(string(v[7:]))
+		if err != nil {
+			panic(err)
+		}
+		v, e := ioutil.ReadAll(file)
+		if e != nil {
+			panic(e)
+		}
+		return v
+	}
+
 	vs := iniEnvRegexp.ReplaceAllFunc(
-		utils.S2b(v),
+		v,
 		func(bytes []byte) []byte {
 			name := string(bytes[5 : len(bytes)-1])
 			val := os.Getenv(name)
@@ -44,39 +57,34 @@ func doReplace(v string, currentSectionName string, currentResult map[string]str
 			if len(_v) < 1 {
 				panic(fmt.Errorf("snow.ini: val: `%s` not found", name))
 			}
-			return utils.S2b(_v)
+			return _v
 		},
 	)
 
-	return utils.B2s(vs)
+	return vs
 }
 
-func parseIniFile(filename string) map[string]string {
+func parseIniFile(filename string) map[string][]byte {
 	var err error
-	defer func() {
-		if err != nil {
-			panic(err)
-		}
-	}()
 
 	var f *os.File
 	f, err = os.Open(filename)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	defer f.Close()
 
-	result := make(map[string]string)
+	result := make(map[string][]byte)
 	scanner := bufio.NewScanner(f)
 	sectionName := ""
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum += 1
-		line := strings.TrimSpace(scanner.Text())
-		if len(line) < 1 || line[0] == '#' {
+		line := bytes.TrimSpace(scanner.Bytes())
+		if len(line) < 1 || line[0] == '#' || line[0] == ';' {
 			continue
 		}
-		k, v, sn, isValid, isErr := parseIniLine(sectionName, line)
+		k, sn, v, isValid, isErr := parseIniLine(sectionName, line)
 		sectionName = sn
 
 		if !isValid {
@@ -109,102 +117,31 @@ func parseIniFile(filename string) map[string]string {
 
 var iniKeyRegexp = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$`)
 
-func parseIniLine(sectionName, line string) (k, v, sn string, isValid, isErr bool) {
+func parseIniLine(sectionName string, line []byte) (k, sn string, v []byte, isValid, isErr bool) {
 	sn = sectionName
 
 	if line[0] == '[' {
-		ind := strings.Index(line, "]")
+		ind := bytes.IndexByte(line, ']')
 		if ind < 0 {
 			isErr = true
 			return
 		}
-		if !iniKeyRegexp.MatchString(line[1:ind]) {
+		if !iniKeyRegexp.Match(line[1:ind]) {
 			isErr = true
 			return
 		}
-		sn = line[1:ind]
+		sn = string(line[1:ind])
 		return
 	}
 
-	s := strings.Split(line, "=")
-	if len(s) < 2 {
+	ind := bytes.IndexByte(line, '=')
+	if ind < 1 {
 		isErr = true
 		return
 	}
 
-	k = strings.TrimSpace(s[0])
-	if !iniKeyRegexp.MatchString(k) {
-		isErr = true
-		return
-	}
-
-	v = strings.TrimSpace(strings.Join(s[1:], "="))
-
-	//noinspection GoPreferNilSlice
-	var _v = []rune{}
-	var quote rune = 0
-	var r rune
-	var prev rune = 0
-	for _, r = range v {
-		// handle quote
-		if prev != '\\' {
-			if quote != 0 && r == quote {
-				_v = append(_v, r)
-				break
-			}
-			if quote == 0 && (r == '"' || r == '\'') {
-				quote = r
-				_v = append(_v, r)
-				prev = r
-				continue
-			}
-			if r == '#' && quote == 0 {
-				break
-			}
-		}
-
-		// handle '\'
-		if prev == '\\' {
-			_v[len(_v)-1] = r
-			prev = r
-			if r == '\\' {
-				prev = _v[len(_v)-2]
-			}
-		} else {
-			prev = r
-			_v = append(_v, r)
-		}
-	}
-
-	__v := ""
-	for _, r := range _v {
-		__v += string(r)
-	}
-
-	__v = strings.TrimSpace(__v)
-	ei := len(__v) - 1
-
-	if __v[0] == '"' {
-		if __v[ei] != '"' {
-			isErr = true
-			return
-		}
-		v = __v[1:ei]
-		isValid = true
-		return
-	}
-
-	if __v[0] == '\'' {
-		if __v[ei] != '\'' {
-			isErr = true
-			return
-		}
-		v = __v[1:ei]
-		isValid = true
-		return
-	}
-
-	v = __v
+	k = string(bytes.TrimSpace(line[:ind]))
+	v = bytes.TrimSpace(line[ind+1:])
 	isValid = true
 	return
 }

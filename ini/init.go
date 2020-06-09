@@ -1,12 +1,15 @@
 package ini
 
 func Init() {
-	switch MustGet("app.mode") {
-	case ModeRelease:
-		mode = 0
-	case ModeDebug:
-		mode = 1
-	case ModeTest:
-		mode = 2
+	switch string(GetMust("app.mode")) {
+	case modeRelease:
+		isRelease = true
+	case modeDebug:
+		isDebug = true
+	case modeTest:
+		isTest = true
 	}
+
+	redisc = initRedis()
+	initSqls()
 }

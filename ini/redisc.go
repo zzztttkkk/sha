@@ -1,25 +1,23 @@
-package redisc
+package ini
 
 import (
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v7"
-	"github.com/zzztttkkk/snow/ini"
-	"strconv"
 )
 
-var cmdable redis.Cmdable
+var redisc redis.Cmdable
 
 var redisUnknownModeError = errors.New("snow.redisc: unknown redis mode,[singleton,ring,cluster]")
 var redisModes = map[string]bool{"singleton": true, "ring": true, "cluster": true}
 var redisInitError = errors.New("snow.redisc: init error")
 
-func makeKey(n string) string {
+func makeRedisKey(n string) string {
 	return fmt.Sprintf("redis.%s", n)
 }
 
-func redisInitByIni() (client redis.Cmdable) {
-	mode := ini.MustGet(makeKey("mode"))
+func initRedis() (client redis.Cmdable) {
+	mode := string(GetMust(makeRedisKey("mode")))
 	if _, ok := redisModes[mode]; !ok {
 		panic(redisUnknownModeError)
 	}
@@ -29,15 +27,12 @@ func redisInitByIni() (client redis.Cmdable) {
 	if mode == "singleton" {
 		nodesCount = 1
 	} else {
-		nodesCount, err = strconv.Atoi(ini.MustGet(makeKey("count")))
-		if err != nil {
-			panic(err)
-		}
+		nodesCount = int(GetIntMust(makeRedisKey("count")))
 	}
 
 	urls := make([]string, 0)
 	for i := 0; i < nodesCount; i++ {
-		urls = append(urls, ini.MustGet(makeKey(fmt.Sprintf("node%d.url", i))))
+		urls = append(urls, string(GetMust(makeRedisKey(fmt.Sprintf("node%d.url", i)))))
 	}
 
 	var option *redis.Options
@@ -88,13 +83,6 @@ func redisInitByIni() (client redis.Cmdable) {
 	panic(redisInitError)
 }
 
-func Init() {
-	cmdable = redisInitByIni()
-}
-
-func Client() redis.Cmdable {
-	if cmdable == nil {
-		Init()
-	}
-	return cmdable
+func RedisClient() redis.Cmdable {
+	return redisc
 }

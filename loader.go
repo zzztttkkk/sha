@@ -81,11 +81,11 @@ func (loader *_LoaderT) Doc(n string, p reflect.Type) {
 	loader.doc[n] = p
 }
 
-func (loader *_LoaderT) BindHttp(router *router.Router) {
+func (loader *_LoaderT) bindHttp(router *router.Router) {
 	if loader.http != nil {
 		loader.http(router)
 	}
 	for k, v := range loader.children {
-		v.BindHttp(router.SubGroup(k))
+		v.bindHttp(router.SubGroup(k))
 	}
 }

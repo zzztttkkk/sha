@@ -20,10 +20,14 @@ type _MysqlFieldT struct {
 	isConst      bool
 }
 
+type _MysqlFieldSlice []*_MysqlFieldT
+
 type _DdlParser struct {
 	current   *_MysqlFieldT
-	fields    []*_MysqlFieldT
+	fields    _MysqlFieldSlice
+	consts    []string
 	primaries []string
+	tableName string
 }
 
 func (p *_DdlParser) Tag() string {
@@ -91,6 +95,8 @@ func (p *_DdlParser) OnAttr(key, val string) {
 		mf.autoIncr = true
 	case "unique":
 		mf.unique = true
+	case "const":
+		mf.isConst = true
 	case "L", "length":
 		mf.length = int(utils.S2I32(val))
 	case "D", "default":
@@ -104,6 +110,9 @@ func (p *_DdlParser) OnDone() {
 	p.fields = append(p.fields, p.current)
 	if p.current.isPrimary {
 		p.primaries = append(p.primaries, p.current.name)
+		p.consts = append(p.consts, p.current.name)
+	} else if p.current.isConst {
+		p.consts = append(p.consts, p.current.name)
 	}
 	p.current = nil
 }
@@ -111,6 +120,28 @@ func (p *_DdlParser) OnDone() {
 const (
 	MysqlMaxCharLength = 100
 )
+
+var ddlCache = map[reflect.Type]*_DdlParser{}
+
+func newDdlParser(p reflect.Type) *_DdlParser {
+	mfs, ok := ddlCache[p]
+	if ok {
+		return mfs
+	}
+	parser := &_DdlParser{}
+	reflectx.Tags(p, parser)
+	ddlCache[p] = parser
+
+	tableName := strings.ToLower(p.Name())
+	ele := reflect.New(p)
+	tableNameFn := ele.MethodByName("TableName")
+	if tableNameFn.IsValid() {
+		tableName = (tableNameFn.Call(nil)[0]).Interface().(string)
+	}
+	parser.tableName = tableName
+
+	return parser
+}
 
 // support mysql types: bool, tinyint, smallint, int, bigint, char, varchar, text, blob, json
 //
@@ -126,7 +157,7 @@ const (
 // example:
 // type User {
 //     Identify 		uint32  `ddl:"primary;notnull;incr;"`
-// 	   Name 	string  `ddl:"unique;notnull;unique;L<50>"`
+// 	   GetName 	string  `ddl:"unique;notnull;unique;L<50>"`
 //	   Address 	string  `ddl:"addr:notnull;L<120>"`
 //	   Age		int		`ddl:"notnull"`
 // }
@@ -137,17 +168,9 @@ func TableDefinition(modelType reflect.Type) string {
 		return (cFn.Call(nil)[0]).Interface().(string)
 	}
 
-	parser := _DdlParser{}
-	reflectx.Tags(modelType, &parser)
-
+	parser := newDdlParser(modelType)
 	buf := strings.Builder{}
-	tableName := strings.ToLower(modelType.Name())
-	tableNameFn := ele.MethodByName("TableName")
-	if tableNameFn.IsValid() {
-		tableName = (tableNameFn.Call(nil)[0]).Interface().(string)
-	}
-
-	buf.WriteString("create table if not exists " + tableName + " (\n")
+	buf.WriteString("create table if not exists " + parser.tableName + " (\n")
 
 	for _, field := range parser.fields {
 		buf.WriteString("\t")

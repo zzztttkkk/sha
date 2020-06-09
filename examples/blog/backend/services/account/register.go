@@ -7,6 +7,7 @@ import (
 	"github.com/zzztttkkk/snow/mware"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/sqls"
+	"github.com/zzztttkkk/snow/utils"
 	"github.com/zzztttkkk/snow/validator"
 )
 
@@ -17,7 +18,7 @@ type RegisterForm struct {
 
 func Register(ctx *fasthttp.RequestCtx) {
 	session := mware.GetSessionMust(ctx)
-	if session.CaptchaVerify(ctx) {
+	if !session.CaptchaVerify(ctx) {
 		output.StdError(ctx, fasthttp.StatusBadRequest)
 		return
 	}
@@ -26,10 +27,11 @@ func Register(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	doRegister(ctx, form.Name, form.Password)
+	uid, skey := doRegister(ctx, form.Name, form.Password)
+	output.MsgOk(ctx, output.M{"uid": uid, "secret": utils.B2s(skey)})
 }
 
-func doRegister(ctx context.Context, name, password []byte) int64 {
+func doRegister(ctx context.Context, name, password []byte) (int64, []byte) {
 	ctx, committer := sqls.Tx(ctx)
 	defer committer()
 	return models.UserOperator.Create(ctx, name, password)

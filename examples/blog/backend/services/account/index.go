@@ -12,6 +12,7 @@ func init() {
 		func(router *router.Router) {
 			router.POST("/register", Register)
 			router.GET("/login", Login)
+			router.POST("/unregister", Unregister)
 		},
 	)
 }

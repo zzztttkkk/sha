@@ -18,9 +18,13 @@ var (
 	SessionExpire   = time.Hour
 )
 
+type UidReader func(ctx *fasthttp.RequestCtx) int64
+
+var uidReader UidReader
+
 type _SessionT struct {
-	id   []byte
-	User User
+	id  []byte
+	uid int64
 }
 
 const sessionKey = "/s"
@@ -88,11 +92,9 @@ func SessionHandler(ctx *fasthttp.RequestCtx) {
 	session := _SessionT{}
 	var uid int64
 	var sidKey string
-	var user User
 
-	user, _ = GetUser(ctx)
-	if user != nil {
-		uid = user.Identify()
+	uid = uidReader(ctx)
+	if uid > 0 {
 		sidKey = makeUSidKey(uid)
 		sid, _ := redisClient.Get(sidKey).Bytes()
 		if len(sid) > 0 {

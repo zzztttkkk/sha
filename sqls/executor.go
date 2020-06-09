@@ -2,7 +2,6 @@ package sqls
 
 import (
 	"context"
-	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/snow/ini"
 	"log"
@@ -91,28 +90,11 @@ func newSqlDB(url string, maxLifeTime time.Duration, maxOpenConns int) *sqlx.DB 
 }
 
 func Init() {
-	if master != nil {
-		return
-	}
-
-	driverName = ini.MustGet("sql.driver")
-	maxLifetime := time.Second * time.Duration(ini.GetOrInt("sql.max_life_time", 7200))
-	maxOpenConns := int(ini.GetOrInt("sql.max_open_num", 5))
-
-	master = newSqlDB(
-		ini.MustGet("sql.master.url"),
-		maxLifetime,
-		maxOpenConns,
-	)
-
-	for i := 0; i < int(ini.GetOrInt("sql.slaves", 0)); i++ {
-		slaves = append(slaves, newSqlDB(ini.MustGet(fmt.Sprintf("sql.slave.%d", i)), maxLifetime, maxOpenConns))
-	}
+	master = ini.SqlMaster()
+	slaves = ini.SqlSlaves()
+	driverName = ini.SqlDriverName()
 }
 
 func Master() *sqlx.DB {
-	if master == nil {
-		Init()
-	}
 	return master
 }

@@ -4,14 +4,13 @@ import (
 	"github.com/zzztttkkk/snow/ini"
 	"github.com/zzztttkkk/snow/mware"
 	"github.com/zzztttkkk/snow/output"
-	"github.com/zzztttkkk/snow/redisc"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/sqls"
 )
 
 type Config struct {
 	IniFiles   []string
-	UserReader mware.UserReader
+	UserReader mware.UidReader
 }
 
 func Init(config *Config) {
@@ -23,6 +22,5 @@ func Init(config *Config) {
 	secret.Init()
 	output.Init()
 	sqls.Init()
-	redisc.Init()
 	mware.Init(config.UserReader)
 }

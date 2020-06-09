@@ -1,45 +1,36 @@
 package main
 
 import (
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow"
-	"github.com/zzztttkkk/snow/ctxs"
 	"github.com/zzztttkkk/snow/examples/blog/backend"
-	"github.com/zzztttkkk/snow/examples/blog/backend/models"
+	bctxs "github.com/zzztttkkk/snow/examples/blog/backend/ctxs"
 	"github.com/zzztttkkk/snow/examples/blog/backend/services"
-	"github.com/zzztttkkk/snow/ini"
 	"github.com/zzztttkkk/snow/mware"
+	sctxs "github.com/zzztttkkk/snow/mware/ctxs"
+	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/utils"
-	"log"
 	"time"
 )
 
 func main() {
 	conf := &snow.Config{}
 	conf.IniFiles = append(conf.IniFiles, "examples/blog/conf.ini")
-	conf.UserReader = models.UserReader
+	conf.UserReader = bctxs.GetUid
 	snow.Init(conf)
 
 	backend.Init()
 
 	root := router.New()
 	root.Use(
-		mware.NewRateLimiter(ctxs.GetRemoteIpHash, time.Second, 30),
+		mware.NewRateLimiter(sctxs.GetRemoteIpHash, time.Second, 30),
 		mware.SessionHandler,
 	)
 
-	services.Loader.BindHttp(root)
+	root.PanicHandler = output.Recover
+	root.NotFound = func(ctx *fasthttp.RequestCtx) { output.StdError(ctx, fasthttp.StatusNotFound) }
+	root.MethodNotAllowed = func(ctx *fasthttp.RequestCtx) { output.StdError(ctx, fasthttp.StatusMethodNotAllowed) }
 
-	rlog := utils.AcquireGroupLogger("Router")
-	for method, paths := range root.List() {
-		for _, path := range paths {
-			rlog.Println(fmt.Sprintf("%s: %s", method, path))
-		}
-	}
-	utils.ReleaseGroupLogger(rlog)
-
-	log.Fatal(fasthttp.ListenAndServe(ini.MustGet("services.http.address"), root.Handler))
+	snow.RunAsHttpServer(services.Loader, root)
 }
