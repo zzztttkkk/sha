@@ -8,24 +8,23 @@ import (
 	"strings"
 )
 
-type _MysqlFieldT struct {
+type _SqlFieldT struct {
 	name         string
-	t            string
 	isPrimary    bool
 	notNull      bool
 	autoIncr     bool
 	unique       bool
 	length       int
 	defaultValue string
-	isConst      bool
+	storageType  string
+	isUnsigned   bool
 }
 
-type _MysqlFieldSlice []*_MysqlFieldT
+type _SqlFieldSlice []*_SqlFieldT
 
 type _DdlParser struct {
-	current   *_MysqlFieldT
-	fields    _MysqlFieldSlice
-	consts    []string
+	current   *_SqlFieldT
+	fields    _SqlFieldSlice
 	primaries []string
 	tableName string
 }
@@ -35,44 +34,48 @@ func (p *_DdlParser) Tag() string {
 }
 
 func (p *_DdlParser) OnField(field *reflect.StructField) bool {
-	mf := &_MysqlFieldT{}
+	mf := &_SqlFieldT{}
 
 	switch field.Type.Kind() {
 	case reflect.Bool:
-		mf.t = "bool"
+		mf.storageType = "bool"
 	case reflect.Int8:
-		mf.t = "tinyint"
+		mf.storageType = "tinyint"
 	case reflect.Int16:
-		mf.t = "smallint"
+		mf.storageType = "smallint"
 	case reflect.Int, reflect.Int32:
-		mf.t = "int"
+		mf.storageType = "int"
 	case reflect.Int64:
-		mf.t = "bigint"
+		mf.storageType = "bigint"
 	case reflect.Uint8:
-		mf.t = "tinyint unsigned"
+		mf.storageType = "tinyint"
+		mf.isUnsigned = true
 	case reflect.Uint16:
-		mf.t = "smallint unsigned"
+		mf.storageType = "smallint"
+		mf.isUnsigned = true
 	case reflect.Uint, reflect.Uint32:
-		mf.t = "int unsigned"
+		mf.isUnsigned = true
+		mf.storageType = "int"
 	case reflect.Uint64:
-		mf.t = "bigint unsigned"
+		mf.isUnsigned = true
+		mf.storageType = "bigint"
 	case reflect.Slice:
 		switch field.Type.Elem().Kind() {
 		case reflect.Interface: // []interface{}, utils.SqlArray
-			mf.t = "json"
+			mf.storageType = "json"
 		case reflect.Uint8: // []byte
-			mf.t = "string"
+			mf.storageType = "string"
 		default:
 			return false
 		}
 	case reflect.Map:
 		if field.Type.Key().Kind() == reflect.String && field.Type.Elem().Kind() == reflect.Interface {
-			mf.t = "json"
+			mf.storageType = "json"
 		} else {
 			return false
 		}
 	case reflect.String:
-		mf.t = "string"
+		mf.storageType = "string"
 	default:
 		return false
 	}
@@ -95,14 +98,14 @@ func (p *_DdlParser) OnAttr(key, val string) {
 		mf.autoIncr = true
 	case "unique":
 		mf.unique = true
-	case "const":
-		mf.isConst = true
 	case "L", "length":
 		mf.length = int(utils.S2I32(val))
 	case "D", "default":
 		if len(val) > 0 {
 			mf.defaultValue = val
 		}
+	case "T", "type":
+		mf.storageType = val
 	}
 }
 
@@ -110,15 +113,12 @@ func (p *_DdlParser) OnDone() {
 	p.fields = append(p.fields, p.current)
 	if p.current.isPrimary {
 		p.primaries = append(p.primaries, p.current.name)
-		p.consts = append(p.consts, p.current.name)
-	} else if p.current.isConst {
-		p.consts = append(p.consts, p.current.name)
 	}
 	p.current = nil
 }
 
 const (
-	MysqlMaxCharLength = 100
+	MaxCharLength = 128
 )
 
 var ddlCache = map[reflect.Type]*_DdlParser{}
@@ -139,7 +139,6 @@ func newDdlParser(p reflect.Type) *_DdlParser {
 		tableName = (tableNameFn.Call(nil)[0]).Interface().(string)
 	}
 	parser.tableName = tableName
-
 	return parser
 }
 
@@ -150,8 +149,8 @@ func newDdlParser(p reflect.Type) *_DdlParser {
 // string option: L<length>:
 //				-1: blob,
 //				0: text,
-//				1-MysqlMaxCharLength : char,
-//				MysqlMaxCharLength~: varchar,
+//				1-MaxCharLength : char,
+//				MaxCharLength~: varchar,
 // default options: D<default value>
 //
 // example:
@@ -176,18 +175,22 @@ func TableDefinition(modelType reflect.Type) string {
 		buf.WriteString("\t")
 		buf.WriteString(field.name)
 		buf.WriteString(" ")
-		if field.t == "string" {
+		if field.storageType == "string" {
 			if field.length < 0 {
 				buf.WriteString("blob")
 			} else if field.length == 0 {
 				buf.WriteString("text")
-			} else if field.length <= MysqlMaxCharLength {
+			} else if field.length <= MaxCharLength {
 				buf.WriteString(fmt.Sprintf("char(%d)", field.length))
 			} else {
 				buf.WriteString(fmt.Sprintf("varchar(%d)", field.length))
 			}
 		} else {
-			buf.WriteString(field.t)
+			buf.WriteString(field.storageType)
+		}
+
+		if field.isUnsigned {
+			buf.WriteString(" unsigned")
 		}
 
 		if field.autoIncr {

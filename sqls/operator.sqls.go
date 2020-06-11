@@ -36,7 +36,7 @@ func (op *Operator) TableName() string {
 	return op.ddl.tableName
 }
 
-func (op *Operator) NewEnumCache(seconds int64, constructor func() Enum) *EnumCache {
+func (op *Operator) NewEnumCache(seconds int64, constructor func() Enumer) *EnumCache {
 	cache := &EnumCache{
 		im:          map[int64]interface{}{},
 		nm:          map[string]interface{}{},

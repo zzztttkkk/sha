@@ -11,12 +11,13 @@ import (
 	sctxs "github.com/zzztttkkk/snow/mware/ctxs"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/router"
+	"os"
 	"time"
 )
 
 func main() {
 	conf := &snow.Config{}
-	conf.IniFiles = append(conf.IniFiles, "examples/blog/conf.ini")
+	conf.IniFiles = append(conf.IniFiles, os.Getenv("ProjectRoot")+"/examples/blog/conf.ini")
 	conf.UserReader = bctxs.GetUid
 	snow.Init(conf)
 

@@ -12,4 +12,6 @@ func Init() {
 
 	redisc = initRedis()
 	initSqls()
+
+	Print()
 }

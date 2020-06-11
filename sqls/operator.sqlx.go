@@ -3,8 +3,6 @@ package sqls
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -118,8 +116,9 @@ func (op *Operator) SqlxExecute(ctx context.Context, q string, args ...interface
 	return r
 }
 
-func (op *Operator) SqlxCreate(ctx context.Context, q string, args ...interface{}) int64 {
-	r := op.SqlxExecute(ctx, q, args...)
+func (op *Operator) SqlxCreate(ctx context.Context, dict Dict) int64 {
+	query, values := dict.ForCreate(op.ddl.tableName)
+	r := op.SqlxExecute(ctx, query, values...)
 	lid, err := r.LastInsertId()
 	if err != nil {
 		panic(err)
@@ -127,19 +126,8 @@ func (op *Operator) SqlxCreate(ctx context.Context, q string, args ...interface{
 	return lid
 }
 
-var emptySqlsDictError = errors.New("snow.sqls: empty dict")
-
-func (op *Operator) SqlxUpdate(ctx context.Context, q string, dict Dict, args ...interface{}) int64 {
-	for _, k := range op.ddl.consts {
-		delete(dict, k)
-	}
-	if len(dict) < 1 {
-		panic(emptySqlsDictError)
-	}
-
-	placeholder, values := dict.ForUpdate()
-	values = append(values, args...)
-	r := op.SqlxExecute(ctx, fmt.Sprintf(q, placeholder), values...)
+func (op *Operator) SqlxUpdate(ctx context.Context, q string, args ...interface{}) int64 {
+	r := op.SqlxExecute(ctx, q, args...)
 	rows, err := r.RowsAffected()
 	if err != nil {
 		panic(err)

@@ -159,6 +159,14 @@ func getRules(p reflect.Type) _RuleSliceT {
 	return parser.all
 }
 
+func newNullError(name string) error {
+	return fmt.Errorf("`%s` is required", name)
+}
+
+func newInvalidError(name string) error {
+	return fmt.Errorf("`%s` is invalid", name)
+}
+
 func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 	_v := reflect.ValueOf(ptr).Elem()
 	for _, rule := range getRules(_v.Type()) {
@@ -173,7 +181,7 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 
 		if len(val) == 0 {
 			if rule.required {
-				output.StdError(ctx, fasthttp.StatusBadRequest)
+				output.Error(ctx, newNullError(rule.form))
 				return false
 			}
 			continue
@@ -186,28 +194,28 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 		case _Int64:
 			v, ok := rule.toI64(val)
 			if !ok {
-				output.StdError(ctx, fasthttp.StatusBadRequest)
+				output.Error(ctx, newInvalidError(rule.form))
 				return false
 			}
 			field.SetInt(v)
 		case _Uint64:
 			v, ok := rule.toUI64(val)
 			if !ok {
-				output.StdError(ctx, fasthttp.StatusBadRequest)
+				output.Error(ctx, newInvalidError(rule.form))
 				return false
 			}
 			field.SetUint(v)
 		case _Bytes:
 			v, ok := rule.toBytes(val)
 			if !ok {
-				output.StdError(ctx, fasthttp.StatusBadRequest)
+				output.Error(ctx, newInvalidError(rule.form))
 				return false
 			}
 			field.SetBytes(v)
 		case _String:
 			v, ok := rule.toBytes(val)
 			if !ok {
-				output.StdError(ctx, fasthttp.StatusBadRequest)
+				output.Error(ctx, newInvalidError(rule.form))
 				return false
 			}
 			field.SetString(utils.B2s(v))

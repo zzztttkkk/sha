@@ -3,7 +3,7 @@ module github.com/zzztttkkk/snow
 go 1.14
 
 require (
-	github.com/dchest/captcha v0.0.0-20170622155422-6a29415a8364 // indirect
+	github.com/dchest/captcha v0.0.0-20170622155422-6a29415a8364
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fasthttp/router v1.0.2
 	github.com/go-errors/errors v1.1.1
@@ -12,6 +12,6 @@ require (
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/rs/xid v1.2.1
 	github.com/valyala/fasthttp v1.9.0
-	github.com/zzztttkkk/reflectx v0.0.0-20200608075450-4971561a320c // indirect
-	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a // indirect
+	github.com/zzztttkkk/reflectx v0.0.0-20200608075450-4971561a320c
+	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 )

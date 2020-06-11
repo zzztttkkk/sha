@@ -2,15 +2,17 @@ package models
 
 import (
 	"context"
-	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
-	"github.com/zzztttkkk/snow/sqls"
+	"fmt"
 	"reflect"
 	"time"
+
+	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
+	"github.com/zzztttkkk/snow/sqls"
 )
 
 type Post struct {
 	sqls.Model
-	AuthorId int64  `json:"author_id" ddl:"notnull"`
+	Author   int64  `json:"author" ddl:"notnull"`
 	Category int64  `json:"category" ddl:"notnull"`
 	Title    string `json:"title" ddl:"notnull;L<50>"`
 	Content  string `json:"content" ddl:"notnull;L<0>"`
@@ -31,15 +33,48 @@ func init() {
 	)
 }
 
-func (op *_PostOperatorT) Create(ctx context.Context, uid, categoryId int64, title, content []byte) int64 {
-	return op.SqlxCreate(
+func (op *_PostOperatorT) Create(
+	ctx context.Context, uid, categoryId int64,
+	title, content []byte, tags ...int64,
+) int64 {
+	postId := op.SqlxCreate(
 		ctx,
-		`insert into post (created,author_id,category,title,content) values(?,?,?,?,?)`,
-		time.Now().Unix(), uid, categoryId,
-		title, content,
+		sqls.Dict{
+			"created":  time.Now().Unix(),
+			"author":   uid,
+			"category": categoryId,
+			"title":    title,
+			"content":  content,
+		},
 	)
+	op.AddTags(ctx, postId, tags...)
+	return postId
 }
 
-func (op *_PostOperatorT) AddTag(ctx context.Context, postId, tagId int64) {
+func (op *_PostOperatorT) AddTags(ctx context.Context, postId int64, tagIds ...int64) {
+	postTagsOperator.Create(ctx, postId, tagIds...)
+}
 
+func (op *_PostOperatorT) DelTags(ctx context.Context, postId int64, tagIds ...int64) {
+	postTagsOperator.Delete(ctx, postId, tagIds...)
+}
+
+func (op *_PostOperatorT) Update(ctx context.Context, uid, postId int64, dict sqls.Dict) bool {
+	placeholder, values := dict.ForUpdate()
+	values = append(values, uid)
+	values = append(values, postId)
+
+	return op.SqlxUpdate(
+		ctx,
+		fmt.Sprintf(`update post set(%s) where author_id=? and id=?`, placeholder),
+		values...,
+	) > 0
+}
+
+func (op *_PostOperatorT) Delete(ctx context.Context, postId int64) bool {
+	return op.SqlxUpdate(
+		ctx,
+		`update post set(deleted=?) where id=? and deleted=0`,
+		time.Now().Unix(), postId,
+	) > 0
 }

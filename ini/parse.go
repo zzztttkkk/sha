@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/zzztttkkk/snow/utils"
 	"io/ioutil"
 	"os"
 	"regexp"
+
+	"github.com/zzztttkkk/snow/utils"
 )
 
 //noinspection RegExpRedundantEscape
@@ -64,7 +65,7 @@ func doReplace(v []byte, currentSectionName string, currentResult map[string][]b
 	return vs
 }
 
-func parseIniFile(filename string) map[string][]byte {
+func parseIniFile(filename string) {
 	var err error
 
 	var f *os.File
@@ -74,7 +75,6 @@ func parseIniFile(filename string) map[string][]byte {
 	}
 	defer f.Close()
 
-	result := make(map[string][]byte)
 	scanner := bufio.NewScanner(f)
 	sectionName := ""
 	lineNum := 0
@@ -89,8 +89,7 @@ func parseIniFile(filename string) map[string][]byte {
 
 		if !isValid {
 			if isErr {
-				err = fmt.Errorf("snow.ini: line: %d", lineNum)
-				return nil
+				panic(fmt.Errorf("snow.ini: line: %d", lineNum))
 			}
 			continue
 		}
@@ -100,19 +99,14 @@ func parseIniFile(filename string) map[string][]byte {
 			_k = sectionName + "." + k
 		}
 
-		_, exist := result[_k]
-		if exist {
-			err = fmt.Errorf("snow.ini: duplicate cacheKey `%s`; line: %d", _k, lineNum)
-			return nil
-		}
-		result[_k] = doReplace(v, sectionName, result)
+		storage[_k] = doReplace(v, sectionName, storage)
+		rawStorage[_k] = string(v)
 	}
 
 	err = scanner.Err()
 	if err != nil {
-		return nil
+		panic(err)
 	}
-	return result
 }
 
 var iniKeyRegexp = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$`)

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
+	"github.com/zzztttkkk/snow/sqls"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/secret"
-	"github.com/zzztttkkk/snow/sqls"
 	"reflect"
 	"time"
 )
@@ -45,11 +45,12 @@ func (op *_UserOperatorT) Create(ctx context.Context, name, password []byte) (in
 
 	return op.SqlxCreate(
 		ctx,
-		`insert into user (created,name,password,secret) values (?,?,?,?)`,
-		time.Now().Unix(),
-		name,
-		secret.Hash.Calc(password),
-		skey,
+		sqls.Dict{
+			"created":  time.Now().Unix(),
+			"name":     name,
+			"password": secret.Hash.Calc(password),
+			"secret":   skey,
+		},
 	), skey
 }
 

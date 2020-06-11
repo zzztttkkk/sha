@@ -2,15 +2,15 @@ package ini
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
+
+	"github.com/zzztttkkk/snow/utils"
 )
 
 var storage = make(map[string][]byte)
-var lock = &sync.Mutex{}
+var rawStorage = make(map[string]string)
 var (
 	isDebug   bool
 	isRelease bool
@@ -18,24 +18,21 @@ var (
 )
 
 func Load(filename string) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	for k, v := range parseIniFile(filename) {
-		storage[k] = v
-	}
+	parseIniFile(filename)
 }
 
 func Print() {
 	var ks []string
+	glog := utils.AcquireGroupLogger("Ini")
+	defer utils.ReleaseGroupLogger(glog)
 
-	for k := range storage {
+	for k := range rawStorage {
 		ks = append(ks, k)
 	}
 	sort.StringSlice(ks).Sort()
 
 	for _, k := range ks {
-		log.Printf("%s: %s\n", k, storage[k])
+		glog.Println(fmt.Sprintf("%s: %s", k, rawStorage[k]))
 	}
 }
 

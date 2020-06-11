@@ -11,7 +11,6 @@ import (
 
 var master *sqlx.DB
 var slaves []*sqlx.DB
-var driverName string
 
 type executor interface {
 	sqlx.ExecerContext
@@ -74,25 +73,9 @@ func Executor(ctx context.Context) executor {
 	return slaves[ind]
 }
 
-func newSqlDB(url string, maxLifeTime time.Duration, maxOpenConns int) *sqlx.DB {
-	db, err := sqlx.Open(driverName, url)
-	if err != nil {
-		panic(err)
-	}
-
-	db.SetConnMaxLifetime(maxLifeTime)
-	db.SetMaxOpenConns(maxOpenConns)
-
-	if err = db.Ping(); err != nil {
-		panic(err)
-	}
-	return db
-}
-
 func Init() {
 	master = ini.SqlMaster()
 	slaves = ini.SqlSlaves()
-	driverName = ini.SqlDriverName()
 }
 
 func Master() *sqlx.DB {

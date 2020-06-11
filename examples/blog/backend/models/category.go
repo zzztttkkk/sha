@@ -7,12 +7,12 @@ import (
 )
 
 type Category struct {
-	_EnumT
+	sqls.Enum
 	Descp string `json:"descp" ddl:"L<0>;notnull"`
 }
 
 type _CategoryOperatorT struct {
-	_EnumOperatorT
+	sqls.EnumOperator
 }
 
 var CategoryOperator = &_CategoryOperatorT{}
@@ -22,7 +22,7 @@ func init() {
 		func(args ...interface{}) {
 			CategoryOperator.Init(
 				reflect.TypeOf(Category{}),
-				func() sqls.Enum { return &Category{} },
+				func() sqls.Enumer { return &Category{} },
 			)
 		},
 	)

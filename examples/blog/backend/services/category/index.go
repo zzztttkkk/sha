@@ -3,10 +3,10 @@ package category
 import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow"
+	"github.com/zzztttkkk/snow/examples/blog/backend/models"
 	"github.com/zzztttkkk/snow/mware"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/router"
-	"time"
 )
 
 var Loader = snow.NewLoader()
@@ -21,7 +21,7 @@ func init() {
 			router.GET(
 				"/all",
 				func(ctx *fasthttp.RequestCtx) {
-					output.MsgOk(ctx, output.M{"x": time.Now().Unix()})
+					output.MsgOk(ctx, output.M{"lst": models.CategoryOperator.List(ctx)})
 				},
 			)
 		},

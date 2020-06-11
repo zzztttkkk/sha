@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+
 	"github.com/zzztttkkk/snow/utils"
 )
 
@@ -26,11 +27,11 @@ var IsNotSqlJsonFieldError = errors.New("snow.sqls: this is not a json field")
 
 func (f *JsonObject) Scan(src interface{}) error {
 	var bytes []byte
-	switch src.(type) {
+	switch v := src.(type) {
 	case string:
-		bytes = utils.S2b(src.(string))
+		bytes = utils.S2b(v)
 	case []byte:
-		bytes = src.([]byte)
+		bytes = v
 	default:
 		return IsNotSqlJsonFieldError
 	}
@@ -54,11 +55,11 @@ func (a JsonArray) Value() (driver.Value, error) {
 
 func (a *JsonArray) Scan(src interface{}) error {
 	var bytes []byte
-	switch src.(type) {
+	switch v := src.(type) {
 	case string:
-		bytes = utils.S2b(src.(string))
+		bytes = utils.S2b(v)
 	case []byte:
-		bytes = src.([]byte)
+		bytes = v
 	default:
 		return IsNotSqlJsonFieldError
 	}

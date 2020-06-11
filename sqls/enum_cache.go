@@ -3,12 +3,13 @@ package sqls
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/singleflight"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
-type Enum interface {
+type Enumer interface {
 	GetId() int64
 	GetName() string
 }
@@ -16,11 +17,11 @@ type Enum interface {
 type EnumCache struct {
 	im          map[int64]interface{}
 	nm          map[string]interface{}
-	all         []Enum
+	all         []Enumer
 	last        int64
 	expire      int64
 	op          *Operator
-	constructor func() Enum
+	constructor func() Enumer
 	rwm         sync.RWMutex
 	sg          singleflight.Group
 }
@@ -39,7 +40,7 @@ func (cache *EnumCache) load(ctx context.Context) {
 	cache.rwm.Lock()
 	defer cache.rwm.Unlock()
 
-	cache.all = make([]Enum, 0, len(cache.all))
+	cache.all = make([]Enumer, 0, len(cache.all))
 
 	cache.op.SqlxStructScanRows(
 		ctx,
@@ -71,6 +72,12 @@ func (cache *EnumCache) refresh(ctx context.Context) {
 	cache.rwm.RUnlock()
 
 	cache.doLoad(ctx)
+}
+
+func (cache *EnumCache) doExpire() {
+	cache.rwm.Lock()
+	defer cache.rwm.Unlock()
+	cache.last = 0
 }
 
 func (cache *EnumCache) GetById(ctx context.Context, id int64) (interface{}, bool) {
@@ -113,7 +120,7 @@ func (cache *EnumCache) TraverseNameMap(ctx context.Context, visitor func(name s
 	}
 }
 
-func (cache *EnumCache) All(ctx context.Context) []Enum {
+func (cache *EnumCache) All(ctx context.Context) []Enumer {
 	cache.refresh(ctx)
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
