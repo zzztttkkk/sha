@@ -2,8 +2,11 @@ package validator
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow/utils"
+	"html"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,9 +18,25 @@ const (
 	_Uint64
 	_Bytes
 	_String
+	_JsonObject
+	_BoolSlice
+	_IntSlice
+	_UintSlice
+	_StringSlice
 )
 
-var typeNames = []string{"bool", "int", "uint", "string", "string"}
+var typeNames = []string{
+	"Bool",
+	"Int",
+	"Uint",
+	"String",
+	"String",
+	"JsonObject",
+	"BoolArray",
+	"IntArray",
+	"UintArray",
+	"StringArray",
+}
 
 type _RuleT struct {
 	form     string
@@ -37,18 +56,55 @@ type _RuleT struct {
 
 	defaultV []byte
 
-	reg    *regexp.Regexp
-	fn     func([]byte) ([]byte, bool)
-	fnName string
+	reg     *regexp.Regexp
+	regName string
+	fn      func([]byte) ([]byte, bool)
+	fnName  string
 }
 
-var trueBytes = []byte("true")
+var TrueBytes = []byte("true")
 
-func (rule *_RuleT) toBool(v []byte) bool {
-	return bytes.Equal(v, trueBytes)
+func (rule *_RuleT) toBytes(v []byte) (val []byte, ok bool) {
+	if rule.lrange {
+		l := len(v)
+		if rule.minL > 0 && l < rule.minL {
+			return nil, false
+		}
+		if rule.maxL > 0 && l > rule.maxL {
+			return nil, false
+		}
+	}
+
+	if rule.reg != nil {
+		if !rule.reg.Match(v) {
+			return nil, false
+		}
+	}
+
+	if rule.fn != nil {
+		v, ok = rule.fn(v)
+		if !ok {
+			return nil, false
+		}
+	}
+
+	return v, true
 }
 
-func (rule *_RuleT) toI64(v []byte) (int64, bool) {
+func (rule *_RuleT) toBool(v []byte) (r bool, ok bool) {
+	v, ok = rule.toBytes(v)
+	if !ok {
+		return false, false
+	}
+	return bytes.Equal(v, TrueBytes), true
+}
+
+func (rule *_RuleT) toI64(v []byte) (num int64, ok bool) {
+	v, ok = rule.toBytes(v)
+	if !ok {
+		return 0, false
+	}
+
 	rv, err := strconv.ParseInt(utils.B2s(v), 10, 64)
 	if err != nil {
 		return 0, false
@@ -67,7 +123,12 @@ func (rule *_RuleT) toI64(v []byte) (int64, bool) {
 	return rv, true
 }
 
-func (rule *_RuleT) toUI64(v []byte) (uint64, bool) {
+func (rule *_RuleT) toUI64(v []byte) (num uint64, ok bool) {
+	v, ok = rule.toBytes(v)
+	if !ok {
+		return 0, false
+	}
+
 	rv, err := strconv.ParseUint(utils.B2s(v), 10, 64)
 	if err != nil {
 		return 0, false
@@ -86,7 +147,7 @@ func (rule *_RuleT) toUI64(v []byte) (uint64, bool) {
 	return rv, true
 }
 
-func (rule *_RuleT) toBytes(v []byte) ([]byte, bool) {
+func (rule *_RuleT) toJsonObj(v []byte) (map[string]interface{}, bool) {
 	if rule.lrange {
 		l := len(v)
 		if rule.minL > 0 && l < rule.minL {
@@ -97,15 +158,116 @@ func (rule *_RuleT) toBytes(v []byte) ([]byte, bool) {
 		}
 	}
 
-	if rule.fn != nil {
-		return rule.fn(v)
+	m := map[string]interface{}{}
+	err := json.Unmarshal(v, &m)
+	if err != nil {
+		return nil, false
+	}
+	return m, true
+}
+
+func mapMultiForm(ctx *fasthttp.RequestCtx, name string, fn func([]byte) bool) bool {
+	for _, v := range ctx.QueryArgs().PeekMulti(name) {
+		if !fn(v) {
+			return false
+		}
 	}
 
-	if rule.reg != nil {
-		return v, rule.reg.Match(v)
+	for _, v := range ctx.PostArgs().PeekMulti(name) {
+		if !fn(v) {
+			return false
+		}
 	}
 
-	return v, true
+	mf, _ := ctx.MultipartForm()
+	if mf != nil {
+		for _, v := range mf.Value[name] {
+			if !fn(utils.S2b(v)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (rule *_RuleT) toBoolSlice(ctx *fasthttp.RequestCtx) ([]bool, bool) {
+	var lst []bool
+	ok := mapMultiForm(
+		ctx,
+		rule.form,
+		func(i []byte) bool {
+			v, ok := rule.toBool(i)
+			if !ok {
+				return false
+			}
+			lst = append(lst, v)
+			return true
+		},
+	)
+	if ok {
+		return lst, true
+	}
+	return nil, false
+}
+
+func (rule *_RuleT) toIntSlice(ctx *fasthttp.RequestCtx) ([]int64, bool) {
+	var lst []int64
+	ok := mapMultiForm(
+		ctx,
+		rule.form,
+		func(i []byte) bool {
+			v, ok := rule.toI64(i)
+			if !ok {
+				return false
+			}
+			lst = append(lst, v)
+			return true
+		},
+	)
+	if ok {
+		return lst, true
+	}
+	return nil, false
+}
+
+func (rule *_RuleT) toUintSlice(ctx *fasthttp.RequestCtx) ([]uint64, bool) {
+	var lst []uint64
+	ok := mapMultiForm(
+		ctx,
+		rule.form,
+		func(i []byte) bool {
+			v, ok := rule.toUI64(i)
+			if !ok {
+				return false
+			}
+			lst = append(lst, v)
+			return true
+		},
+	)
+	if ok {
+		return lst, true
+	}
+	return nil, false
+}
+
+func (rule *_RuleT) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
+	var lst []string
+	ok := mapMultiForm(
+		ctx,
+		rule.form,
+		func(i []byte) bool {
+			v, ok := rule.toBytes(i)
+			if !ok {
+				return false
+			}
+			lst = append(lst, utils.B2s(v))
+			return true
+		},
+	)
+	if ok {
+		return lst, true
+	}
+	return nil, false
 }
 
 var ruleFmt = utils.NewNamedFmtCached("|{name}|{type}|{required}|{lrange}|{vrange}|{default}|{regexp}|{function}|")
@@ -134,19 +296,27 @@ func (rule *_RuleT) String() string {
 	}
 
 	if rule.reg != nil {
-		m["regexp"] = fmt.Sprintf("`%s`", rule.reg.String())
+		m["regexp"] = fmt.Sprintf(
+			`<code class="regexp" descp="%s">%s</code>`,
+			html.EscapeString(fmt.Sprintf("`%s`", rule.reg.String())),
+			html.EscapeString(rule.regName),
+		)
 	} else {
 		m["regexp"] = "/"
 	}
 
 	if len(rule.defaultV) > 0 {
-		m["default"] = string(rule.defaultV)
+		m["default"] = html.EscapeString(string(rule.defaultV))
 	} else {
 		m["default"] = "/"
 	}
 
 	if rule.fnName != "" {
-		m["function"] = rule.fnName
+		m["function"] = fmt.Sprintf(
+			`<code class="function" descp="%s">%s</cpde>`,
+			html.EscapeString(funcDescp[rule.fnName]),
+			html.EscapeString(rule.fnName),
+		)
 	} else {
 		m["function"] = "/"
 	}
@@ -167,6 +337,7 @@ func (a _RuleSliceT) Less(i, j int) bool {
 	return a[i].form < a[j].form
 }
 
+// markdown table
 func (a _RuleSliceT) String() string {
 	buf := strings.Builder{}
 	buf.WriteString("|name|type|required|lrange|vrange|default|regexp|function|\n")

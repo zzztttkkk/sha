@@ -29,11 +29,7 @@ type _DdlParser struct {
 	tableName string
 }
 
-func (p *_DdlParser) Tag() string {
-	return "ddl"
-}
-
-func (p *_DdlParser) OnField(field *reflect.StructField) bool {
+func (p *_DdlParser) OnBegin(field *reflect.StructField) bool {
 	mf := &_SqlFieldT{}
 
 	switch field.Type.Kind() {
@@ -129,7 +125,7 @@ func newDdlParser(p reflect.Type) *_DdlParser {
 		return mfs
 	}
 	parser := &_DdlParser{}
-	reflectx.Tags(p, parser)
+	reflectx.Tags(p, "ddl", parser)
 	ddlCache[p] = parser
 
 	tableName := strings.ToLower(p.Name())

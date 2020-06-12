@@ -1,33 +1,41 @@
 package validator
 
 import (
-	"bytes"
 	"fmt"
-	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/reflectx"
-	"github.com/zzztttkkk/snow/output"
-	"github.com/zzztttkkk/snow/utils"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 var funcMap = map[string]func([]byte) ([]byte, bool){}
+var funcDescp = map[string]string{}
 
 func RegisterRegexp(name string, reg *regexp.Regexp) {
 	regexpMap[name] = reg
 }
 
-func RegisterFunc(name string, fn func([]byte) ([]byte, bool)) {
+func RegisterFunc(name string, fn func([]byte) ([]byte, bool), descp string) {
 	funcMap[name] = fn
+	funcDescp[name] = descp
 }
 
 func init() {
 	var space = regexp.MustCompile(`\s+`)
 	var empty = []byte("")
-	funcMap["username"] = func(i []byte) ([]byte, bool) { return space.ReplaceAll(i, empty), true }
+
+	RegisterFunc(
+		"username",
+		func(i []byte) ([]byte, bool) {
+			name := space.ReplaceAll(i, empty)
+			count := utf8.RuneCount(name)
+			return name, count >= 3 && count <= 20
+		},
+		"remove all space, and check rune count in range [3,20]",
+	)
 }
 
 var rulesMap = map[reflect.Type]_RuleSliceT{}
@@ -37,11 +45,7 @@ type _ValidatorParser struct {
 	all     _RuleSliceT
 }
 
-func (p *_ValidatorParser) Tag() string {
-	return "validator"
-}
-
-func (p *_ValidatorParser) OnField(field *reflect.StructField) bool {
+func (p *_ValidatorParser) OnBegin(field *reflect.StructField) bool {
 	rule := &_RuleT{field: field.Name, required: true}
 
 	switch field.Type.Kind() {
@@ -54,15 +58,30 @@ func (p *_ValidatorParser) OnField(field *reflect.StructField) bool {
 	case reflect.String:
 		rule.t = _String
 	case reflect.Slice:
-		if field.Type.Elem().Kind() == reflect.Uint8 {
+		switch field.Type.Elem().Kind() {
+		case reflect.Uint8:
 			rule.t = _Bytes
-		} else {
+		case reflect.Bool:
+			rule.t = _BoolSlice
+		case reflect.Int64:
+			rule.t = _IntSlice
+		case reflect.Uint64:
+			rule.t = _Uint64
+		case reflect.String:
+			rule.t = _StringSlice
+		default:
 			return false
 		}
 	case reflect.Struct:
 		subRules := getRules(field.Type)
 		p.all = append(p.all, subRules...)
 		return false
+	case reflect.Map:
+		if field.Type.Key().Kind() == reflect.String && field.Type.Elem().Kind() == reflect.Interface {
+			rule.t = _JsonObject
+		} else {
+			return false
+		}
 	default:
 		return false
 	}
@@ -80,6 +99,7 @@ func (p *_ValidatorParser) OnAttr(key, val string) {
 	switch key {
 	case "R", "regexp":
 		rule.reg = regexpMap[val]
+		rule.regName = val
 		if rule.reg == nil {
 			panic(fmt.Errorf("snow.validator: unregistered regexp `%s`", val))
 		}
@@ -153,74 +173,9 @@ func getRules(p reflect.Type) _RuleSliceT {
 	}
 
 	parser := _ValidatorParser{}
-	reflectx.Tags(p, &parser)
+	reflectx.Tags(p, "validator", &parser)
 	sort.Sort(parser.all)
+
 	rulesMap[p] = parser.all
 	return parser.all
-}
-
-func newNullError(name string) error {
-	return fmt.Errorf("`%s` is required", name)
-}
-
-func newInvalidError(name string) error {
-	return fmt.Errorf("`%s` is invalid", name)
-}
-
-func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
-	_v := reflect.ValueOf(ptr).Elem()
-	for _, rule := range getRules(_v.Type()) {
-		val := ctx.FormValue(rule.form)
-		if val != nil {
-			val = bytes.TrimSpace(val)
-		}
-
-		if len(val) == 0 && len(rule.defaultV) > 0 {
-			val = rule.defaultV
-		}
-
-		if len(val) == 0 {
-			if rule.required {
-				output.Error(ctx, newNullError(rule.form))
-				return false
-			}
-			continue
-		}
-
-		field := _v.FieldByName(rule.field)
-		switch rule.t {
-		case _Bool:
-			field.SetBool(rule.toBool(val))
-		case _Int64:
-			v, ok := rule.toI64(val)
-			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
-				return false
-			}
-			field.SetInt(v)
-		case _Uint64:
-			v, ok := rule.toUI64(val)
-			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
-				return false
-			}
-			field.SetUint(v)
-		case _Bytes:
-			v, ok := rule.toBytes(val)
-			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
-				return false
-			}
-			field.SetBytes(v)
-		case _String:
-			v, ok := rule.toBytes(val)
-			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
-				return false
-			}
-			field.SetString(utils.B2s(v))
-		}
-	}
-
-	return true
 }
