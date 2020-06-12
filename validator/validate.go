@@ -9,12 +9,32 @@ import (
 	"reflect"
 )
 
-func newNullError(name string) error {
-	return fmt.Errorf("`%s` is required", name)
+type FormError struct {
+	v string
 }
 
-func newInvalidError(name string) error {
-	return fmt.Errorf("`%s` is invalid", name)
+func (e *FormError) Error() string {
+	return e.v
+}
+
+func (e *FormError) StatusCode() int {
+	return fasthttp.StatusBadRequest
+}
+
+func (e *FormError) Message() *output.Message {
+	return &output.Message{
+		Errno:  -1,
+		ErrMsg: e.v,
+		Data:   nil,
+	}
+}
+
+func newNullError(name string) *FormError {
+	return &FormError{v: fmt.Sprintf("`%s` is required", name)}
+}
+
+func newInvalidError(name string) *FormError {
+	return &FormError{v: fmt.Sprintf("`%s` is invalid", name)}
 }
 
 func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {

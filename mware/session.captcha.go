@@ -34,7 +34,7 @@ func (s *_SessionT) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 	ctx.Response.Header.Set("Cache-control", "no-store")
 	ctx.Response.Header.Set("Content-type", "image/png")
 
-	image := captcha.NewImage(s.cacheKey(), digits, 480, 160)
+	image := captcha.NewImage(s.key, digits, 480, 160)
 	_, err := image.WriteTo(ctx)
 	if err != nil {
 		output.Error(ctx, err)

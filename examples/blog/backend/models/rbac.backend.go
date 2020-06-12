@@ -138,9 +138,7 @@ func init() {
 			}
 
 			backend.permissionOp.Init(reflect.TypeOf(Permission{}))
-			backend.permissionOp.SqlsTableCreate()
 			backend.roleOp.Init(reflect.TypeOf(Role{}))
-			backend.roleOp.SqlsTableCreate()
 
 			Rbac = rbac.Default(backend)
 		},

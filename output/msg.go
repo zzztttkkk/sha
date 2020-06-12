@@ -18,7 +18,7 @@ type Message struct {
 var (
 	strApplicationJSON     = []byte("application/json; charset=utf8")
 	emptyMsg               = []byte(`{"errno":0,"errmsg":"","data":""}`)
-	internalServerErrorMsg = []byte(`{"errno":500,"errmsg:"internal server error","data":""}`)
+	internalServerErrorMsg = []byte(`{"errno":500,"errmsg":"internal server error","data":""}`)
 )
 
 func toJson(ctx *fasthttp.RequestCtx, data interface{}) {
@@ -37,7 +37,7 @@ func Msg(ctx *fasthttp.RequestCtx, code int, data interface{}) {
 	if data == nil {
 		_, err := ctx.Write(emptyMsg)
 		if err != nil {
-
+			log.Printf("snow.output: ctx write error, %s\r\n", err.Error())
 		}
 		return
 	}

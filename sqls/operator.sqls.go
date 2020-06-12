@@ -15,9 +15,7 @@ type Operator struct {
 func (op *Operator) Init(p reflect.Type) {
 	op.p = p
 	op.ddl = newDdlParser(p)
-}
 
-func (op *Operator) SqlsTableCreate() {
 	master.MustExec(TableDefinition(op.p))
 }
 

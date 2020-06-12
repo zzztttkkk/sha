@@ -28,7 +28,6 @@ func init() {
 	internal.LazyE.Register(
 		func(args ...interface{}) {
 			PostOperator.Init(reflect.TypeOf(Post{}))
-			PostOperator.SqlsTableCreate()
 		},
 	)
 }

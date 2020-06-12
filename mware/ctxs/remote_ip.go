@@ -3,13 +3,14 @@ package ctxs
 import (
 	"bytes"
 	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/snow/mware/internal"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/utils"
 )
 
 var forwardSep = []byte(",")
 
-func GetRemoteIp(ctx *fasthttp.RequestCtx) string {
+func RemoteIp(ctx *fasthttp.RequestCtx) string {
 	rip := ctx.Request.Header.Peek("X-Real-IP")
 	if len(rip) > 1 {
 		return utils.B2s(rip)
@@ -21,14 +22,12 @@ func GetRemoteIp(ctx *fasthttp.RequestCtx) string {
 	return ctx.RemoteIP().String()
 }
 
-const ipHashKey = ".iph"
-
-func GetRemoteIpHash(ctx *fasthttp.RequestCtx) string {
-	v := ctx.UserValue(ipHashKey)
+func RemoteIpHash(ctx *fasthttp.RequestCtx) string {
+	v := ctx.UserValue(internal.RemoteIp)
 	if v != nil {
 		return v.(string)
 	}
-	v = utils.B2s(secret.Md5.Calc(utils.S2b(GetRemoteIp(ctx))))
-	ctx.SetUserValue(ipHashKey, v)
+	v = utils.B2s(secret.Md5.Calc(utils.S2b(RemoteIp(ctx))))
+	ctx.SetUserValue(internal.RemoteIp, v)
 	return v.(string)
 }

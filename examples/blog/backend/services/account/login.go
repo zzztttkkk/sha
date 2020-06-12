@@ -2,14 +2,12 @@ package account
 
 import (
 	"context"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow/examples/blog/backend/models"
 	"github.com/zzztttkkk/snow/mware"
+	"github.com/zzztttkkk/snow/mware/ctxs"
 	"github.com/zzztttkkk/snow/output"
-	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/validator"
-	"time"
 )
 
 type LoginForm struct {
@@ -18,7 +16,7 @@ type LoginForm struct {
 }
 
 func Login(ctx *fasthttp.RequestCtx) {
-	session := mware.GetSessionMust(ctx)
+	session := ctxs.Session(ctx)
 	if !session.CaptchaVerify(ctx) {
 		output.StdError(ctx, fasthttp.StatusBadRequest)
 		return
@@ -34,14 +32,8 @@ func Login(ctx *fasthttp.RequestCtx) {
 
 func doLogin(ctx context.Context, name, password []byte, days int) string {
 	uid, ok := models.UserOperator.AuthByName(ctx, name, password)
-	if ok {
+	if !ok {
 		panic(output.StdErrors[fasthttp.StatusUnauthorized])
 	}
-	return secret.JwtEncode(
-		jwt.MapClaims{
-			"exp":  time.Now().Unix() + int64(86400)*int64(days),
-			"name": name,
-			"uid":  uid,
-		},
-	)
+	return mware.AuthToken(uid, days*86400, nil)
 }

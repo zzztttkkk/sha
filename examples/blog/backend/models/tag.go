@@ -50,7 +50,6 @@ func init() {
 	internal.LazyE.Register(
 		func(args ...interface{}) {
 			postTagsOperator.Init(reflect.TypeOf(_PostTags{}))
-			postTagsOperator.SqlsTableCreate()
 		},
 	)
 }

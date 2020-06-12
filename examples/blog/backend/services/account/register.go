@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow/examples/blog/backend/models"
-	"github.com/zzztttkkk/snow/mware"
+	"github.com/zzztttkkk/snow/mware/ctxs"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/sqls"
 	"github.com/zzztttkkk/snow/utils"
@@ -17,7 +17,7 @@ type RegisterForm struct {
 }
 
 func Register(ctx *fasthttp.RequestCtx) {
-	session := mware.GetSessionMust(ctx)
+	session := ctxs.Session(ctx)
 	if !session.CaptchaVerify(ctx) {
 		output.StdError(ctx, fasthttp.StatusBadRequest)
 		return

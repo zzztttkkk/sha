@@ -7,7 +7,6 @@ import (
 )
 
 func Recover(ctx *fasthttp.RequestCtx, val interface{}) {
-	ctx.Response.ResetBody()
 	switch v := val.(type) {
 	case error:
 		Error(ctx, v)

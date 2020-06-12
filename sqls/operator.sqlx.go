@@ -6,8 +6,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func (op *Operator) SqlxFetchOne(ctx context.Context, item interface{}, q string, args ...interface{}) bool {
-	if err := Executor(ctx).GetContext(ctx, item, q, args...); err != nil {
+func (op *Operator) SqlxFetchOne(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
+	if err := Executor(ctx).GetContext(ctx, dist, q, args...); err != nil {
 		if err != sql.ErrNoRows {
 			return false
 		}
@@ -94,8 +94,8 @@ func (op *Operator) SqlxStructScanRows(ctx context.Context, fn func() interface{
 	return count
 }
 
-func (op *Operator) SqlxFetch(ctx context.Context, item interface{}, q string, args ...interface{}) {
-	if err := Executor(ctx).SelectContext(ctx, item, q, args...); err != nil {
+func (op *Operator) SqlxFetch(ctx context.Context, slicePtr interface{}, q string, args ...interface{}) {
+	if err := Executor(ctx).SelectContext(ctx, slicePtr, q, args...); err != nil {
 		panic(err)
 	}
 }

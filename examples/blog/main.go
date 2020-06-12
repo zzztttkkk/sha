@@ -5,7 +5,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend"
-	bctxs "github.com/zzztttkkk/snow/examples/blog/backend/ctxs"
+	"github.com/zzztttkkk/snow/examples/blog/backend/models"
 	"github.com/zzztttkkk/snow/examples/blog/backend/services"
 	"github.com/zzztttkkk/snow/mware"
 	sctxs "github.com/zzztttkkk/snow/mware/ctxs"
@@ -16,16 +16,15 @@ import (
 )
 
 func main() {
-	conf := &snow.Config{}
-	conf.IniFiles = append(conf.IniFiles, os.Getenv("ProjectRoot")+"/examples/blog/conf.ini")
-	conf.UserReader = bctxs.GetUid
-	snow.Init(conf)
+	snow.AppendIniFile(os.Getenv("ProjectRoot") + "/examples/blog/conf.ini")
+	snow.SetUserReader(models.UserOperator.GetById)
+	snow.Init()
 
 	backend.Init()
 
 	root := router.New()
 	root.Use(
-		mware.NewRateLimiter(sctxs.GetRemoteIpHash, time.Second, 30),
+		mware.NewRateLimiter(sctxs.RemoteIpHash, time.Second, 30),
 		mware.SessionHandler,
 	)
 

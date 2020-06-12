@@ -8,19 +8,24 @@ import (
 	"github.com/zzztttkkk/snow/sqls"
 )
 
-type Config struct {
-	IniFiles   []string
-	UserReader mware.UidReader
+var iniFiles []string
+var userReader mware.UserReader
+
+func AppendIniFile(filename string) {
+	iniFiles = append(iniFiles, filename)
 }
 
-func Init(config *Config) {
-	for _, fn := range config.IniFiles {
+func SetUserReader(reader mware.UserReader) {
+	userReader = reader
+}
+
+func Init() {
+	for _, fn := range iniFiles {
 		ini.Load(fn)
 	}
-
 	ini.Init()
 	secret.Init()
 	output.Init()
 	sqls.Init()
-	mware.Init(config.UserReader)
+	mware.Init(userReader)
 }

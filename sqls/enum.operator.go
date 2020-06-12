@@ -28,7 +28,6 @@ type EnumOperator struct {
 
 func (op *EnumOperator) Init(p reflect.Type, constructor func() Enumer) {
 	op.Operator.Init(p)
-	op.SqlsTableCreate()
 
 	expire := ini.GetIntOr(fmt.Sprintf("memcache.sqlenum.%s.expire", op.ddl.tableName), -1)
 	if expire < 1 {
