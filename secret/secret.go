@@ -11,8 +11,8 @@ func Init() {
 	secretKey = ini.GetMust("app.secret")
 
 	hashMethod := ini.GetOr("app.hash", "sha256-512")
-	Hash = hashMap[hashMethod]
-	if Hash == nil {
+	Default = hashMap[hashMethod]
+	if Default == nil {
 		panic(fmt.Errorf("snow.secret: unknown hash method `%s`", hashMethod))
 	}
 }

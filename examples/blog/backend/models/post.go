@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"github.com/zzztttkkk/snow"
 	"reflect"
 	"time"
 
@@ -25,8 +26,8 @@ type _PostOperatorT struct {
 var PostOperator = &_PostOperatorT{}
 
 func init() {
-	internal.LazyE.Register(
-		func(args ...interface{}) {
+	internal.LazyExecutor.Register(
+		func(args snow.NamedArgs) {
 			PostOperator.Init(reflect.TypeOf(Post{}))
 		},
 	)

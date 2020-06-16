@@ -148,9 +148,9 @@ func readUid(ctx *fasthttp.RequestCtx) int64 {
 	return uid
 }
 
-type UserReader func(ctx context.Context, uid int64) User
+type UserFetcher func(ctx context.Context, uid int64) User
 
-var readUserById UserReader
+var userFetcher UserFetcher
 
 const (
 	sessionExistsFlagKey = "\\."
@@ -178,7 +178,7 @@ func SessionHandler(ctx *fasthttp.RequestCtx) {
 					redisClient.Del(session.key, sidKey)
 					session.valid = false
 				} else {
-					ctx.SetUserValue(internal.UserKey, readUserById(ctx, uid))
+					ctx.SetUserValue(internal.UserKey, userFetcher(ctx, uid))
 				}
 			}
 		}

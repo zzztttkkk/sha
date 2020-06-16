@@ -85,6 +85,7 @@ func (cache *EnumCache) GetById(ctx context.Context, id int64) (interface{}, boo
 
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
+
 	v, ok := cache.im[id]
 	return v, ok
 }
@@ -94,6 +95,7 @@ func (cache *EnumCache) GetByName(ctx context.Context, name string) (interface{}
 
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
+
 	v, ok := cache.nm[name]
 	return v, ok
 }
@@ -122,7 +124,9 @@ func (cache *EnumCache) TraverseNameMap(ctx context.Context, visitor func(name s
 
 func (cache *EnumCache) All(ctx context.Context) []Enumer {
 	cache.refresh(ctx)
+
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
+
 	return cache.all
 }

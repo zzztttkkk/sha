@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/zzztttkkk/snow/router"
+	"google.golang.org/grpc"
 	"reflect"
 	"strings"
 )
@@ -15,6 +16,7 @@ type _LoaderT struct {
 	path     string
 	doc      map[string]reflect.Type
 	http     func(router *router.Router)
+	grpc     func(server *grpc.Server)
 }
 
 func NewLoader() *_LoaderT {
@@ -77,6 +79,13 @@ func (loader *_LoaderT) Http(fn func(router *router.Router)) {
 	loader.http = fn
 }
 
+func (loader *_LoaderT) Grpc(fn func(server *grpc.Server)) {
+	if loader.grpc != nil {
+		panic(errors.New("snow.loader: `%s`'s grpc is registered"))
+	}
+	loader.grpc = fn
+}
+
 func (loader *_LoaderT) Doc(n string, p reflect.Type) {
 	loader.doc[n] = p
 }
@@ -87,5 +96,14 @@ func (loader *_LoaderT) bindHttp(router *router.Router) {
 	}
 	for k, v := range loader.children {
 		v.bindHttp(router.SubGroup(k))
+	}
+}
+
+func (loader *_LoaderT) bindGrpc(server *grpc.Server) {
+	if loader.grpc != nil {
+		loader.grpc(server)
+	}
+	for _, v := range loader.children {
+		v.bindGrpc(server)
 	}
 }

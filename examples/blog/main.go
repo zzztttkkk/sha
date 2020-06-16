@@ -17,7 +17,7 @@ import (
 
 func main() {
 	snow.AppendIniFile(os.Getenv("ProjectRoot") + "/examples/blog/conf.ini")
-	snow.SetUserReader(models.UserOperator.GetById)
+	snow.SetUserFetcher(models.UserOperator.GetById)
 	snow.Init()
 
 	backend.Init()

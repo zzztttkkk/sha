@@ -1,6 +1,7 @@
 package output
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -18,7 +19,7 @@ type _HttpErrorT struct {
 }
 
 func (e *_HttpErrorT) Error() string {
-	return e.errmsg
+	return fmt.Sprintf("%d %s", e.errno, e.errmsg)
 }
 
 func (e *_HttpErrorT) StatusCode() int {

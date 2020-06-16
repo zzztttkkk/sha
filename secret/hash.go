@@ -11,18 +11,18 @@ import (
 	"sync"
 )
 
-type _HashT struct {
+type Hash struct {
 	pool   *sync.Pool
 	bytes  *utils.BytesPool
 	size   int
 	secret bool
 }
 
-func NewHash(fn func() hash.Hash, withSecret bool) *_HashT {
+func NewHash(fn func() hash.Hash, withSecret bool) *Hash {
 	pool := &sync.Pool{New: func() interface{} { return fn() }}
 	t := pool.Get().(hash.Hash)
 	size := t.Size() * 2
-	return &_HashT{
+	return &Hash{
 		pool:   pool,
 		bytes:  utils.NewBytesPool(size, size),
 		size:   size,
@@ -30,7 +30,7 @@ func NewHash(fn func() hash.Hash, withSecret bool) *_HashT {
 	}
 }
 
-func (h *_HashT) Calc(v []byte) []byte {
+func (h *Hash) Calc(v []byte) []byte {
 	method := h.pool.Get().(hash.Hash)
 	result := make([]byte, h.size)
 	_, _ = method.Write(v)
@@ -46,7 +46,7 @@ func (h *_HashT) Calc(v []byte) []byte {
 	return result
 }
 
-func (h *_HashT) Equal(raw []byte, hexBytes []byte) bool {
+func (h *Hash) Equal(raw []byte, hexBytes []byte) bool {
 	method := h.pool.Get().(hash.Hash)
 	result := h.bytes.Get()
 
@@ -60,7 +60,7 @@ func (h *_HashT) Equal(raw []byte, hexBytes []byte) bool {
 		h.pool.Put(method)
 		h.bytes.Put(result)
 	}()
-
+	hex.Encode(*result, method.Sum(nil))
 	return bytes.Equal(*result, hexBytes)
 }
 
@@ -85,9 +85,9 @@ var Sha384_512 = NewHash(sha512.New384, true)
 //noinspection GoSnakeCaseUsage
 var Sha384_512Std = NewHash(sha512.New384, false)
 
-var Hash = Sha256_512
+var Default = Sha256_512
 
-var hashMap = map[string]*_HashT{
+var hashMap = map[string]*Hash{
 	"md5":            Md5,
 	"md5-std":        Md5Std,
 	"sha256":         Sha256,

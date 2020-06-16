@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
 	"github.com/zzztttkkk/snow/sqls"
 	"reflect"
@@ -18,8 +19,8 @@ type _CategoryOperatorT struct {
 var CategoryOperator = &_CategoryOperatorT{}
 
 func init() {
-	internal.LazyE.Register(
-		func(args ...interface{}) {
+	internal.LazyExecutor.Register(
+		func(args snow.NamedArgs) {
 			CategoryOperator.Init(
 				reflect.TypeOf(Category{}),
 				func() sqls.Enumer { return &Category{} },

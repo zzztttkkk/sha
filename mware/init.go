@@ -8,7 +8,7 @@ import (
 )
 
 func Init(userReader func(ctx context.Context, uid int64) User) {
-	readUserById = userReader
+	userFetcher = userReader
 
 	redisClient = ini.RedisClient()
 	rateLimiter = redis_rate.NewLimiter(redisClient)

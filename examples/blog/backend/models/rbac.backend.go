@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
 	"github.com/zzztttkkk/snow/rbac"
 	"github.com/zzztttkkk/snow/sqls"
@@ -127,8 +128,8 @@ var backend *_BackendT
 var Rbac rbac.Rbac
 
 func init() {
-	internal.LazyE.Register(
-		func(args ...interface{}) {
+	internal.LazyExecutor.Register(
+		func(args snow.NamedArgs) {
 			sqls.Master().MustExec(sqls.TableDefinition(reflect.TypeOf(_RolePermissions{})))
 			sqls.Master().MustExec(sqls.TableDefinition(reflect.TypeOf(_UserRoles{})))
 

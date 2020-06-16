@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
 	"github.com/zzztttkkk/snow/mware"
 	"github.com/zzztttkkk/snow/output"
@@ -41,8 +42,8 @@ type _UserOperatorT struct {
 var UserOperator = &_UserOperatorT{}
 
 func init() {
-	internal.LazyE.Register(
-		func(args ...interface{}) {
+	internal.LazyExecutor.Register(
+		func(args snow.NamedArgs) {
 			UserOperator.Init(reflect.TypeOf(User{}))
 		},
 	)
@@ -59,7 +60,7 @@ func (op *_UserOperatorT) Create(ctx context.Context, name, password []byte) (in
 		sqls.Dict{
 			"created":  time.Now().Unix(),
 			"name":     name,
-			"password": secret.Hash.Calc(password),
+			"password": secret.Default.Calc(password),
 			"secret":   skey,
 		},
 	), skey
@@ -68,9 +69,9 @@ func (op *_UserOperatorT) Create(ctx context.Context, name, password []byte) (in
 func (op *_UserOperatorT) AuthByName(ctx context.Context, name, password []byte) (int64, bool) {
 	var pwdHash []byte
 	var uid int64
-	op.SqlxFetchOne(
+	op.SqlxScanRow(
 		ctx,
-		[]interface{}{&uid, &password},
+		[]interface{}{&uid, &pwdHash},
 		`select id,password from user where name=? and deleted=0 and status>-1`,
 		name,
 	)
@@ -78,7 +79,7 @@ func (op *_UserOperatorT) AuthByName(ctx context.Context, name, password []byte)
 	if len(pwdHash) < 1 {
 		return -1, false
 	}
-	return uid, secret.Hash.Equal(password, pwdHash)
+	return uid, secret.Default.Equal(password, pwdHash)
 }
 
 func (op *_UserOperatorT) AuthById(ctx context.Context, id int64, password []byte) bool {
@@ -92,7 +93,7 @@ func (op *_UserOperatorT) AuthById(ctx context.Context, id int64, password []byt
 	if len(pwdHash) < 1 {
 		return false
 	}
-	return secret.Hash.Equal(password, pwdHash)
+	return secret.Default.Equal(password, pwdHash)
 }
 
 func (op *_UserOperatorT) Update(ctx context.Context, uid int64, dict sqls.Dict) bool {

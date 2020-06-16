@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
 	"github.com/zzztttkkk/snow/sqls"
 	"reflect"
@@ -30,8 +31,8 @@ type _TagOperatorT struct {
 var TagOperator = &_TagOperatorT{}
 
 func init() {
-	internal.LazyE.Register(
-		func(args ...interface{}) {
+	internal.LazyExecutor.Register(
+		func(args snow.NamedArgs) {
 			TagOperator.Init(
 				reflect.TypeOf(Tag{}),
 				func() sqls.Enumer { return &Tag{} },
@@ -47,8 +48,8 @@ type _PostTagsOperatorT struct {
 var postTagsOperator = &_PostTagsOperatorT{}
 
 func init() {
-	internal.LazyE.Register(
-		func(args ...interface{}) {
+	internal.LazyExecutor.Register(
+		func(args snow.NamedArgs) {
 			postTagsOperator.Init(reflect.TypeOf(_PostTags{}))
 		},
 	)

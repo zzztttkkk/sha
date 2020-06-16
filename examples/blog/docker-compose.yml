@@ -21,11 +21,3 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: "123456"
 
-  postgres:
-    container_name: postgres
-    image: postgres
-    restart: always
-    ports:
-      - 5432:5432
-    environment:
-      POSTGRES_PASSWORD: "123456"

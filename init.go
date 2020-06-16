@@ -9,14 +9,14 @@ import (
 )
 
 var iniFiles []string
-var userReader mware.UserReader
+var userReader mware.UserFetcher
 
 func AppendIniFile(filename string) {
 	iniFiles = append(iniFiles, filename)
 }
 
-func SetUserReader(reader mware.UserReader) {
-	userReader = reader
+func SetUserFetcher(fetcher mware.UserFetcher) {
+	userReader = fetcher
 }
 
 func Init() {
