@@ -1,4 +1,4 @@
-package mware
+package middleware
 
 import (
 	"github.com/valyala/fasthttp"
@@ -23,7 +23,7 @@ type CorsOption struct {
 func (option *CorsOption) init() {
 	var kvs []string
 	if len(option.AllowOrigins) < 1 {
-		panic("snow.mware.cors: empty AllowOrigins")
+		panic("snow.middleware.cors: empty AllowOrigins")
 	} else if option.AllowOrigins != "*" {
 		for _, name := range strings.Split(option.AllowOrigins, ";") {
 			name := strings.TrimSpace(name)
@@ -89,10 +89,14 @@ func (option *CorsOption) BindOptions(path string, router srouter.Router) {
 	router.OPTIONS(path, option.writeHeaders)
 }
 
-func NewCors(option *CorsOption) fasthttp.RequestHandler {
+func NewCorsMiddleware(option *CorsOption) fasthttp.RequestHandler {
+	return NewCorsHandler(option, srouter.Next)
+}
+
+func NewCorsHandler(option *CorsOption, next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	option.init()
 	return func(ctx *fasthttp.RequestCtx) {
 		defer option.writeHeaders(ctx)
-		srouter.Next(ctx)
+		next(ctx)
 	}
 }

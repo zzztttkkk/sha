@@ -3,8 +3,11 @@ package models
 import (
 	"context"
 	"database/sql"
+	"github.com/zzztttkkk/snow"
+	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
 	"github.com/zzztttkkk/snow/rbac"
 	"github.com/zzztttkkk/snow/sqls"
+	"reflect"
 	"strconv"
 )
 
@@ -36,6 +39,17 @@ func (role *Role) GetPermissionIds() string {
 
 type _RoleOperator struct {
 	sqls.Operator
+}
+
+var roleOp = &_RoleOperator{}
+
+func init() {
+	internal.LazyExecutor.RegisterWithPriority(
+		func(kwargs snow.Kwargs) {
+			roleOp.Init(reflect.TypeOf(Role{}))
+		},
+		permissionPriority.Copy(),
+	)
 }
 
 func (op *_RoleOperator) getAll(ctx context.Context) (lst []rbac.Role) {

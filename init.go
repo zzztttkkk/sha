@@ -2,20 +2,20 @@ package snow
 
 import (
 	"github.com/zzztttkkk/snow/ini"
-	"github.com/zzztttkkk/snow/mware"
+	"github.com/zzztttkkk/snow/middleware"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/sqls"
 )
 
 var iniFiles []string
-var userReader mware.UserFetcher
+var userReader middleware.UserFetcher
 
 func AppendIniFile(filename string) {
 	iniFiles = append(iniFiles, filename)
 }
 
-func SetUserFetcher(fetcher mware.UserFetcher) {
+func SetUserFetcher(fetcher middleware.UserFetcher) {
 	userReader = fetcher
 }
 
@@ -27,5 +27,5 @@ func Init() {
 	secret.Init()
 	output.Init()
 	sqls.Init()
-	mware.Init(userReader)
+	middleware.Init(userReader)
 }

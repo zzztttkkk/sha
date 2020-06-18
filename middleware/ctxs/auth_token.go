@@ -2,8 +2,8 @@ package ctxs
 
 import (
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/mware"
-	"github.com/zzztttkkk/snow/mware/internal"
+	"github.com/zzztttkkk/snow/middleware/interfaces"
+	"github.com/zzztttkkk/snow/middleware/internal"
 )
 
 func Uid(ctx *fasthttp.RequestCtx) int64 {
@@ -30,8 +30,8 @@ func LastLogin(ctx *fasthttp.RequestCtx) int64 {
 	return -1
 }
 
-func User(ctx *fasthttp.RequestCtx) mware.User {
-	iv, ok := ctx.UserValue(internal.UserKey).(mware.User)
+func User(ctx *fasthttp.RequestCtx) interfaces.User {
+	iv, ok := ctx.UserValue(internal.UserKey).(interfaces.User)
 	if ok {
 		return iv
 	}

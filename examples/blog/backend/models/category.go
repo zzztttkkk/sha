@@ -20,7 +20,7 @@ var CategoryOperator = &_CategoryOperatorT{}
 
 func init() {
 	internal.LazyExecutor.Register(
-		func(args snow.NamedArgs) {
+		func(args snow.Kwargs) {
 			CategoryOperator.Init(
 				reflect.TypeOf(Category{}),
 				func() sqls.Enumer { return &Category{} },

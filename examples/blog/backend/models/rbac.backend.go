@@ -128,14 +128,14 @@ var backend *_BackendT
 var Rbac rbac.Rbac
 
 func init() {
-	internal.LazyExecutor.Register(
-		func(args snow.NamedArgs) {
+	internal.LazyExecutor.RegisterWithPriority(
+		func(args snow.Kwargs) {
 			sqls.Master().MustExec(sqls.TableDefinition(reflect.TypeOf(_RolePermissions{})))
 			sqls.Master().MustExec(sqls.TableDefinition(reflect.TypeOf(_UserRoles{})))
 
 			backend = &_BackendT{
-				permissionOp: &_PermissionOperator{},
-				roleOp:       &_RoleOperator{},
+				permissionOp: permissionOp,
+				roleOp:       roleOp,
 			}
 
 			backend.permissionOp.Init(reflect.TypeOf(Permission{}))
@@ -143,5 +143,6 @@ func init() {
 
 			Rbac = rbac.Default(backend)
 		},
+		permissionPriority.Incr().Incr(), // after permission ensure
 	)
 }

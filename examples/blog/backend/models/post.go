@@ -27,7 +27,7 @@ var PostOperator = &_PostOperatorT{}
 
 func init() {
 	internal.LazyExecutor.Register(
-		func(args snow.NamedArgs) {
+		func(args snow.Kwargs) {
 			PostOperator.Init(reflect.TypeOf(Post{}))
 		},
 	)

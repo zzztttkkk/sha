@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow/examples/blog/backend/models"
-	"github.com/zzztttkkk/snow/mware/ctxs"
+	"github.com/zzztttkkk/snow/middleware/ctxs"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/sqls"
 	"github.com/zzztttkkk/snow/utils"

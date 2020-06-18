@@ -7,8 +7,8 @@ import (
 	"github.com/zzztttkkk/snow/examples/blog/backend"
 	"github.com/zzztttkkk/snow/examples/blog/backend/models"
 	"github.com/zzztttkkk/snow/examples/blog/backend/services"
-	"github.com/zzztttkkk/snow/mware"
-	sctxs "github.com/zzztttkkk/snow/mware/ctxs"
+	"github.com/zzztttkkk/snow/middleware"
+	sctxs "github.com/zzztttkkk/snow/middleware/ctxs"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/router"
 	"os"
@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	snow.AppendIniFile(os.Getenv("ProjectRoot") + "/examples/blog/conf.ini")
+	snow.AppendIniFile(os.Getenv("PROJECT_ROOT") + "/examples/blog/conf.ini")
 	snow.SetUserFetcher(models.UserOperator.GetById)
 	snow.Init()
 
@@ -24,8 +24,8 @@ func main() {
 
 	root := router.New()
 	root.Use(
-		mware.NewRateLimiter(sctxs.RemoteIpHash, time.Second, 30),
-		mware.SessionHandler,
+		middleware.NewRateLimitMiddleware(sctxs.RemoteIpHash, time.Second, 30),
+		middleware.SessionAndAuthMiddleware,
 	)
 
 	root.PanicHandler = output.Recover

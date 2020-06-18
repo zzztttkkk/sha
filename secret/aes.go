@@ -30,7 +30,7 @@ func AesEncrypt(format string, args ...interface{}) (string, error) {
 		plain = append(plain, ' ')
 	}
 
-	block, err := aes.NewCipher(secretKey)
+	block, err := aes.NewCipher(appSecretKey)
 	if err != nil {
 		return "", err
 	}
@@ -46,7 +46,7 @@ func AesEncrypt(format string, args ...interface{}) (string, error) {
 	return hex.EncodeToString(ciphertext), nil
 }
 
-var aesDecryptError = errors.New("glass.secret: decrypt value error")
+var aesDecryptError = errors.New("glass.withSecret: decrypt value error")
 
 func AesDecrypt(f string) (string, error) {
 	ciphertext, err := hex.DecodeString(f)
@@ -54,7 +54,7 @@ func AesDecrypt(f string) (string, error) {
 		return "", err
 	}
 
-	block, err := aes.NewCipher(secretKey)
+	block, err := aes.NewCipher(appSecretKey)
 	if err != nil {
 		return "", err
 	}

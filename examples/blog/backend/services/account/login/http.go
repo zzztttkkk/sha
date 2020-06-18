@@ -2,7 +2,7 @@ package login
 
 import (
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/mware/ctxs"
+	"github.com/zzztttkkk/snow/middleware/ctxs"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/validator"
 )

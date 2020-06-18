@@ -1,4 +1,4 @@
-package mware
+package middleware
 
 import (
 	"context"
@@ -8,7 +8,8 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/mware/internal"
+	"github.com/zzztttkkk/snow/middleware/interfaces"
+	"github.com/zzztttkkk/snow/middleware/internal"
 	"github.com/zzztttkkk/snow/router"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/utils"
@@ -148,15 +149,15 @@ func readUid(ctx *fasthttp.RequestCtx) int64 {
 	return uid
 }
 
-type UserFetcher func(ctx context.Context, uid int64) User
+type UserFetcher func(ctx context.Context, uid int64) interfaces.User
 
 var userFetcher UserFetcher
 
 const (
-	sessionExistsFlagKey = "\\."
+	sessionExistsFlagKey = "@."
 )
 
-func SessionHandler(ctx *fasthttp.RequestCtx) {
+func SessionAndAuthMiddleware(ctx *fasthttp.RequestCtx) {
 	var session = acquireSession()
 	defer releaseSession(session)
 

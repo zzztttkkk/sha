@@ -32,7 +32,7 @@ var TagOperator = &_TagOperatorT{}
 
 func init() {
 	internal.LazyExecutor.Register(
-		func(args snow.NamedArgs) {
+		func(args snow.Kwargs) {
 			TagOperator.Init(
 				reflect.TypeOf(Tag{}),
 				func() sqls.Enumer { return &Tag{} },
@@ -49,7 +49,7 @@ var postTagsOperator = &_PostTagsOperatorT{}
 
 func init() {
 	internal.LazyExecutor.Register(
-		func(args snow.NamedArgs) {
+		func(args snow.Kwargs) {
 			postTagsOperator.Init(reflect.TypeOf(_PostTags{}))
 		},
 	)

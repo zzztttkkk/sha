@@ -3,7 +3,7 @@ package ctxs
 import (
 	"bytes"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/mware/internal"
+	"github.com/zzztttkkk/snow/middleware/internal"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/utils"
 )

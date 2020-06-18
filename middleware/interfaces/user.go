@@ -1,4 +1,4 @@
-package mware
+package interfaces
 
 import "github.com/zzztttkkk/snow/rbac"
 

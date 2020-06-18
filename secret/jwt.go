@@ -7,14 +7,14 @@ import (
 
 func JwtEncode(data jwt.Claims) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, data)
-	ts, err := token.SignedString(secretKey)
+	ts, err := token.SignedString(appSecretKey)
 	if err != nil {
 		panic(err)
 	}
 	return ts
 }
 
-var signMethodError = fmt.Errorf("snow.secret.jwt: unexpected signing method")
+var signMethodError = fmt.Errorf("snow.withSecret.jwt: unexpected signing method")
 
 func JwtDecode(ts string) (jwt.Claims, error) {
 	token, err := jwt.Parse(
@@ -24,7 +24,7 @@ func JwtDecode(ts string) (jwt.Claims, error) {
 			if !ok {
 				return nil, signMethodError
 			}
-			return secretKey, nil
+			return appSecretKey, nil
 		},
 	)
 	if err != nil {

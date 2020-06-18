@@ -6,7 +6,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
-	"github.com/zzztttkkk/snow/mware"
+	"github.com/zzztttkkk/snow/middleware/interfaces"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/sqls"
@@ -43,7 +43,7 @@ var UserOperator = &_UserOperatorT{}
 
 func init() {
 	internal.LazyExecutor.Register(
-		func(args snow.NamedArgs) {
+		func(args snow.Kwargs) {
 			UserOperator.Init(reflect.TypeOf(User{}))
 		},
 	)
@@ -112,7 +112,7 @@ func (op *_UserOperatorT) Delete(ctx context.Context, uid int64, skey string) bo
 	) > 0
 }
 
-func (op *_UserOperatorT) GetById(ctx context.Context, uid int64) mware.User {
+func (op *_UserOperatorT) GetById(ctx context.Context, uid int64) interfaces.User {
 	user := &User{}
 	op.SqlxFetchOne(ctx, user, `select * from user where id=? and deleted=0 and status>=0`, uid)
 	if user.Id < 1 {

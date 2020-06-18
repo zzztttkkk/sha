@@ -19,5 +19,5 @@ require (
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1 // indirect
 	google.golang.org/genproto v0.0.0-20200615140333-fd031eab31e7 // indirect
-	google.golang.org/grpc v1.29.1 // indirect
+	google.golang.org/grpc v1.29.1
 )

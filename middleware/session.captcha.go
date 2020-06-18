@@ -1,4 +1,4 @@
-package mware
+package middleware
 
 import (
 	"github.com/dchest/captcha"

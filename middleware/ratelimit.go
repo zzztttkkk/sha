@@ -1,4 +1,4 @@
-package mware
+package middleware
 
 import (
 	"github.com/go-redis/redis_rate/v8"
@@ -10,7 +10,16 @@ import (
 
 var rateLimiter *redis_rate.Limiter
 
-func NewRateLimiter(keyFunc func(*fasthttp.RequestCtx) string, duration time.Duration, rate int) fasthttp.RequestHandler {
+func NewRateLimitMiddleware(keyFunc func(*fasthttp.RequestCtx) string, duration time.Duration, rate int) fasthttp.RequestHandler {
+	return NewRateLimitHandler(keyFunc, duration, rate, router.Next)
+}
+
+func NewRateLimitHandler(
+	keyFunc func(*fasthttp.RequestCtx) string,
+	duration time.Duration,
+	rate int,
+	next fasthttp.RequestHandler,
+) fasthttp.RequestHandler {
 	var option = &redis_rate.Limit{
 		Rate:   rate,
 		Period: duration,
@@ -20,10 +29,9 @@ func NewRateLimiter(keyFunc func(*fasthttp.RequestCtx) string, duration time.Dur
 	return func(ctx *fasthttp.RequestCtx) {
 		key := keyFunc(ctx)
 		if len(key) < 1 {
-			router.Next(ctx)
+			next(ctx)
 			return
 		}
-
 		res, err := rateLimiter.Allow(key, option)
 		if err != nil {
 			output.Error(ctx, err)
@@ -33,6 +41,6 @@ func NewRateLimiter(keyFunc func(*fasthttp.RequestCtx) string, duration time.Dur
 			output.StdError(ctx, fasthttp.StatusTooManyRequests)
 			return
 		}
-		router.Next(ctx)
+		next(ctx)
 	}
 }
