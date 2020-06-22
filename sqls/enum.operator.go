@@ -3,9 +3,10 @@ package sqls
 import (
 	"context"
 	"fmt"
-	"github.com/zzztttkkk/snow/ini"
 	"reflect"
 	"time"
+
+	"github.com/zzztttkkk/snow/ini"
 )
 
 type Enum struct {

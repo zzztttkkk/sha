@@ -2,8 +2,10 @@ package ctxs
 
 import (
 	"bytes"
+
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/middleware/internal"
+
+	"github.com/zzztttkkk/snow/internal"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/utils"
 )
@@ -23,11 +25,11 @@ func RemoteIp(ctx *fasthttp.RequestCtx) string {
 }
 
 func RemoteIpHash(ctx *fasthttp.RequestCtx) string {
-	v := ctx.UserValue(internal.RemoteIp)
+	v := ctx.UserValue(internal.RCtxKeyRemoteIp)
 	if v != nil {
 		return v.(string)
 	}
 	v = utils.B2s(secret.Md5.Calc(utils.S2b(RemoteIp(ctx))))
-	ctx.SetUserValue(internal.RemoteIp, v)
+	ctx.SetUserValue(internal.RCtxKeyRemoteIp, v)
 	return v.(string)
 }

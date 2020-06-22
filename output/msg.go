@@ -2,9 +2,10 @@ package output
 
 import (
 	"encoding/json"
+	"log"
+
 	"github.com/go-errors/errors"
 	"github.com/valyala/fasthttp"
-	"log"
 )
 
 type M map[string]interface{}
@@ -22,7 +23,8 @@ var (
 )
 
 func toJson(ctx *fasthttp.RequestCtx, data interface{}) {
-	encoder := json.NewEncoder(ctx)
+	writer := _CtxCompressionWriter{raw: ctx}
+	encoder := json.NewEncoder(&writer)
 	err := encoder.Encode(data)
 	if err == nil {
 		return

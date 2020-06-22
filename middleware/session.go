@@ -4,17 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
 	"github.com/valyala/fasthttp"
+
+	"github.com/zzztttkkk/snow/internal"
 	"github.com/zzztttkkk/snow/middleware/interfaces"
-	"github.com/zzztttkkk/snow/middleware/internal"
 	"github.com/zzztttkkk/snow/router"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/utils"
-	"sync"
-	"time"
 )
 
 var (
@@ -36,10 +38,13 @@ func (s *_SessionT) String() string {
 }
 
 func (s *_SessionT) fromBytes(bytesV []byte) {
-	for i, v := range bytesV {
-		s.id[i] = v
+	if len(bytesV) != 20 {
+		s.valid = false
+		return
 	}
+	s.id = bytesV
 	s.key = fmt.Sprintf("%s:session:%s", sessionKeyPrefix, s.String())
+	s.valid = true
 }
 
 var sessionPool = sync.Pool{New: func() interface{} { return &_SessionT{id: make([]byte, 20, 20)} }}
@@ -134,17 +139,17 @@ func readUid(ctx *fasthttp.RequestCtx) int64 {
 	if !ok {
 		return -1
 	}
-	ctx.SetUserValue(internal.Uid, uid)
+	ctx.SetUserValue(internal.RCtxKeyUid, uid)
 
 	lastLogin, ok := m["unix"].(int64)
 	if !ok {
 		return -1
 	}
-	ctx.SetUserValue(internal.LastLogin, lastLogin)
+	ctx.SetUserValue(internal.RCtxKeyLastLogin, lastLogin)
 
 	ext, ok := m["ext"].(map[string]interface{})
 	if ok {
-		ctx.SetUserValue(internal.TokenExt, ext)
+		ctx.SetUserValue(internal.RCtxKeyTokenExt, ext)
 	}
 	return uid
 }
@@ -179,7 +184,7 @@ func SessionAndAuthMiddleware(ctx *fasthttp.RequestCtx) {
 					redisClient.Del(session.key, sidKey)
 					session.valid = false
 				} else {
-					ctx.SetUserValue(internal.UserKey, userFetcher(ctx, uid))
+					ctx.SetUserValue(internal.RCtxKeyUser, userFetcher(ctx, uid))
 				}
 			}
 		}
@@ -215,7 +220,7 @@ func SessionAndAuthMiddleware(ctx *fasthttp.RequestCtx) {
 	}
 
 	redisClient.Expire(session.key, SessionExpire)
-	ctx.SetUserValue(internal.SessionKey, session)
+	ctx.SetUserValue(internal.RCtxKeySession, session)
 
 	ck := fasthttp.AcquireCookie()
 	defer fasthttp.ReleaseCookie(ck)

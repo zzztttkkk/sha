@@ -1,11 +1,13 @@
 package middleware
 
 import (
-	"github.com/valyala/fasthttp"
-	srouter "github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/utils"
 	"strconv"
 	"strings"
+
+	"github.com/valyala/fasthttp"
+
+	srouter "github.com/zzztttkkk/snow/router"
+	"github.com/zzztttkkk/snow/utils"
 )
 
 type CorsOption struct {

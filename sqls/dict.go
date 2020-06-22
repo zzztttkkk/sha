@@ -12,7 +12,7 @@ func (dict Dict) ToMap() map[string]interface{} {
 }
 
 func (dict Dict) Keys() (lst []string) {
-	for k, _ := range dict {
+	for k := range dict {
 		lst = append(lst, k)
 	}
 	return

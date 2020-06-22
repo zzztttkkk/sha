@@ -1,13 +1,15 @@
 package middleware
 
 import (
+	"time"
+
 	"github.com/dchest/captcha"
 	"github.com/valyala/fasthttp"
+
 	"github.com/zzztttkkk/snow/ini"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/utils"
-	"time"
 )
 
 var bytesPool = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -35,7 +37,7 @@ func (s *_SessionT) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 	ctx.Response.Header.Set("Content-type", "image/png")
 
 	image := captcha.NewImage(s.key, digits, 480, 160)
-	_, err := image.WriteTo(ctx)
+	_, err := image.WriteTo(output.NewCompressionWriter(ctx))
 	if err != nil {
 		output.Error(ctx, err)
 		return

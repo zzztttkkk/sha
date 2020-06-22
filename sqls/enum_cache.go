@@ -42,7 +42,7 @@ func (cache *EnumCache) load(ctx context.Context) {
 
 	cache.all = make([]Enumer, 0, len(cache.all))
 
-	cache.op.SqlxStructScanRows(
+	cache.op.SqlxStructScanMany(
 		ctx,
 		func() interface{} {
 			obj := cache.constructor()

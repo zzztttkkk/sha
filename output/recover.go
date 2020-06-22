@@ -1,9 +1,10 @@
 package output
 
 import (
+	"log"
+
 	"github.com/go-errors/errors"
 	"github.com/valyala/fasthttp"
-	"log"
 )
 
 func Recover(ctx *fasthttp.RequestCtx, val interface{}) {

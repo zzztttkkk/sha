@@ -69,7 +69,7 @@ func (op *_UserOperatorT) Create(ctx context.Context, name, password []byte) (in
 func (op *_UserOperatorT) AuthByName(ctx context.Context, name, password []byte) (int64, bool) {
 	var pwdHash []byte
 	var uid int64
-	op.SqlxScanRow(
+	op.SqlxScanOne(
 		ctx,
 		[]interface{}{&uid, &pwdHash},
 		`select id,password from user where name=? and deleted=0 and status>-1`,
@@ -120,7 +120,7 @@ func (op *_UserOperatorT) GetById(ctx context.Context, uid int64) interfaces.Use
 	}
 
 	var roles []uint32
-	op.SqlxFetch(ctx, &roles, `select role from user_roles where user=? and deleted=0`, uid)
+	op.SqlxFetchMany(ctx, &roles, `select role from user_roles where user=? and deleted=0`, uid)
 
 	last := len(roles) - 1
 	for ind, rid := range roles {

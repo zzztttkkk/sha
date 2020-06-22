@@ -44,9 +44,9 @@ func NewPermissionCheckHandler(
 				}
 			}
 
-			output.Error(ctx, PermissionDeniedError);
+			output.Error(ctx, PermissionDeniedError)
 		}
-	}
+}
 
 	if policy != ALL {
 		panic(fmt.Errorf("snow.middleware.rbac: unknown policy `%d`", policy))
@@ -62,7 +62,7 @@ func NewPermissionCheckHandler(
 		for _, permission := range permissions {
 			ok, _ := rbac.IsGranted(ctx, user, permission)
 			if !ok {
-				output.Error(ctx, PermissionDeniedError);
+				output.Error(ctx, PermissionDeniedError)
 				return
 			}
 		}

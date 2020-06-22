@@ -1,18 +1,20 @@
 package main
 
 import (
+	"os"
+	"time"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/valyala/fasthttp"
+
 	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend"
 	"github.com/zzztttkkk/snow/examples/blog/backend/models"
 	"github.com/zzztttkkk/snow/examples/blog/backend/services"
 	"github.com/zzztttkkk/snow/middleware"
-	sctxs "github.com/zzztttkkk/snow/middleware/ctxs"
+	"github.com/zzztttkkk/snow/middleware/ctxs"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/router"
-	"os"
-	"time"
 )
 
 func main() {
@@ -24,7 +26,7 @@ func main() {
 
 	root := router.New()
 	root.Use(
-		middleware.NewRateLimitMiddleware(sctxs.RemoteIpHash, time.Second, 30),
+		middleware.NewRateLimitMiddleware(ctxs.RemoteIpHash, time.Second, 30),
 		middleware.SessionAndAuthMiddleware,
 	)
 

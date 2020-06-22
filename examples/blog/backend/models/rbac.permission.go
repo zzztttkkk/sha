@@ -44,7 +44,7 @@ func init() {
 }
 
 func (op *_PermissionOperator) getAll(ctx context.Context) (lst []rbac.Permission) {
-	op.SqlxStructScanRows(
+	op.SqlxStructScanMany(
 		ctx,
 		func() interface{} {
 			permission := &Permission{}
@@ -57,12 +57,12 @@ func (op *_PermissionOperator) getAll(ctx context.Context) (lst []rbac.Permissio
 }
 
 func (op *_PermissionOperator) getById(ctx context.Context, id uint32) (permission *Permission) {
-	op.SqlxFetch(ctx, permission, `select * from permission where id=? and deleted=0`, id)
+	op.SqlxFetchMany(ctx, permission, `select * from permission where id=? and deleted=0`, id)
 	return
 }
 
 func (op *_PermissionOperator) getByName(ctx context.Context, name string) (permission *Permission) {
-	op.SqlxFetch(ctx, permission, `select * from permission where name=? and deleted=0`, name)
+	op.SqlxFetchMany(ctx, permission, `select * from permission where name=? and deleted=0`, name)
 	return
 }
 

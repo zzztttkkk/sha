@@ -1,23 +1,24 @@
 package router
 
 import (
+	"sync"
+
 	fr "github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
-	"sync"
+
+	"github.com/zzztttkkk/snow/internal"
 )
 
-type _HandlerChainT struct {
+type _MiddlewareChainT struct {
 	head    *[]fasthttp.RequestHandler
 	cursor  int
 	length  int
 	handler fasthttp.RequestHandler
 }
 
-const handlersKey = "/uhs"
-
 var handlersChainPool = &sync.Pool{
 	New: func() interface{} {
-		return &_HandlerChainT{
+		return &_MiddlewareChainT{
 			head:    nil,
 			cursor:  -1,
 			length:  0,
@@ -26,7 +27,11 @@ var handlersChainPool = &sync.Pool{
 	},
 }
 
-func putHandlers(hs *_HandlerChainT) {
+func acquireHandlerChain() *_MiddlewareChainT {
+	return handlersChainPool.Get().(*_MiddlewareChainT)
+}
+
+func releaseHandlerChain(hs *_MiddlewareChainT) {
 	hs.head = nil
 	hs.cursor = -1
 	hs.length = 0
@@ -35,28 +40,29 @@ func putHandlers(hs *_HandlerChainT) {
 }
 
 func Next(ctx *fasthttp.RequestCtx) {
-	handlers, ok := ctx.UserValue(handlersKey).(*_HandlerChainT)
-	if !ok {
+	chain, ok := ctx.UserValue(internal.RCtxKeyHandlerChain).(*_MiddlewareChainT)
+	if !ok || chain.head == nil {
 		return
 	}
 
-	handlers.cursor++
-	if handlers.cursor < handlers.length {
-		(*handlers.head)[handlers.cursor](ctx)
+	chain.cursor++
+	if chain.cursor < chain.length {
+		(*chain.head)[chain.cursor](ctx)
 		return
 	}
 
-	if handlers.cursor == handlers.length {
-		handlers.handler(ctx)
+	if chain.cursor > chain.length {
+		return
 	}
+	chain.handler(ctx)
 }
 
 type Router struct {
 	*fr.Router
-	parent   *Router
-	handlers []fasthttp.RequestHandler
-	prefix   string
-	path     string
+	parent     *Router
+	middleware []fasthttp.RequestHandler
+	prefix     string
+	path       string
 }
 
 func New() *Router {
@@ -74,47 +80,47 @@ func (router *Router) SubGroup(name string) *Router {
 }
 
 func (router *Router) Use(middleware ...fasthttp.RequestHandler) {
-	router.handlers = append(router.handlers, middleware...)
+	router.middleware = append(router.middleware, middleware...)
 }
 
 func (router *Router) Handle(method string, path string, handler fasthttp.RequestHandler) {
-	// get all super middleware handlers
-	allHandlerSlice := make([][]fasthttp.RequestHandler, 0)
+	// get all super middleware middleware
+	var allMiddleware [][]fasthttp.RequestHandler
 	c := router
 	for c.parent != nil {
-		if c.parent.handlers != nil {
-			allHandlerSlice = append(allHandlerSlice, c.parent.handlers)
+		if c.parent.middleware != nil {
+			allMiddleware = append(allMiddleware, c.parent.middleware)
 		}
 		c = c.parent
 	}
 
-	l, r := 0, len(allHandlerSlice)-1
+	l, r := 0, len(allMiddleware)-1
 	for l < r {
-		allHandlerSlice[l], allHandlerSlice[r] = allHandlerSlice[r], allHandlerSlice[l]
+		allMiddleware[l], allMiddleware[r] = allMiddleware[r], allMiddleware[l]
 		l++
 		r--
 	}
 
-	if router.handlers != nil {
-		allHandlerSlice = append(allHandlerSlice, router.handlers)
+	if router.middleware != nil {
+		allMiddleware = append(allMiddleware, router.middleware)
 	}
 
 	newHandler := handler
-	if len(allHandlerSlice) > 0 {
+	if len(allMiddleware) > 0 {
 		middleware := make([]fasthttp.RequestHandler, 0)
-		for _, hs := range allHandlerSlice {
+		for _, hs := range allMiddleware {
 			middleware = append(middleware, hs...)
 		}
 
 		newHandler = func(ctx *fasthttp.RequestCtx) {
-			_hs := handlersChainPool.Get().(*_HandlerChainT)
-			defer putHandlers(_hs)
+			chain := acquireHandlerChain()
+			defer releaseHandlerChain(chain)
 
-			_hs.head = &middleware
-			_hs.length = len(middleware)
-			_hs.handler = handler
+			chain.head = &middleware
+			chain.length = len(middleware)
+			chain.handler = handler
 
-			ctx.SetUserValue(handlersKey, _hs)
+			ctx.SetUserValue(internal.RCtxKeyHandlerChain, chain)
 
 			Next(ctx)
 		}

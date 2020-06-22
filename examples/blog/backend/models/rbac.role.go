@@ -54,7 +54,7 @@ func init() {
 
 func (op *_RoleOperator) getAll(ctx context.Context) (lst []rbac.Role) {
 	var roles []*Role
-	op.SqlxStructScanRows(
+	op.SqlxStructScanMany(
 		ctx,
 		func() interface{} {
 			role := &Role{}
@@ -95,11 +95,11 @@ func (op *_RoleOperator) getAll(ctx context.Context) (lst []rbac.Role) {
 }
 
 func (op *_RoleOperator) getById(ctx context.Context, id uint32) (role *Role) {
-	op.SqlxFetch(ctx, role, `select * from role where id=? and deleted=0`, id)
+	op.SqlxFetchMany(ctx, role, `select * from role where id=? and deleted=0`, id)
 	return
 }
 
 func (op *_RoleOperator) getByName(ctx context.Context, name string) (role *Role) {
-	op.SqlxFetch(ctx, role, `select * from role where name=? and deleted=0`, name)
+	op.SqlxFetchMany(ctx, role, `select * from role where name=? and deleted=0`, name)
 	return
 }

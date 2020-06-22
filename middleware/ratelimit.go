@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"time"
+
 	"github.com/go-redis/redis_rate/v8"
 	"github.com/valyala/fasthttp"
+
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/router"
-	"time"
 )
 
 var rateLimiter *redis_rate.Limiter

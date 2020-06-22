@@ -2,14 +2,15 @@ package middleware
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/utils"
-	"golang.org/x/sync/singleflight"
 	"net/textproto"
 	"sync"
 	"time"
+
+	"github.com/valyala/fasthttp"
+	"golang.org/x/sync/singleflight"
+
+	"github.com/zzztttkkk/snow/router"
+	"github.com/zzztttkkk/snow/utils"
 )
 
 type _RedCacheT struct {
@@ -46,6 +47,7 @@ func NewRedCache(opt *RedCacheOption) *_RedCacheT {
 	}
 
 	opt.Headers = append(opt.Headers, "Content-Type")
+	opt.Headers = append(opt.Headers, "Content-Encoding")
 
 	for _, h := range opt.Headers {
 		c.headers[textproto.CanonicalMIMEHeaderKey(h)] = true
@@ -85,8 +87,14 @@ func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHan
 	defer releaseItem(item)
 
 	return func(ctx *fasthttp.RequestCtx) {
+		cacheKey := c.getKey(ctx)
+		if len(cacheKey) < 1 {
+			next(ctx)
+			return
+		}
+
 		_, _, _ = c.sg.Do(
-			fmt.Sprintf("do:%s", c.getKey(ctx)),
+			cacheKey,
 			func() (interface{}, error) {
 				c.loadItem(ctx, next, item)
 				return nil, nil
@@ -96,10 +104,10 @@ func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHan
 		ctx.SetStatusCode(item.Status)
 		ctx.SetBody(item.Body)
 
-		var key string;
+		var key string
 		for ind, item := range item.Headers {
 			if ind%2 == 0 {
-				key = item;
+				key = item
 			} else {
 				ctx.Response.Header.Set(key, item)
 			}

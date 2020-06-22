@@ -2,12 +2,13 @@ package ctxs
 
 import (
 	"github.com/valyala/fasthttp"
+
+	"github.com/zzztttkkk/snow/internal"
 	"github.com/zzztttkkk/snow/middleware/interfaces"
-	"github.com/zzztttkkk/snow/middleware/internal"
 )
 
 func Uid(ctx *fasthttp.RequestCtx) int64 {
-	iv := ctx.UserValue(internal.Uid)
+	iv := ctx.UserValue(internal.RCtxKeyUid)
 	if iv != nil {
 		return iv.(int64)
 	}
@@ -15,7 +16,7 @@ func Uid(ctx *fasthttp.RequestCtx) int64 {
 }
 
 func AuthExt(ctx *fasthttp.RequestCtx) map[string]interface{} {
-	iv := ctx.UserValue(internal.TokenExt)
+	iv := ctx.UserValue(internal.RCtxKeyTokenExt)
 	if iv != nil {
 		return iv.(map[string]interface{})
 	}
@@ -23,7 +24,7 @@ func AuthExt(ctx *fasthttp.RequestCtx) map[string]interface{} {
 }
 
 func LastLogin(ctx *fasthttp.RequestCtx) int64 {
-	iv := ctx.UserValue(internal.LastLogin)
+	iv := ctx.UserValue(internal.RCtxKeyLastLogin)
 	if iv != nil {
 		return iv.(int64)
 	}
@@ -31,7 +32,7 @@ func LastLogin(ctx *fasthttp.RequestCtx) int64 {
 }
 
 func User(ctx *fasthttp.RequestCtx) interfaces.User {
-	iv, ok := ctx.UserValue(internal.UserKey).(interfaces.User)
+	iv, ok := ctx.UserValue(internal.RCtxKeyUser).(interfaces.User)
 	if ok {
 		return iv
 	}
