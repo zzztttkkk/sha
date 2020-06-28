@@ -28,7 +28,7 @@ func Register(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	uid, skey := doRegister(ctx, form.Name, form.Password)
-	output.MsgOk(ctx, output.M{"uid": uid, "secret": utils.B2s(skey)})
+	output.MsgOK(ctx, output.M{"uid": uid, "secret": utils.B2s(skey)})
 }
 
 func doRegister(ctx context.Context, name, password []byte) (int64, []byte) {

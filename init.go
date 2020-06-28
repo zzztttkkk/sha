@@ -8,21 +8,18 @@ import (
 	"github.com/zzztttkkk/snow/sqls"
 )
 
-var iniFiles []string
 var userReader middleware.UserFetcher
 
-func AppendIniFile(filename string) {
-	iniFiles = append(iniFiles, filename)
+type InitOption struct {
+	IniFiles    []string
+	UserFetcher middleware.UserFetcher
 }
 
-func SetUserFetcher(fetcher middleware.UserFetcher) {
-	userReader = fetcher
-}
-
-func Init() {
-	for _, fn := range iniFiles {
+func Init(opt *InitOption) {
+	for _, fn := range opt.IniFiles {
 		ini.Load(fn)
 	}
+	userReader = opt.UserFetcher
 	ini.Init()
 	secret.Init()
 	output.Init()

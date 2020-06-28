@@ -56,7 +56,7 @@ func init() {
 }
 
 func (op *_PostTagsOperatorT) Create(ctx context.Context, postId int64, tagsId ...int64) {
-	stmt := op.SqlxStmt(ctx, `insert into post_tags (tagid,postid,created) values(?,?,?)`)
+	stmt := op.XStmt(ctx, `insert into post_tags (tagid,postid,created) values(?,?,?)`)
 	defer stmt.Close()
 
 	now := time.Now().Unix()
@@ -69,7 +69,7 @@ func (op *_PostTagsOperatorT) Create(ctx context.Context, postId int64, tagsId .
 }
 
 func (op *_PostTagsOperatorT) Delete(ctx context.Context, postId int64, tagsId ...int64) {
-	stmt := op.SqlxStmt(ctx, `delete from post_tags where postid=? and tagid=?`)
+	stmt := op.XStmt(ctx, `delete from post_tags where postid=? and tagid=?`)
 	defer stmt.Close()
 
 	for _, tid := range tagsId {

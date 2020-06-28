@@ -90,6 +90,8 @@ github.com/zzztttkkk/reflectx v0.0.0-20200608075450-4971561a320c h1:k66u4IkPSzOd
 github.com/zzztttkkk/reflectx v0.0.0-20200608075450-4971561a320c/go.mod h1:B97/+x2vPHqzFBmKC0kJ6UrbSpP8YLJxwMSDtuEC4lE=
 github.com/zzztttkkk/reflectx v0.0.0-20200612072142-c180de5c9640 h1:8vU3jlhR38nJs3CxSbGi8vwImne6yDgihL2NI/3mg6Y=
 github.com/zzztttkkk/reflectx v0.0.0-20200612072142-c180de5c9640/go.mod h1:B97/+x2vPHqzFBmKC0kJ6UrbSpP8YLJxwMSDtuEC4lE=
+github.com/zzztttkkk/reflectx v0.0.0-20200623051014-a2c159f44d27 h1:Apn7yTvpY+5NoZd4zBJF84EimwJ9EIenGGj70uxNktk=
+github.com/zzztttkkk/reflectx v0.0.0-20200623051014-a2c159f44d27/go.mod h1:B97/+x2vPHqzFBmKC0kJ6UrbSpP8YLJxwMSDtuEC4lE=
 github.com/zzztttkkk/xid v1.2.2-0.20200612124204-65fd6fbea866 h1:kbSAuzN4TdFdeO547NG0driPWQvDJZyXT/3vyHuU5Eg=
 github.com/zzztttkkk/xid v1.2.2-0.20200612124204-65fd6fbea866/go.mod h1:zkf5QkmqBQFxiBlZ3WKP1htZJW6Q7C4zxQK4k9X3vfg=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

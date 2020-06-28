@@ -20,7 +20,7 @@ func init() {
 				"/all",
 				categoryCache.AsHandler(
 					func(ctx *fasthttp.RequestCtx) {
-						output.MsgOk(ctx, output.M{"lst": models.CategoryOperator.List(ctx)})
+						output.MsgOK(ctx, output.M{"lst": models.CategoryOperator.List(ctx)})
 					},
 				),
 			)

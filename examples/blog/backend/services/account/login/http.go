@@ -29,5 +29,5 @@ func Handler(ctx *fasthttp.RequestCtx) {
 		output.Error(ctx, err)
 		return
 	}
-	output.MsgOk(ctx, token)
+	output.MsgOK(ctx, token)
 }

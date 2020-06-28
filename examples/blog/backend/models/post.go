@@ -37,7 +37,7 @@ func (op *_PostOperatorT) Create(
 	ctx context.Context, uid, categoryId int64,
 	title, content []byte, tags ...int64,
 ) int64 {
-	postId := op.SqlxCreate(
+	postId := op.XCreate(
 		ctx,
 		sqls.Dict{
 			"created":  time.Now().Unix(),
@@ -64,7 +64,7 @@ func (op *_PostOperatorT) Update(ctx context.Context, uid, postId int64, dict sq
 	values = append(values, uid)
 	values = append(values, postId)
 
-	return op.SqlxUpdate(
+	return op.XUpdate(
 		ctx,
 		fmt.Sprintf(`update post set(%s) where author_id=? and id=?`, placeholder),
 		values...,
@@ -72,7 +72,7 @@ func (op *_PostOperatorT) Update(ctx context.Context, uid, postId int64, dict sq
 }
 
 func (op *_PostOperatorT) Delete(ctx context.Context, postId int64) bool {
-	return op.SqlxUpdate(
+	return op.XUpdate(
 		ctx,
 		`update post set(deleted=?) where id=? and deleted=0`,
 		time.Now().Unix(), postId,

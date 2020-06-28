@@ -16,7 +16,7 @@ func Unregister(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	doUnregister(ctx, uid, string(ctx.FormValue("secret")))
-	output.MsgOk(ctx, nil)
+	output.MsgOK(ctx, nil)
 }
 
 func doUnregister(ctx context.Context, uid int64, skey string) {

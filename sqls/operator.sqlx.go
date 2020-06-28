@@ -7,7 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func (op *Operator) SqlxFetchOne(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
+func (op *Operator) XFetchOne(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
 	if err := Executor(ctx).GetContext(ctx, dist, q, args...); err != nil {
 		if err != sql.ErrNoRows {
 			return false
@@ -17,13 +17,13 @@ func (op *Operator) SqlxFetchOne(ctx context.Context, dist interface{}, q string
 	return true
 }
 
-func (op *Operator) SqlxExists(ctx context.Context, q string, args ...interface{}) bool {
+func (op *Operator) XExists(ctx context.Context, q string, args ...interface{}) bool {
 	var x int
-	op.SqlxFetchOne(ctx, &x, q, args...)
+	op.XFetchOne(ctx, &x, q, args...)
 	return x > 0
 }
 
-func (op *Operator) SqlxScanOne(ctx context.Context, dist []interface{}, q string, args ...interface{}) bool {
+func (op *Operator) XScanOne(ctx context.Context, dist []interface{}, q string, args ...interface{}) bool {
 	row := Executor(ctx).QueryRowxContext(ctx, q, args...)
 	if err := row.Err(); err != nil {
 		if err != sql.ErrNoRows {
@@ -37,7 +37,7 @@ func (op *Operator) SqlxScanOne(ctx context.Context, dist []interface{}, q strin
 	return true
 }
 
-func (op *Operator) SqlxScanStructOne(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
+func (op *Operator) XScanStructOne(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
 	row := Executor(ctx).QueryRowxContext(ctx, q, args...)
 	if err := row.Err(); err != nil {
 		if err != sql.ErrNoRows {
@@ -51,7 +51,7 @@ func (op *Operator) SqlxScanStructOne(ctx context.Context, dist interface{}, q s
 	return true
 }
 
-func (op *Operator) SqlxScanMany(ctx context.Context, fn func() []interface{}, q string, args ...interface{}) int64 {
+func (op *Operator) XScanMany(ctx context.Context, fn func() []interface{}, q string, args ...interface{}) int64 {
 	var count int64
 
 	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
@@ -73,7 +73,7 @@ func (op *Operator) SqlxScanMany(ctx context.Context, fn func() []interface{}, q
 	return count
 }
 
-func (op *Operator) SqlxStructScanMany(ctx context.Context, fn func() interface{}, q string, args ...interface{}) int64 {
+func (op *Operator) XStructScanMany(ctx context.Context, fn func() interface{}, q string, args ...interface{}) int64 {
 	var count int64
 
 	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
@@ -95,13 +95,13 @@ func (op *Operator) SqlxStructScanMany(ctx context.Context, fn func() interface{
 	return count
 }
 
-func (op *Operator) SqlxFetchMany(ctx context.Context, slicePtr interface{}, q string, args ...interface{}) {
+func (op *Operator) XFetchMany(ctx context.Context, slicePtr interface{}, q string, args ...interface{}) {
 	if err := Executor(ctx).SelectContext(ctx, slicePtr, q, args...); err != nil {
 		panic(err)
 	}
 }
 
-func (op *Operator) SqlxStmt(ctx context.Context, q string) *sqlx.Stmt {
+func (op *Operator) XStmt(ctx context.Context, q string) *sqlx.Stmt {
 	stmt, err := Executor(ctx).PreparexContext(ctx, q)
 	if err != nil {
 		panic(err)
@@ -109,7 +109,7 @@ func (op *Operator) SqlxStmt(ctx context.Context, q string) *sqlx.Stmt {
 	return stmt
 }
 
-func (op *Operator) SqlxExecute(ctx context.Context, q string, args ...interface{}) sql.Result {
+func (op *Operator) XExecute(ctx context.Context, q string, args ...interface{}) sql.Result {
 	r, e := Executor(ctx).ExecContext(ctx, q, args...)
 	if e != nil {
 		panic(e)
@@ -117,9 +117,9 @@ func (op *Operator) SqlxExecute(ctx context.Context, q string, args ...interface
 	return r
 }
 
-func (op *Operator) SqlxCreate(ctx context.Context, dict Dict) int64 {
+func (op *Operator) XCreate(ctx context.Context, dict Dict) int64 {
 	query, values := dict.ForCreate(op.ddl.tableName)
-	r := op.SqlxExecute(ctx, query, values...)
+	r := op.XExecute(ctx, query, values...)
 	lid, err := r.LastInsertId()
 	if err != nil {
 		panic(err)
@@ -127,8 +127,8 @@ func (op *Operator) SqlxCreate(ctx context.Context, dict Dict) int64 {
 	return lid
 }
 
-func (op *Operator) SqlxUpdate(ctx context.Context, q string, args ...interface{}) int64 {
-	r := op.SqlxExecute(ctx, q, args...)
+func (op *Operator) XUpdate(ctx context.Context, q string, args ...interface{}) int64 {
+	r := op.XExecute(ctx, q, args...)
 	rows, err := r.RowsAffected()
 	if err != nil {
 		panic(err)

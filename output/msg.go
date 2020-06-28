@@ -48,7 +48,7 @@ func Msg(ctx *fasthttp.RequestCtx, code int, data interface{}) {
 	toJson(ctx, &msg)
 }
 
-func MsgOk(ctx *fasthttp.RequestCtx, data interface{}) {
+func MsgOK(ctx *fasthttp.RequestCtx, data interface{}) {
 	Msg(ctx, fasthttp.StatusOK, data)
 }
 

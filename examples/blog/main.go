@@ -7,9 +7,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/valyala/fasthttp"
 
+	"github.com/zzztttkkk/snow/examples/blog/backend/models"
+
 	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend"
-	"github.com/zzztttkkk/snow/examples/blog/backend/models"
 	"github.com/zzztttkkk/snow/examples/blog/backend/services"
 	"github.com/zzztttkkk/snow/middleware"
 	"github.com/zzztttkkk/snow/middleware/ctxs"
@@ -18,9 +19,12 @@ import (
 )
 
 func main() {
-	snow.AppendIniFile(os.Getenv("PROJECT_ROOT") + "/examples/blog/conf.ini")
-	snow.SetUserFetcher(models.UserOperator.GetById)
-	snow.Init()
+	snow.Init(
+		&snow.InitOption{
+			IniFiles:    []string{os.Getenv("PROJECT_ROOT") + "/examples/blog/conf.ini"},
+			UserFetcher: models.UserOperator.GetById,
+		},
+	)
 
 	backend.Init()
 

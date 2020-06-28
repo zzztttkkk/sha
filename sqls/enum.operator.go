@@ -39,7 +39,7 @@ func (op *EnumOperator) Init(p reflect.Type, constructor func() Enumer) {
 
 func (op *EnumOperator) Create(ctx context.Context, dict Dict) int64 {
 	defer op.cache.doExpire()
-	return op.SqlxCreate(ctx, dict)
+	return op.XCreate(ctx, dict)
 }
 
 func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
@@ -49,7 +49,7 @@ func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 	placeholder, values := dict.ForUpdate()
 	values = append(values, name)
 
-	return op.SqlxUpdate(
+	return op.XUpdate(
 		ctx,
 		fmt.Sprintf(
 			"update %s set %s where name=? and deleted=0",

@@ -50,12 +50,12 @@ func init() {
 }
 
 func (op *_UserOperatorT) Create(ctx context.Context, name, password []byte) (int64, []byte) {
-	if op.SqlxExists(ctx, `select count(id) from user where name=?`, name) {
+	if op.XExists(ctx, `select count(id) from user where name=?`, name) {
 		panic(output.NewHttpError(fasthttp.StatusBadRequest, -1, fmt.Sprintf("`%s` is already taken.", name)))
 	}
 	skey := secret.Sha256.Calc(secret.RandBytes(512, nil))
 
-	return op.SqlxCreate(
+	return op.XCreate(
 		ctx,
 		sqls.Dict{
 			"created":  time.Now().Unix(),
@@ -69,7 +69,7 @@ func (op *_UserOperatorT) Create(ctx context.Context, name, password []byte) (in
 func (op *_UserOperatorT) AuthByName(ctx context.Context, name, password []byte) (int64, bool) {
 	var pwdHash []byte
 	var uid int64
-	op.SqlxScanOne(
+	op.XScanOne(
 		ctx,
 		[]interface{}{&uid, &pwdHash},
 		`select id,password from user where name=? and deleted=0 and status>-1`,
@@ -84,7 +84,7 @@ func (op *_UserOperatorT) AuthByName(ctx context.Context, name, password []byte)
 
 func (op *_UserOperatorT) AuthById(ctx context.Context, id int64, password []byte) bool {
 	var pwdHash []byte
-	op.SqlxFetchOne(
+	op.XFetchOne(
 		ctx,
 		&pwdHash,
 		`select password from user where id=? and deleted=0 and status>-1`,
@@ -97,7 +97,7 @@ func (op *_UserOperatorT) AuthById(ctx context.Context, id int64, password []byt
 }
 
 func (op *_UserOperatorT) Update(ctx context.Context, uid int64, dict sqls.Dict) bool {
-	return op.SqlxUpdate(
+	return op.XUpdate(
 		ctx,
 		`update user set %s where id=?`,
 		dict, uid,
@@ -105,7 +105,7 @@ func (op *_UserOperatorT) Update(ctx context.Context, uid int64, dict sqls.Dict)
 }
 
 func (op *_UserOperatorT) Delete(ctx context.Context, uid int64, skey string) bool {
-	return op.SqlxUpdate(
+	return op.XUpdate(
 		ctx,
 		`update user set %s where id=? and secret=?`,
 		sqls.Dict{"deleted": time.Now().Unix()}, uid, skey,
@@ -114,13 +114,13 @@ func (op *_UserOperatorT) Delete(ctx context.Context, uid int64, skey string) bo
 
 func (op *_UserOperatorT) GetById(ctx context.Context, uid int64) interfaces.User {
 	user := &User{}
-	op.SqlxFetchOne(ctx, user, `select * from user where id=? and deleted=0 and status>=0`, uid)
+	op.XFetchOne(ctx, user, `select * from user where id=? and deleted=0 and status>=0`, uid)
 	if user.Id < 1 {
 		return nil
 	}
 
 	var roles []uint32
-	op.SqlxFetchMany(ctx, &roles, `select role from user_roles where user=? and deleted=0`, uid)
+	op.XFetchMany(ctx, &roles, `select role from user_roles where user=? and deleted=0`, uid)
 
 	last := len(roles) - 1
 	for ind, rid := range roles {

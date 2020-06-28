@@ -2,7 +2,6 @@ package sqls
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"sync"
 )
@@ -17,17 +16,6 @@ func (op *Operator) Init(p reflect.Type) {
 	op.ddl = newDdlParser(p)
 
 	master.MustExec(TableDefinition(op.p))
-}
-
-func (op *Operator) SqlsModelExists(ctx context.Context, key string, val interface{}) bool {
-	c := -1
-	op.SqlxFetchOne(
-		ctx,
-		&c,
-		fmt.Sprintf(`select count(id) from %s where %s=? and deleted=0 and status>=0`, op.ddl.tableName, key),
-		val,
-	)
-	return c > 0
 }
 
 func (op *Operator) TableName() string {

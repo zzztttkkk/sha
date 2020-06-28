@@ -48,13 +48,13 @@ func init() {
 		func(kwargs snow.Kwargs) {
 			roleOp.Init(reflect.TypeOf(Role{}))
 		},
-		permissionPriority.Copy(),
+		roleOpInitPriority,
 	)
 }
 
 func (op *_RoleOperator) getAll(ctx context.Context) (lst []rbac.Role) {
 	var roles []*Role
-	op.SqlxStructScanMany(
+	op.XStructScanMany(
 		ctx,
 		func() interface{} {
 			role := &Role{}
@@ -65,7 +65,7 @@ func (op *_RoleOperator) getAll(ctx context.Context) (lst []rbac.Role) {
 		"select * from role where deleted=0",
 	)
 
-	stmt := op.SqlxStmt(ctx, `select distinct(permission) from role_permissions where deleted=0 and role=?`)
+	stmt := op.XStmt(ctx, `select distinct(permission) from role_permissions where deleted=0 and role=?`)
 	defer stmt.Close()
 	var allRows []*sql.Rows
 	defer func() {
@@ -95,11 +95,11 @@ func (op *_RoleOperator) getAll(ctx context.Context) (lst []rbac.Role) {
 }
 
 func (op *_RoleOperator) getById(ctx context.Context, id uint32) (role *Role) {
-	op.SqlxFetchMany(ctx, role, `select * from role where id=? and deleted=0`, id)
+	op.XFetchMany(ctx, role, `select * from role where id=? and deleted=0`, id)
 	return
 }
 
 func (op *_RoleOperator) getByName(ctx context.Context, name string) (role *Role) {
-	op.SqlxFetchMany(ctx, role, `select * from role where name=? and deleted=0`, name)
+	op.XFetchMany(ctx, role, `select * from role where name=? and deleted=0`, name)
 	return
 }

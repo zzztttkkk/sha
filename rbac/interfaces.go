@@ -20,13 +20,13 @@ type Subject interface {
 }
 
 type Backend interface {
-	Changed(ctx context.Context) bool // need reload
-	LoadDone(ctx context.Context)
 	GetAllPermissions(ctx context.Context) []Permission
 	GetAllRoles(ctx context.Context) []Role
 }
 
 type Rbac interface {
+	Reload(ctx context.Context)
+	IsValid(ctx context.Context) (bool, error)
 	IsGranted(ctx context.Context, subject Subject, permission string) (bool, error)
 	MustGranted(ctx context.Context, subject Subject, permission string)
 }

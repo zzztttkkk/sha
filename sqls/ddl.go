@@ -1,11 +1,14 @@
 package sqls
 
 import (
+	"database/sql"
 	"fmt"
-	"github.com/zzztttkkk/reflectx"
-	"github.com/zzztttkkk/snow/utils"
 	"reflect"
 	"strings"
+
+	"github.com/zzztttkkk/snow/reflectx"
+
+	"github.com/zzztttkkk/snow/utils"
 )
 
 type _SqlFieldT struct {
@@ -27,6 +30,20 @@ type _DdlParser struct {
 	fields    _SqlFieldSlice
 	primaries []string
 	tableName string
+}
+
+var sqlNullStringType = reflect.TypeOf(sql.NullString{})
+
+func (p *_DdlParser) OnNestStruct(field *reflect.StructField) bool {
+	if field.Tag.Get("ddl") == "-" {
+		return false
+	}
+
+	if field.Type == sqlNullStringType {
+		return false
+	}
+
+	return true
 }
 
 func (p *_DdlParser) OnBegin(field *reflect.StructField) bool {
@@ -73,7 +90,12 @@ func (p *_DdlParser) OnBegin(field *reflect.StructField) bool {
 	case reflect.String:
 		mf.storageType = "string"
 	default:
-		return false
+		switch field.Type {
+		case sqlNullStringType:
+			mf.storageType = "string"
+		default:
+			return false
+		}
 	}
 	p.current = mf
 	return true
@@ -143,18 +165,18 @@ func newDdlParser(p reflect.Type) *_DdlParser {
 // constraints: primary, notnull, unique, incr, const
 //
 // string option: L<length>:
-//				-1: blob,
-//				0: text,
-//				1-MaxCharLength : char,
-//				MaxCharLength~: varchar,
+// 				-1: blob,
+// 				0: text,
+// 				1-MaxCharLength : char,
+// 				MaxCharLength~: varchar,
 // default options: D<default value>
 //
 // example:
 // type User {
 //     Identify 		uint32  `ddl:"primary;notnull;incr;"`
 // 	   GetName 	string  `ddl:"unique;notnull;unique;L<50>"`
-//	   Address 	string  `ddl:"addr:notnull;L<120>"`
-//	   Age		int		`ddl:"notnull"`
+// 	   Address 	string  `ddl:"addr:notnull;L<120>"`
+// 	   Age		int		`ddl:"notnull"`
 // }
 func TableDefinition(modelType reflect.Type) string {
 	ele := reflect.New(modelType)

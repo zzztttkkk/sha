@@ -2,13 +2,14 @@ package validator
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/reflectx"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/zzztttkkk/snow/reflectx"
 )
 
 var funcMap = map[string]func([]byte) ([]byte, bool){}
@@ -43,6 +44,10 @@ var rulesMap = map[reflect.Type]_RuleSliceT{}
 type _ValidatorParser struct {
 	current *_RuleT
 	all     _RuleSliceT
+}
+
+func (p *_ValidatorParser) OnNestStruct(f *reflect.StructField) bool {
+	return true
 }
 
 func (p *_ValidatorParser) OnBegin(field *reflect.StructField) bool {

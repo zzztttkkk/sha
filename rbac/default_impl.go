@@ -3,12 +3,14 @@ package rbac
 import (
 	"context"
 	"fmt"
-	"github.com/zzztttkkk/snow/utils"
-	"golang.org/x/sync/singleflight"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	"golang.org/x/sync/singleflight"
+
+	"github.com/zzztttkkk/snow/utils"
 )
 
 type _InstanceT struct {
@@ -24,17 +26,11 @@ type _InstanceT struct {
 
 	roleBitmapMap   map[uint32]*utils.Bitmap
 	roleBitmapCache map[string]*utils.Bitmap
-
-	prev *_InstanceT
 }
 
 func (ins *_InstanceT) doLoad(ctx context.Context) error {
 	ins.rwm.Lock()
-
-	defer func() {
-		ins.rwm.Unlock()
-		ins.backend.LoadDone(ctx)
-	}()
+	defer ins.rwm.Unlock()
 
 	ins.permissionIdMap = map[uint32]Permission{}
 	ins.permissionNameMap = map[string]Permission{}
@@ -75,22 +71,30 @@ func (ins *_InstanceT) doLoad(ctx context.Context) error {
 }
 
 func (ins *_InstanceT) getPermissionByName(name string) Permission {
+	ins.rwm.RLock()
+	defer ins.rwm.RUnlock()
 	return ins.permissionNameMap[name]
 }
 
 func (ins *_InstanceT) getPermissionById(id uint32) Permission {
+	ins.rwm.RLock()
+	defer ins.rwm.RUnlock()
 	return ins.permissionIdMap[id]
 }
 
 func (ins *_InstanceT) getRoleByName(name string) Role {
+	ins.rwm.RLock()
+	defer ins.rwm.RUnlock()
 	return ins.roleNameMap[name]
 }
 
 func (ins *_InstanceT) getRoleById(id uint32) Role {
+	ins.rwm.RLock()
+	defer ins.rwm.RUnlock()
 	return ins.roleIdMap[id]
 }
 
-func (ins *_InstanceT) load(ctx context.Context) error {
+func (ins *_InstanceT) load(ctx context.Context) {
 	_, err, _ := ins.sg.Do(
 		"DOLOAD",
 		func() (interface{}, error) {
@@ -98,7 +102,9 @@ func (ins *_InstanceT) load(ctx context.Context) error {
 			return nil, err
 		},
 	)
-	return err
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (ins *_InstanceT) makePermissionBitmap(role Role, bitmap *utils.Bitmap, path []string) error {
@@ -152,7 +158,6 @@ func (ins *_InstanceT) mergeRoles(roles _RolesT) *utils.Bitmap {
 		ins.rwm.RUnlock()
 		return bitmap
 	}
-
 	var result *utils.Bitmap
 	for _, role := range roles {
 		bitmap = ins.roleBitmapMap[role.GetId()]
@@ -162,12 +167,11 @@ func (ins *_InstanceT) mergeRoles(roles _RolesT) *utils.Bitmap {
 			result = result.Or(bitmap)
 		}
 	}
-
 	ins.rwm.RUnlock()
+
 	ins.rwm.Lock()
 	ins.roleBitmapCache[key] = result
 	ins.rwm.Unlock()
-
 	return result
 }
 
@@ -180,18 +184,8 @@ func (rs _RolesT) Less(i, j int) bool { return rs[i].GetName() < rs[j].GetName()
 func (rs _RolesT) Swap(i, j int) { rs[i], rs[j] = rs[j], rs[i] }
 
 func (ins *_InstanceT) IsGranted(ctx context.Context, subject Subject, permission string) (bool, error) {
-	if ins.backend.Changed(ctx) {
-		err := ins.load(ctx)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	ins.rwm.RLock()
-
 	p := ins.getPermissionByName(permission)
 	if p == nil {
-		ins.rwm.RUnlock()
 		return false, fmt.Errorf("snow.rbac: nil permission, `%s`", permission)
 	}
 	var roles _RolesT
@@ -208,7 +202,6 @@ func (ins *_InstanceT) IsGranted(ctx context.Context, subject Subject, permissio
 		}
 		roles = append(roles, role)
 	}
-	ins.rwm.RUnlock()
 	return ins.mergeRoles(roles).Has(p.GetId()), nil
 }
 
@@ -225,11 +218,21 @@ func (ins *_InstanceT) MustGranted(ctx context.Context, subject Subject, permiss
 	panic(&Error{SubjectId: subject.GetId(), PermissionName: permission})
 }
 
+func (ins *_InstanceT) IsValid(ctx context.Context) (bool, error) {
+	n := &_InstanceT{backend: ins.backend}
+	err := n.doLoad(ctx)
+	if err == nil {
+		return true, nil
+	}
+	return false, err
+}
+
+func (ins *_InstanceT) Reload(ctx context.Context) {
+	ins.load(ctx)
+}
+
 func Default(backend Backend) Rbac {
 	ins := &_InstanceT{backend: backend}
-	err := ins.doLoad(context.Background())
-	if err != nil {
-		panic(err)
-	}
+	ins.load(context.Background())
 	return ins
 }
