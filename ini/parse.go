@@ -17,7 +17,7 @@ var iniEnvRegexp = regexp.MustCompile(`^\$ENV\{\w+}$`)
 //noinspection RegExpRedundantEscape
 var iniNameRegexp = regexp.MustCompile(`^\$\{[\w._]+}$`)
 
-func doReplace(v []byte, currentSectionName string, currentResult map[string][]byte) []byte {
+func doReplace(config *Config, v []byte, currentSectionName string, currentResult map[string][]byte) []byte {
 	if bytes.HasPrefix(v, []byte("file://")) {
 		file, err := os.Open(string(v[7:]))
 		if err != nil {
@@ -52,7 +52,7 @@ func doReplace(v []byte, currentSectionName string, currentResult map[string][]b
 
 			_v, ok := currentResult[name]
 			if !ok {
-				_v = storage[name]
+				_v = config.storage[name]
 			}
 
 			if len(_v) < 1 {
@@ -65,7 +65,7 @@ func doReplace(v []byte, currentSectionName string, currentResult map[string][]b
 	return vs
 }
 
-func parseIniFile(filename string) {
+func parseIniFile(config *Config, filename string) {
 	var err error
 
 	var f *os.File
@@ -99,8 +99,8 @@ func parseIniFile(filename string) {
 			_k = sectionName + "." + k
 		}
 
-		storage[_k] = doReplace(v, sectionName, storage)
-		rawStorage[_k] = string(v)
+		config.storage[_k] = doReplace(config, v, sectionName, config.storage)
+		config.raw[_k] = string(v)
 	}
 
 	err = scanner.Err()

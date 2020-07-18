@@ -3,10 +3,9 @@ package ini
 import (
 	"errors"
 	"fmt"
+
 	"github.com/go-redis/redis/v7"
 )
-
-var redisc redis.Cmdable
 
 var redisUnknownModeError = errors.New("snow.redisc: unknown redis mode,[singleton,ring,cluster]")
 var redisModes = map[string]bool{"singleton": true, "ring": true, "cluster": true}
@@ -16,8 +15,8 @@ func makeRedisKey(n string) string {
 	return fmt.Sprintf("redis.%s", n)
 }
 
-func initRedis() (client redis.Cmdable) {
-	mode := string(GetMust(makeRedisKey("mode")))
+func (conf *Config) initRedisClient() {
+	mode := string(conf.GetMust(makeRedisKey("mode")))
 	if _, ok := redisModes[mode]; !ok {
 		panic(redisUnknownModeError)
 	}
@@ -27,12 +26,12 @@ func initRedis() (client redis.Cmdable) {
 	if mode == "singleton" {
 		nodesCount = 1
 	} else {
-		nodesCount = int(GetIntMust(makeRedisKey("count")))
+		nodesCount = int(conf.GetIntMust(makeRedisKey("count")))
 	}
 
 	urls := make([]string, 0)
 	for i := 0; i < nodesCount; i++ {
-		urls = append(urls, string(GetMust(makeRedisKey(fmt.Sprintf("node%d.url", i)))))
+		urls = append(urls, string(conf.GetMust(makeRedisKey(fmt.Sprintf("node%d.url", i)))))
 	}
 
 	var option *redis.Options
@@ -42,7 +41,9 @@ func initRedis() (client redis.Cmdable) {
 		if err != nil {
 			panic(err)
 		}
-		return redis.NewClient(option)
+		client := redis.NewClient(option)
+		conf.rcmd = client
+		return
 	}
 
 	nodeMap := make(map[string]string)
@@ -63,26 +64,25 @@ func initRedis() (client redis.Cmdable) {
 	}
 
 	if mode == "ring" {
-		return redis.NewRing(
+		client := redis.NewRing(
 			&redis.RingOptions{
 				Addrs:     nodeMap,
 				Passwords: passwordMaps,
 			},
 		)
+		conf.rcmd = client
+		return
 	}
 
 	if mode == "cluster" {
-		return redis.NewClusterClient(
+		client := redis.NewClusterClient(
 			&redis.ClusterOptions{
 				Addrs:    nodeLst,
 				Password: passwordLst[0],
 			},
 		)
+		conf.rcmd = client
+		return
 	}
-
 	panic(redisInitError)
-}
-
-func RedisClient() redis.Cmdable {
-	return redisc
 }

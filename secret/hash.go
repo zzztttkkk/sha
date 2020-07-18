@@ -28,7 +28,7 @@ func (h *Hash) getSecretKey() []byte {
 	if len(h.secretKey) > 0 {
 		return h.secretKey
 	}
-	return appSecretKey
+	return gSecretKey
 }
 
 func NewHash(fn func() hash.Hash, withSecret bool) *Hash {

@@ -2,9 +2,10 @@ package validator
 
 import (
 	"fmt"
-	"github.com/valyala/fasthttp"
 	"reflect"
 	"testing"
+
+	"github.com/valyala/fasthttp"
 )
 
 func TestValidate(t *testing.T) {

@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/zzztttkkk/snow/ini"
+
 	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
 	"github.com/zzztttkkk/snow/rbac"
@@ -121,9 +123,11 @@ var RbacInstance rbac.Rbac
 
 func init() {
 	internal.LazyExecutor.RegisterWithPriority(
-		func(args snow.Kwargs) {
-			sqls.Master().MustExec(sqls.TableDefinition(reflect.TypeOf(_RolePermissions{})))
-			sqls.Master().MustExec(sqls.TableDefinition(reflect.TypeOf(_UserRoles{})))
+		func(kwargs snow.Kwargs) {
+			conf := kwargs["config"].(*ini.Config)
+
+			conf.SqlLeader().MustExec(sqls.TableDefinition(reflect.TypeOf(_RolePermissions{})))
+			conf.SqlLeader().MustExec(sqls.TableDefinition(reflect.TypeOf(_UserRoles{})))
 
 			RbacBackend = &_BackendT{
 				permissionOp: permissionOp,

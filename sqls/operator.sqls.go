@@ -15,7 +15,7 @@ func (op *Operator) Init(p reflect.Type) {
 	op.p = p
 	op.ddl = newDdlParser(p)
 
-	master.MustExec(TableDefinition(op.p))
+	config.SqlLeader().MustExec(TableDefinition(op.p))
 }
 
 func (op *Operator) TableName() string {

@@ -1,16 +1,16 @@
 package snow
 
 import (
-	"github.com/zzztttkkk/snow/ini"
-	"google.golang.org/grpc"
 	"log"
 	"net"
+
+	"google.golang.org/grpc"
 )
 
 func RunAsGrpcServer(loader *_LoaderT, server *grpc.Server) {
 	loader.bindGrpc(server)
 
-	listener, err := net.Listen("tcp", string(ini.GetMust("services.grpc.address")))
+	listener, err := net.Listen("tcp", string(config.GetMust("services.grpc.address")))
 	if err != nil {
 		panic(err)
 	}

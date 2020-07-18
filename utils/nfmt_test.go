@@ -1,6 +1,8 @@
 package utils
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestZFmt(t *testing.T) {
 	zf := NewNamedFmt("1 { a: 04d }, 2{b}, 3{{c}, 4 {{}}, 5 {}}", true)

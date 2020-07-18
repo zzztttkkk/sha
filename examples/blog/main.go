@@ -19,14 +19,14 @@ import (
 )
 
 func main() {
-	snow.Init(
+	conf := snow.Init(
 		&snow.InitOption{
-			IniFiles:    []string{os.Getenv("PROJECT_ROOT") + "/examples/blog/conf.ini"},
-			UserFetcher: models.UserOperator.GetById,
+			IniFiles: []string{os.Getenv("PROJECT_ROOT") + "/examples/blog/conf.ini"},
+			Auther:   models.UserOperator,
 		},
 	)
 
-	backend.Init()
+	backend.Init(conf)
 
 	root := router.New()
 	root.Use(

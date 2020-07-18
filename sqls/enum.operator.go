@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"time"
-
-	"github.com/zzztttkkk/snow/ini"
 )
 
 type Enum struct {
@@ -30,9 +28,9 @@ type EnumOperator struct {
 func (op *EnumOperator) Init(p reflect.Type, constructor func() Enumer) {
 	op.Operator.Init(p)
 
-	expire := ini.GetIntOr(fmt.Sprintf("memcache.sqlenum.%s.expire", op.ddl.tableName), -1)
+	expire := config.GetIntOr(fmt.Sprintf("memcache.sqlenum.%s.expire", op.ddl.tableName), -1)
 	if expire < 1 {
-		expire = ini.GetIntOr("memcache.sqlenum.expire", 1800)
+		expire = config.GetIntOr("memcache.sqlenum.expire", 1800)
 	}
 	op.cache = op.NewEnumCache(expire, constructor)
 }

@@ -2,15 +2,12 @@ package sqls
 
 import (
 	"context"
-	"github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/snow/ini"
 	"log"
-	"math/rand"
-	"time"
-)
 
-var master *sqlx.DB
-var slaves []*sqlx.DB
+	"github.com/jmoiron/sqlx"
+
+	"github.com/zzztttkkk/snow/ini"
+)
 
 type executor interface {
 	sqlx.ExecerContext
@@ -29,12 +26,14 @@ func JustUseMaster(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justMasterKey, true)
 }
 
+var config *ini.Config
+
 func Tx(ctx context.Context) (context.Context, func()) {
 	if ctx == nil {
 		panic("snow.sql: nil context")
 	}
 
-	tx := master.MustBegin()
+	tx := config.SqlLeader().MustBegin()
 	return context.WithValue(ctx, txKey, tx), func() {
 		err := recover()
 		if err == nil {
@@ -62,22 +61,16 @@ func Executor(ctx context.Context) executor {
 	}
 
 	if ctx.Value(justMasterKey) != nil {
-		return master
+		return config.SqlLeader()
 	}
 
-	if len(slaves) < 1 {
-		return master
+	db := config.SqlFollower()
+	if db == nil {
+		return config.SqlLeader()
 	}
-	rand.Seed(time.Now().UnixNano())
-	ind := rand.Int() % len(slaves)
-	return slaves[ind]
+	return db
 }
 
-func Init() {
-	master = ini.SqlMaster()
-	slaves = ini.SqlSlaves()
-}
-
-func Master() *sqlx.DB {
-	return master
+func Init(conf *ini.Config) {
+	config = conf
 }

@@ -14,6 +14,7 @@ require (
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/rs/xid v1.2.1
 	github.com/valyala/fasthttp v1.9.0
+	go.uber.org/dig v1.10.0 // indirect
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9 // indirect
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1 // indirect

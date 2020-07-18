@@ -7,7 +7,7 @@ import (
 
 func JwtEncode(data jwt.Claims) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, data)
-	ts, err := token.SignedString(appSecretKey)
+	ts, err := token.SignedString(gSecretKey)
 	if err != nil {
 		panic(err)
 	}
@@ -24,7 +24,7 @@ func JwtDecode(ts string) (jwt.Claims, error) {
 			if !ok {
 				return nil, signMethodError
 			}
-			return appSecretKey, nil
+			return gSecretKey, nil
 		},
 	)
 	if err != nil {

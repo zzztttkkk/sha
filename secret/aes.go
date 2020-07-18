@@ -30,7 +30,7 @@ func AesEncrypt(format string, args ...interface{}) (string, error) {
 		plain = append(plain, ' ')
 	}
 
-	block, err := aes.NewCipher(appSecretKey)
+	block, err := aes.NewCipher(gSecretKey)
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +54,7 @@ func AesDecrypt(f string) (string, error) {
 		return "", err
 	}
 
-	block, err := aes.NewCipher(appSecretKey)
+	block, err := aes.NewCipher(gSecretKey)
 	if err != nil {
 		return "", err
 	}

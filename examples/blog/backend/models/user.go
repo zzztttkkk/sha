@@ -3,16 +3,21 @@ package models
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
 	"github.com/valyala/fasthttp"
+
+	"github.com/zzztttkkk/snow/utils"
+
 	"github.com/zzztttkkk/snow"
 	"github.com/zzztttkkk/snow/examples/blog/backend/internal"
 	"github.com/zzztttkkk/snow/middleware/interfaces"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/sqls"
-	"reflect"
-	"strconv"
-	"time"
 )
 
 type User struct {
@@ -37,6 +42,63 @@ func (user *User) GetRoleIds() string {
 
 type _UserOperatorT struct {
 	sqls.Operator
+}
+
+var authTokenInHeader string
+var authTokenInCookie string
+
+func readUid(ctx *fasthttp.RequestCtx) int64 {
+	var token string
+	if len(authTokenInHeader) > 0 {
+		bytesV := ctx.Request.Header.Peek(authTokenInHeader)
+		if len(bytesV) > 0 {
+			token = utils.B2s(bytesV)
+		}
+	}
+
+	if len(token) < 1 && len(authTokenInCookie) > 1 {
+		bytesV := ctx.Request.Header.Cookie(authTokenInCookie)
+		if len(bytesV) > 0 {
+			token = utils.B2s(bytesV)
+		}
+	}
+
+	if len(token) < 1 {
+		return -1
+	}
+
+	v, err := secret.JwtDecode(token)
+	if err != nil {
+		return -1
+	}
+
+	m, ok := v.(jwt.MapClaims)
+	if !ok {
+		return -1
+	}
+
+	uid, ok := m["uid"].(int64)
+	if !ok {
+		return -1
+	}
+	return uid
+}
+
+func (op *_UserOperatorT) Auth(ctx *fasthttp.RequestCtx) interfaces.User {
+	uid := readUid(ctx)
+	if uid < 1 {
+		return nil
+	}
+	return op.GetById(ctx, uid)
+}
+
+func (op *_UserOperatorT) Dump(uid int64, days int) string {
+	v := jwt.MapClaims{
+		"uid":  uid,
+		"exp":  time.Now().Unix() + int64(days*86400),
+		"unix": time.Now().Unix(),
+	}
+	return secret.JwtEncode(v)
 }
 
 var UserOperator = &_UserOperatorT{}

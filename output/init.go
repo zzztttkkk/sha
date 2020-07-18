@@ -6,6 +6,6 @@ import (
 	"github.com/zzztttkkk/snow/ini"
 )
 
-func Init() {
-	errors.MaxStackDepth = int(ini.GetIntOr("output.max_stack_depth", 20))
+func Init(conf *ini.Config) {
+	errors.MaxStackDepth = int(conf.GetIntOr("output.max_stack_depth", 20))
 }

@@ -2,7 +2,9 @@ package account
 
 import (
 	"context"
+
 	"github.com/valyala/fasthttp"
+
 	"github.com/zzztttkkk/snow/examples/blog/backend/models"
 	"github.com/zzztttkkk/snow/middleware/ctxs"
 	"github.com/zzztttkkk/snow/output"
@@ -10,12 +12,12 @@ import (
 )
 
 func Unregister(ctx *fasthttp.RequestCtx) {
-	uid := ctxs.Uid(ctx)
-	if uid < 0 {
+	user := ctxs.User(ctx)
+	if user == nil {
 		output.StdError(ctx, fasthttp.StatusUnauthorized)
 		return
 	}
-	doUnregister(ctx, uid, string(ctx.FormValue("secret")))
+	doUnregister(ctx, user.GetId(), string(ctx.FormValue("secret")))
 	output.MsgOK(ctx, nil)
 }
 

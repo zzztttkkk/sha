@@ -6,7 +6,6 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/valyala/fasthttp"
 
-	"github.com/zzztttkkk/snow/ini"
 	"github.com/zzztttkkk/snow/output"
 	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/utils"
@@ -45,7 +44,7 @@ func (s *_SessionT) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 }
 
 func (s *_SessionT) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
-	if ini.IsDebug() {
+	if config.IsDebug() {
 		return true
 	}
 

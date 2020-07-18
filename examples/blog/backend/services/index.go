@@ -34,7 +34,9 @@ func init() {
 
 	internal.LazyExecutor.Register(
 		func(kwargs snow.Kwargs) {
-			if ini.IsDebug() {
+			conf := kwargs["config"].(*ini.Config)
+
+			if conf.IsDebug() {
 				Loader.AddChild("debug", debug.Loader)
 			}
 		},

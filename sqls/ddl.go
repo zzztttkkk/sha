@@ -179,6 +179,11 @@ func newDdlParser(p reflect.Type) *_DdlParser {
 // 	   Age		int		`ddl:"notnull"`
 // }
 func TableDefinition(modelType reflect.Type) string {
+	dn := string(config.GetMust("sql.driver"))
+	if dn != "mysql" {
+		panic(fmt.Errorf("snow.sqls: unsuport driver `%s`", dn))
+	}
+
 	ele := reflect.New(modelType)
 	cFn := ele.MethodByName("TableCreation")
 	if cFn.IsValid() {

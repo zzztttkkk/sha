@@ -2,9 +2,10 @@ package login
 
 import (
 	"context"
+
 	"github.com/valyala/fasthttp"
+
 	"github.com/zzztttkkk/snow/examples/blog/backend/models"
-	"github.com/zzztttkkk/snow/middleware"
 	"github.com/zzztttkkk/snow/output"
 )
 
@@ -13,5 +14,5 @@ func DoLogin(ctx context.Context, name, password []byte, days int) (string, erro
 	if !ok {
 		return "", output.StdErrors[fasthttp.StatusUnauthorized]
 	}
-	return middleware.AuthToken(uid, days*86400, nil), nil
+	return models.UserOperator.Dump(uid, days), nil
 }

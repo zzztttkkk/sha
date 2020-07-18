@@ -2,11 +2,12 @@ package snow
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/ini"
+
 	"github.com/zzztttkkk/snow/router"
 	"github.com/zzztttkkk/snow/utils"
-	"log"
 )
 
 func RunAsHttpServer(loader *_LoaderT, root *router.Router) {
@@ -19,5 +20,5 @@ func RunAsHttpServer(loader *_LoaderT, root *router.Router) {
 		}
 	}
 	utils.ReleaseGroupLogger(glog)
-	log.Fatal(fasthttp.ListenAndServe(string(ini.GetMust("services.http.address")), root.Handler))
+	log.Fatal(fasthttp.ListenAndServe(string(config.GetMust("services.http.address")), root.Handler))
 }

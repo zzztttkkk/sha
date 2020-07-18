@@ -1,13 +1,11 @@
 package middleware
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
 	"github.com/valyala/fasthttp"
@@ -15,7 +13,6 @@ import (
 	"github.com/zzztttkkk/snow/internal"
 	"github.com/zzztttkkk/snow/middleware/interfaces"
 	"github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/secret"
 	"github.com/zzztttkkk/snow/utils"
 )
 
@@ -90,73 +87,11 @@ func makeUSidKey(uid int64) string {
 	return fmt.Sprintf("sonw:sessionid:%d", uid)
 }
 
-func AuthToken(uid int64, seconds int, ext map[string]interface{}) string {
-	v := jwt.MapClaims{
-		"uid":  uid,
-		"exp":  time.Now().Unix() + int64(seconds),
-		"unix": time.Now().Unix(),
-	}
-	if len(ext) > 0 {
-		v["ext"] = ext
-	}
-	return secret.JwtEncode(v)
+type Auther interface {
+	Auth(ctx *fasthttp.RequestCtx) interfaces.User
 }
 
-var authTokenInHeader string
-var authTokenInCookie string
-
-func readUid(ctx *fasthttp.RequestCtx) int64 {
-	var token string
-	if len(authTokenInHeader) > 0 {
-		bytesV := ctx.Request.Header.Peek(authTokenInHeader)
-		if len(bytesV) > 0 {
-			token = utils.B2s(bytesV)
-		}
-	}
-
-	if len(token) < 1 && len(authTokenInCookie) > 1 {
-		bytesV := ctx.Request.Header.Cookie(authTokenInCookie)
-		if len(bytesV) > 0 {
-			token = utils.B2s(bytesV)
-		}
-	}
-
-	if len(token) < 1 {
-		return -1
-	}
-
-	v, err := secret.JwtDecode(token)
-	if err != nil {
-		return -1
-	}
-
-	m, ok := v.(jwt.MapClaims)
-	if !ok {
-		return -1
-	}
-
-	uid, ok := m["uid"].(int64)
-	if !ok {
-		return -1
-	}
-	ctx.SetUserValue(internal.RCtxKeyUid, uid)
-
-	lastLogin, ok := m["unix"].(int64)
-	if !ok {
-		return -1
-	}
-	ctx.SetUserValue(internal.RCtxKeyLastLogin, lastLogin)
-
-	ext, ok := m["ext"].(map[string]interface{})
-	if ok {
-		ctx.SetUserValue(internal.RCtxKeyTokenExt, ext)
-	}
-	return uid
-}
-
-type UserFetcher func(ctx context.Context, uid int64) interfaces.User
-
-var userFetcher UserFetcher
+var auther Auther
 
 const (
 	sessionExistsFlagKey = "@."
@@ -170,7 +105,10 @@ func SessionAndAuthMiddleware(ctx *fasthttp.RequestCtx) {
 	var sidKey string
 
 	// session by uid
-	uid = readUid(ctx)
+	user := auther.Auth(ctx)
+	if user != nil {
+		uid = user.GetId()
+	}
 	if uid > 0 {
 		sidKey = makeUSidKey(uid)
 		sid, _ := redisClient.Get(sidKey).Bytes()
@@ -184,7 +122,7 @@ func SessionAndAuthMiddleware(ctx *fasthttp.RequestCtx) {
 					redisClient.Del(session.key, sidKey)
 					session.valid = false
 				} else {
-					ctx.SetUserValue(internal.RCtxKeyUser, userFetcher(ctx, uid))
+					ctx.SetUserValue(internal.RCtxKeyUser, user)
 				}
 			}
 		}
