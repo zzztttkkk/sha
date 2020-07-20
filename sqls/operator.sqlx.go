@@ -3,6 +3,8 @@ package sqls
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -73,7 +75,11 @@ func (op *Operator) XScanMany(ctx context.Context, fn func() []interface{}, q st
 	return count
 }
 
-func (op *Operator) XStructScanMany(ctx context.Context, fn func() interface{}, q string, args ...interface{}) int64 {
+func (op *Operator) XStructScanMany(ctx context.Context, constructor func() interface{}, q string, args ...interface{}) int64 {
+	return op.XStructScanManyWithInit(ctx, constructor, nil, q, args...)
+}
+
+func (op *Operator) XStructScanManyWithInit(ctx context.Context, constructor func() interface{}, initer func(context.Context, interface{}) error, q string, args ...interface{}) int64 {
 	var count int64
 
 	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
@@ -86,11 +92,20 @@ func (op *Operator) XStructScanMany(ctx context.Context, fn func() interface{}, 
 	defer rows.Close()
 
 	for rows.Next() {
-		err := rows.StructScan(fn())
-		count++
+		ele := constructor()
+
+		err := rows.StructScan(ele)
 		if err != nil {
 			panic(err)
 		}
+
+		if initer != nil {
+			if err = initer(ctx, ele); err != nil {
+				panic(err)
+			}
+		}
+
+		count++
 	}
 	return count
 }
@@ -109,8 +124,9 @@ func (op *Operator) XStmt(ctx context.Context, q string) *sqlx.Stmt {
 	return stmt
 }
 
-func (op *Operator) XExecute(ctx context.Context, q string, args ...interface{}) sql.Result {
-	r, e := Executor(ctx).ExecContext(ctx, q, args...)
+func (op *Operator) XExecute(ctx context.Context, q string, dict Dict) sql.Result {
+	s, vl := BindNamed(q, dict)
+	r, e := Executor(ctx).ExecContext(ctx, s, vl...)
 	if e != nil {
 		panic(e)
 	}
@@ -118,8 +134,23 @@ func (op *Operator) XExecute(ctx context.Context, q string, args ...interface{})
 }
 
 func (op *Operator) XCreate(ctx context.Context, dict Dict) int64 {
-	query, values := dict.ForCreate(op.ddl.tableName)
-	r := op.XExecute(ctx, query, values...)
+	var ks []string
+	var pls []string
+	var vl []interface{}
+
+	for k, v := range dict {
+		ks = append(ks, k)
+		pls = append(pls, ":"+k)
+		vl = append(vl, v)
+	}
+
+	s := fmt.Sprintf(
+		"insert into %s (%s) values (%s)",
+		op.tablename, strings.Join(ks, ","),
+		strings.Join(pls, ","),
+	)
+
+	r := op.XExecute(ctx, s, dict)
 	lid, err := r.LastInsertId()
 	if err != nil {
 		panic(err)
@@ -127,11 +158,36 @@ func (op *Operator) XCreate(ctx context.Context, dict Dict) int64 {
 	return lid
 }
 
-func (op *Operator) XUpdate(ctx context.Context, q string, args ...interface{}) int64 {
-	r := op.XExecute(ctx, q, args...)
-	rows, err := r.RowsAffected()
+func (op *Operator) XUpdate(ctx context.Context, updates Dict, condition string, conditionV Dict) int64 {
+	var pls []string
+	var vl []interface{}
+
+	for k, v := range updates {
+		switch rv := v.(type) {
+		case Raw:
+			pls = append(pls, k+"="+string(rv))
+		default:
+			pls = append(pls, k+"= :"+k)
+			vl = append(vl, v)
+		}
+	}
+
+	s := fmt.Sprintf("update %s set %s", op.TableName(), strings.Join(pls, ","))
+	if len(condition) > 0 {
+		s += " where " + condition
+		for k, v := range conditionV {
+			_, ok := updates[k]
+			if ok {
+				panic(fmt.Errorf("suna.sqls: conflict key `%s`", k))
+			}
+			updates[k] = v
+		}
+	}
+
+	r := op.XExecute(ctx, s, updates)
+	count, err := r.RowsAffected()
 	if err != nil {
 		panic(err)
 	}
-	return rows
+	return count
 }

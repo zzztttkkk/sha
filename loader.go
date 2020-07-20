@@ -1,12 +1,13 @@
-package snow
+package suna
 
 import (
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/snow/router"
-	"google.golang.org/grpc"
 	"reflect"
 	"strings"
+
+	"github.com/zzztttkkk/router"
+	"google.golang.org/grpc"
 )
 
 type _LoaderT struct {
@@ -15,7 +16,7 @@ type _LoaderT struct {
 	name     string
 	path     string
 	doc      map[string]reflect.Type
-	http     func(router *router.Router)
+	http     func(router router.R)
 	grpc     func(server *grpc.Server)
 }
 
@@ -54,7 +55,7 @@ func (loader *_LoaderT) Path() string {
 func (loader *_LoaderT) AddChild(name string, child *_LoaderT) {
 	_, exists := loader.children[name]
 	if exists {
-		panic(fmt.Errorf("snow.loader: `%s`.`%s` is already exists", loader.Path(), name))
+		panic(fmt.Errorf("suna.loader: `%s`.`%s` is already exists", loader.Path(), name))
 	}
 	child.parent = loader
 	child.name = name
@@ -72,16 +73,16 @@ func (loader *_LoaderT) Get(path string) *_LoaderT {
 	return cursor
 }
 
-func (loader *_LoaderT) Http(fn func(router *router.Router)) {
+func (loader *_LoaderT) Http(fn func(router router.R)) {
 	if loader.http != nil {
-		panic(errors.New("snow.loader: `%s`'s http is registered"))
+		panic(errors.New("suna.loader: `%s`'s http is registered"))
 	}
 	loader.http = fn
 }
 
 func (loader *_LoaderT) Grpc(fn func(server *grpc.Server)) {
 	if loader.grpc != nil {
-		panic(errors.New("snow.loader: `%s`'s grpc is registered"))
+		panic(errors.New("suna.loader: `%s`'s grpc is registered"))
 	}
 	loader.grpc = fn
 }
@@ -95,7 +96,16 @@ func (loader *_LoaderT) bindHttp(router *router.Router) {
 		loader.http(router)
 	}
 	for k, v := range loader.children {
-		v.bindHttp(router.SubGroup(k))
+		v.bindHttpGroup(router.Group(k))
+	}
+}
+
+func (loader *_LoaderT) bindHttpGroup(group *router.Group) {
+	if loader.http != nil {
+		loader.http(group)
+	}
+	for k, v := range loader.children {
+		v.bindHttpGroup(group.Group(k))
 	}
 }
 

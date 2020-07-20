@@ -10,7 +10,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/suna/utils"
 )
 
 type Hash struct {

@@ -3,10 +3,10 @@ package sqls
 import (
 	"context"
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/jmoiron/sqlx"
-
-	"github.com/zzztttkkk/snow/ini"
 )
 
 type executor interface {
@@ -26,27 +26,22 @@ func JustUseMaster(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justMasterKey, true)
 }
 
-var config *ini.Config
-
 func Tx(ctx context.Context) (context.Context, func()) {
-	if ctx == nil {
-		panic("snow.sql: nil context")
-	}
+	tx := leader.MustBegin()
 
-	tx := config.SqlLeader().MustBegin()
 	return context.WithValue(ctx, txKey, tx), func() {
 		err := recover()
 		if err == nil {
 			ce := tx.Commit()
 			if ce != nil {
-				log.Printf("snow.sql: commit error, %s\r\n", ce.Error())
+				log.Printf("suna.sql: commit error, %s\r\n", ce.Error())
 				panic(ce)
 			}
 			return
 		}
 		re := tx.Rollback()
 		if re != nil {
-			log.Printf("snow.sql: rollback error, %s\r\n", re.Error())
+			log.Printf("suna.sql: rollback error, %s\r\n", re.Error())
 			panic(re)
 		}
 		panic(err)
@@ -61,16 +56,18 @@ func Executor(ctx context.Context) executor {
 	}
 
 	if ctx.Value(justMasterKey) != nil {
-		return config.SqlLeader()
+		return leader
 	}
 
-	db := config.SqlFollower()
-	if db == nil {
-		return config.SqlLeader()
+	if len(followers) < 1 {
+		return leader
 	}
-	return db
+	return Follower()
 }
 
-func Init(conf *ini.Config) {
-	config = conf
+func Leader() *sqlx.DB { return leader }
+
+func Follower() *sqlx.DB {
+	rand.Seed(time.Now().UnixNano())
+	return followers[rand.Int()%len(followers)]
 }

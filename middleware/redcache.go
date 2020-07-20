@@ -9,8 +9,9 @@ import (
 	"github.com/valyala/fasthttp"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/router"
+
+	"github.com/zzztttkkk/suna/utils"
 )
 
 type _RedCacheT struct {
@@ -28,7 +29,7 @@ type RedCacheOption struct {
 	GetKey        func(ctx *fasthttp.RequestCtx) string
 }
 
-const DisableRedCacheKey = "Snow-Disable-Redcache"
+const DisableRedCacheKey = "suna-Disable-Redcache"
 
 func NewRedCache(opt *RedCacheOption) *_RedCacheT {
 	c := &_RedCacheT{
@@ -116,7 +117,7 @@ func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHan
 }
 
 func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.RequestHandler, item *_ItemT) {
-	key := "snow:rcache:" + c.getKey(ctx)
+	key := "suna:rcache:" + c.getKey(ctx)
 
 	v, _ := redisClient.Get(key).Bytes()
 	if len(v) > 0 {

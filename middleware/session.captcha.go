@@ -6,9 +6,9 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/valyala/fasthttp"
 
-	"github.com/zzztttkkk/snow/output"
-	"github.com/zzztttkkk/snow/secret"
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/secret"
+	"github.com/zzztttkkk/suna/utils"
 )
 
 var bytesPool = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}

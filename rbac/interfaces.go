@@ -1,32 +1,29 @@
 package rbac
 
-import "context"
+import (
+	"context"
+)
 
 type Permission interface {
-	GetId() uint32
+	GetId() int64
 	GetName() string
 }
 
 type Role interface {
-	GetId() uint32
+	GetId() int64
 	GetName() string
-	GetParentId() uint32
-	GetPermissionIds() string
+	GetParentId() int64
+	GetPermissionIds() []int64
 }
 
 type Subject interface {
 	GetId() int64
-	GetRoleIds() string
 }
 
 type Backend interface {
 	GetAllPermissions(ctx context.Context) []Permission
 	GetAllRoles(ctx context.Context) []Role
-}
 
-type Rbac interface {
-	Reload(ctx context.Context)
-	IsValid(ctx context.Context) (bool, error)
-	IsGranted(ctx context.Context, subject Subject, permission string) (bool, error)
-	MustGranted(ctx context.Context, subject Subject, permission string)
+	GetSubjectRoles(ctx context.Context, subjectId int64) []int64
+	GetSubjectPermissions(ctx context.Context, subjectId int64) []int64
 }

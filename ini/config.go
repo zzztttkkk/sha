@@ -2,16 +2,14 @@ package ini
 
 import (
 	"fmt"
-	"math/rand"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/suna/utils"
 )
 
 type Config struct {
@@ -64,13 +62,13 @@ func (conf *Config) GetMust(key string) []byte {
 	if ok {
 		return v
 	}
-	panic(fmt.Errorf("snow.ini: `%s` is not found", key))
+	panic(fmt.Errorf("suna.ini: `%s` is not found", key))
 }
 
 func (conf *Config) GetIntMust(key string) int64 {
 	i, err := strconv.ParseInt(string(conf.GetMust(key)), 10, 64)
 	if err != nil {
-		panic(fmt.Errorf("snow.ini: `%s` is not an int", key))
+		panic(fmt.Errorf("suna.ini: `%s` is not an int", key))
 	}
 	return i
 }
@@ -122,22 +120,6 @@ const (
 	modeTest    = "test"
 )
 
-func (conf *Config) RedisClient() redis.Cmdable {
-	return conf.rcmd
-}
-
-func (conf *Config) SqlLeader() *sqlx.DB {
-	return conf.sqlL
-}
-
-func (conf *Config) SqlFollower() *sqlx.DB {
-	if len(conf.sqlF) < 1 {
-		return nil
-	}
-	rand.Seed(time.Now().UnixNano())
-	return conf.sqlF[rand.Int()%len(conf.sqlF)]
-}
-
 func (conf *Config) Done() {
 	switch string(conf.GetMust("app.mode")) {
 	case modeRelease:
@@ -147,9 +129,6 @@ func (conf *Config) Done() {
 	case modeTest:
 		conf.isTest = true
 	default:
-		panic(fmt.Errorf("snow.ini: unknown `app.mode`"))
+		panic(fmt.Errorf("suna.ini: unknown `app.mode`"))
 	}
-
-	conf.initRedisClient()
-	conf.initSqlClient()
 }

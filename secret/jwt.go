@@ -14,7 +14,7 @@ func JwtEncode(data jwt.Claims) string {
 	return ts
 }
 
-var signMethodError = fmt.Errorf("snow.withSecret.jwt: unexpected signing method")
+var signMethodError = fmt.Errorf("suna.withSecret.jwt: unexpected signing method")
 
 func JwtDecode(ts string) (jwt.Claims, error) {
 	token, err := jwt.Parse(

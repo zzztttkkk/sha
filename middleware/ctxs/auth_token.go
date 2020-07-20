@@ -3,8 +3,8 @@ package ctxs
 import (
 	"github.com/valyala/fasthttp"
 
-	"github.com/zzztttkkk/snow/internal"
-	"github.com/zzztttkkk/snow/middleware/interfaces"
+	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/middleware/interfaces"
 )
 
 func User(ctx *fasthttp.RequestCtx) interfaces.User {

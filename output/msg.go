@@ -29,7 +29,7 @@ func toJson(ctx *fasthttp.RequestCtx, data interface{}) {
 	if err == nil {
 		return
 	}
-	log.Printf("snow.output: json encode error, %s\r\n", err.Error())
+	log.Printf("suna.output: json encode error, %s\r\n", err.Error())
 }
 
 func Msg(ctx *fasthttp.RequestCtx, code int, data interface{}) {
@@ -39,7 +39,7 @@ func Msg(ctx *fasthttp.RequestCtx, code int, data interface{}) {
 	if data == nil {
 		_, err := ctx.Write(emptyMsg)
 		if err != nil {
-			log.Printf("snow.output: ctx write error, %s\r\n", err.Error())
+			log.Printf("suna.output: ctx write error, %s\r\n", err.Error())
 		}
 		return
 	}

@@ -9,19 +9,15 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-type Enumer interface {
-	GetId() int64
-	GetName() string
-}
-
 type EnumCache struct {
-	im          map[int64]interface{}
-	nm          map[string]interface{}
+	im          map[int64]Enumer
+	nm          map[string]Enumer
 	all         []Enumer
 	last        int64
 	expire      int64
 	op          *Operator
 	constructor func() Enumer
+	initer      func(context.Context, interface{}) error
 	rwm         sync.RWMutex
 	sg          singleflight.Group
 }
@@ -42,13 +38,14 @@ func (cache *EnumCache) load(ctx context.Context) {
 
 	cache.all = make([]Enumer, 0, len(cache.all))
 
-	cache.op.XStructScanMany(
+	cache.op.XStructScanManyWithInit(
 		ctx,
 		func() interface{} {
 			obj := cache.constructor()
 			cache.all = append(cache.all, obj)
 			return obj
 		},
+		cache.initer,
 		fmt.Sprintf(`select * from %s where deleted=0 and status>=0 order by id`, cache.op.TableName()),
 	)
 
@@ -59,16 +56,14 @@ func (cache *EnumCache) load(ctx context.Context) {
 	cache.last = time.Now().Unix()
 }
 
-func (cache *EnumCache) isValid() bool {
-	return time.Now().Unix()-cache.last <= cache.expire
-}
-
 func (cache *EnumCache) refresh(ctx context.Context) {
 	cache.rwm.RLock()
-	if cache.isValid() {
+
+	if time.Now().Unix()-cache.last <= cache.expire {
 		cache.rwm.RUnlock()
 		return
 	}
+
 	cache.rwm.RUnlock()
 
 	cache.doLoad(ctx)
@@ -80,7 +75,7 @@ func (cache *EnumCache) doExpire() {
 	cache.last = 0
 }
 
-func (cache *EnumCache) GetById(ctx context.Context, id int64) (interface{}, bool) {
+func (cache *EnumCache) GetById(ctx context.Context, id int64) (Enumer, bool) {
 	cache.refresh(ctx)
 
 	cache.rwm.RLock()
@@ -90,7 +85,7 @@ func (cache *EnumCache) GetById(ctx context.Context, id int64) (interface{}, boo
 	return v, ok
 }
 
-func (cache *EnumCache) GetByName(ctx context.Context, name string) (interface{}, bool) {
+func (cache *EnumCache) GetByName(ctx context.Context, name string) (Enumer, bool) {
 	cache.refresh(ctx)
 
 	cache.rwm.RLock()

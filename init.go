@@ -1,16 +1,19 @@
-package snow
+package suna
 
 import (
-	"github.com/zzztttkkk/snow/sqls"
+	"github.com/go-redis/redis/v7"
+	"github.com/jmoiron/sqlx"
 
-	"github.com/zzztttkkk/snow/secret"
+	"github.com/zzztttkkk/suna/sqls"
 
-	"github.com/zzztttkkk/snow/output"
+	"github.com/zzztttkkk/suna/secret"
 
-	"github.com/zzztttkkk/snow/internal"
+	"github.com/zzztttkkk/suna/output"
 
-	"github.com/zzztttkkk/snow/ini"
-	"github.com/zzztttkkk/snow/middleware"
+	"github.com/zzztttkkk/suna/internal"
+
+	"github.com/zzztttkkk/suna/ini"
+	"github.com/zzztttkkk/suna/middleware"
 )
 
 type InitOption struct {
@@ -32,6 +35,8 @@ func Init(opt *InitOption) *ini.Config {
 		},
 	)
 	internal.Provide(func() middleware.Auther { return opt.Auther })
+	internal.Provide(func(conf *ini.Config) redis.Cmdable { return config.RedisClient() })
+	internal.Provide(func(conf *ini.Config) (*sqlx.DB, []*sqlx.DB) { return config.SqlClients() })
 
 	internal.Invoke(middleware.Init)
 	internal.Invoke(output.Init)

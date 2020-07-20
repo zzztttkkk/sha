@@ -8,7 +8,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/suna/utils"
 )
 
 //noinspection RegExpRedundantEscape
@@ -36,7 +36,7 @@ func doReplace(config *Config, v []byte, currentSectionName string, currentResul
 			name := string(bytes[5 : len(bytes)-1])
 			val := os.Getenv(name)
 			if len(val) < 1 {
-				panic(fmt.Errorf("snow.ini: env: `%s` not found", name))
+				panic(fmt.Errorf("suna.ini: env: `%s` not found", name))
 			}
 			return utils.S2b(val)
 		},
@@ -56,7 +56,7 @@ func doReplace(config *Config, v []byte, currentSectionName string, currentResul
 			}
 
 			if len(_v) < 1 {
-				panic(fmt.Errorf("snow.ini: val: `%s` not found", name))
+				panic(fmt.Errorf("suna.ini: val: `%s` not found", name))
 			}
 			return _v
 		},
@@ -89,7 +89,7 @@ func parseIniFile(config *Config, filename string) {
 
 		if !isValid {
 			if isErr {
-				panic(fmt.Errorf("snow.ini: line: %d", lineNum))
+				panic(fmt.Errorf("suna.ini: line: %d", lineNum))
 			}
 			continue
 		}

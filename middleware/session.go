@@ -10,10 +10,11 @@ import (
 	"github.com/rs/xid"
 	"github.com/valyala/fasthttp"
 
-	"github.com/zzztttkkk/snow/internal"
-	"github.com/zzztttkkk/snow/middleware/interfaces"
-	"github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/router"
+
+	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/middleware/interfaces"
+	"github.com/zzztttkkk/suna/utils"
 )
 
 var (
@@ -22,7 +23,7 @@ var (
 	SessionExpire   = time.Hour
 )
 
-var sessionKeyPrefix = "snow"
+var sessionKeyPrefix = "suna"
 
 type _SessionT struct {
 	id    []byte

@@ -2,11 +2,14 @@ package middleware
 
 import (
 	"fmt"
+
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/middleware/ctxs"
-	"github.com/zzztttkkk/snow/output"
-	rbacpkg "github.com/zzztttkkk/snow/rbac"
-	"github.com/zzztttkkk/snow/router"
+	"github.com/zzztttkkk/router"
+
+	"github.com/zzztttkkk/suna/rbac"
+
+	"github.com/zzztttkkk/suna/middleware/ctxs"
+	"github.com/zzztttkkk/suna/output"
 )
 
 type _PermissionPolicyT int
@@ -18,12 +21,11 @@ const (
 
 var PermissionDeniedError = output.NewHttpError(fasthttp.StatusForbidden, -1, "permission denied")
 
-func NewPermissionCheckMiddleware(rbac rbacpkg.Rbac, policy _PermissionPolicyT, permissions []string) fasthttp.RequestHandler {
-	return NewPermissionCheckHandler(rbac, policy, permissions, router.Next)
+func NewPermissionCheckMiddleware(policy _PermissionPolicyT, permissions []string) fasthttp.RequestHandler {
+	return NewPermissionCheckHandler(policy, permissions, router.Next)
 }
 
 func NewPermissionCheckHandler(
-	rbac rbacpkg.Rbac,
 	policy _PermissionPolicyT,
 	permissions []string,
 	next fasthttp.RequestHandler,
@@ -37,8 +39,7 @@ func NewPermissionCheckHandler(
 			}
 
 			for _, permission := range permissions {
-				ok, _ := rbac.IsGranted(ctx, user, permission)
-				if ok {
+				if rbac.IsGranted(ctx, user, permission) {
 					next(ctx)
 					return
 				}
@@ -46,10 +47,10 @@ func NewPermissionCheckHandler(
 
 			output.Error(ctx, PermissionDeniedError)
 		}
-}
+	}
 
 	if policy != ALL {
-		panic(fmt.Errorf("snow.middleware.rbac: unknown policy `%d`", policy))
+		panic(fmt.Errorf("suna.middleware.rbac: unknown policy `%d`", policy))
 	}
 
 	return func(ctx *fasthttp.RequestCtx) {
@@ -60,8 +61,7 @@ func NewPermissionCheckHandler(
 		}
 
 		for _, permission := range permissions {
-			ok, _ := rbac.IsGranted(ctx, user, permission)
-			if !ok {
+			if !rbac.IsGranted(ctx, user, permission) {
 				output.Error(ctx, PermissionDeniedError)
 				return
 			}

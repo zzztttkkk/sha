@@ -90,8 +90,8 @@ func NewNamedFmt(fs string, cached bool) *_NamedFmtT {
 	return rv
 }
 
-func NewNamedFmtCached(fmts string) *_NamedFmtT {
-	return NewNamedFmt(fmts, true)
+func NewNamedFmtCached(fs string) *_NamedFmtT {
+	return NewNamedFmt(fs, true)
 }
 
 func (f *_NamedFmtT) getVl(v M) (vl []interface{}) {

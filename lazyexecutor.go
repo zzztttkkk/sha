@@ -1,4 +1,4 @@
-package snow
+package suna
 
 import (
 	"fmt"

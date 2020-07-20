@@ -2,8 +2,9 @@ package middleware
 
 import (
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/secret"
+	"github.com/zzztttkkk/router"
+
+	"github.com/zzztttkkk/suna/secret"
 )
 
 type SignOption struct {

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/output"
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/utils"
 	"reflect"
 )
 

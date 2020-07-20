@@ -3,7 +3,7 @@ package output
 import (
 	"github.com/go-errors/errors"
 
-	"github.com/zzztttkkk/snow/ini"
+	"github.com/zzztttkkk/suna/ini"
 )
 
 func Init(conf *ini.Config) {

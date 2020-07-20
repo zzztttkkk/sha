@@ -1,6 +1,6 @@
 package interfaces
 
-import "github.com/zzztttkkk/snow/rbac"
+import "github.com/zzztttkkk/suna/rbac"
 
 type User interface {
 	rbac.Subject

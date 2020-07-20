@@ -55,9 +55,7 @@ func S2U32(s string) uint32 {
 	return uint32(v)
 }
 
-func B2U32(b []byte) uint32 {
-	return S2U32(B2s(b))
-}
+func B2U32(b []byte) uint32 { return S2U32(B2s(b)) }
 
 func S2I32(s string) int32 {
 	v, e := strconv.ParseInt(s, 10, 32)
@@ -67,9 +65,15 @@ func S2I32(s string) int32 {
 	return int32(v)
 }
 
-func B2I32(b []byte) int32 {
-	return S2I32(B2s(b))
+func S2I64(s string) int64 {
+	v, e := strconv.ParseInt(s, 10, 64)
+	if e != nil {
+		panic(e)
+	}
+	return v
 }
+
+func B2I32(b []byte) int32 { return S2I32(B2s(b)) }
 
 type BytesPool struct {
 	defaultSize int
@@ -88,9 +92,7 @@ func NewBytesPool(cap, size int) *BytesPool {
 	}
 }
 
-func (bp *BytesPool) Get() *[]byte {
-	return bp.poll.Get().(*[]byte)
-}
+func (bp *BytesPool) Get() *[]byte { return bp.poll.Get().(*[]byte) }
 
 func (bp *BytesPool) Put(v *[]byte) {
 	sl := *v

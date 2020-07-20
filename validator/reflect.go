@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/zzztttkkk/snow/reflectx"
+	"github.com/zzztttkkk/suna/reflectx"
 )
 
 var funcMap = map[string]func([]byte) ([]byte, bool){}
@@ -99,20 +99,20 @@ func (p *_ValidatorParser) OnName(name string) {
 }
 
 func (p *_ValidatorParser) OnAttr(key, val string) {
-	var rangeErr = fmt.Errorf("snow.validator: error length range `%s`", val)
+	var rangeErr = fmt.Errorf("suna.validator: error length range `%s`", val)
 	rule := p.current
 	switch key {
 	case "R", "regexp":
 		rule.reg = regexpMap[val]
 		rule.regName = val
 		if rule.reg == nil {
-			panic(fmt.Errorf("snow.validator: unregistered regexp `%s`", val))
+			panic(fmt.Errorf("suna.validator: unregistered regexp `%s`", val))
 		}
 	case "F", "function":
 		rule.fn = funcMap[val]
 		rule.fnName = val
 		if rule.fn == nil {
-			panic(fmt.Errorf("snow.validator: unregistered function `%s`", val))
+			panic(fmt.Errorf("suna.validator: unregistered function `%s`", val))
 		}
 	case "L", "length":
 		rule.lrange = true

@@ -6,8 +6,9 @@ import (
 
 	"github.com/valyala/fasthttp"
 
-	srouter "github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/router"
+
+	"github.com/zzztttkkk/suna/utils"
 )
 
 type CorsOption struct {
@@ -25,7 +26,7 @@ type CorsOption struct {
 func (option *CorsOption) init() {
 	var kvs []string
 	if len(option.AllowOrigins) < 1 {
-		panic("snow.middleware.cors: empty AllowOrigins")
+		panic("suna.middleware.cors: empty AllowOrigins")
 	} else if option.AllowOrigins != "*" {
 		for _, name := range strings.Split(option.AllowOrigins, ";") {
 			name := strings.TrimSpace(name)
@@ -86,13 +87,13 @@ func (option *CorsOption) writeHeaders(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (option *CorsOption) BindOptions(path string, router srouter.Router) {
+func (option *CorsOption) BindOptions(path string, router *router.Router) {
 	option.init()
 	router.OPTIONS(path, option.writeHeaders)
 }
 
 func NewCorsMiddleware(option *CorsOption) fasthttp.RequestHandler {
-	return NewCorsHandler(option, srouter.Next)
+	return NewCorsHandler(option, router.Next)
 }
 
 func NewCorsHandler(option *CorsOption, next fasthttp.RequestHandler) fasthttp.RequestHandler {

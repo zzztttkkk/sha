@@ -3,7 +3,7 @@ package secret
 import (
 	"fmt"
 
-	"github.com/zzztttkkk/snow/ini"
+	"github.com/zzztttkkk/suna/ini"
 )
 
 var gSecretKey []byte
@@ -14,6 +14,6 @@ func Init(conf *ini.Config) {
 	hashMethod := conf.GetOr("secret.hash", "sha256-512")
 	Default = hashMap[hashMethod]
 	if Default == nil {
-		panic(fmt.Errorf("snow.secret: unknown hash method `%s`", hashMethod))
+		panic(fmt.Errorf("suna.secret: unknown hash method `%s`", hashMethod))
 	}
 }

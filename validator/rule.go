@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/suna/utils"
 	"html"
 	"regexp"
 	"strconv"

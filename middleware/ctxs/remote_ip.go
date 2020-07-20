@@ -5,9 +5,9 @@ import (
 
 	"github.com/valyala/fasthttp"
 
-	"github.com/zzztttkkk/snow/internal"
-	"github.com/zzztttkkk/snow/secret"
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/secret"
+	"github.com/zzztttkkk/suna/utils"
 )
 
 var forwardSep = []byte(",")

@@ -1,4 +1,4 @@
-package snow
+package suna
 
 import (
 	"fmt"
@@ -6,8 +6,9 @@ import (
 
 	"github.com/valyala/fasthttp"
 
-	"github.com/zzztttkkk/snow/router"
-	"github.com/zzztttkkk/snow/utils"
+	"github.com/zzztttkkk/router"
+
+	"github.com/zzztttkkk/suna/utils"
 )
 
 func RunAsHttpServer(loader *_LoaderT, root *router.Router) {
