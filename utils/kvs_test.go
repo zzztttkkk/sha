@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestAcquireDict(t *testing.T) {
+func TestAcquireutils.M(t *testing.T) {
 	dict := AcquireKvs()
 	dict.Append("a", 34)
 	dict.Append("b", "5666")

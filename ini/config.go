@@ -24,6 +24,8 @@ type Config struct {
 	sqlF []*sqlx.DB
 
 	rcmd redis.Cmdable
+
+	files []string
 }
 
 func New() *Config {
@@ -34,12 +36,13 @@ func New() *Config {
 }
 
 func (conf *Config) Load(filename string) {
+	conf.files = append(conf.files, filename)
 	parseIniFile(conf, filename)
 }
 
 func (conf *Config) Print() {
 	var ks []string
-	glog := utils.AcquireGroupLogger("Config")
+	glog := utils.AcquireGroupLogger(fmt.Sprintf("Config: [%s]", strings.Join(conf.files, "; ")))
 	defer utils.ReleaseGroupLogger(glog)
 
 	for k := range conf.raw {

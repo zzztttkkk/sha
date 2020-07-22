@@ -1,4 +1,4 @@
-package sqls
+package sqlu
 
 type Model struct {
 	Id      int64 `json:"id"`

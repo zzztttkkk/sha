@@ -7,9 +7,9 @@ import (
 	"github.com/go-redis/redis/v7"
 )
 
-var redisUnknownModeError = errors.New("suna.redisc: unknown redis mode,[singleton,ring,cluster]")
+var redisUnknownModeError = errors.New("suna.cache: unknown redis mode,[singleton,ring,cluster]")
 var redisModes = map[string]bool{"singleton": true, "ring": true, "cluster": true}
-var redisInitError = errors.New("suna.redisc: init error")
+var redisInitError = errors.New("suna.cache: init error")
 
 func makeRedisKey(n string) string {
 	return fmt.Sprintf("redis.%s", n)

@@ -1,4 +1,4 @@
-package sqls
+package sqlu
 
 import (
 	"context"
@@ -26,7 +26,14 @@ func JustUseMaster(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justMasterKey, true)
 }
 
+func doNothing() {}
+
 func Tx(ctx context.Context) (context.Context, func()) {
+	_tx := ctx.Value(txKey)
+	if _tx != nil {
+		return ctx, doNothing
+	}
+
 	tx := leader.MustBegin()
 
 	return context.WithValue(ctx, txKey, tx), func() {

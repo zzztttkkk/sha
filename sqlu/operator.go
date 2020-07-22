@@ -1,4 +1,4 @@
-package sqls
+package sqlu
 
 import (
 	"fmt"
@@ -34,12 +34,18 @@ func CreateTable(ele reflect.Value) {
 	}
 
 	lines := (tablecreationFn.Call(nil)[0]).Interface().([]string)
-
-	leader.MustExec(
-		fmt.Sprintf(
-			"create table if not exists %s (%s)",
-			getTableName(ele),
-			strings.Join(lines, ","),
-		),
+	q := fmt.Sprintf(
+		"create table if not exists %s (%s)",
+		getTableName(ele),
+		strings.Join(lines, ","),
 	)
+	leader.MustExec(q)
+}
+
+func (op *Operator) BindNamed(q string, m map[string]interface{}) (string, []interface{}) {
+	s, vl, err := leader.BindNamed(q, m)
+	if err != nil {
+		panic(err)
+	}
+	return s, vl
 }

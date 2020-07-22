@@ -1,4 +1,4 @@
-package sqls
+package sqlu
 
 import (
 	"context"
@@ -38,7 +38,7 @@ func (cache *EnumCache) load(ctx context.Context) {
 
 	cache.all = make([]Enumer, 0, len(cache.all))
 
-	cache.op.XStructScanManyWithInit(
+	cache.op.XSM(
 		ctx,
 		func() interface{} {
 			obj := cache.constructor()

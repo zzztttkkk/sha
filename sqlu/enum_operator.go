@@ -1,8 +1,9 @@
-package sqls
+package sqlu
 
 import (
 	"context"
 	"fmt"
+	"github.com/zzztttkkk/suna/utils"
 	"reflect"
 	"sync"
 	"time"
@@ -38,12 +39,12 @@ func (op *EnumOperator) Init(ele reflect.Value, constructor func() Enumer, inite
 	op.cache = op.NewEnumCache(expire, constructor, initer)
 }
 
-func (op *EnumOperator) Create(ctx context.Context, dict Dict) int64 {
+func (op *EnumOperator) Create(ctx context.Context, dict utils.M) int64 {
 	defer op.cache.doExpire()
 
 	_, ok := dict["name"]
 	if !ok {
-		panic(fmt.Errorf("suna.sqls: enum key `name` is empty"))
+		panic(fmt.Errorf("suna.sqlu: enum key `name` is empty"))
 	}
 	dict["created"] = time.Now().Unix()
 	return op.XCreate(ctx, dict)
@@ -53,9 +54,9 @@ func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 	defer op.cache.doExpire()
 	return op.XUpdate(
 		ctx,
-		Dict{"deleted": time.Now().Unix(), "name": fmt.Sprintf("!!!Deleted<%s>!!!", name)},
+		utils.M{"deleted": time.Now().Unix(), "name": fmt.Sprintf("!!!Deleted<%s>!!!", name)},
 		"name=:name and deleted=0",
-		Dict{"name": name},
+		utils.M{"name": name},
 	) > 0
 }
 
@@ -69,7 +70,15 @@ func (op *EnumOperator) ExistsByName(ctx context.Context, name string) bool {
 	return ok
 }
 
-func (op *EnumOperator) GetName(ctx context.Context, eid int64) string {
+func (op *EnumOperator) GetById(ctx context.Context, eid int64) (Enumer, bool) {
+	return op.cache.GetById(ctx, eid)
+}
+
+func (op *EnumOperator) GetByName(ctx context.Context, name string) (Enumer, bool) {
+	return op.cache.GetByName(ctx, name)
+}
+
+func (op *EnumOperator) GetNameById(ctx context.Context, eid int64) string {
 	e, ok := op.cache.GetById(ctx, eid)
 	if !ok {
 		return ""
@@ -77,7 +86,7 @@ func (op *EnumOperator) GetName(ctx context.Context, eid int64) string {
 	return e.GetName()
 }
 
-func (op *EnumOperator) GetId(ctx context.Context, name string) int64 {
+func (op *EnumOperator) GetIdByName(ctx context.Context, name string) int64 {
 	e, ok := op.cache.GetByName(ctx, name)
 	if !ok {
 		return -1

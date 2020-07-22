@@ -3,8 +3,9 @@ package suna
 import (
 	"github.com/go-redis/redis/v7"
 	"github.com/jmoiron/sqlx"
+	"github.com/zzztttkkk/suna/cache"
 
-	"github.com/zzztttkkk/suna/sqls"
+	"github.com/zzztttkkk/suna/sqlu"
 
 	"github.com/zzztttkkk/suna/secret"
 
@@ -40,8 +41,9 @@ func Init(opt *InitOption) *ini.Config {
 
 	internal.Invoke(middleware.Init)
 	internal.Invoke(output.Init)
+	internal.Invoke(cache.Init)
 	internal.Invoke(secret.Init)
-	internal.Invoke(sqls.Init)
+	internal.Invoke(sqlu.Init)
 
 	return config
 }

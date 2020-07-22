@@ -1,4 +1,4 @@
-package sqls
+package sqlu
 
 type Enumer interface {
 	GetId() int64
