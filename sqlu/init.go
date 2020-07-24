@@ -8,12 +8,12 @@ import (
 	"strings"
 )
 
-var config *ini.Config
+var config *ini.Ini
 var leader *sqlx.DB
 var followers []*sqlx.DB
 var sqlLog bool
 
-func Init(conf *ini.Config, leaderV *sqlx.DB, followersV []*sqlx.DB) {
+func Init(conf *ini.Ini, leaderV *sqlx.DB, followersV []*sqlx.DB) {
 	config = conf
 	leader = leaderV
 	followers = followersV

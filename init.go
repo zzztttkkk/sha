@@ -3,7 +3,8 @@ package suna
 import (
 	"github.com/go-redis/redis/v7"
 	"github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/suna/cache"
+	"github.com/zzztttkkk/suna/ctxs"
+	"github.com/zzztttkkk/suna/rbac"
 
 	"github.com/zzztttkkk/suna/sqlu"
 
@@ -18,15 +19,15 @@ import (
 )
 
 type InitOption struct {
-	IniFiles []string
-	Auther   middleware.Auther
+	IniFiles      []string
+	Authenticator ctxs.Authenticator
 }
 
 var config = ini.New()
 
-func Init(opt *InitOption) *ini.Config {
+func Init(opt *InitOption) *ini.Ini {
 	internal.Provide(
-		func() *ini.Config {
+		func() *ini.Ini {
 			for _, fn := range opt.IniFiles {
 				config.Load(fn)
 			}
@@ -35,13 +36,14 @@ func Init(opt *InitOption) *ini.Config {
 			return config
 		},
 	)
-	internal.Provide(func() middleware.Auther { return opt.Auther })
-	internal.Provide(func(conf *ini.Config) redis.Cmdable { return config.RedisClient() })
-	internal.Provide(func(conf *ini.Config) (*sqlx.DB, []*sqlx.DB) { return config.SqlClients() })
+	internal.Provide(func() ctxs.Authenticator { return opt.Authenticator })
+	internal.Provide(func(conf *ini.Ini) redis.Cmdable { return config.RedisClient() })
+	internal.Provide(func(conf *ini.Ini) (*sqlx.DB, []*sqlx.DB) { return config.SqlClients() })
 
+	internal.Invoke(ctxs.Init)
 	internal.Invoke(middleware.Init)
 	internal.Invoke(output.Init)
-	internal.Invoke(cache.Init)
+	internal.Invoke(rbac.Init)
 	internal.Invoke(secret.Init)
 	internal.Invoke(sqlu.Init)
 

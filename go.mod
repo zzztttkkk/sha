@@ -3,13 +3,10 @@ module github.com/zzztttkkk/suna
 go 1.14
 
 require (
-	github.com/RoaringBitmap/roaring v0.5.0
 	github.com/dchest/captcha v0.0.0-20170622155422-6a29415a8364
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-errors/errors v1.1.1
 	github.com/go-redis/redis/v7 v7.4.0
 	github.com/go-redis/redis_rate/v8 v8.0.0
-	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/rs/xid v1.2.1

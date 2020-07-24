@@ -12,15 +12,10 @@ var AsciiUpperLetters = []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var AsciiLetters = make([]byte, 0)
 var Digits = []byte("0123456789")
 var Asciis = make([]byte, 0)
-var HexDigits = make([]byte, 0)
-var Base64 = make([]byte, 0)
-var Base58 = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 
 func init() {
 	AsciiLetters = append(AsciiLetters, append(AsciiLowerLetters, AsciiUpperLetters...)...)
 	Asciis = append(Asciis, append(AsciiLetters, Digits...)...)
-	HexDigits = append(HexDigits, append(Digits, []byte("abcdefABCDEF")...)...)
-	Base64 = append(Base64, append(AsciiLetters, Digits...)...)
 }
 
 var SeedPoolSize uint32 = 512

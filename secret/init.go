@@ -8,7 +8,7 @@ import (
 
 var gSecretKey []byte
 
-func Init(conf *ini.Config) {
+func Init(conf *ini.Ini) {
 	gSecretKey = conf.GetMust("secret.key")
 
 	hashMethod := conf.GetOr("secret.hash", "sha256-512")

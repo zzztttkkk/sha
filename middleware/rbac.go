@@ -8,7 +8,7 @@ import (
 
 	"github.com/zzztttkkk/suna/rbac"
 
-	"github.com/zzztttkkk/suna/middleware/ctxs"
+	"github.com/zzztttkkk/suna/ctxs"
 	"github.com/zzztttkkk/suna/output"
 )
 
@@ -32,7 +32,7 @@ func NewPermissionCheckHandler(
 ) fasthttp.RequestHandler {
 	if policy == ANY {
 		return func(ctx *fasthttp.RequestCtx) {
-			user := ctxs.User(ctx)
+			user := ctxs.Subject(ctx)
 			if user == nil {
 				output.StdError(ctx, fasthttp.StatusUnauthorized)
 				return
@@ -54,7 +54,7 @@ func NewPermissionCheckHandler(
 	}
 
 	return func(ctx *fasthttp.RequestCtx) {
-		user := ctxs.User(ctx)
+		user := ctxs.Subject(ctx)
 		if user == nil {
 			output.StdError(ctx, fasthttp.StatusUnauthorized)
 			return

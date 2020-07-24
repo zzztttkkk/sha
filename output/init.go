@@ -6,6 +6,6 @@ import (
 	"github.com/zzztttkkk/suna/ini"
 )
 
-func Init(conf *ini.Config) {
-	errors.MaxStackDepth = int(conf.GetIntOr("output.max_stack_depth", 20))
+func Init(conf *ini.Ini) {
+	errors.MaxStackDepth = int(conf.GetIntOr("output.error.max_depth", 20))
 }

@@ -17,7 +17,7 @@ var iniEnvRegexp = regexp.MustCompile(`^\$ENV\{\w+}$`)
 //noinspection RegExpRedundantEscape
 var iniNameRegexp = regexp.MustCompile(`^\$\{[\w._]+}$`)
 
-func doReplace(config *Config, v []byte, currentSectionName string, currentResult map[string][]byte) []byte {
+func doReplace(config *Ini, v []byte, currentSectionName string, currentResult map[string][]byte) []byte {
 	if bytes.HasPrefix(v, []byte("file://")) {
 		file, err := os.Open(string(v[7:]))
 		if err != nil {
@@ -65,7 +65,7 @@ func doReplace(config *Config, v []byte, currentSectionName string, currentResul
 	return vs
 }
 
-func parseIniFile(config *Config, filename string) {
+func parseIniFile(config *Ini, filename string) {
 	var err error
 
 	var f *os.File

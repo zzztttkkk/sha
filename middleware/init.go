@@ -7,11 +7,9 @@ import (
 	"github.com/zzztttkkk/suna/ini"
 )
 
-var config *ini.Config
+var config *ini.Ini
 
-func Init(conf *ini.Config, autherV Auther, redisc redis.Cmdable) {
-	auther = autherV
-	redisClient = redisc
-	rateLimiter = redis_rate.NewLimiter(redisClient)
+func Init(conf *ini.Ini, redisc redis.Cmdable) {
+	rateLimiter = redis_rate.NewLimiter(redisc)
 	config = conf
 }

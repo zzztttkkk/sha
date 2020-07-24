@@ -22,7 +22,7 @@ func newSqlDB(dn, url string, maxLifeTime time.Duration, maxOpenConns int) *sqlx
 	return db
 }
 
-func (conf *Config) SqlClients() (*sqlx.DB, []*sqlx.DB) {
+func (conf *Ini) SqlClients() (*sqlx.DB, []*sqlx.DB) {
 	if conf.sqlL != nil {
 		return conf.sqlL, conf.sqlF
 	}

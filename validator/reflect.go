@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/zzztttkkk/suna/reflectx"
+	"github.com/zzztttkkk/suna/internal/reflectx"
 )
 
 var funcMap = map[string]func([]byte) ([]byte, bool){}

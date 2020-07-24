@@ -15,7 +15,7 @@ func makeRedisKey(n string) string {
 	return fmt.Sprintf("redis.%s", n)
 }
 
-func (conf *Config) RedisClient() redis.Cmdable {
+func (conf *Ini) RedisClient() redis.Cmdable {
 	if conf.rcmd != nil {
 		return conf.rcmd
 	}
@@ -25,7 +25,7 @@ func (conf *Config) RedisClient() redis.Cmdable {
 		panic(redisUnknownModeError)
 	}
 
-	var nodesCount = 0
+	var nodesCount int
 	var err error
 	if mode == "singleton" {
 		nodesCount = 1
@@ -54,7 +54,7 @@ func (conf *Config) RedisClient() redis.Cmdable {
 	nodeLst := make([]string, 0)
 	passwordLst := make([]string, 0)
 
-	for _, addr := range urls {
+	for i, addr := range urls {
 		option, err = redis.ParseURL(addr)
 		if err != nil {
 			panic(err)
@@ -62,7 +62,7 @@ func (conf *Config) RedisClient() redis.Cmdable {
 
 		nodeLst = append(nodeLst, option.Addr)
 		passwordLst = append(passwordLst, option.Password)
-		nodeMap[option.Addr] = option.Addr
+		nodeMap[fmt.Sprintf("node.%d", i)] = option.Addr
 		passwordMaps[option.Addr] = option.Password
 	}
 
