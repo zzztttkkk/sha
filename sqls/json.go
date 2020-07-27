@@ -1,4 +1,4 @@
-package sqlu
+package sqls
 
 import (
 	"database/sql/driver"

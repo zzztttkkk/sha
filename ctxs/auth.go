@@ -8,27 +8,27 @@ import (
 )
 
 type Authenticator interface {
-	Auth(*fasthttp.RequestCtx) rbac.Subject
+	Auth(*fasthttp.RequestCtx) rbac.User
 }
 
-type _EmptySubject struct {
+type _EmptyUser struct {
 }
 
-func (subject *_EmptySubject) GetId() int64 {
+func (subject *_EmptyUser) GetId() int64 {
 	return -1
 }
 
 var authenticator Authenticator
-var emptySubject rbac.Subject = &_EmptySubject{}
+var emptyUser rbac.User = &_EmptyUser{}
 
-func Subject(ctx *fasthttp.RequestCtx) rbac.Subject {
+func User(ctx *fasthttp.RequestCtx) rbac.User {
 	if authenticator == nil {
 		return nil
 	}
 
-	iv, ok := ctx.UserValue(internal.RCtxKeySubject).(rbac.Subject)
+	iv, ok := ctx.UserValue(internal.RCtxKeyUser).(rbac.User)
 	if ok {
-		if iv == emptySubject {
+		if iv == emptyUser {
 			return nil
 		}
 		return iv
@@ -36,10 +36,10 @@ func Subject(ctx *fasthttp.RequestCtx) rbac.Subject {
 
 	subject := authenticator.Auth(ctx)
 	if subject == nil || subject.GetId() < 1 {
-		ctx.SetUserValue(internal.RCtxKeySubject, emptySubject)
+		ctx.SetUserValue(internal.RCtxKeyUser, emptyUser)
 		return nil
 	}
 
-	ctx.SetUserValue(internal.RCtxKeySubject, subject)
+	ctx.SetUserValue(internal.RCtxKeyUser, subject)
 	return subject
 }

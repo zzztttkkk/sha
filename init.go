@@ -5,8 +5,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/suna/ctxs"
 	"github.com/zzztttkkk/suna/rbac"
-
-	"github.com/zzztttkkk/suna/sqlu"
+	"github.com/zzztttkkk/suna/sqls"
 
 	"github.com/zzztttkkk/suna/secret"
 
@@ -45,7 +44,7 @@ func Init(opt *InitOption) *ini.Ini {
 	internal.Invoke(output.Init)
 	internal.Invoke(rbac.Init)
 	internal.Invoke(secret.Init)
-	internal.Invoke(sqlu.Init)
+	internal.Invoke(sqls.Init)
 
 	return config
 }

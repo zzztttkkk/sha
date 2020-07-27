@@ -5,28 +5,28 @@ import (
 	"net/http"
 )
 
-type HttpError interface {
+type Err interface {
 	Error() string
 	StatusCode() int
 	Message() *Message
 }
 
-type _HttpErrorT struct {
+type _Error struct {
 	hcode  int
 	errno  int
 	errmsg string
 	msg    *Message
 }
 
-func (e *_HttpErrorT) Error() string {
+func (e *_Error) Error() string {
 	return fmt.Sprintf("%d %s", e.errno, e.errmsg)
 }
 
-func (e *_HttpErrorT) StatusCode() int {
+func (e *_Error) StatusCode() int {
 	return e.hcode
 }
 
-func (e *_HttpErrorT) Message() *Message {
+func (e *_Error) Message() *Message {
 	if e.msg != nil {
 		return e.msg
 	}
@@ -38,8 +38,8 @@ func (e *_HttpErrorT) Message() *Message {
 	return e.msg
 }
 
-func NewHttpError(httpCode, customErrno int, errmsg string) *_HttpErrorT {
-	return &_HttpErrorT{
+func NewError(httpCode, customErrno int, errmsg string) *_Error {
+	return &_Error{
 		hcode:  httpCode,
 		errno:  customErrno,
 		errmsg: errmsg,
@@ -47,7 +47,7 @@ func NewHttpError(httpCode, customErrno int, errmsg string) *_HttpErrorT {
 	}
 }
 
-var StdErrors = map[int]*_HttpErrorT{}
+var HttpErrors = map[int]*_Error{}
 
 func init() {
 	for v := 100; v < 550; v++ {
@@ -55,6 +55,6 @@ func init() {
 		if len(txt) < 1 {
 			continue
 		}
-		StdErrors[v] = NewHttpError(v, -1, txt)
+		HttpErrors[v] = NewError(v, -1, txt)
 	}
 }

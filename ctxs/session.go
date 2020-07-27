@@ -40,7 +40,7 @@ func _initSession() {
 func newSession(ctx *fasthttp.RequestCtx) SessionStorage {
 	var sessionId string
 
-	subject := Subject(ctx)
+	subject := User(ctx)
 	if subject != nil {
 		sidKey := fmt.Sprintf("%su:%d", sessionKeyPrefix, subject.GetId())
 		sessionId = redisc.Get(sidKey).String()

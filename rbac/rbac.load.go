@@ -2,24 +2,41 @@ package rbac
 
 import (
 	"context"
+	"sync"
 )
+
+var g sync.RWMutex
+
+var permIdMap map[int64]*_Permission
+var permNameMap map[string]*_Permission
+var roleIdMap map[int64]*Role
+
+var rolePermMap map[int64]map[int64]bool
 
 func Load(ctx context.Context) {
 	g.Lock()
 	defer g.Unlock()
 
-	permIdMap = map[int64]Permission{}
-	permNameMap = map[string]Permission{}
-	roleIdMap = map[int64]Role{}
+	permIdMap = map[int64]*_Permission{}
+	permNameMap = map[string]*_Permission{}
+	roleIdMap = map[int64]*Role{}
 	rolePermMap = map[int64]map[int64]bool{}
 
-	for _, p := range backend.GetAllPermissions(ctx) {
-		permIdMap[p.GetId()] = p
-		permNameMap[p.GetName()] = p
+	for _, enum := range _PermissionOperator.List(ctx) {
+		p := enum.(*_Permission)
+		if p.Id < 1 {
+			continue
+		}
+		permIdMap[p.Id] = p
+		permNameMap[p.Name] = p
 	}
 
-	for _, r := range backend.GetAllRoles(ctx) {
-		roleIdMap[r.GetId()] = r
+	for _, enum := range _RoleOperator.List(ctx) {
+		r := enum.(*Role)
+		if r.Id < 1 {
+			continue
+		}
+		roleIdMap[r.Id] = r
 	}
 
 	buildRolePermMap()
@@ -31,7 +48,7 @@ func buildRolePermMap() {
 	}
 }
 
-func makeOneRole(role Role) map[int64]bool {
+func makeOneRole(role *Role) map[int64]bool {
 	pm := map[int64]bool{}
 	err := false
 
@@ -43,24 +60,25 @@ func makeOneRole(role Role) map[int64]bool {
 	return pm
 }
 
-func _makeOneRole(role Role, fp map[int64]bool, pm map[int64]bool, ep *bool) {
-	_, ok := fp[role.GetId()]
+func _makeOneRole(role *Role, footprints map[int64]bool, permMap map[int64]bool, errPtr *bool) {
+	_, ok := footprints[role.GetId()]
 	if ok {
-		*ep = true
+		*errPtr = true
+		// todo log
 		return
 	}
 
-	for _, pid := range role.GetPermissionIds() {
-		pm[pid] = true
+	for _, pid := range role.Permissions {
+		permMap[pid] = true
 	}
 
-	rpid := role.GetParentId()
-	if rpid > 0 {
-		rp := roleIdMap[rpid]
+	for _, basedId := range role.Based {
+		rp := roleIdMap[basedId]
 		if rp == nil {
-			*ep = true
+			*errPtr = true
+			// todo log
 			return
 		}
-		_makeOneRole(rp, fp, pm, ep)
+		_makeOneRole(rp, footprints, permMap, errPtr)
 	}
 }

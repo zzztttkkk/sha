@@ -1,8 +1,50 @@
 package rbac
 
-import "context"
+import (
+	"context"
+	"github.com/RoaringBitmap/roaring/roaring64"
+	"github.com/zzztttkkk/suna/cache"
+	"github.com/zzztttkkk/suna/utils"
+)
 
-func IsGranted(ctx context.Context, subject Subject, permission string) bool {
+type CheckPolicy int
+
+const (
+	PolicyAll = CheckPolicy(iota)
+	PolicyAny
+)
+
+var rolePermCache = cache.NewLru(200)
+
+func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
+	if len(roles) < 1 {
+		return nil
+	}
+
+	key := roles.Join(":")
+	v, ok := rolePermCache.Get(key)
+	if !ok {
+		return v.(*roaring64.Bitmap)
+	}
+
+	set := roaring64.New()
+
+	for _, rid := range roles {
+		m, ok := rolePermMap[rid]
+		if !ok {
+			// todo log
+			return nil
+		}
+		for p, _ := range m {
+			set.Add(uint64(p))
+		}
+	}
+
+	rolePermCache.Add(key, set)
+	return set
+}
+
+func IsGranted(ctx context.Context, subject User, policy CheckPolicy, permissions ...string) bool {
 	g.RLock()
 	defer g.RUnlock()
 
@@ -11,29 +53,39 @@ func IsGranted(ctx context.Context, subject Subject, permission string) bool {
 		return false
 	}
 
-	Perm, ok := permNameMap[permission]
-	if !ok {
+	var Perms []uint64
+	for _, name := range permissions {
+		v, ok := permNameMap[name]
+		if !ok {
+			return false
+		}
+		if v.Id < 1 {
+			return false
+		}
+		Perms = append(Perms, uint64(v.Id))
+	}
+
+	set := getBitmap(UserOperator.getRoles(ctx, SubjectId))
+	if set == nil {
 		return false
 	}
 
-	Pid := Perm.GetId()
-
-	// private subject can has permissions
-	if SubjectId < MaxPrivateSubjectId {
-		for _, pid := range backend.GetSubjectPermissions(ctx, subject.GetId()) {
-			if pid == Pid {
+	switch policy {
+	case PolicyAll:
+		for _, p := range Perms {
+			if !set.Contains(p) {
+				return false
+			}
+		}
+		return true
+	case PolicyAny:
+		for _, p := range Perms {
+			if set.Contains(p) {
 				return true
 			}
 		}
+		return false
+	default:
+		return false
 	}
-
-	for _, rid := range backend.GetSubjectRoles(ctx, subject.GetId()) {
-		permMap, ok := rolePermMap[rid]
-		if ok {
-			if permMap[Pid] {
-				return true
-			}
-		}
-	}
-	return false
 }

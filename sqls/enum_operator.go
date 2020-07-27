@@ -1,4 +1,4 @@
-package sqlu
+package sqls
 
 import (
 	"context"
@@ -14,10 +14,10 @@ type EnumOperator struct {
 	cache *EnumCache
 }
 
-func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() Enumer, initer func(context.Context, interface{}) error) *EnumCache {
+func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem, initer func(context.Context, interface{}) error) *EnumCache {
 	cache := &EnumCache{
-		im:          map[int64]Enumer{},
-		nm:          map[string]Enumer{},
+		im:          map[int64]EnumItem{},
+		nm:          map[string]EnumItem{},
 		last:        0,
 		expire:      seconds,
 		op:          &op.Operator,
@@ -29,12 +29,12 @@ func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() Enumer, i
 	return cache
 }
 
-func (op *EnumOperator) Init(ele reflect.Value, constructor func() Enumer, initer func(context.Context, interface{}) error) {
+func (op *EnumOperator) Init(ele reflect.Value, constructor func() EnumItem, initer func(context.Context, interface{}) error) {
 	op.Operator.Init(ele)
 
-	expire := config.GetIntOr(fmt.Sprintf("memcache.sqlenum.%s.expire", op.TableName()), -1)
+	expire := config.GetIntOr(fmt.Sprintf("cache.sqlenum.%s.expire", op.TableName()), -1)
 	if expire < 1 {
-		expire = config.GetIntOr("memcache.sqlenum.expire", 1800)
+		expire = config.GetIntOr("cache.sqlenum.expire", 1800)
 	}
 	op.cache = op.NewEnumCache(expire, constructor, initer)
 }
@@ -54,7 +54,7 @@ func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 	defer op.cache.doExpire()
 	return op.XUpdate(
 		ctx,
-		utils.M{"deleted": time.Now().Unix(), "name": fmt.Sprintf("!!!Deleted<%s>!!!", name)},
+		utils.M{"deleted": time.Now().Unix(), "name": fmt.Sprintf("Deleted<%s>", name)},
 		"name=:name and deleted=0",
 		utils.M{"name": name},
 	) > 0
@@ -70,11 +70,11 @@ func (op *EnumOperator) ExistsByName(ctx context.Context, name string) bool {
 	return ok
 }
 
-func (op *EnumOperator) GetById(ctx context.Context, eid int64) (Enumer, bool) {
+func (op *EnumOperator) GetById(ctx context.Context, eid int64) (EnumItem, bool) {
 	return op.cache.GetById(ctx, eid)
 }
 
-func (op *EnumOperator) GetByName(ctx context.Context, name string) (Enumer, bool) {
+func (op *EnumOperator) GetByName(ctx context.Context, name string) (EnumItem, bool) {
 	return op.cache.GetByName(ctx, name)
 }
 
@@ -94,7 +94,7 @@ func (op *EnumOperator) GetIdByName(ctx context.Context, name string) int64 {
 	return e.GetId()
 }
 
-func (op *EnumOperator) List(ctx context.Context) []Enumer {
+func (op *EnumOperator) List(ctx context.Context) []EnumItem {
 	return op.cache.All(ctx)
 }
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 type M map[string]interface{}
@@ -39,7 +38,7 @@ func parseFs(fs string) (string, []string) {
 
 		ind := strings.Index(s, ":")
 		name := s
-		fv := "%v"
+		fv := "%value"
 		if ind != -1 {
 			name = strings.TrimSpace(s[:ind])
 			fv = "%" + strings.TrimSpace(s[ind+1:])
@@ -61,37 +60,10 @@ type _NamedFmtT struct {
 	ns []string
 }
 
-var namedFmtMap = map[string]*_NamedFmtT{}
-var namedFmtMapRwl sync.RWMutex
-
-func newFmt(fs string) *_NamedFmtT {
+func NewNamedFmt(fs string) *_NamedFmtT {
 	f := &_NamedFmtT{}
 	f.fs, f.ns = parseFs(fs)
 	return f
-}
-
-func NewNamedFmt(fs string, cached bool) *_NamedFmtT {
-	if !cached {
-		return newFmt(fs)
-	}
-
-	namedFmtMapRwl.RLock()
-	rv, ok := namedFmtMap[fs]
-	namedFmtMapRwl.RUnlock()
-	if ok {
-		return rv
-	}
-
-	namedFmtMapRwl.Lock()
-	defer namedFmtMapRwl.Unlock()
-
-	rv = newFmt(fs)
-	namedFmtMap[fs] = rv
-	return rv
-}
-
-func NewNamedFmtCached(fs string) *_NamedFmtT {
-	return NewNamedFmt(fs, true)
 }
 
 func (f *_NamedFmtT) getVl(v M) (vl []interface{}) {

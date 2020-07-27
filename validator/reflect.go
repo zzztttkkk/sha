@@ -2,14 +2,12 @@ package validator
 
 import (
 	"fmt"
+	"github.com/zzztttkkk/suna/internal/reflectx"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
-
-	"github.com/zzztttkkk/suna/internal/reflectx"
 )
 
 var funcMap = map[string]func([]byte) ([]byte, bool){}
@@ -22,21 +20,6 @@ func RegisterRegexp(name string, reg *regexp.Regexp) {
 func RegisterFunc(name string, fn func([]byte) ([]byte, bool), descp string) {
 	funcMap[name] = fn
 	funcDescp[name] = descp
-}
-
-func init() {
-	var space = regexp.MustCompile(`\s+`)
-	var empty = []byte("")
-
-	RegisterFunc(
-		"username",
-		func(i []byte) ([]byte, bool) {
-			name := space.ReplaceAll(i, empty)
-			count := utf8.RuneCount(name)
-			return name, count >= 3 && count <= 20
-		},
-		"remove all space, and check rune count in range [3,20]",
-	)
 }
 
 var rulesMap = map[reflect.Type]_RuleSliceT{}

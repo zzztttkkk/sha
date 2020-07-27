@@ -1,8 +1,11 @@
-package suna
+package utils
 
 import (
 	"errors"
 	"fmt"
+	"github.com/valyala/fasthttp"
+	"log"
+	"net"
 	"reflect"
 	"strings"
 
@@ -10,24 +13,24 @@ import (
 	"google.golang.org/grpc"
 )
 
-type _LoaderT struct {
-	parent   *_LoaderT
-	children map[string]*_LoaderT
+type Loader struct {
+	parent   *Loader
+	children map[string]*Loader
 	name     string
 	path     string
 	doc      map[string]reflect.Type
-	http     func(router router.R)
+	http     func(router router.Router)
 	grpc     func(server *grpc.Server)
 }
 
-func NewLoader() *_LoaderT {
-	return &_LoaderT{
-		children: make(map[string]*_LoaderT),
+func NewLoader() *Loader {
+	return &Loader{
+		children: make(map[string]*Loader),
 		parent:   nil,
 	}
 }
 
-func (loader *_LoaderT) Path() string {
+func (loader *Loader) Path() string {
 	if len(loader.path) > 0 {
 		return loader.path
 	}
@@ -52,7 +55,7 @@ func (loader *_LoaderT) Path() string {
 	return loader.path
 }
 
-func (loader *_LoaderT) AddChild(name string, child *_LoaderT) {
+func (loader *Loader) AddChild(name string, child *Loader) {
 	_, exists := loader.children[name]
 	if exists {
 		panic(fmt.Errorf("suna.loader: `%s`.`%s` is already exists", loader.Path(), name))
@@ -62,7 +65,7 @@ func (loader *_LoaderT) AddChild(name string, child *_LoaderT) {
 	loader.children[name] = child
 }
 
-func (loader *_LoaderT) Get(path string) *_LoaderT {
+func (loader *Loader) Get(path string) *Loader {
 	cursor := loader
 	for _, name := range strings.Split(path, ".") {
 		if cursor == nil {
@@ -73,47 +76,66 @@ func (loader *_LoaderT) Get(path string) *_LoaderT {
 	return cursor
 }
 
-func (loader *_LoaderT) Http(fn func(router router.R)) {
+func (loader *Loader) Http(fn func(router router.Router)) {
 	if loader.http != nil {
 		panic(errors.New("suna.loader: `%s`'s http is registered"))
 	}
 	loader.http = fn
 }
 
-func (loader *_LoaderT) Grpc(fn func(server *grpc.Server)) {
+func (loader *Loader) Grpc(fn func(server *grpc.Server)) {
 	if loader.grpc != nil {
 		panic(errors.New("suna.loader: `%s`'s grpc is registered"))
 	}
 	loader.grpc = fn
 }
 
-func (loader *_LoaderT) Doc(n string, p reflect.Type) {
+func (loader *Loader) Doc(n string, p reflect.Type) {
 	loader.doc[n] = p
 }
 
-func (loader *_LoaderT) bindHttp(router *router.Router) {
+func (loader *Loader) bindHttp(router router.Router) {
 	if loader.http != nil {
 		loader.http(router)
 	}
 	for k, v := range loader.children {
-		v.bindHttpGroup(router.Group(k))
+		v.bindHttp(router.SubGroup(k))
 	}
 }
 
-func (loader *_LoaderT) bindHttpGroup(group *router.Group) {
-	if loader.http != nil {
-		loader.http(group)
-	}
-	for k, v := range loader.children {
-		v.bindHttpGroup(group.Group(k))
-	}
-}
-
-func (loader *_LoaderT) bindGrpc(server *grpc.Server) {
+func (loader *Loader) bindGrpc(server *grpc.Server) {
 	if loader.grpc != nil {
 		loader.grpc(server)
 	}
 	for _, v := range loader.children {
 		v.bindGrpc(server)
 	}
+}
+
+func (loader *Loader) RunAsHttpServer(root router.Router, address string) {
+	r, ok := root.(*router.Root)
+	if !ok {
+		panic("")
+	}
+
+	loader.bindHttp(root)
+
+	glog := AcquireGroupLogger("Root")
+	for method, paths := range r.List() {
+		for _, path := range paths {
+			glog.Println(fmt.Sprintf("%s: %s", method, path))
+		}
+	}
+	ReleaseGroupLogger(glog)
+	log.Fatal(fasthttp.ListenAndServe(address, r.Handler))
+}
+
+func (loader *Loader) RunAsGrpcServer(server *grpc.Server, address string) {
+	loader.bindGrpc(server)
+
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		panic(err)
+	}
+	log.Fatal(server.Serve(listener))
 }

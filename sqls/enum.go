@@ -1,6 +1,6 @@
-package sqlu
+package sqls
 
-type Enumer interface {
+type EnumItem interface {
 	GetId() int64
 	GetName() string
 }
@@ -16,4 +16,8 @@ func (enum *Enum) GetId() int64 {
 
 func (enum *Enum) GetName() string {
 	return enum.Name
+}
+
+func (enum Enum) TableDefinition(lines ...string) []string {
+	return enum.Model.TableDefinition(append(lines, "name char(30) not null unique")...)
 }

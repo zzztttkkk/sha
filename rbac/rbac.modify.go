@@ -1,35 +1,67 @@
 package rbac
 
-import "context"
+import (
+	"context"
+	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/utils"
+)
 
-func NewPermission(ctx context.Context, name string) error {
-	return backend.NewPermission(ctx, name)
+// permission
+func NewPermission(ctx context.Context, name, descp string) error {
+	if _PermissionOperator.ExistsByName(ctx, name) {
+		return output.HttpErrors[fasthttp.StatusBadRequest]
+	}
+	_PermissionOperator.Create(ctx, utils.M{"name": name, "descp": descp})
+	return nil
 }
 
-func NewRole(ctx context.Context, name string) error {
-	return backend.NewRole(ctx, name)
+func DelPermission(ctx context.Context, name string) error {
+	if !_PermissionOperator.ExistsByName(ctx, name) {
+		return output.HttpErrors[fasthttp.StatusNotFound]
+	}
+	_PermissionOperator.Delete(ctx, name)
+	return nil
 }
 
-func RoleAddPermission(ctx context.Context, roleName, permName string) error {
-	return backend.RoleAddPermission(ctx, roleName, permName)
+// role
+func NewRole(ctx context.Context, name, descp string) error {
+	if _RoleOperator.ExistsByName(ctx, name) {
+		return output.HttpErrors[fasthttp.StatusBadRequest]
+	}
+	_RoleOperator.Create(ctx, utils.M{"name": name, "descp": descp})
+	return nil
 }
 
-func RoleDelPermission(ctx context.Context, roleName, permName string) error {
-	return backend.RoleDelPermission(ctx, roleName, permName)
+func DelRole(ctx context.Context, name string) error {
+	if !_RoleOperator.ExistsByName(ctx, name) {
+		return output.HttpErrors[fasthttp.StatusNotFound]
+	}
+	_RoleOperator.Delete(ctx, name)
+	return nil
 }
 
-func SubjectAddRole(ctx context.Context, subject int64, roleName string) error {
-	return backend.SubjectAddRole(ctx, subject, roleName)
+func RoleAddBased(ctx context.Context, a, based string) error {
+	return _RoleOperator.changeInherits(ctx, a, based, Add)
 }
 
-func SubjectDelRole(ctx context.Context, subject int64, roleName string) error {
-	return backend.SubjectDelRole(ctx, subject, roleName)
+func RoleDelBased(ctx context.Context, a, based string) error {
+	return _RoleOperator.changeInherits(ctx, a, based, Del)
 }
 
-func SubjectAddPermission(ctx context.Context, subject int64, permissionName string) error {
-	return backend.SubjectAddPermission(ctx, subject, permissionName)
+func RoleAddPerm(ctx context.Context, role, perm string) error {
+	return _RoleOperator.changePerm(ctx, role, perm, Add)
 }
 
-func SubjectDelPermission(ctx context.Context, subject int64, permissionName string) error {
-	return backend.SubjectDelPermission(ctx, subject, permissionName)
+func RoleDelPerm(ctx context.Context, role, perm string) error {
+	return _RoleOperator.changePerm(ctx, role, perm, Del)
+}
+
+// user
+func UserAddRole(ctx context.Context, uid int64, role string) error {
+	return UserOperator.changeRole(ctx, uid, role, Add)
+}
+
+func UserDelRole(ctx context.Context, uid int64, role string) error {
+	return UserOperator.changeRole(ctx, uid, role, Del)
 }

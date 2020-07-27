@@ -1,4 +1,4 @@
-package sqlu
+package sqls
 
 import (
 	"fmt"
@@ -8,7 +8,9 @@ import (
 
 type Operator struct {
 	tablename string
+	idField   string
 }
+
 
 func (op *Operator) TableName() string {
 	return op.tablename

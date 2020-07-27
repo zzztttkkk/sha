@@ -57,7 +57,7 @@ func Error(ctx *fasthttp.RequestCtx, err error) {
 	ctx.SetContentTypeBytes(strApplicationJSON)
 
 	switch v := err.(type) {
-	case HttpError:
+	case Err:
 		ctx.SetStatusCode(v.StatusCode())
 		toJson(ctx, v.Message())
 	default:
@@ -68,9 +68,9 @@ func Error(ctx *fasthttp.RequestCtx, err error) {
 }
 
 func StdError(ctx *fasthttp.RequestCtx, code int) {
-	err := StdErrors[code]
+	err := HttpErrors[code]
 	if err == nil {
-		err = StdErrors[fasthttp.StatusInternalServerError]
+		err = HttpErrors[fasthttp.StatusInternalServerError]
 	}
 	Error(ctx, err)
 }

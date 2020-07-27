@@ -270,7 +270,7 @@ func (rule *_RuleT) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
 	return nil, false
 }
 
-var ruleFmt = utils.NewNamedFmtCached("|{name}|{type}|{required}|{lrange}|{vrange}|{default}|{regexp}|{function}|")
+var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{default}|{regexp}|{function}|")
 
 func (rule *_RuleT) String() string {
 	m := utils.M{

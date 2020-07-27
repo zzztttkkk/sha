@@ -1,3 +1,3 @@
-package sqlu
+package sqls
 
 type Raw string

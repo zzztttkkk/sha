@@ -1,4 +1,4 @@
-package sqlu
+package sqls
 
 import (
 	"context"
@@ -11,18 +11,10 @@ import (
 )
 
 // X: 	sqlx
-// L: 	literal
-// S: 	struct
-// Ls: 	literals
-// O:  	one row
-// M:  	many rows
 
-// one col single row
-func (op *Operator) XLO(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
-	if sqlLog {
-		doSqlLog(q, args)
-	}
-
+// one col one row
+func (op *Operator) XQ11(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
+	doSqlLog(q, args)
 	if err := Executor(ctx).GetContext(ctx, dist, q, args...); err != nil {
 		if err == sql.ErrNoRows {
 			return false
@@ -32,11 +24,9 @@ func (op *Operator) XLO(ctx context.Context, dist interface{}, q string, args ..
 	return true
 }
 
-// one col multi rows
-func (op *Operator) XLM(ctx context.Context, silceDist interface{}, q string, args ...interface{}) bool {
-	if sqlLog {
-		doSqlLog(q, args)
-	}
+// one col many rows
+func (op *Operator) XQ1n(ctx context.Context, silceDist interface{}, q string, args ...interface{}) bool {
+	doSqlLog(q, args)
 	if err := Executor(ctx).SelectContext(ctx, silceDist, q, args...); err != nil {
 		if err == sql.ErrNoRows {
 			return true
@@ -46,11 +36,33 @@ func (op *Operator) XLM(ctx context.Context, silceDist interface{}, q string, ar
 	return true
 }
 
-// many cols single row
-func (op *Operator) XLsO(ctx context.Context, dist []interface{}, q string, args ...interface{}) bool {
-	if sqlLog {
-		doSqlLog(q, args)
+func (op *Operator) XQ1nScan(ctx context.Context, dist interface{}, afterScan func() error, q string, args ...interface{}) int64 {
+	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0
+		}
+		panic(err)
 	}
+
+	var count int64
+	for rows.Next() {
+		if err = rows.Scan(dist); err != nil {
+			panic(err)
+		}
+		if afterScan != nil {
+			if err = afterScan(); err != nil {
+				panic(err)
+			}
+		}
+		count++
+	}
+	return count
+}
+
+// many cols one row
+func (op *Operator) XQn1(ctx context.Context, dist []interface{}, q string, args ...interface{}) bool {
+	doSqlLog(q, args)
 	row := Executor(ctx).QueryRowxContext(ctx, q, args...)
 	if err := row.Err(); err != nil {
 		if err == sql.ErrNoRows {
@@ -64,11 +76,9 @@ func (op *Operator) XLsO(ctx context.Context, dist []interface{}, q string, args
 	return true
 }
 
-// many cols multi rows, each row use each dists
-func (op *Operator) XLsM(ctx context.Context, distsGen func() []interface{}, afterScan func(...interface{}) error, q string, args ...interface{}) int64 {
-	if sqlLog {
-		doSqlLog(q, args)
-	}
+// many cols many rows, each row use each dists
+func (op *Operator) XQnn(ctx context.Context, distsGen func() []interface{}, afterScan func(...interface{}) error, q string, args ...interface{}) int64 {
+	doSqlLog(q, args)
 	var count int64
 	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
 	if err != nil {
@@ -95,10 +105,8 @@ func (op *Operator) XLsM(ctx context.Context, distsGen func() []interface{}, aft
 }
 
 // many cols multi rows, each row use same dists
-func (op *Operator) XLsMSimple(ctx context.Context, dists []interface{}, afterScan func() error, q string, args ...interface{}) int64 {
-	if sqlLog {
-		doSqlLog(q, args)
-	}
+func (op *Operator) XQnnScan(ctx context.Context, dists []interface{}, afterScan func() error, q string, args ...interface{}) int64 {
+	doSqlLog(q, args)
 	var count int64
 	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
 	if err != nil {
@@ -124,10 +132,8 @@ func (op *Operator) XLsMSimple(ctx context.Context, dists []interface{}, afterSc
 }
 
 // struct single row
-func (op *Operator) XSO(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
-	if sqlLog {
-		doSqlLog(q, args)
-	}
+func (op *Operator) XQs1(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
+	doSqlLog(q, args)
 	row := Executor(ctx).QueryRowxContext(ctx, q, args...)
 	if err := row.Err(); err != nil {
 		if err == sql.ErrNoRows {
@@ -142,10 +148,8 @@ func (op *Operator) XSO(ctx context.Context, dist interface{}, q string, args ..
 }
 
 // struct multi rows, each row use each dist
-func (op *Operator) XSM(ctx context.Context, constructor func() interface{}, afterScan func(context.Context, interface{}) error, q string, args ...interface{}) int64 {
-	if sqlLog {
-		doSqlLog(q, args)
-	}
+func (op *Operator) XQsn(ctx context.Context, constructor func() interface{}, afterScan func(context.Context, interface{}) error, q string, args ...interface{}) int64 {
+	doSqlLog(q, args)
 	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -173,10 +177,8 @@ func (op *Operator) XSM(ctx context.Context, constructor func() interface{}, aft
 }
 
 // struct multi row, each row use same dist
-func (op *Operator) XSMSimple(ctx context.Context, ele interface{}, afterScan func(context.Context) error, q string, args ...interface{}) int64 {
-	if sqlLog {
-		doSqlLog(q, args)
-	}
+func (op *Operator) XQsnScan(ctx context.Context, ele interface{}, afterScan func(context.Context) error, q string, args ...interface{}) int64 {
+	doSqlLog(q, args)
 	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -207,7 +209,7 @@ func (op *Operator) XCount(ctx context.Context, key string, condition string, ar
 	if len(condition) > 0 {
 		q += " where " + condition
 	}
-	op.XLO(ctx, &c, q, args...)
+	op.XQ11(ctx, &c, q, args...)
 	return
 }
 
@@ -216,10 +218,7 @@ func (op *Operator) XExists(ctx context.Context, key string, condition string, a
 }
 
 func (op *Operator) XStmt(ctx context.Context, q string) *sqlx.Stmt {
-	if sqlLog {
-		doSqlLog("stmt:<"+q+">", nil)
-	}
-
+	doSqlLog("stmt:<"+q+">", nil)
 	stmt, err := Executor(ctx).PreparexContext(ctx, q)
 	if err != nil {
 		panic(err)
@@ -228,9 +227,7 @@ func (op *Operator) XStmt(ctx context.Context, q string) *sqlx.Stmt {
 }
 
 func (op *Operator) XExecute(ctx context.Context, q string, args ...interface{}) sql.Result {
-	if sqlLog {
-		doSqlLog(q, args)
-	}
+	doSqlLog(q, args)
 	r, e := Executor(ctx).ExecContext(ctx, q, args...)
 	if e != nil {
 		panic(e)
@@ -238,38 +235,65 @@ func (op *Operator) XExecute(ctx context.Context, q string, args ...interface{})
 	return r
 }
 
-func (op *Operator) XCreate(ctx context.Context, m utils.M) int64 {
-	var ks []string
-	var pls []string
-	var vl []interface{}
+func mysqlCreate(ctx context.Context, op *Operator, q string, args []interface{}) int64 {
+	result, err := Executor(ctx).ExecContext(ctx, q, args...)
+	if err != nil {
+		panic(err)
+	}
+	lid, _ := result.LastInsertId()
+	return lid
+}
 
-	for k, v := range m {
-		ks = append(ks, k)
-
-		switch rv := v.(type) {
-		case Raw:
-			pls = append(pls, string(rv))
-		default:
-			pls = append(pls, ":"+k)
-			vl = append(vl, v)
-		}
+func postgresCreate(ctx context.Context, op *Operator, q string, args []interface{}) int64 {
+	q = strings.TrimSpace(q)
+	if q[0] != 'i' {
+		panic(fmt.Errorf("suna.sqls: not a insert query"))
+	}
+	if q[len(q)-1] == ';' {
+		q = q[:len(q)-1]
 	}
 
-	s := fmt.Sprintf(
-		"insert into %s (%s) values (%s)",
-		op.tablename, strings.Join(ks, ","),
-		strings.Join(pls, ","),
-	)
+	idField := "id"
+	if len(op.idField) > 0 {
+		idField = op.idField
+	}
 
-	r := op.XExecute(ctx, s, m)
-	lid, err := r.LastInsertId()
+	q += " returning " + idField
+	var lid int64
+	err := Executor(ctx).GetContext(ctx, &lid, q, args...)
 	if err != nil {
 		panic(err)
 	}
 	return lid
 }
 
-func (op *Operator) XUpdate(ctx context.Context, updates utils.M, condition string, args ...interface{}) int64 {
+func (op *Operator) XCreate(ctx context.Context, m utils.M) int64 {
+	var ks []string
+	var pls []string
+
+	for k, v := range m {
+		ks = append(ks, k)
+		switch rv := v.(type) {
+		case Raw:
+			pls = append(pls, string(rv))
+		default:
+			pls = append(pls, ":"+k)
+		}
+	}
+
+	s, vl := op.BindNamed(
+		fmt.Sprintf(
+			"insert into %s (%s) values (%s)",
+			op.tablename, strings.Join(ks, ","),
+			strings.Join(pls, ","),
+		),
+		m,
+	)
+
+	return doCreate(ctx, op, s, vl)
+}
+
+func (op *Operator) XUpdate(ctx context.Context, updates utils.M, condition string, conditionArgs ...interface{}) int64 {
 	var pls []string
 	var vl []interface{}
 
@@ -289,12 +313,17 @@ func (op *Operator) XUpdate(ctx context.Context, updates utils.M, condition stri
 	}
 
 	q, vl := op.BindNamed(s, updates)
-	vl = append(vl, args...)
+	vl = append(vl, conditionArgs...)
 
-	r := op.XExecute(ctx, q, vl...)
-	count, err := r.RowsAffected()
+	if sqlLog {
+		doSqlLog(q, conditionArgs)
+	}
+
+	result, err := Executor(ctx).ExecContext(ctx, q, append(vl, conditionArgs)...)
 	if err != nil {
 		panic(err)
 	}
+
+	count, _ := result.RowsAffected()
 	return count
 }

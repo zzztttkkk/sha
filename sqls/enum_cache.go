@@ -1,4 +1,4 @@
-package sqlu
+package sqls
 
 import (
 	"context"
@@ -10,13 +10,13 @@ import (
 )
 
 type EnumCache struct {
-	im          map[int64]Enumer
-	nm          map[string]Enumer
-	all         []Enumer
+	im          map[int64]EnumItem
+	nm          map[string]EnumItem
+	all         []EnumItem
 	last        int64
 	expire      int64
 	op          *Operator
-	constructor func() Enumer
+	constructor func() EnumItem
 	initer      func(context.Context, interface{}) error
 	rwm         sync.RWMutex
 	sg          singleflight.Group
@@ -36,9 +36,9 @@ func (cache *EnumCache) load(ctx context.Context) {
 	cache.rwm.Lock()
 	defer cache.rwm.Unlock()
 
-	cache.all = make([]Enumer, 0, len(cache.all))
+	cache.all = make([]EnumItem, 0, len(cache.all))
 
-	cache.op.XSM(
+	cache.op.XQsn(
 		ctx,
 		func() interface{} {
 			obj := cache.constructor()
@@ -75,7 +75,7 @@ func (cache *EnumCache) doExpire() {
 	cache.last = 0
 }
 
-func (cache *EnumCache) GetById(ctx context.Context, id int64) (Enumer, bool) {
+func (cache *EnumCache) GetById(ctx context.Context, id int64) (EnumItem, bool) {
 	cache.refresh(ctx)
 
 	cache.rwm.RLock()
@@ -85,7 +85,7 @@ func (cache *EnumCache) GetById(ctx context.Context, id int64) (Enumer, bool) {
 	return v, ok
 }
 
-func (cache *EnumCache) GetByName(ctx context.Context, name string) (Enumer, bool) {
+func (cache *EnumCache) GetByName(ctx context.Context, name string) (EnumItem, bool) {
 	cache.refresh(ctx)
 
 	cache.rwm.RLock()
@@ -117,7 +117,7 @@ func (cache *EnumCache) TraverseNameMap(ctx context.Context, visitor func(name s
 	}
 }
 
-func (cache *EnumCache) All(ctx context.Context) []Enumer {
+func (cache *EnumCache) All(ctx context.Context) []EnumItem {
 	cache.refresh(ctx)
 
 	cache.rwm.RLock()

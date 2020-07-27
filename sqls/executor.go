@@ -1,4 +1,4 @@
-package sqlu
+package sqls
 
 import (
 	"context"
@@ -17,10 +17,10 @@ type executor interface {
 	PreparexContext(ctx context.Context, query string) (*sqlx.Stmt, error)
 }
 
-type mysqlUtilsKeyT int
+type sqlUtilsKeyT int
 
-const txKey mysqlUtilsKeyT = 0x10002
-const justMasterKey mysqlUtilsKeyT = 0x10003
+const txKey sqlUtilsKeyT = 0x10002
+const justMasterKey sqlUtilsKeyT = 0x10003
 
 func JustUseMaster(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justMasterKey, true)
