@@ -21,8 +21,8 @@ func toString(digits []byte) string {
 }
 
 const (
-	captchaIdKey   = "captcha.id"
-	captchaUnixKey = "captcha.unix"
+	captchaIdKey   = "~.suna.captcha.id"
+	captchaUnixKey = "~.suna.captcha.unix"
 )
 
 var captchaWordSize int

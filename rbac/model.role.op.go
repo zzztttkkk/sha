@@ -26,10 +26,10 @@ func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
 			_RoleOperator.EnumOperator.Init(
-				reflect.ValueOf(Role{}),
-				func() sqls.EnumItem { return &Role{} },
+				reflect.ValueOf(_Role{}),
+				func() sqls.EnumItem { return &_Role{} },
 				func(ctx context.Context, i interface{}) error {
-					role := i.(*Role)
+					role := i.(*_Role)
 					_RoleOperator.getAllPerms(ctx, role)
 					_RoleOperator.getAllBasedRoles(ctx, role)
 					return nil
@@ -91,7 +91,7 @@ func (op *_RoleOp) changePerm(ctx context.Context, roleName, permName string, mt
 	return nil
 }
 
-func (op *_RoleOp) getAllPerms(ctx context.Context, role *Role) {
+func (op *_RoleOp) getAllPerms(ctx context.Context, role *_Role) {
 	op.perms.XQ1n(ctx, &role.Permissions, `select distinct perm from %s where role=?`, role.Id)
 }
 
@@ -145,6 +145,13 @@ func (op *_RoleOp) changeInherits(ctx context.Context, roleName, basedRoleName s
 	return nil
 }
 
-func (op *_RoleOp) getAllBasedRoles(ctx context.Context, role *Role) {
+func (op *_RoleOp) getAllBasedRoles(ctx context.Context, role *_Role) {
 	op.inherits.XQ1n(ctx, &role.Based, `select distinct based from %s where role=?`, role.Id)
+}
+
+func (op *_RoleOp) List(ctx context.Context) (lst []*_Role) {
+	for _, enum := range op.EnumOperator.List(ctx) {
+		lst = append(lst, enum.(*_Role))
+	}
+	return
 }

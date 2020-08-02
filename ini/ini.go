@@ -124,7 +124,7 @@ const (
 )
 
 func (conf *Ini) Done() {
-	switch string(conf.GetMust("app.mode")) {
+	switch strings.ToLower(conf.GetOr("app.mode", "debug")) {
 	case modeRelease:
 		conf.isRelease = true
 	case modeDebug:

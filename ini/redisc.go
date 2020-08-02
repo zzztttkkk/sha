@@ -3,6 +3,7 @@ package ini
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-redis/redis/v7"
 )
@@ -20,7 +21,10 @@ func (conf *Ini) RedisClient() redis.Cmdable {
 		return conf.rcmd
 	}
 
-	mode := string(conf.GetMust(makeRedisKey("mode")))
+	mode := strings.ToLower(conf.GetOr(makeRedisKey("mode"), ""))
+	if len(mode) < 1 {
+		return nil
+	}
 	if _, ok := redisModes[mode]; !ok {
 		panic(redisUnknownModeError)
 	}

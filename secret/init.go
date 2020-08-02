@@ -9,7 +9,7 @@ import (
 var gSecretKey []byte
 
 func Init(conf *ini.Ini) {
-	gSecretKey = conf.GetMust("secret.key")
+	gSecretKey = []byte(conf.GetOr("secret.key", ""))
 
 	hashMethod := conf.GetOr("secret.hash", "sha256-512")
 	Default = hashMap[hashMethod]

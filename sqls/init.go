@@ -20,6 +20,11 @@ func Init(conf *ini.Ini, leaderV *sqlx.DB, followersV []*sqlx.DB) {
 	config = conf
 	leader = leaderV
 	followers = followersV
+
+	if leader == nil {
+		return
+	}
+
 	sqlLog = config.IsDebug() && config.GetBool("sql.log")
 	isPostgres = leader.DriverName() == "postgres"
 

@@ -1,17 +1,31 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"github.com/valyala/fasthttp"
 	"log"
 	"net"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/zzztttkkk/router"
 	"google.golang.org/grpc"
 )
+
+var disableReservedRCtxKeyWarning bool
+var once sync.Once
+
+func DisableReservedRCtxKeyWarning() {
+	disableReservedRCtxKeyWarning = true
+}
+
+func doRctxKeyWarning() {
+	if disableReservedRCtxKeyWarning {
+		return
+	}
+	log.Printf("suna: reserved fasthttp.RequestCtx.UserValue keys: `.suna.s`, `.suna.r`, `.suna.u`")
+}
 
 type Loader struct {
 	parent   *Loader
@@ -19,11 +33,12 @@ type Loader struct {
 	name     string
 	path     string
 	doc      map[string]reflect.Type
-	http     func(router router.Router)
-	grpc     func(server *grpc.Server)
+	httpFns  []func(router router.Router)
+	grpcFns  []func(server *grpc.Server)
 }
 
 func NewLoader() *Loader {
+	doRctxKeyWarning()
 	return &Loader{
 		children: make(map[string]*Loader),
 		parent:   nil,
@@ -77,17 +92,11 @@ func (loader *Loader) Get(path string) *Loader {
 }
 
 func (loader *Loader) Http(fn func(router router.Router)) {
-	if loader.http != nil {
-		panic(errors.New("suna.loader: `%s`'s http is registered"))
-	}
-	loader.http = fn
+	loader.httpFns = append(loader.httpFns, fn)
 }
 
 func (loader *Loader) Grpc(fn func(server *grpc.Server)) {
-	if loader.grpc != nil {
-		panic(errors.New("suna.loader: `%s`'s grpc is registered"))
-	}
-	loader.grpc = fn
+	loader.grpcFns = append(loader.grpcFns, fn)
 }
 
 func (loader *Loader) Doc(n string, p reflect.Type) {
@@ -95,8 +104,8 @@ func (loader *Loader) Doc(n string, p reflect.Type) {
 }
 
 func (loader *Loader) bindHttp(router router.Router) {
-	if loader.http != nil {
-		loader.http(router)
+	for _, fn := range loader.httpFns {
+		fn(router)
 	}
 	for k, v := range loader.children {
 		v.bindHttp(router.SubGroup(k))
@@ -104,8 +113,8 @@ func (loader *Loader) bindHttp(router router.Router) {
 }
 
 func (loader *Loader) bindGrpc(server *grpc.Server) {
-	if loader.grpc != nil {
-		loader.grpc(server)
+	for _, fn := range loader.grpcFns {
+		fn(server)
 	}
 	for _, v := range loader.children {
 		v.bindGrpc(server)

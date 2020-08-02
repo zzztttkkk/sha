@@ -3,7 +3,6 @@ package rbac
 import (
 	"context"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/suna/ctxs"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/utils"
@@ -22,7 +21,7 @@ func (op *_LogOp) Create(ctx context.Context, name string, info utils.M) int64 {
 		panic(v)
 	}
 
-	user := ctxs.User(ctxs.RequestCtx(ctx))
+	user := getUserFromCtx(ctx)
 	if user == nil {
 		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 	}

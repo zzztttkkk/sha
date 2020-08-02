@@ -27,11 +27,16 @@ func (conf *Ini) SqlClients() (*sqlx.DB, []*sqlx.DB) {
 		return conf.sqlL, conf.sqlF
 	}
 
+	leader := conf.GetOr("sql.leader", "")
+	if len(leader) < 1 {
+		return nil, nil
+	}
+
 	maxLifetime := time.Second * time.Duration(conf.GetIntOr("sql.max_life_time", 7200))
 	maxOpenConns := int(conf.GetIntOr("sql.max_open_num", 5))
 	dn := string(conf.GetMust("sql.driver"))
 
-	conf.sqlL = newSqlDB(dn, string(conf.GetMust("sql.leader")), maxLifetime, maxOpenConns)
+	conf.sqlL = newSqlDB(dn, leader, maxLifetime, maxOpenConns)
 
 	for i := 0; i < int(conf.GetIntOr("sql.followers", 0)); i++ {
 		conf.sqlF = append(conf.sqlF, newSqlDB(dn, string(conf.GetMust(fmt.Sprintf("mysql.slave.%d", i))), maxLifetime, maxOpenConns))

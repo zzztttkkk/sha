@@ -3,8 +3,6 @@ package rbac
 import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
-	"github.com/zzztttkkk/suna/ctxs"
-	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/validator"
 )
@@ -22,7 +20,7 @@ func _PermCreateHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := NewPermission(ctxs.Std(ctx), form.Name, form.Descp); err != nil {
+	if err := NewPermission(wrapRCtx(ctx), form.Name, form.Descp); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -32,8 +30,31 @@ func _PermDeleteHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := DelPermission(ctxs.Std(ctx), form.Name); err != nil {
+	if err := DelPermission(wrapRCtx(ctx), form.Name); err != nil {
 		output.Error(ctx, err)
+	}
+}
+
+func PermPageHandler(ctx *fasthttp.RequestCtx) {
+
+}
+
+func newPermChecker(perm string, next fasthttp.RequestHandler) fasthttp.RequestHandler {
+	perm = EnsurePermission(perm, "")
+
+	return func(ctx *fasthttp.RequestCtx) {
+		user := getUserFromRCtx(ctx)
+		if user == nil {
+			output.Error(ctx, output.HttpErrors[fasthttp.StatusUnauthorized])
+			return
+		}
+
+		if !IsGranted(ctx, user, PolicyAll, perm) {
+			output.Error(ctx, output.HttpErrors[fasthttp.StatusForbidden])
+			return
+		}
+
+		next(ctx)
 	}
 }
 
@@ -42,19 +63,27 @@ func init() {
 		func(router router.Router) {
 			router.POST(
 				"/permission/create",
-				middleware.NewPermissionCheckHandler(
-					PolicyAll,
-					[]string{EnsurePermission("admin.rbac.permission.create", "")},
+				newPermChecker(
+					"admin.rbac.perm.create",
 					_PermCreateHandler,
 				),
 			)
 
 			router.POST(
 				"/permission/delete",
-				middleware.NewPermissionCheckHandler(
-					PolicyAll,
-					[]string{EnsurePermission("admin.rbac.permission.delete", "")},
+				newPermChecker(
+					"admin.rbac.perm.delete",
 					_PermDeleteHandler,
+				),
+			)
+
+			router.GET(
+				"/permission/all",
+				newPermChecker(
+					"admin.rbac.perm.read",
+					func(ctx *fasthttp.RequestCtx) {
+						output.MsgOK(ctx, _PermissionOperator.List(ctx))
+					},
 				),
 			)
 		},

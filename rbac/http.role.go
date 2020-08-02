@@ -3,8 +3,6 @@ package rbac
 import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
-	"github.com/zzztttkkk/suna/ctxs"
-	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/validator"
 )
@@ -22,7 +20,7 @@ func _RoleCreateHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := NewRole(ctxs.Std(ctx), form.Name, form.Descp); err != nil {
+	if err := NewRole(wrapRCtx(ctx), form.Name, form.Descp); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -32,7 +30,7 @@ func _RoleDeleteHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := DelRole(ctxs.Std(ctx), form.Name); err != nil {
+	if err := DelRole(wrapRCtx(ctx), form.Name); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -42,20 +40,12 @@ func init() {
 		func(router router.Router) {
 			router.POST(
 				"/role/create",
-				middleware.NewPermissionCheckHandler(
-					PolicyAll,
-					[]string{EnsurePermission("admin.rbac.role.create", "")},
-					_RoleCreateHandler,
-				),
+				newPermChecker("admin.rbac.role.create", _RoleCreateHandler),
 			)
 
 			router.POST(
 				"/role/delete",
-				middleware.NewPermissionCheckHandler(
-					PolicyAll,
-					[]string{EnsurePermission("admin.rbac.role.delete", "")},
-					_RoleDeleteHandler,
-				),
+				newPermChecker("admin.rbac.role.delete", _RoleDeleteHandler),
 			)
 		},
 	)
@@ -71,7 +61,7 @@ func _RoleAddBased(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := RoleAddBased(ctxs.Std(ctx), form.Name, form.Based); err != nil {
+	if err := RoleAddBased(wrapRCtx(ctx), form.Name, form.Based); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -81,7 +71,7 @@ func _RoleDelBased(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := RoleDelBased(ctxs.Std(ctx), form.Name, form.Based); err != nil {
+	if err := RoleDelBased(wrapRCtx(ctx), form.Name, form.Based); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -91,20 +81,12 @@ func init() {
 		func(router router.Router) {
 			router.POST(
 				"/role/inheritance/add",
-				middleware.NewPermissionCheckHandler(
-					PolicyAll,
-					[]string{EnsurePermission("admin.rbac.role.add_based", "")},
-					_RoleAddBased,
-				),
+				newPermChecker("admin.rbac.role.add_based", _RoleAddBased),
 			)
 
 			router.POST(
 				"/role/inheritance/del",
-				middleware.NewPermissionCheckHandler(
-					PolicyAll,
-					[]string{EnsurePermission("admin.rbac.role.del_based", "")},
-					_RoleDelBased,
-				),
+				newPermChecker("admin.rbac.role.del_based", _RoleDelBased),
 			)
 		},
 	)
@@ -120,7 +102,7 @@ func _RoleAddPerm(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := RoleAddPerm(ctxs.Std(ctx), form.Name, form.Perm); err != nil {
+	if err := RoleAddPerm(wrapRCtx(ctx), form.Name, form.Perm); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -130,7 +112,7 @@ func _RoleDelPerm(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := RoleDelPerm(ctxs.Std(ctx), form.Name, form.Perm); err != nil {
+	if err := RoleDelPerm(wrapRCtx(ctx), form.Name, form.Perm); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -140,19 +122,21 @@ func init() {
 		func(router router.Router) {
 			router.POST(
 				"/role/perm/add",
-				middleware.NewPermissionCheckHandler(
-					PolicyAll,
-					[]string{EnsurePermission("admin.rbac.role.add_perm", "")},
-					_RoleAddPerm,
-				),
+				newPermChecker("admin.rbac.role.add_perm", _RoleAddPerm),
 			)
 
 			router.POST(
 				"/role/perm/del",
-				middleware.NewPermissionCheckHandler(
-					PolicyAll,
-					[]string{EnsurePermission("admin.rbac.role.del_perm", "")},
-					_RoleDelPerm,
+				newPermChecker("admin.rbac.role.del_perm", _RoleDelPerm),
+			)
+
+			router.GET(
+				"/permission/all",
+				newPermChecker(
+					"admin.rbac.role.list",
+					func(ctx *fasthttp.RequestCtx) {
+						output.MsgOK(ctx, _RoleOperator.List(ctx))
+					},
 				),
 			)
 		},

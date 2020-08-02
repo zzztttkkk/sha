@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/ini"
 	"github.com/zzztttkkk/suna/utils"
 )
@@ -12,6 +13,10 @@ var initPriority = utils.NewPriority(1)
 var permTablePriority = initPriority.Incr()
 var rbacPriority = permTablePriority.Incr().Incr()
 var loader = utils.NewLoader()
+
+var wrapRCtx func(ctx *fasthttp.RequestCtx) context.Context
+var getUserFromCtx func(ctx context.Context) User
+var getUserFromRCtx func(ctx *fasthttp.RequestCtx) User
 
 type modifyType int
 
@@ -41,7 +46,19 @@ func Loader() *utils.Loader {
 
 var conf *ini.Ini
 
-func Init(confV *ini.Ini) {
+func Init(
+	confV *ini.Ini,
+	wrapCtxFn func(ctx *fasthttp.RequestCtx) context.Context,
+	getUserFn func(ctx context.Context) User,
+	getUserRctxFn func(ctx *fasthttp.RequestCtx) User,
+) {
 	conf = confV
-	lazier.Execute(nil)
+	wrapRCtx = wrapCtxFn
+	getUserFromCtx = getUserFn
+	getUserFromRCtx = getUserRctxFn
+
+	l, _ := conf.SqlClients()
+	if l != nil {
+		lazier.Execute(nil)
+	}
 }

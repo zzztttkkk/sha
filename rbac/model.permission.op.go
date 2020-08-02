@@ -38,6 +38,13 @@ func (op *_PermOp) Delete(ctx context.Context, name string) {
 	op.EnumOperator.Delete(ctx, name)
 }
 
+func (op *_PermOp) List(ctx context.Context) (lst []*_Permission) {
+	for _, enum := range op.EnumOperator.List(ctx) {
+		lst = append(lst, enum.(*_Permission))
+	}
+	return
+}
+
 func EnsurePermission(name, descp string) string {
 	if _PermissionOperator.ExistsByName(context.Background(), name) {
 		return name

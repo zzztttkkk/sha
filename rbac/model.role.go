@@ -2,7 +2,7 @@ package rbac
 
 import "github.com/zzztttkkk/suna/sqls"
 
-type Role struct {
+type _Role struct {
 	sqls.Enum
 	Descp string `json:"descp"`
 
@@ -10,11 +10,11 @@ type Role struct {
 	Permissions []int64 `json:"permissions" db:"-"`
 }
 
-func (Role) TableName() string {
+func (_Role) TableName() string {
 	return tablePrefix + "role"
 }
 
-func (role Role) TableDefinition() []string {
+func (role _Role) TableDefinition() []string {
 	return role.Enum.TableDefinition(
 		"parent bigint default 0",
 		"descp text",

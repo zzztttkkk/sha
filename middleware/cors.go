@@ -87,7 +87,7 @@ func (option *CorsOption) writeHeaders(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (option *CorsOption) BindOptions(path string, router *router.Router) {
+func (option *CorsOption) BindOptions(path string, router router.Router) {
 	option.init()
 	router.OPTIONS(path, option.writeHeaders)
 }
