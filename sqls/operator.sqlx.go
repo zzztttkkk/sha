@@ -315,10 +315,7 @@ func (op *Operator) XUpdate(ctx context.Context, updates utils.M, condition stri
 	q, vl := op.BindNamed(s, updates)
 	vl = append(vl, conditionArgs...)
 
-	if sqlLog {
-		doSqlLog(q, conditionArgs)
-	}
-
+	doSqlLog(q, conditionArgs)
 	result, err := Executor(ctx).ExecContext(ctx, q, append(vl, conditionArgs)...)
 	if err != nil {
 		panic(err)

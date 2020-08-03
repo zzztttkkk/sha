@@ -2,10 +2,6 @@ package rbac
 
 import "github.com/zzztttkkk/suna/sqls"
 
-type User interface {
-	GetId() int64
-}
-
 type _UserWithRole struct {
 	sqls.Model
 	Subject  int64 `json:"subject"`

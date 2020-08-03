@@ -9,10 +9,9 @@ import (
 
 type _PermOp struct {
 	sqls.EnumOperator
-	conflicts *sqls.Operator
 }
 
-var _PermissionOperator = &_PermOp{conflicts: &sqls.Operator{}}
+var _PermissionOperator = &_PermOp{}
 
 func init() {
 	lazier.RegisterWithPriority(
@@ -22,7 +21,6 @@ func init() {
 				func() sqls.EnumItem { return &_Permission{} },
 				nil,
 			)
-			_PermissionOperator.conflicts.Init(reflect.ValueOf(_PermConflict{}))
 		},
 		permTablePriority,
 	)

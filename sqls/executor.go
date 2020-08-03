@@ -2,11 +2,8 @@ package sqls
 
 import (
 	"context"
-	"log"
-	"math/rand"
-	"time"
-
 	"github.com/jmoiron/sqlx"
+	"log"
 )
 
 type executor interface {
@@ -17,10 +14,10 @@ type executor interface {
 	PreparexContext(ctx context.Context, query string) (*sqlx.Stmt, error)
 }
 
-type sqlUtilsKeyT int
+type sqlstilsKeyT int
 
-const txKey sqlUtilsKeyT = 0x10002
-const justMasterKey sqlUtilsKeyT = 0x10003
+const txKey sqlstilsKeyT = 0x10002
+const justMasterKey sqlstilsKeyT = 0x10003
 
 func JustUseMaster(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justMasterKey, true)
@@ -41,14 +38,14 @@ func Tx(ctx context.Context) (context.Context, func()) {
 		if err == nil {
 			ce := tx.Commit()
 			if ce != nil {
-				log.Printf("suna.sql: commit error, %s\r\n", ce.Error())
+				log.Printf("suna.sqls: commit error, %s\r\n", ce.Error())
 				panic(ce)
 			}
 			return
 		}
 		re := tx.Rollback()
 		if re != nil {
-			log.Printf("suna.sql: rollback error, %s\r\n", re.Error())
+			log.Printf("suna.sqls: rollback error, %s\r\n", re.Error())
 			panic(re)
 		}
 		panic(err)
@@ -66,15 +63,9 @@ func Executor(ctx context.Context) executor {
 		return leader
 	}
 
-	if len(followers) < 1 {
-		return leader
+	f := cfg.SqlFollower()
+	if f != nil {
+		return f
 	}
-	return Follower()
-}
-
-func Leader() *sqlx.DB { return leader }
-
-func Follower() *sqlx.DB {
-	rand.Seed(time.Now().UnixNano())
-	return followers[rand.Int()%len(followers)]
+	return cfg.SqlLeader()
 }

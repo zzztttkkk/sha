@@ -3,18 +3,15 @@ package utils
 import (
 	"fmt"
 	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/router"
+	"google.golang.org/grpc"
 	"log"
 	"net"
 	"reflect"
 	"strings"
-	"sync"
-
-	"github.com/zzztttkkk/router"
-	"google.golang.org/grpc"
 )
 
 var disableReservedRCtxKeyWarning bool
-var once sync.Once
 
 func DisableReservedRCtxKeyWarning() {
 	disableReservedRCtxKeyWarning = true

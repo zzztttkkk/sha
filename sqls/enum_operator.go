@@ -14,7 +14,7 @@ type EnumOperator struct {
 	cache *EnumCache
 }
 
-func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem, initer func(context.Context, interface{}) error) *EnumCache {
+func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) *EnumCache {
 	cache := &EnumCache{
 		im:          map[int64]EnumItem{},
 		nm:          map[string]EnumItem{},
@@ -22,30 +22,25 @@ func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem,
 		expire:      seconds,
 		op:          &op.Operator,
 		constructor: constructor,
-		initer:      initer,
+		afterScan:   afterScan,
 		rwm:         sync.RWMutex{},
 	}
 	cache.load(context.Background())
 	return cache
 }
 
-func (op *EnumOperator) Init(ele reflect.Value, constructor func() EnumItem, initer func(context.Context, interface{}) error) {
+func (op *EnumOperator) Init(ele reflect.Value, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) {
 	op.Operator.Init(ele)
 
-	expire := config.GetIntOr(fmt.Sprintf("cache.sqlenum.%s.expire", op.TableName()), -1)
+	expire := cfg.Sql.EnumCacheMaxAge
 	if expire < 1 {
-		expire = config.GetIntOr("cache.sqlenum.expire", 1800)
+		expire = time.Minute * 30
 	}
-	op.cache = op.NewEnumCache(expire, constructor, initer)
+	op.cache = op.NewEnumCache(int64(expire/time.Second), constructor, afterScan)
 }
 
 func (op *EnumOperator) Create(ctx context.Context, dict utils.M) int64 {
 	defer op.cache.doExpire()
-
-	_, ok := dict["name"]
-	if !ok {
-		panic(fmt.Errorf("suna.sqlu: enum key `name` is empty"))
-	}
 	dict["created"] = time.Now().Unix()
 	return op.XCreate(ctx, dict)
 }

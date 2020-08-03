@@ -17,7 +17,7 @@ type EnumCache struct {
 	expire      int64
 	op          *Operator
 	constructor func() EnumItem
-	initer      func(context.Context, interface{}) error
+	afterScan   func(context.Context, interface{}) error
 	rwm         sync.RWMutex
 	sg          singleflight.Group
 }
@@ -45,7 +45,7 @@ func (cache *EnumCache) load(ctx context.Context) {
 			cache.all = append(cache.all, obj)
 			return obj
 		},
-		cache.initer,
+		cache.afterScan,
 		fmt.Sprintf(`select * from %s where deleted=0 and status>=0 order by id`, cache.op.TableName()),
 	)
 

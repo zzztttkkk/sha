@@ -3,8 +3,8 @@ package suna
 import (
 	"context"
 	"github.com/go-redis/redis/v7"
-	"github.com/jmoiron/sqlx"
-	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/suna/auth"
+	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/ctxs"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/rbac"
@@ -13,42 +13,44 @@ import (
 
 	"github.com/zzztttkkk/suna/internal"
 
-	"github.com/zzztttkkk/suna/ini"
 	"github.com/zzztttkkk/suna/middleware"
 )
 
 type InitOption struct {
-	IniFiles      []string
-	Authenticator ctxs.Authenticator
+	ConfigFile    string
+	Authenticator auth.Authenticator
 }
 
-var config = ini.New()
+var cfg *config.Type
 
-func Init(opt *InitOption) *ini.Ini {
+func Init(opt *InitOption) *config.Type {
 	internal.Provide(
-		func() *ini.Ini {
+		func() *config.Type {
 			if opt == nil {
-				return config
+				cfg = &config.Type{}
+				return cfg
 			}
-
-			for _, fn := range opt.IniFiles {
-				config.Load(fn)
+			if len(opt.ConfigFile) < 1 {
+				cfg = &config.Type{}
+				return cfg
 			}
-			config.Done()
-			config.Print()
-			return config
+			cfg = config.FromFile(opt.ConfigFile)
+			return cfg
 		},
 	)
-	internal.Provide(func() ctxs.Authenticator { return opt.Authenticator })
-	internal.Provide(func(conf *ini.Ini) redis.Cmdable { return config.RedisClient() })
-	internal.Provide(func(conf *ini.Ini) (*sqlx.DB, []*sqlx.DB) { return config.SqlClients() })
-	internal.Provide(func() func(ctx *fasthttp.RequestCtx) context.Context { return ctxs.Std })
+	internal.Provide(func() auth.Authenticator { return opt.Authenticator })
+	internal.Provide(func(conf *config.Type) redis.Cmdable { return cfg.RedisClient() })
 	internal.Provide(
-		func() func(ctx context.Context) rbac.User {
-			return func(ctx context.Context) rbac.User { return ctxs.User(ctxs.RequestCtx(ctx)) }
+		func() *internal.RbacDi {
+			return &internal.RbacDi{
+				WrapCtx:         ctxs.Std,
+				GetUserFromRCtx: ctxs.User,
+				GetUserFromCtx: func(ctx context.Context) auth.User {
+					return ctxs.User(ctxs.RequestCtx(ctx))
+				},
+			}
 		},
 	)
-	internal.Provide(func() func(ctx *fasthttp.RequestCtx) rbac.User { return ctxs.User })
 
 	internal.Invoke(ctxs.Init)
 	internal.Invoke(middleware.Init)
@@ -57,5 +59,5 @@ func Init(opt *InitOption) *ini.Ini {
 	internal.Invoke(secret.Init)
 	internal.Invoke(sqls.Init)
 
-	return config
+	return cfg
 }

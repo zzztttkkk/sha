@@ -28,11 +28,30 @@ const (
 var captchaWordSize int
 var captchaWidth int
 var captchaHeight int
+var captchaForm string
+var captchaMaxage int64
 
 func _initCaptcha() {
-	captchaWordSize = int(config.GetIntOr("session.captcha.word_size", 6))
-	captchaHeight = int(config.GetIntOr("session.captcha.height", 160))
-	captchaWidth = int(config.GetIntOr("session.captcha.width", int64(captchaWordSize*40)))
+	captchaWordSize = cfg.Session.Captcha.Words
+	if captchaWordSize < 1 {
+		captchaWordSize = 6
+	}
+	captchaHeight = cfg.Session.Captcha.Height
+	captchaWidth = cfg.Session.Captcha.Width
+	if captchaHeight < 1 {
+		captchaHeight = 120
+	}
+	if captchaWidth < 1 {
+		captchaWidth = 540
+	}
+	captchaForm = cfg.Session.Captcha.Form
+	if len(captchaForm) < 1 {
+		captchaForm = "captcha"
+	}
+	captchaMaxage = int64(cfg.Session.Captcha.MaxAge)
+	if captchaMaxage < 1 {
+		captchaMaxage = 300
+	}
 }
 
 func (ss SessionStorage) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
@@ -52,7 +71,7 @@ func (ss SessionStorage) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 }
 
 func (ss SessionStorage) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
-	if config.IsDebug() {
+	if cfg.Session.Captcha.SkipInDebug && cfg.IsDebug() {
 		return true
 	}
 
@@ -64,7 +83,7 @@ func (ss SessionStorage) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
 	}()
 
 	ok = false
-	v := ctx.FormValue("captcha")
+	v := ctx.FormValue(captchaForm)
 	if v == nil {
 		return
 	}
@@ -75,7 +94,7 @@ func (ss SessionStorage) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
 	}
 
 	var unix int64
-	if !ss.Get(captchaUnixKey, &unix) || time.Now().Unix()-unix > 300 {
+	if !ss.Get(captchaUnixKey, &unix) || time.Now().Unix()-unix > captchaMaxage {
 		return
 	}
 

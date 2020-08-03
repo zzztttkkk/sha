@@ -3,6 +3,7 @@ package rbac
 import (
 	"context"
 	"github.com/RoaringBitmap/roaring/roaring64"
+	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/utils"
 )
@@ -44,11 +45,11 @@ func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
 	return set
 }
 
-func IsGranted(ctx context.Context, subject User, policy CheckPolicy, permissions ...string) bool {
+func IsGranted(ctx context.Context, user auth.User, policy CheckPolicy, permissions ...string) bool {
 	g.RLock()
 	defer g.RUnlock()
 
-	SubjectId := subject.GetId()
+	SubjectId := user.GetId()
 	if SubjectId < 1 {
 		return false
 	}
@@ -65,7 +66,7 @@ func IsGranted(ctx context.Context, subject User, policy CheckPolicy, permission
 		Perms = append(Perms, uint64(v.Id))
 	}
 
-	set := getBitmap(UserOperator.getRoles(ctx, SubjectId))
+	set := getBitmap(_UserOperator.getRoles(ctx, SubjectId))
 	if set == nil {
 		return false
 	}

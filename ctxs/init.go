@@ -1,10 +1,12 @@
 package ctxs
 
-import "github.com/zzztttkkk/suna/ini"
+import (
+	"github.com/zzztttkkk/suna/config"
+)
 
-var config *ini.Ini
+var cfg *config.Type
 
-func Init(conf *ini.Ini) {
-	config = conf
+func Init(conf *config.Type) {
+	cfg = conf
 	_initSession()
 }

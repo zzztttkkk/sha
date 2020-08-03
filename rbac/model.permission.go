@@ -14,20 +14,3 @@ func (_Permission) TableName() string {
 func (perm _Permission) TableDefinition() []string {
 	return perm.Enum.TableDefinition("descp text")
 }
-
-type _PermConflict struct {
-	A int64
-	B int64
-}
-
-func (_PermConflict) TableName() string {
-	return tablePrefix + "perm_conflict"
-}
-
-func (_PermConflict) TableDefinition() []string {
-	return []string{
-		"a bigint not null",
-		"b bigint not null",
-		"primary key(a,b)",
-	}
-}

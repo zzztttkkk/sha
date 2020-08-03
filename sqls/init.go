@@ -4,30 +4,26 @@ import (
 	"context"
 	"fmt"
 	"github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/suna/ini"
+	"github.com/zzztttkkk/suna/config"
 	"log"
 	"strings"
 )
 
-var config *ini.Ini
-var leader *sqlx.DB
-var followers []*sqlx.DB
-var sqlLog bool
+var cfg *config.Type
 var isPostgres bool
 var doCreate func(ctx context.Context, op *Operator, q string, args []interface{}) int64
+var leader *sqlx.DB
 
-func Init(conf *ini.Ini, leaderV *sqlx.DB, followersV []*sqlx.DB) {
-	config = conf
-	leader = leaderV
-	followers = followersV
+func Init(conf *config.Type) {
+	cfg = conf
 
-	if leader == nil {
+	if cfg.SqlLeader() == nil {
+		log.Println("suna.sqls: init error")
 		return
 	}
 
-	sqlLog = config.IsDebug() && config.GetBool("sql.log")
+	leader = cfg.SqlLeader()
 	isPostgres = leader.DriverName() == "postgres"
-
 	doCreate = mysqlCreate
 	if isPostgres {
 		doCreate = postgresCreate
@@ -35,16 +31,16 @@ func Init(conf *ini.Ini, leaderV *sqlx.DB, followersV []*sqlx.DB) {
 }
 
 func doSqlLog(q string, args []interface{}) {
-	if !sqlLog {
+	if !cfg.Sql.Log {
 		return
 	}
 
 	if len(args) < 1 {
-		log.Printf("suna.sqlu.log: `%s`\n", q)
+		log.Printf("suna.sqls.log: `%s`\n", q)
 		return
 	}
 
 	s := fmt.Sprintf(strings.Repeat("%v,", len(args)), args...)
 
-	log.Printf("suna.sqlu.log: `%s` `%s`\n", q, s)
+	log.Printf("suna.sqls.log: `%s` `%s`\n", q, s)
 }

@@ -44,6 +44,23 @@ func init() {
 				"/user/role/del",
 				newPermChecker("admin.rbac.user.del_role", _UserDelRoleHandler),
 			)
+
+			router.GET(
+				"/user/role/list",
+				newPermChecker(
+					"admin.rbac.user.list_role",
+					func(ctx *fasthttp.RequestCtx) {
+						type UidForm struct {
+							Uid int64
+						}
+						form := UidForm{}
+						if !validator.Validate(ctx, &form) {
+							return
+						}
+						output.MsgOK(ctx, _UserOperator.getRoles(ctx, form.Uid))
+					},
+				),
+			)
 		},
 	)
 }

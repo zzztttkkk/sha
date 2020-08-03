@@ -2,7 +2,6 @@ package auth
 
 import (
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/suna/rbac"
 )
 
 type User interface {
@@ -10,5 +9,5 @@ type User interface {
 }
 
 type Authenticator interface {
-	Auth(*fasthttp.RequestCtx) rbac.User
+	Auth(*fasthttp.RequestCtx) User
 }

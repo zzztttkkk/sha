@@ -23,7 +23,7 @@ func (f JsonObject) Value() (driver.Value, error) {
 	return v, nil
 }
 
-var IsNotSqlJsonFieldError = errors.New("suna.sqlu: this is not a json field")
+var IsNotSqlJsonFieldError = errors.New("suna.sqls: this is not a json field")
 
 func (f *JsonObject) Scan(src interface{}) error {
 	var bytes []byte

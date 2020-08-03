@@ -17,15 +17,15 @@ type _UserOp struct {
 	lru   *cache.Lru
 }
 
-var UserOperator = &_UserOp{
+var _UserOperator = &_UserOp{
 	roles: &sqls.Operator{},
 }
 
 func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
-			UserOperator.roles.Init(reflect.ValueOf(_UserWithRole{}))
-			cache.NewLru(int(conf.GetIntMust("cache.lru.user_info_size")))
+			_UserOperator.roles.Init(reflect.ValueOf(_UserWithRole{}))
+			cache.NewLru(cfg.Cache.Lru.UserSize)
 		},
 		permTablePriority.Incr(),
 	)

@@ -11,9 +11,12 @@ type Operator struct {
 	idField   string
 }
 
-
 func (op *Operator) TableName() string {
 	return op.tablename
+}
+
+func (op *Operator) SetIdField(f string) {
+	op.idField = strings.TrimSpace(strings.Split(strings.TrimSpace(f), ",")[0])
 }
 
 func (op *Operator) Init(ele reflect.Value) {
