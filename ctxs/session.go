@@ -26,17 +26,10 @@ func _initSession() {
 	sessionInCookie = cfg.Session.Cookie
 	sessionInHeader = cfg.Session.Header
 	sessionKeyPrefix = cfg.Session.Prefix
-	if len(sessionKeyPrefix) < 1 {
-		sessionKeyPrefix = "session"
-	}
 	if !strings.HasSuffix(sessionKeyPrefix, ":") {
 		sessionKeyPrefix += ":"
 	}
 	sessionExpire = cfg.Session.MaxAge
-	if sessionExpire < 1 {
-		sessionExpire = time.Second * 1800
-	}
-
 	_initCaptcha()
 }
 

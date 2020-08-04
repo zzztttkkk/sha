@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/BurntSushi/toml"
 	"github.com/go-redis/redis/v7"
+	"github.com/imdario/mergo"
 	"github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/suna/auth"
 	"io/ioutil"
@@ -72,6 +73,25 @@ type Type struct {
 	isTest    bool
 }
 
+func _New() *Type {
+	t := &Type{}
+	t.Env = "debug"
+	t.Secret.HashAlgorithm = "sha256-512"
+	t.Cache.Lru.ContentSize = 2000
+	t.Cache.Lru.UserSize = 1000
+	t.Errors.MaxDepth = 20
+	t.Session.Cookie = "sck"
+	t.Session.Header = "Suna-Session"
+	t.Session.MaxAge = time.Minute * 30
+	t.Session.Prefix = "session"
+	t.Session.Captcha.Form = "captcha"
+	t.Session.Captcha.Height = 120
+	t.Session.Captcha.Width = 640
+	t.Session.Captcha.Words = 6
+	t.Session.Captcha.MaxAge = 300
+	return t
+}
+
 func FromFile(fp string) *Type {
 	f, e := os.Open(fp)
 	if e != nil {
@@ -87,12 +107,27 @@ func FromFile(fp string) *Type {
 }
 
 func FromBytes(data []byte) *Type {
-	conf := &Type{}
+	conf := _New()
 	if err := toml.Unmarshal(data, conf); err != nil {
 		panic(err)
 	}
 	conf.done()
 	return conf
+}
+
+func FromFiles(fps ...string) *Type {
+	var t *Type
+	for _, fp := range fps {
+		nt := FromFile(fp)
+		if t == nil {
+			t = nt
+		} else {
+			if err := mergo.Merge(t, nt, mergo.WithOverride); err != nil {
+				panic(err)
+			}
+		}
+	}
+	return t
 }
 
 func (t *Type) done() {

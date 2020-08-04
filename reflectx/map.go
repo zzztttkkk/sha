@@ -3,7 +3,7 @@ package reflectx
 import "reflect"
 
 type Visitor interface {
-	OnNestStruct(field *reflect.StructField) bool
+	OnNestStructField(field *reflect.StructField) bool
 	OnField(field *reflect.StructField)
 }
 
@@ -13,7 +13,7 @@ func Map(t reflect.Type, visitor Visitor) {
 		field := t.Field(i)
 
 		if field.Type.Kind() == reflect.Struct {
-			if visitor.OnNestStruct(&field) {
+			if visitor.OnNestStructField(&field) {
 				Map(field.Type, visitor)
 			}
 			continue

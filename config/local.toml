@@ -1,0 +1,4 @@
+env = "release"
+
+[sql]
+leader = "a:123456@124.256.78:555/aaa"

@@ -10,6 +10,7 @@ require (
 	github.com/go-redis/redis/v7 v7.4.0
 	github.com/go-redis/redis_rate/v8 v8.0.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
+	github.com/imdario/mergo v0.3.10
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/rs/xid v1.2.1
 	github.com/valyala/fasthttp v1.15.1

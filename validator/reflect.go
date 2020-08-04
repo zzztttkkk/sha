@@ -2,7 +2,7 @@ package validator
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/suna/internal/reflectx"
+	"github.com/zzztttkkk/suna/reflectx"
 	"reflect"
 	"regexp"
 	"sort"
