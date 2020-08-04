@@ -73,7 +73,7 @@ type Type struct {
 	isTest    bool
 }
 
-func _New() *Type {
+func New() *Type {
 	t := &Type{}
 	t.Env = "debug"
 	t.Secret.HashAlgorithm = "sha256-512"
@@ -107,7 +107,7 @@ func FromFile(fp string) *Type {
 }
 
 func FromBytes(data []byte) *Type {
-	conf := _New()
+	conf := New()
 	if err := toml.Unmarshal(data, conf); err != nil {
 		panic(err)
 	}

@@ -27,16 +27,10 @@ var cfg *config.Type
 func Init(opt *InitOption) *config.Type {
 	internal.Provide(
 		func() *config.Type {
-			if opt == nil {
-				cfg = &config.Type{}
+			if opt == nil || len(opt.ConfigFiles) < 1 {
+				cfg = config.New()
 				return cfg
 			}
-
-			if len(opt.ConfigFiles) < 1 {
-				cfg = &config.Type{}
-				return cfg
-			}
-
 			sort.Sort(sort.StringSlice(opt.ConfigFiles))
 			cfg = config.FromFiles(opt.ConfigFiles...)
 			return cfg
