@@ -10,6 +10,7 @@ import (
 	"github.com/zzztttkkk/suna/rbac"
 	"github.com/zzztttkkk/suna/secret"
 	"github.com/zzztttkkk/suna/sqls"
+	"sort"
 
 	"github.com/zzztttkkk/suna/internal"
 
@@ -17,7 +18,7 @@ import (
 )
 
 type InitOption struct {
-	ConfigFile    string
+	ConfigFiles   []string
 	Authenticator auth.Authenticator
 }
 
@@ -30,11 +31,14 @@ func Init(opt *InitOption) *config.Type {
 				cfg = &config.Type{}
 				return cfg
 			}
-			if len(opt.ConfigFile) < 1 {
+
+			if len(opt.ConfigFiles) < 1 {
 				cfg = &config.Type{}
 				return cfg
 			}
-			cfg = config.FromFile(opt.ConfigFile)
+
+			sort.Sort(sort.StringSlice(opt.ConfigFiles))
+			cfg = config.FromFiles(opt.ConfigFiles...)
 			return cfg
 		},
 	)
