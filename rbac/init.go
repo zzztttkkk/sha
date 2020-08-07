@@ -19,7 +19,6 @@ var loader = utils.NewLoader()
 
 var wrapRCtx func(ctx *fasthttp.RequestCtx) context.Context
 var getUserFromCtx func(ctx context.Context) auth.User
-var getUserFromRCtx func(ctx *fasthttp.RequestCtx) auth.User
 
 type modifyType int
 
@@ -55,7 +54,6 @@ func init() {
 			cfg = confV
 			wrapRCtx = di.WrapCtx.(func(ctx *fasthttp.RequestCtx) context.Context)
 			getUserFromCtx = di.GetUserFromCtx.(func(ctx context.Context) auth.User)
-			getUserFromRCtx = di.GetUserFromRCtx.(func(ctx *fasthttp.RequestCtx) auth.User)
 			tablePrefix = confV.Rbac.TablenamePrefix
 
 			l := cfg.SqlLeader()

@@ -7,6 +7,7 @@ import (
 	"github.com/rs/xid"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/auth"
+	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/utils"
 	"strings"
@@ -75,7 +76,7 @@ func newSession(ctx *fasthttp.RequestCtx) Session {
 
 	now := time.Now()
 	sessionId = fmt.Sprintf("%s:%s", sessionKeyPrefix, xid.New().String())
-	redisc.HSet(sessionId, "cunix", now.Unix())
+	redisc.HSet(sessionId, internal.SessionExistsKey, 1)
 	if subject != nil {
 		redisc.Set(fmt.Sprintf("%su:%d", sessionKeyPrefix, subject.GetId()), now.Unix(), sessionExpire)
 	}
@@ -111,6 +112,10 @@ func (ss Session) Del(keys ...string) {
 		}
 		panic(err)
 	}
+}
+
+func (ss Session) Refresh() {
+	redisc.Expire(string(ss), sessionExpire)
 }
 
 func Get(ctx *fasthttp.RequestCtx) Session {

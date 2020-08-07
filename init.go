@@ -27,8 +27,7 @@ var rkKeyWarnOnce = sync.Once{}
 func doReservedKeyWarning() {
 	rkKeyWarnOnce.Do(
 		func() {
-			log.Printf("suna: reserved fasthttp.Unwrap.UserValue keys: `.suna.s`, `.suna.r`, `.suna.u`")
-			log.Printf("suna: reserved suna.session.Session keys: `.~`,")
+			log.Printf("suna: reserved suna.session.Session keys: `%s`,", internal.SessionExistsKey)
 		},
 	)
 }
@@ -41,6 +40,8 @@ type InitOption struct {
 var cfg *config.Type
 
 func Init(opt *InitOption) *config.Type {
+	doReservedKeyWarning()
+
 	internal.Provide(
 		func() *config.Type {
 			if opt == nil || len(opt.ConfigFiles) < 1 {
@@ -64,11 +65,8 @@ func Init(opt *InitOption) *config.Type {
 	internal.Provide(
 		func() *internal.RbacDi {
 			return &internal.RbacDi{
-				WrapCtx:         ctxs.Wrap,
-				GetUserFromRCtx: auth.GetUserMust,
-				GetUserFromCtx: func(ctx context.Context) auth.User {
-					return auth.GetUserMust(ctxs.Unwrap(ctx))
-				},
+				WrapCtx:        ctxs.Wrap,
+				GetUserFromCtx: func(ctx context.Context) auth.User { return auth.GetUserMust(ctxs.Unwrap(ctx)) },
 			}
 		},
 	)
