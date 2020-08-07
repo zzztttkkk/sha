@@ -5,7 +5,6 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/imdario/mergo"
 	"github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/suna/auth"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -14,7 +13,7 @@ import (
 
 type Type struct {
 	Env           string
-	Authenticator auth.Authenticator
+	TimeFormatter string
 
 	Secret struct {
 		Key           string
@@ -61,6 +60,10 @@ type Type struct {
 		fs  []*sqlx.DB `toml:"-"`
 	}
 
+	Rbac struct {
+		TablenamePrefix string
+	}
+
 	Redis struct {
 		Mode  string
 		Nodes []string
@@ -89,6 +92,7 @@ func New() *Type {
 	t.Session.Captcha.Width = 640
 	t.Session.Captcha.Words = 6
 	t.Session.Captcha.MaxAge = 300
+	t.Rbac.TablenamePrefix = "rbac_"
 	return t
 }
 

@@ -4,17 +4,22 @@ import (
 	"context"
 	"fmt"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/suna/internal"
 )
 
-func Std(ctx *fasthttp.RequestCtx) context.Context {
-	return context.WithValue(ctx, internal.RCtxKeyStdCtx, ctx)
+type StdCtxKey int
+
+var (
+	_RCtxKeyStdCtx = StdCtxKey(0)
+)
+
+func Wrap(ctx *fasthttp.RequestCtx) context.Context {
+	return context.WithValue(ctx, _RCtxKeyStdCtx, ctx)
 }
 
-func RequestCtx(ctx context.Context) *fasthttp.RequestCtx {
-	v, ok := ctx.Value(internal.RCtxKeyStdCtx).(*fasthttp.RequestCtx)
+func Unwrap(ctx context.Context) *fasthttp.RequestCtx {
+	v, ok := ctx.Value(_RCtxKeyStdCtx).(*fasthttp.RequestCtx)
 	if !ok {
-		panic(fmt.Errorf("suna.ctxs: nil fasthttp.RequestCtx"))
+		panic(fmt.Errorf("suna.ctxs: nil fasthttp.Unwrap"))
 	}
 	return v
 }

@@ -9,7 +9,6 @@ import (
 type M map[string]interface{}
 
 var placeholderRegexp = regexp.MustCompile(`{.*?}`)
-var nameRegexp = regexp.MustCompile(`^[a-zA-Z_]\w*$`)
 
 //noinspection GoNilness
 func parseFs(fs string) (string, []string) {
@@ -38,41 +37,36 @@ func parseFs(fs string) (string, []string) {
 
 		ind := strings.Index(s, ":")
 		name := s
-		fv := "%value"
+		fv := "%+v"
 		if ind != -1 {
 			name = strings.TrimSpace(s[:ind])
 			fv = "%" + strings.TrimSpace(s[ind+1:])
 		}
-
-		if nameRegexp.MatchString(name) {
-			nl = append(nl, name)
-			prev += fv
-		} else {
-			prev += s
-		}
+		nl = append(nl, name)
+		prev += fv
 		bodySs[i] = prev
 	}
 	return strings.Join(bodySs, ""), nl
 }
 
-type _NamedFmtT struct {
-	fs string
-	ns []string
+type NamedFmt struct {
+	fs    string
+	Names []string
 }
 
-func NewNamedFmt(fs string) *_NamedFmtT {
-	f := &_NamedFmtT{}
-	f.fs, f.ns = parseFs(fs)
+func NewNamedFmt(fs string) *NamedFmt {
+	f := &NamedFmt{}
+	f.fs, f.Names = parseFs(fs)
 	return f
 }
 
-func (f *_NamedFmtT) getVl(v M) (vl []interface{}) {
-	for _, n := range f.ns {
+func (f *NamedFmt) getVl(v M) (vl []interface{}) {
+	for _, n := range f.Names {
 		vl = append(vl, v[n])
 	}
 	return
 }
 
-func (f *_NamedFmtT) Render(v M) string {
+func (f *NamedFmt) Render(v M) string {
 	return fmt.Sprintf(f.fs, f.getVl(v)...)
 }

@@ -1,4 +1,4 @@
-package ctxs
+package session
 
 import (
 	"encoding/json"
@@ -6,23 +6,21 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/auth"
+	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/utils"
 	"strings"
 	"time"
 )
 
-type SessionStorage string
+type Session string
 
-var redisc redis.Cmdable
 var sessionInCookie string
 var sessionInHeader string
 var sessionKeyPrefix string
 var sessionExpire time.Duration
 
 func _initSession() {
-	redisc = cfg.RedisClient()
-
 	sessionInCookie = cfg.Session.Cookie
 	sessionInHeader = cfg.Session.Header
 	sessionKeyPrefix = cfg.Session.Prefix
@@ -33,10 +31,10 @@ func _initSession() {
 	_initCaptcha()
 }
 
-func newSession(ctx *fasthttp.RequestCtx) SessionStorage {
+func newSession(ctx *fasthttp.RequestCtx) Session {
 	var sessionId string
 
-	subject := User(ctx)
+	subject := auth.GetUser(ctx)
 	if subject != nil {
 		sidKey := fmt.Sprintf("%su:%d", sessionKeyPrefix, subject.GetId())
 		sessionId = redisc.Get(sidKey).String()
@@ -45,7 +43,7 @@ func newSession(ctx *fasthttp.RequestCtx) SessionStorage {
 			if redisc.Exists(sessionId).Val() == 1 {
 				redisc.Expire(sidKey, sessionExpire)
 				redisc.Expire(sessionId, sessionExpire)
-				return SessionStorage(sessionId)
+				return Session(sessionId)
 			}
 			redisc.Del(sidKey)
 			sessionId = ""
@@ -70,7 +68,7 @@ func newSession(ctx *fasthttp.RequestCtx) SessionStorage {
 		sessionId = fmt.Sprintf("%s:%s", sessionKeyPrefix, sessionId)
 		if redisc.Exists(sessionId).Val() == 1 {
 			redisc.Expire(sessionId, sessionExpire)
-			return SessionStorage(sessionId)
+			return Session(sessionId)
 		}
 		sessionId = ""
 	}
@@ -82,20 +80,10 @@ func newSession(ctx *fasthttp.RequestCtx) SessionStorage {
 		redisc.Set(fmt.Sprintf("%su:%d", sessionKeyPrefix, subject.GetId()), now.Unix(), sessionExpire)
 	}
 
-	return SessionStorage(sessionId)
+	return Session(sessionId)
 }
 
-func Session(ctx *fasthttp.RequestCtx) SessionStorage {
-	ss, ok := ctx.UserValue(internal.RCtxKeySession).(SessionStorage)
-	if ok {
-		return ss
-	}
-	ss = newSession(ctx)
-	ctx.SetUserValue(internal.RCtxKeySession, ss)
-	return ss
-}
-
-func (ss SessionStorage) Get(key string, dist interface{}) bool {
+func (ss Session) Get(key string, dist interface{}) bool {
 	bs, err := redisc.HGet(string(ss), key).Bytes()
 	if err != nil {
 		if err == redis.Nil {
@@ -106,7 +94,7 @@ func (ss SessionStorage) Get(key string, dist interface{}) bool {
 	return json.Unmarshal(bs, dist) == nil
 }
 
-func (ss SessionStorage) Set(key string, val interface{}) {
+func (ss Session) Set(key string, val interface{}) {
 	bs, err := json.Marshal(val)
 	if err != nil {
 		panic(err)
@@ -116,11 +104,22 @@ func (ss SessionStorage) Set(key string, val interface{}) {
 	}
 }
 
-func (ss SessionStorage) Del(keys ...string) {
+func (ss Session) Del(keys ...string) {
 	if err := redisc.HDel(string(ss), keys...).Err(); err != nil {
 		if err == redis.Nil {
 			return
 		}
 		panic(err)
 	}
+}
+
+func Get(ctx *fasthttp.RequestCtx) Session {
+	return newSession(ctx)
+}
+
+func GetMust(ctx *fasthttp.RequestCtx) (s Session) {
+	if s = newSession(ctx); len(s) < 1 {
+		panic(output.HttpErrors[fasthttp.StatusForbidden])
+	}
+	return
 }

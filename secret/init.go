@@ -4,33 +4,44 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/zzztttkkk/suna/config"
+	"github.com/zzztttkkk/suna/internal"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 var gSecretKey []byte
 
-func Init(conf *config.Type) {
-	gSecretKey = []byte(conf.Secret.Key)
-	if bytes.HasPrefix(gSecretKey, []byte("file://")) {
-		f, e := os.Open(string(gSecretKey[7:]))
-		if e != nil {
-			panic(e)
-		}
-		defer f.Close()
-		data, e := ioutil.ReadAll(f)
-		if e != nil {
-			panic(e)
-		}
-		gSecretKey = data
-	}
+func init() {
+	internal.LazyInvoke(
+		func(conf *config.Type) {
+			gSecretKey = []byte(conf.Secret.Key)
+			if bytes.HasPrefix(gSecretKey, []byte("file://")) {
+				fp, e := filepath.Abs(string(gSecretKey[7:]))
+				if e != nil {
+					panic(e)
+				}
 
-	hashMethod := conf.Secret.HashAlgorithm
-	if len(hashMethod) < 1 {
-		hashMethod = "sha256-512"
-	}
-	Default = hashMap[hashMethod]
-	if Default == nil {
-		panic(fmt.Errorf("suna.secret: unknown hash method `%s`", hashMethod))
-	}
+				f, e := os.Open(fp)
+				if e != nil {
+					panic(e)
+				}
+				defer f.Close()
+				data, e := ioutil.ReadAll(f)
+				if e != nil {
+					panic(e)
+				}
+				gSecretKey = data
+			}
+
+			hashMethod := conf.Secret.HashAlgorithm
+			if len(hashMethod) < 1 {
+				hashMethod = "sha256-512"
+			}
+			_Default = hashMap[hashMethod]
+			if _Default == nil {
+				panic(fmt.Errorf("suna.secret: unknown hash method `%s`", hashMethod))
+			}
+		},
+	)
 }

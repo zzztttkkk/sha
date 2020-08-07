@@ -87,19 +87,28 @@ func (option *CorsOption) writeHeaders(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (option *CorsOption) BindOptions(path string, router router.Router) {
-	option.init()
-	router.OPTIONS(path, option.writeHeaders)
+func (option *CorsOption) bindOptions(router router.Router) {
+	router.OPTIONS("/{any:*}", option.writeHeaders)
 }
 
-func NewCorsMiddleware(option *CorsOption) fasthttp.RequestHandler {
-	return NewCorsHandler(option, router.Next)
+type _Cors struct {
+	opt *CorsOption
 }
 
-func NewCorsHandler(option *CorsOption, next fasthttp.RequestHandler) fasthttp.RequestHandler {
-	option.init()
+func NewCors(opt *CorsOption, router router.Router) *_Cors {
+	c := &_Cors{opt: opt}
+	c.opt.init()
+	c.opt.bindOptions(router)
+	return c
+}
+
+func (c *_Cors) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
-		defer option.writeHeaders(ctx)
+		defer c.opt.writeHeaders(ctx)
 		next(ctx)
 	}
+}
+
+func (c *_Cors) AsMiddleware() fasthttp.RequestHandler {
+	return c.AsHandler(router.Next)
 }

@@ -35,27 +35,9 @@ func _PermDeleteHandler(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func PermPageHandler(ctx *fasthttp.RequestCtx) {
-
-}
-
 func newPermChecker(perm string, next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	perm = EnsurePermission(perm, "")
-
-	return func(ctx *fasthttp.RequestCtx) {
-		user := getUserFromRCtx(ctx)
-		if user == nil {
-			output.Error(ctx, output.HttpErrors[fasthttp.StatusUnauthorized])
-			return
-		}
-
-		if !IsGranted(ctx, user, PolicyAll, perm) {
-			output.Error(ctx, output.HttpErrors[fasthttp.StatusForbidden])
-			return
-		}
-
-		next(ctx)
-	}
+	return NewPermissionCheckHandler(PolicyAll, []string{perm}, next)
 }
 
 func init() {

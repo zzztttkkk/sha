@@ -28,6 +28,10 @@ func init() {
 
 func (op *_PermOp) Create(ctx context.Context, m utils.M) {
 	defer LogOperator.Create(ctx, "perm.create", m)
+	op.create(ctx, m)
+}
+
+func (op *_PermOp) create(ctx context.Context, m utils.M) {
 	op.EnumOperator.Create(ctx, m)
 }
 
@@ -47,6 +51,6 @@ func EnsurePermission(name, descp string) string {
 	if _PermissionOperator.ExistsByName(context.Background(), name) {
 		return name
 	}
-	_PermissionOperator.Create(context.Background(), utils.M{"name": name, "descp": descp})
+	_PermissionOperator.create(context.Background(), utils.M{"name": name, "descp": descp})
 	return name
 }

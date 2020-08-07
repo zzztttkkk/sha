@@ -10,7 +10,7 @@ import (
 	"log"
 )
 
-var tablePrefix string
+var tablePrefix = "rbac_"
 var lazier = utils.NewLazyExecutor()
 var initPriority = utils.NewPriority(1)
 var permTablePriority = initPriority.Incr()
@@ -49,19 +49,21 @@ func Loader() *utils.Loader {
 
 var cfg *config.Type
 
-func Init(
-	confV *config.Type,
-	di *internal.RbacDi,
-) {
-	cfg = confV
-	wrapRCtx = di.WrapCtx
-	getUserFromCtx = di.GetUserFromCtx
-	getUserFromRCtx = di.GetUserFromRCtx
+func init() {
+	internal.LazyInvoke(
+		func(confV *config.Type, di *internal.RbacDi) {
+			cfg = confV
+			wrapRCtx = di.WrapCtx.(func(ctx *fasthttp.RequestCtx) context.Context)
+			getUserFromCtx = di.GetUserFromCtx.(func(ctx context.Context) auth.User)
+			getUserFromRCtx = di.GetUserFromRCtx.(func(ctx *fasthttp.RequestCtx) auth.User)
+			tablePrefix = confV.Rbac.TablenamePrefix
 
-	l := cfg.SqlLeader()
-	if l == nil {
-		log.Println("suna.rbac: init error")
-		return
-	}
-	lazier.Execute(nil)
+			l := cfg.SqlLeader()
+			if l == nil {
+				log.Println("suna.rbac: init error")
+				return
+			}
+			lazier.Execute(nil)
+		},
+	)
 }

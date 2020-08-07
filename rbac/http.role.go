@@ -131,7 +131,7 @@ func init() {
 			)
 
 			router.GET(
-				"/permission/all",
+				"/role/all",
 				newPermChecker(
 					"admin.rbac.role.list",
 					func(ctx *fasthttp.RequestCtx) {

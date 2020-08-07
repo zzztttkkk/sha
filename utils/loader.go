@@ -11,18 +11,7 @@ import (
 	"strings"
 )
 
-var disableReservedRCtxKeyWarning bool
 
-func DisableReservedRCtxKeyWarning() {
-	disableReservedRCtxKeyWarning = true
-}
-
-func doRctxKeyWarning() {
-	if disableReservedRCtxKeyWarning {
-		return
-	}
-	log.Printf("suna: reserved fasthttp.RequestCtx.UserValue keys: `.suna.s`, `.suna.r`, `.suna.u`")
-}
 
 type Loader struct {
 	parent   *Loader
@@ -35,7 +24,6 @@ type Loader struct {
 }
 
 func NewLoader() *Loader {
-	doRctxKeyWarning()
 	return &Loader{
 		children: make(map[string]*Loader),
 		parent:   nil,

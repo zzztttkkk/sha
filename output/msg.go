@@ -2,9 +2,10 @@ package output
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/go-errors/errors"
 	"log"
 
-	"github.com/go-errors/errors"
 	"github.com/valyala/fasthttp"
 )
 
@@ -52,25 +53,33 @@ func MsgOK(ctx *fasthttp.RequestCtx, data interface{}) {
 	Msg(ctx, fasthttp.StatusOK, data)
 }
 
-func Error(ctx *fasthttp.RequestCtx, err error) {
+func ErrorAndErrorStack(ctx *fasthttp.RequestCtx, err error) string {
 	ctx.Response.ResetBody()
 	ctx.SetContentTypeBytes(strApplicationJSON)
 
+	var code int
+
 	switch v := err.(type) {
 	case Err:
+		code = v.StatusCode()
 		ctx.SetStatusCode(v.StatusCode())
 		toJson(ctx, v.Message())
 	default:
-		log.Println(errors.Wrap(err, 1).ErrorStack())
+		code = fasthttp.StatusInternalServerError
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		_, _ = ctx.Write(internalServerErrorMsg)
 	}
+
+	if code > 499 {
+		e := errors.Wrap(err, 1)
+		return fmt.Sprintf("%s\n%s\n", e.Error(), e.ErrorStack())
+	}
+	return ""
 }
 
-func StdError(ctx *fasthttp.RequestCtx, code int) {
-	err := HttpErrors[code]
-	if err == nil {
-		err = HttpErrors[fasthttp.StatusInternalServerError]
+func Error(ctx *fasthttp.RequestCtx, err error) {
+	stack := ErrorAndErrorStack(ctx, err)
+	if len(stack) > 1 {
+		log.Print(stack)
 	}
-	Error(ctx, err)
 }

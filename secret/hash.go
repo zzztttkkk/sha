@@ -156,7 +156,7 @@ var Sha384_512 = NewHash(sha512.New384, true)
 //noinspection GoSnakeCaseUsage
 var Sha384_512Std = NewHash(sha512.New384, false)
 
-var Default = Sha256_512
+var _Default = Sha256_512
 
 var hashMap = map[string]*Hash{
 	"md5":            Md5,
@@ -170,3 +170,11 @@ var hashMap = map[string]*Hash{
 	"sha384-512":     Sha384_512,
 	"sha384-512-std": Sha384_512Std,
 }
+
+func Calc(v []byte) []byte { return _Default.Calc(v) }
+
+func Equal(raw []byte, hexBytes []byte) bool { return _Default.Equal(raw, hexBytes) }
+
+func StreamCalc(reader io.Reader) []byte { return _Default.StreamCalc(reader) }
+
+func StreamEqual(reader io.Reader, hexBytes []byte) bool { return _Default.StreamEqual(reader, hexBytes) }

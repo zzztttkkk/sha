@@ -10,7 +10,7 @@ import (
 
 func DumpId(id int64, seconds int64) string {
 	v := fmt.Sprintf("%x@%x:%s", id, time.Now().Unix()+seconds, utils.B2s(RandBytes(12, nil)))
-	return fmt.Sprintf("%s|%s", v, utils.B2s(Default.Calc(utils.S2b(v))))
+	return fmt.Sprintf("%s|%s", v, utils.B2s(_Default.Calc(utils.S2b(v))))
 }
 
 func LoadId(s string) (int64, bool) {
@@ -22,7 +22,7 @@ func LoadId(s string) (int64, bool) {
 	v := s[:ind]
 	h := s[ind+1:]
 
-	if len(h) != Default.size {
+	if len(h) != _Default.size {
 		return 0, false
 	}
 
@@ -37,7 +37,7 @@ func LoadId(s string) (int64, bool) {
 		return 0, false
 	}
 
-	if !Default.Equal(utils.S2b(v), utils.S2b(h)) {
+	if !_Default.Equal(utils.S2b(v), utils.S2b(h)) {
 		return 0, false
 	}
 

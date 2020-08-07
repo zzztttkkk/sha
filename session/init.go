@@ -1,18 +1,21 @@
-package output
+package session
 
 import (
-	"github.com/go-errors/errors"
+	"github.com/go-redis/redis/v7"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
 )
 
+var cfg *config.Type
+var redisc redis.Cmdable
+
 func init() {
 	internal.LazyInvoke(
 		func(conf *config.Type) {
-			errors.MaxStackDepth = conf.Errors.MaxDepth
-			if errors.MaxStackDepth < 1 {
-				errors.MaxStackDepth = 20
-			}
+			cfg = conf
+			redisc = conf.RedisClient()
+
+			_initSession()
 		},
 	)
 }

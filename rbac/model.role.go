@@ -34,7 +34,7 @@ func (ele _RoleInheritance) TableDefinition() []string {
 	return []string{
 		"role bigint not null",
 		"based bigint not null",
-		"primary key(role, perm)",
+		"primary key(role, based)",
 	}
 }
 

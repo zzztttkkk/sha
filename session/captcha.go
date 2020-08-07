@@ -1,4 +1,4 @@
-package ctxs
+package session
 
 import (
 	"github.com/dchest/captcha"
@@ -33,28 +33,13 @@ var captchaMaxage int64
 
 func _initCaptcha() {
 	captchaWordSize = cfg.Session.Captcha.Words
-	if captchaWordSize < 1 {
-		captchaWordSize = 6
-	}
 	captchaHeight = cfg.Session.Captcha.Height
 	captchaWidth = cfg.Session.Captcha.Width
-	if captchaHeight < 1 {
-		captchaHeight = 120
-	}
-	if captchaWidth < 1 {
-		captchaWidth = 540
-	}
 	captchaForm = cfg.Session.Captcha.Form
-	if len(captchaForm) < 1 {
-		captchaForm = "captcha"
-	}
 	captchaMaxage = int64(cfg.Session.Captcha.MaxAge)
-	if captchaMaxage < 1 {
-		captchaMaxage = 300
-	}
 }
 
-func (ss SessionStorage) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
+func (ss Session) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 	digits := secret.RandBytes(captchaWordSize, bytesPool)
 	ss.Set(captchaIdKey, toString(digits))
 	ss.Set(captchaIdKey, time.Now().Unix())
@@ -70,7 +55,7 @@ func (ss SessionStorage) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (ss SessionStorage) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
+func (ss Session) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
 	if cfg.Session.Captcha.SkipInDebug && cfg.IsDebug() {
 		return true
 	}
@@ -78,7 +63,7 @@ func (ss SessionStorage) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
 	defer func() {
 		ss.Del(captchaIdKey, captchaUnixKey) // del captcha anyway
 		if !ok {
-			output.StdError(ctx, fasthttp.StatusBadRequest)
+			output.Error(ctx, output.HttpErrors[fasthttp.StatusBadRequest])
 		}
 	}()
 

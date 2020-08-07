@@ -1,9 +1,6 @@
 package output
 
 import (
-	"log"
-
-	"github.com/go-errors/errors"
 	"github.com/valyala/fasthttp"
 )
 
@@ -12,7 +9,6 @@ func Recover(ctx *fasthttp.RequestCtx, val interface{}) {
 	case error:
 		Error(ctx, v)
 	default:
-		log.Println(errors.Wrap(v, 1).ErrorStack())
-		StdError(ctx, fasthttp.StatusInternalServerError)
+		Error(ctx, HttpErrors[fasthttp.StatusInternalServerError])
 	}
 }

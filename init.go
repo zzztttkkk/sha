@@ -2,20 +2,36 @@ package suna
 
 import (
 	"context"
-	"github.com/go-redis/redis/v7"
 	"github.com/zzztttkkk/suna/auth"
+	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/ctxs"
+	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/rbac"
+	"github.com/zzztttkkk/suna/reflectx"
 	"github.com/zzztttkkk/suna/secret"
+	"github.com/zzztttkkk/suna/session"
 	"github.com/zzztttkkk/suna/sqls"
+	"github.com/zzztttkkk/suna/validator"
+	"log"
+	"reflect"
 	"sort"
-
-	"github.com/zzztttkkk/suna/internal"
-
-	"github.com/zzztttkkk/suna/middleware"
+	"strings"
+	"sync"
 )
+
+var rkKeyWarnOnce = sync.Once{}
+
+func doReservedKeyWarning() {
+	rkKeyWarnOnce.Do(
+		func() {
+			log.Printf("suna: reserved fasthttp.Unwrap.UserValue keys: `.suna.s`, `.suna.r`, `.suna.u`")
+			log.Printf("suna: reserved suna.session.Session keys: `.~`,")
+		},
+	)
+}
 
 type InitOption struct {
 	ConfigFiles   []string
@@ -36,26 +52,46 @@ func Init(opt *InitOption) *config.Type {
 			return cfg
 		},
 	)
-	internal.Provide(func() auth.Authenticator { return opt.Authenticator })
-	internal.Provide(func(conf *config.Type) redis.Cmdable { return cfg.RedisClient() })
+	internal.Provide(
+		func() auth.Authenticator {
+			if opt == nil {
+				return nil
+			}
+			return opt.Authenticator
+		},
+	)
+
 	internal.Provide(
 		func() *internal.RbacDi {
 			return &internal.RbacDi{
-				WrapCtx:         ctxs.Std,
-				GetUserFromRCtx: ctxs.User,
+				WrapCtx:         ctxs.Wrap,
+				GetUserFromRCtx: auth.GetUserMust,
 				GetUserFromCtx: func(ctx context.Context) auth.User {
-					return ctxs.User(ctxs.RequestCtx(ctx))
+					return auth.GetUserMust(ctxs.Unwrap(ctx))
 				},
 			}
 		},
 	)
 
-	internal.Invoke(ctxs.Init)
-	internal.Invoke(middleware.Init)
-	internal.Invoke(output.Init)
-	internal.Invoke(rbac.Init)
-	internal.Invoke(secret.Init)
-	internal.Invoke(sqls.Init)
-
+	_LoadSubModules()
+	internal.Invoke()
 	return cfg
+}
+
+// trigger internal.LazyInvoke
+func _LoadSubModules() string {
+	buf := strings.Builder{}
+
+	buf.WriteString(reflect.ValueOf(cache.NewLru).String())
+	buf.WriteString(reflect.ValueOf(ctxs.Unwrap).String())
+	buf.WriteString(reflect.ValueOf(middleware.NewAccessLogger).String())
+	buf.WriteString(reflect.ValueOf(output.Error).String())
+	buf.WriteString(reflect.ValueOf(rbac.Loader).String())
+	buf.WriteString(reflect.ValueOf(reflectx.ExportedKeys).String())
+	buf.WriteString(reflect.ValueOf(secret.AesDecrypt).String())
+	buf.WriteString(reflect.ValueOf(session.Get).String())
+	buf.WriteString(reflect.ValueOf(sqls.CreateTable).String())
+	buf.WriteString(reflect.ValueOf(validator.RegisterFunc).String())
+
+	return buf.String()
 }
