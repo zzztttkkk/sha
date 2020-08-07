@@ -118,11 +118,7 @@ func (ss Session) Refresh() {
 	redisc.Expire(string(ss), sessionExpire)
 }
 
-func Get(ctx *fasthttp.RequestCtx) Session {
-	return newSession(ctx)
-}
-
-func GetMust(ctx *fasthttp.RequestCtx) (s Session) {
+func Get(ctx *fasthttp.RequestCtx) (s Session) {
 	if s = newSession(ctx); len(s) < 1 {
 		panic(output.HttpErrors[fasthttp.StatusForbidden])
 	}
