@@ -20,7 +20,7 @@ func newSqlDB(dn, url string, maxLifeTime time.Duration, openConns int) *sqlx.DB
 	return db
 }
 
-func (t *Type) SqlLeader() *sqlx.DB {
+func (t *Config) SqlLeader() *sqlx.DB {
 	if t.Sql.l != nil {
 		return t.Sql.l
 	}
@@ -32,7 +32,7 @@ func (t *Type) SqlLeader() *sqlx.DB {
 	return t.Sql.l
 }
 
-func (t *Type) SqlFollower() *sqlx.DB {
+func (t *Config) SqlFollower() *sqlx.DB {
 	if t.Sql.fs != nil {
 		rand.Seed(time.Now().UnixNano())
 		return t.Sql.fs[rand.Int()%len(t.Sql.fs)]

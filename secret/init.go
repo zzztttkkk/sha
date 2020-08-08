@@ -14,7 +14,7 @@ var gSecretKey []byte
 
 func init() {
 	internal.LazyInvoke(
-		func(conf *config.Type) {
+		func(conf *config.Config) {
 			gSecretKey = []byte(conf.Secret.Key)
 			if bytes.HasPrefix(gSecretKey, []byte("file://")) {
 				fp, e := filepath.Abs(string(gSecretKey[7:]))

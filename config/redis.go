@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v7"
+	"strings"
 )
 
 var redisUnknownModeError = errors.New("suna.config: unknown redis mode,[singleton,ring]")
 
-func (t *Type) RedisClient() redis.Cmdable {
+func (t *Config) RedisClient() redis.Cmdable {
 	if t.Redis.c != nil {
 		return t.Redis.c
 	}
@@ -26,7 +27,7 @@ func (t *Type) RedisClient() redis.Cmdable {
 		return nil
 	}
 
-	switch t.Redis.Mode {
+	switch strings.ToLower(t.Redis.Mode) {
 	case "singleton":
 		t.Redis.c = redis.NewClient(opts[0])
 		return t.Redis.c
@@ -38,6 +39,19 @@ func (t *Type) RedisClient() redis.Cmdable {
 			pwds[fmt.Sprintf("node.%d", ind)] = opt.Password
 		}
 		t.Redis.c = redis.NewRing(&redis.RingOptions{Addrs: addrs, Passwords: pwds})
+		return t.Redis.c
+	case "cluster":
+		var addrs []string
+		for _, opt := range opts {
+			addrs = append(addrs, opt.Addr)
+		}
+		t.Redis.c = redis.NewClusterClient(
+			&redis.ClusterOptions{
+				Addrs:    addrs,
+				Username: opts[0].Username,
+				Password: opts[0].Password,
+			},
+		)
 		return t.Redis.c
 	default:
 		panic(redisUnknownModeError)

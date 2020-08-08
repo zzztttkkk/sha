@@ -46,11 +46,11 @@ func Loader() *utils.Loader {
 	return loader
 }
 
-var cfg *config.Type
+var cfg *config.Config
 
 func init() {
 	internal.LazyInvoke(
-		func(confV *config.Type, di *internal.RbacDi) {
+		func(confV *config.Config, di *internal.RbacDi) {
 			cfg = confV
 			wrapRCtx = di.WrapCtx.(func(ctx *fasthttp.RequestCtx) context.Context)
 			getUserFromCtx = di.GetUserFromCtx.(func(ctx context.Context) auth.User)

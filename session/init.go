@@ -6,12 +6,12 @@ import (
 	"github.com/zzztttkkk/suna/internal"
 )
 
-var cfg *config.Type
+var cfg *config.Config
 var redisc redis.Cmdable
 
 func init() {
 	internal.LazyInvoke(
-		func(conf *config.Type) {
+		func(conf *config.Config) {
 			cfg = conf
 			redisc = conf.RedisClient()
 

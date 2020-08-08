@@ -10,6 +10,7 @@ import (
 	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/rbac"
+	"github.com/zzztttkkk/suna/redlock"
 	"github.com/zzztttkkk/suna/reflectx"
 	"github.com/zzztttkkk/suna/secret"
 	"github.com/zzztttkkk/suna/session"
@@ -23,10 +24,18 @@ import (
 )
 
 var rkKeyWarnOnce = sync.Once{}
+var disableWarn bool
+
+func DisableReservedKeysWarning() {
+	disableWarn = true
+}
 
 func doReservedKeyWarning() {
 	rkKeyWarnOnce.Do(
 		func() {
+			if disableWarn {
+				return
+			}
 			log.Printf("suna: reserved suna.session.Session keys: `%s`,", internal.SessionExistsKey)
 		},
 	)
@@ -37,13 +46,13 @@ type InitOption struct {
 	Authenticator auth.Authenticator
 }
 
-var cfg *config.Type
+var cfg *config.Config
 
-func Init(opt *InitOption) *config.Type {
+func Init(opt *InitOption) *config.Config {
 	doReservedKeyWarning()
 
 	internal.Provide(
-		func() *config.Type {
+		func() *config.Config {
 			if opt == nil || len(opt.ConfigFiles) < 1 {
 				cfg = config.New()
 				return cfg
@@ -90,6 +99,7 @@ func _LoadSubModules() string {
 	buf.WriteString(reflect.ValueOf(session.Get).String())
 	buf.WriteString(reflect.ValueOf(sqls.CreateTable).String())
 	buf.WriteString(reflect.ValueOf(validator.RegisterFunc).String())
+	buf.WriteString(reflect.ValueOf(redlock.New).String())
 
 	return buf.String()
 }

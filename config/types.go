@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type Type struct {
+type Config struct {
 	Env           string
 	TimeFormatter string
 
@@ -76,8 +76,8 @@ type Type struct {
 	isTest    bool
 }
 
-func New() *Type {
-	t := &Type{}
+func New() *Config {
+	t := &Config{}
 	t.Env = "debug"
 	t.Secret.HashAlgorithm = "sha256-512"
 	t.Cache.Lru.ContentSize = 2000
@@ -96,7 +96,7 @@ func New() *Type {
 	return t
 }
 
-func FromFile(fp string) *Type {
+func FromFile(fp string) *Config {
 	f, e := os.Open(fp)
 	if e != nil {
 		panic(e)
@@ -110,7 +110,7 @@ func FromFile(fp string) *Type {
 	return FromBytes(v)
 }
 
-func FromBytes(data []byte) *Type {
+func FromBytes(data []byte) *Config {
 	conf := New()
 	if err := toml.Unmarshal(data, conf); err != nil {
 		panic(err)
@@ -119,8 +119,8 @@ func FromBytes(data []byte) *Type {
 	return conf
 }
 
-func FromFiles(fps ...string) *Type {
-	var t *Type
+func FromFiles(fps ...string) *Config {
+	var t *Config
 	for _, fp := range fps {
 		nt := FromFile(fp)
 		if t == nil {
@@ -134,7 +134,7 @@ func FromFiles(fps ...string) *Type {
 	return t
 }
 
-func (t *Type) done() {
+func (t *Config) done() {
 	t.Sql.Driver = strings.ToLower(t.Sql.Driver)
 	t.Redis.Mode = strings.ToLower(t.Redis.Mode)
 

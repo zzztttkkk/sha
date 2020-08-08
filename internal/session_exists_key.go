@@ -1,4 +1,3 @@
 package internal
 
-var SessionExistsKey = "~!exits!"
-
+var SessionExistsKey = ".suna.exits"

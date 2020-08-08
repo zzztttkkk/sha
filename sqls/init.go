@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var cfg *config.Type
+var cfg *config.Config
 var isPostgres bool
 var doCreate func(ctx context.Context, op *Operator, q string, args []interface{}) int64
 var leader *sqlx.DB
@@ -32,7 +32,7 @@ func doSqlLog(q string, args []interface{}) {
 
 func init() {
 	internal.LazyInvoke(
-		func(conf *config.Type) {
+		func(conf *config.Config) {
 			cfg = conf
 			if cfg.SqlLeader() == nil {
 				log.Println("suna.sqls: init error")
