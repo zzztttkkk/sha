@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var cfg *config.Config
+var cfg *config.Suna
 var isPostgres bool
 var doCreate func(ctx context.Context, op *Operator, q string, args []interface{}) int64
 var leader *sqlx.DB
@@ -25,14 +25,21 @@ func doSqlLog(q string, args []interface{}) {
 		return
 	}
 
-	s := fmt.Sprintf(strings.Repeat("%v,", len(args)), args...)
+	for i, v := range args {
+		switch rv := v.(type) {
+		case []byte:
+			args[i] = string(rv)
+		}
+	}
+
+	s := fmt.Sprintf(strings.Repeat("'%v',", len(args)), args...)
 
 	log.Printf("suna.sqls.log: `%s` `%s`\n", q, s)
 }
 
 func init() {
-	internal.LazyInvoke(
-		func(conf *config.Config) {
+	internal.Dig.LazyInvoke(
+		func(conf *config.Suna) {
 			cfg = conf
 			if cfg.SqlLeader() == nil {
 				log.Println("suna.sqls: init error")

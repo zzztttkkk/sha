@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
+	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/output"
-	"github.com/zzztttkkk/suna/utils"
 	"strings"
 	"time"
 )
@@ -28,7 +28,7 @@ func _initSession() {
 	if !strings.HasSuffix(sessionKeyPrefix, ":") {
 		sessionKeyPrefix += ":"
 	}
-	sessionExpire = cfg.Session.MaxAge
+	sessionExpire = cfg.Session.Maxage.Duration
 	_initCaptcha()
 }
 
@@ -54,14 +54,14 @@ func newSession(ctx *fasthttp.RequestCtx) Session {
 	if len(sessionInCookie) > 0 {
 		sv := ctx.Request.Header.Cookie(sessionInCookie)
 		if sv != nil {
-			sessionId = utils.B2s(sv)
+			sessionId = gotils.B2S(sv)
 		}
 	}
 
 	if len(sessionId) < 1 {
 		sv := ctx.Request.Header.Peek(sessionInHeader)
 		if sv != nil {
-			sessionId = utils.B2s(sv)
+			sessionId = gotils.B2S(sv)
 		}
 	}
 
@@ -118,9 +118,14 @@ func (ss Session) Refresh() {
 	redisc.Expire(string(ss), sessionExpire)
 }
 
-func Get(ctx *fasthttp.RequestCtx) (s Session) {
+func New(ctx *fasthttp.RequestCtx) (s Session) {
+	si := ctx.UserValue(internal.RCtxSessionKey)
+	if si != nil {
+		return si.(Session)
+	}
 	if s = newSession(ctx); len(s) < 1 {
 		panic(output.HttpErrors[fasthttp.StatusForbidden])
 	}
+	ctx.SetUserValue(internal.RCtxSessionKey, s)
 	return
 }

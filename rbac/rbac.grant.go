@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/RoaringBitmap/roaring/roaring64"
 	"github.com/zzztttkkk/suna/auth"
-	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/utils"
 )
 
@@ -15,8 +14,6 @@ const (
 	PolicyAny
 )
 
-var rolePermCache = cache.NewLru(200)
-
 func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
 	if len(roles) < 1 {
 		return nil
@@ -24,7 +21,7 @@ func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
 
 	key := roles.Join(":")
 	v, ok := rolePermCache.Get(key)
-	if !ok {
+	if ok {
 		return v.(*roaring64.Bitmap)
 	}
 
@@ -46,13 +43,13 @@ func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
 }
 
 func IsGranted(ctx context.Context, user auth.User, policy CheckPolicy, permissions ...string) bool {
-	g.RLock()
-	defer g.RUnlock()
-
 	SubjectId := user.GetId()
 	if SubjectId < 1 {
 		return false
 	}
+
+	g.RLock()
+	defer g.RUnlock()
 
 	var Perms []uint64
 	for _, name := range permissions {

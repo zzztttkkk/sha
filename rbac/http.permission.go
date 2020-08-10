@@ -4,6 +4,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/validator"
 )
 
@@ -20,7 +21,12 @@ func _PermCreateHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := NewPermission(wrapRCtx(ctx), form.Name, form.Descp); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer func() { go reload() }()
+	defer committer()
+
+	if err := NewPermission(txc, form.Name, form.Descp); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -30,7 +36,12 @@ func _PermDeleteHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := DelPermission(wrapRCtx(ctx), form.Name); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer func() { go reload() }()
+	defer committer()
+
+	if err := DelPermission(txc, form.Name); err != nil {
 		output.Error(ctx, err)
 	}
 }

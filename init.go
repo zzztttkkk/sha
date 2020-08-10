@@ -1,11 +1,9 @@
 package suna
 
 import (
-	"context"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/config"
-	"github.com/zzztttkkk/suna/ctxs"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
@@ -18,51 +16,26 @@ import (
 	"github.com/zzztttkkk/suna/validator"
 	"log"
 	"reflect"
-	"sort"
 	"strings"
-	"sync"
 )
 
-var rkKeyWarnOnce = sync.Once{}
-var disableWarn bool
-
-func DisableReservedKeysWarning() {
-	disableWarn = true
-}
-
-func doReservedKeyWarning() {
-	rkKeyWarnOnce.Do(
-		func() {
-			if disableWarn {
-				return
-			}
-			log.Printf("suna: reserved suna.session.Session keys: `%s`,", internal.SessionExistsKey)
-		},
-	)
-}
-
 type InitOption struct {
-	ConfigFiles   []string
+	Config        *config.Suna
 	Authenticator auth.Authenticator
 }
 
-var cfg *config.Config
-
-func Init(opt *InitOption) *config.Config {
-	doReservedKeyWarning()
-
-	internal.Provide(
-		func() *config.Config {
-			if opt == nil || len(opt.ConfigFiles) < 1 {
-				cfg = config.New()
-				return cfg
+func Init(opt *InitOption) {
+	internal.Dig.Provide(
+		func() *config.Suna {
+			if opt == nil {
+				log.Println("suna: nil config, use the default value")
+				return config.GetDefault()
 			}
-			sort.Sort(sort.StringSlice(opt.ConfigFiles))
-			cfg = config.FromFiles(opt.ConfigFiles...)
-			return cfg
+			return opt.Config
 		},
 	)
-	internal.Provide(
+
+	internal.Dig.Provide(
 		func() auth.Authenticator {
 			if opt == nil {
 				return nil
@@ -71,18 +44,8 @@ func Init(opt *InitOption) *config.Config {
 		},
 	)
 
-	internal.Provide(
-		func() *internal.RbacDi {
-			return &internal.RbacDi{
-				WrapCtx:        ctxs.Wrap,
-				GetUserFromCtx: func(ctx context.Context) auth.User { return auth.GetUserMust(ctxs.Unwrap(ctx)) },
-			}
-		},
-	)
-
 	_LoadSubModules()
-	internal.Invoke()
-	return cfg
+	internal.Dig.Invoke()
 }
 
 // trigger internal.LazyInvoke
@@ -90,13 +53,12 @@ func _LoadSubModules() string {
 	buf := strings.Builder{}
 
 	buf.WriteString(reflect.ValueOf(cache.NewLru).String())
-	buf.WriteString(reflect.ValueOf(ctxs.Unwrap).String())
 	buf.WriteString(reflect.ValueOf(middleware.NewAccessLogger).String())
 	buf.WriteString(reflect.ValueOf(output.Error).String())
 	buf.WriteString(reflect.ValueOf(rbac.Loader).String())
 	buf.WriteString(reflect.ValueOf(reflectx.ExportedKeys).String())
 	buf.WriteString(reflect.ValueOf(secret.AesDecrypt).String())
-	buf.WriteString(reflect.ValueOf(session.Get).String())
+	buf.WriteString(reflect.ValueOf(session.New).String())
 	buf.WriteString(reflect.ValueOf(sqls.CreateTable).String())
 	buf.WriteString(reflect.ValueOf(validator.RegisterFunc).String())
 	buf.WriteString(reflect.ValueOf(redlock.New).String())

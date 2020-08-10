@@ -32,7 +32,7 @@ func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem,
 func (op *EnumOperator) Init(ele reflect.Value, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) {
 	op.Operator.Init(ele)
 
-	expire := cfg.Sql.EnumCacheMaxAge
+	expire := cfg.Sql.EnumCacheMaxage.Duration
 	if expire < 1 {
 		expire = time.Minute * 30
 	}

@@ -1,4 +1,4 @@
-package redlock
+package cache
 
 import (
 	"github.com/go-redis/redis/v7"
@@ -9,9 +9,5 @@ import (
 var redisc redis.Cmdable
 
 func init() {
-	internal.Dig.LazyInvoke(
-		func(conf *config.Suna) {
-			redisc = conf.RedisClient()
-		},
-	)
+	internal.Dig.LazyInvoke(func(conf *config.Suna) { redisc = conf.RedisClient() })
 }

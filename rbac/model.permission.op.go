@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"fmt"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/utils"
 	"reflect"
@@ -51,6 +52,9 @@ func EnsurePermission(name, descp string) string {
 	if _PermissionOperator.ExistsByName(context.Background(), name) {
 		return name
 	}
-	_PermissionOperator.create(context.Background(), utils.M{"name": name, "descp": descp})
+
+	tcx, committer := sqls.Tx(context.Background())
+	defer committer()
+	_PermissionOperator.create(tcx, utils.M{"name": name, "descp": fmt.Sprintf("%s; created by `EnsurePermission`", descp)})
 	return name
 }

@@ -1,19 +1,14 @@
 package middleware
 
 import (
-	"github.com/go-redis/redis/v7"
 	"github.com/go-redis/redis_rate/v8"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/suna/config"
-	"github.com/zzztttkkk/suna/internal"
 	"time"
 
 	"github.com/zzztttkkk/router"
 
 	"github.com/zzztttkkk/suna/output"
 )
-
-var rateLimiter *redis_rate.Limiter
 
 type _RateLimiter struct {
 	raw   *redis_rate.Limiter
@@ -26,16 +21,6 @@ type RateLimiterOption struct {
 	Period time.Duration
 	Burst  int
 	GetKey func(ctx *fasthttp.RequestCtx) string
-}
-
-var redisc redis.Cmdable
-
-func init() {
-	internal.LazyInvoke(
-		func(conf *config.Config) {
-			redisc = conf.RedisClient()
-		},
-	)
 }
 
 func NewRateLimiter(opt *RateLimiterOption) *_RateLimiter {
@@ -57,7 +42,7 @@ func (rl *_RateLimiter) AsHandler(next fasthttp.RequestHandler) fasthttp.Request
 			next(ctx)
 			return
 		}
-		res, err := rateLimiter.Allow(key, rl.limit)
+		res, err := rl.raw.Allow(key, rl.limit)
 		if err != nil {
 			output.Error(ctx, err)
 			return

@@ -236,6 +236,7 @@ func (op *Operator) XExecute(ctx context.Context, q string, args ...interface{})
 }
 
 func mysqlCreate(ctx context.Context, op *Operator, q string, args []interface{}) int64 {
+	doSqlLog(q, args)
 	result, err := Executor(ctx).ExecContext(ctx, q, args...)
 	if err != nil {
 		panic(err)
@@ -260,6 +261,7 @@ func postgresCreate(ctx context.Context, op *Operator, q string, args []interfac
 
 	q += " returning " + idField
 	var lid int64
+	doSqlLog(q, args)
 	err := Executor(ctx).GetContext(ctx, &lid, q, args...)
 	if err != nil {
 		panic(err)

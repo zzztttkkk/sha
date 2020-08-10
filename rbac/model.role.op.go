@@ -25,6 +25,9 @@ var _RoleOperator = &_RoleOp{
 func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
+			_RoleOperator.perms.Init(reflect.ValueOf(_RoleWithPerm{}))
+			_RoleOperator.inherits.Init(reflect.ValueOf(_RoleInheritance{}))
+
 			_RoleOperator.EnumOperator.Init(
 				reflect.ValueOf(_Role{}),
 				func() sqls.EnumItem { return &_Role{} },
@@ -35,8 +38,6 @@ func init() {
 					return nil
 				},
 			)
-			_RoleOperator.perms.Init(reflect.ValueOf(_RoleWithPerm{}))
-			_RoleOperator.inherits.Init(reflect.ValueOf(_RoleInheritance{}))
 		},
 		permTablePriority.Incr(),
 	)
@@ -92,7 +93,7 @@ func (op *_RoleOp) changePerm(ctx context.Context, roleName, permName string, mt
 }
 
 func (op *_RoleOp) getAllPerms(ctx context.Context, role *_Role) {
-	op.perms.XQ1n(ctx, &role.Permissions, `select distinct perm from %s where role=?`, role.Id)
+	op.perms.XQ1n(ctx, &role.Permissions, fmt.Sprintf(`select distinct perm from %s where role=?`, op.perms.TableName()), role.Id)
 }
 
 func (op *_RoleOp) changeInherits(ctx context.Context, roleName, basedRoleName string, mt modifyType) error {
@@ -146,7 +147,7 @@ func (op *_RoleOp) changeInherits(ctx context.Context, roleName, basedRoleName s
 }
 
 func (op *_RoleOp) getAllBasedRoles(ctx context.Context, role *_Role) {
-	op.inherits.XQ1n(ctx, &role.Based, `select distinct based from %s where role=?`, role.Id)
+	op.inherits.XQ1n(ctx, &role.Based, fmt.Sprintf(`select distinct based from %s where role=?`, op.inherits.TableName()), role.Id)
 }
 
 func (op *_RoleOp) List(ctx context.Context) (lst []*_Role) {

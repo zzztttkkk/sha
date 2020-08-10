@@ -3,6 +3,8 @@ package sqls
 import (
 	"context"
 	"github.com/jmoiron/sqlx"
+	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/suna/auth"
 	"log"
 )
 
@@ -14,16 +16,24 @@ type executor interface {
 	PreparexContext(ctx context.Context, query string) (*sqlx.Stmt, error)
 }
 
-type sqlstilsKeyT int
+type ctxKeyT int
 
-const txKey sqlstilsKeyT = 0x10002
-const justMasterKey sqlstilsKeyT = 0x10003
+const (
+	txKey = ctxKeyT(iota + 1000)
+	userKey
+	justMasterKey
+)
 
 func JustUseMaster(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justMasterKey, true)
 }
 
 func doNothing() {}
+
+func TxByUser(ctx *fasthttp.RequestCtx) (context.Context, func()) {
+	nctx := context.WithValue(ctx, userKey, auth.GetUser(ctx))
+	return Tx(nctx)
+}
 
 func Tx(ctx context.Context) (context.Context, func()) {
 	_tx := ctx.Value(txKey)
@@ -50,6 +60,14 @@ func Tx(ctx context.Context) (context.Context, func()) {
 		}
 		panic(err)
 	}
+}
+
+func TxOperator(ctx context.Context) auth.User {
+	u, ok := ctx.Value(userKey).(auth.User)
+	if ok {
+		return u
+	}
+	return nil
 }
 
 //noinspection GoExportedFuncWithUnexportedType

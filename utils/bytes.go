@@ -1,36 +1,11 @@
 package utils
 
 import (
-	"reflect"
+	"github.com/savsgio/gotils"
 	"strconv"
 	"sync"
 	"unicode/utf8"
-	"unsafe"
 )
-
-// https://github.com/savsgio/gotils/blob/master/conv.go#L13
-func B2s(b []byte) string {
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&b))
-	bh := reflect.SliceHeader{
-		Data: sh.Data,
-		Len:  sh.Len,
-		Cap:  sh.Len,
-	}
-
-	return *(*string)(unsafe.Pointer(&bh))
-}
-
-// https://github.com/savsgio/gotils/blob/master/conv.go#28
-func S2b(s string) []byte {
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	bh := reflect.SliceHeader{
-		Data: sh.Data,
-		Len:  sh.Len,
-		Cap:  sh.Len,
-	}
-
-	return *(*[]byte)(unsafe.Pointer(&bh))
-}
 
 func Runes(s []byte, count int) []rune {
 	t := make([]rune, 0)
@@ -55,7 +30,7 @@ func S2U32(s string) uint32 {
 	return uint32(v)
 }
 
-func B2U32(b []byte) uint32 { return S2U32(B2s(b)) }
+func B2U32(b []byte) uint32 { return S2U32(gotils.B2S(b)) }
 
 func S2I32(s string) int32 {
 	v, e := strconv.ParseInt(s, 10, 32)
@@ -73,7 +48,7 @@ func S2I64(s string) int64 {
 	return v
 }
 
-func B2I32(b []byte) int32 { return S2I32(B2s(b)) }
+func B2I32(b []byte) int32 { return S2I32(gotils.B2S(b)) }
 
 type BytesPool struct {
 	defaultSize int

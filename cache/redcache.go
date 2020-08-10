@@ -2,11 +2,10 @@ package cache
 
 import (
 	"encoding/json"
-	"github.com/go-redis/redis/v7"
 	"github.com/golang/groupcache/singleflight"
+	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
-	"github.com/zzztttkkk/suna/utils"
 	"net/textproto"
 	"sync"
 	"time"
@@ -18,7 +17,6 @@ type _RedCacheT struct {
 	headers     map[string]bool
 	statusCodes map[int]bool
 	getKey      func(ctx *fasthttp.RequestCtx) string
-	redisc      redis.Cmdable
 }
 
 type RedCacheOption struct {
@@ -30,17 +28,16 @@ type RedCacheOption struct {
 
 const DisableRedCacheKey = "Snow-Disable-Redcache"
 
-func NewRed(redisV redis.Cmdable, opt *RedCacheOption) *_RedCacheT {
+func NewRed(opt *RedCacheOption) *_RedCacheT {
 	c := &_RedCacheT{
 		seconds:     opt.ExpireSeconds,
 		headers:     map[string]bool{},
 		statusCodes: map[int]bool{},
 		getKey:      opt.GetKey,
-		redisc:      redisV,
 	}
 
 	if c.getKey == nil {
-		c.getKey = func(ctx *fasthttp.RequestCtx) string { return utils.B2s(ctx.Path()) }
+		c.getKey = func(ctx *fasthttp.RequestCtx) string { return gotils.B2S(ctx.Path()) }
 	}
 
 	if len(opt.StatusCodes) < 1 {
@@ -119,13 +116,13 @@ func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHan
 func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.RequestHandler, item *_ItemT) {
 	key := "snow:rcache:" + c.getKey(ctx)
 
-	v, _ := c.redisc.Get(key).Bytes()
+	v, _ := redisc.Get(key).Bytes()
 	if len(v) > 0 {
 		err := json.Unmarshal(v, item)
 		if err == nil {
 			return
 		}
-		c.redisc.Del(key)
+		redisc.Del(key)
 	}
 
 	defer func() {
@@ -143,14 +140,14 @@ func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.Request
 					return
 				}
 
-				skey := utils.B2s(key)
+				skey := gotils.B2S(key)
 				if skey == DisableRedCacheKey {
 					disable = true
 				}
 
 				if c.headers[skey] {
 					item.Headers = append(item.Headers, skey)
-					item.Headers = append(item.Headers, utils.B2s(value))
+					item.Headers = append(item.Headers, gotils.B2S(value))
 				}
 			},
 		)
@@ -160,7 +157,7 @@ func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.Request
 		}
 
 		bs, _ := json.Marshal(item)
-		c.redisc.Set(key, bs, time.Second*time.Duration(c.seconds))
+		redisc.Set(key, bs, time.Second*time.Duration(c.seconds))
 	}()
 
 	handler(ctx)

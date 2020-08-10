@@ -5,6 +5,9 @@ import (
 )
 
 func Recover(ctx *fasthttp.RequestCtx, val interface{}) {
+	if val == nil {
+		return
+	}
 	switch v := val.(type) {
 	case error:
 		Error(ctx, v)

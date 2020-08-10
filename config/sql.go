@@ -20,7 +20,7 @@ func newSqlDB(dn, url string, maxLifeTime time.Duration, openConns int) *sqlx.DB
 	return db
 }
 
-func (t *Config) SqlLeader() *sqlx.DB {
+func (t *Suna) SqlLeader() *sqlx.DB {
 	if t.Sql.l != nil {
 		return t.Sql.l
 	}
@@ -28,11 +28,11 @@ func (t *Config) SqlLeader() *sqlx.DB {
 		return nil
 	}
 
-	t.Sql.l = newSqlDB(t.Sql.Driver, t.Sql.Leader, t.Sql.MaxLifetime, t.Sql.MaxOpen)
+	t.Sql.l = newSqlDB(t.Sql.Driver, t.Sql.Leader, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen)
 	return t.Sql.l
 }
 
-func (t *Config) SqlFollower() *sqlx.DB {
+func (t *Suna) SqlFollower() *sqlx.DB {
 	if t.Sql.fs != nil {
 		rand.Seed(time.Now().UnixNano())
 		return t.Sql.fs[rand.Int()%len(t.Sql.fs)]
@@ -41,7 +41,7 @@ func (t *Config) SqlFollower() *sqlx.DB {
 		return nil
 	}
 	for _, url := range t.Sql.Followers {
-		t.Sql.fs = append(t.Sql.fs, newSqlDB(t.Sql.Driver, url, t.Sql.MaxLifetime, t.Sql.MaxOpen))
+		t.Sql.fs = append(t.Sql.fs, newSqlDB(t.Sql.Driver, url, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen))
 	}
 	if len(t.Sql.fs) < 1 {
 		t.Sql.nfs = true

@@ -3,34 +3,22 @@ package validator
 import (
 	"fmt"
 	"github.com/zzztttkkk/suna/reflectx"
+	"github.com/zzztttkkk/suna/utils"
+	"log"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 )
 
-var funcMap = map[string]func([]byte) ([]byte, bool){}
-var funcDescp = map[string]string{}
-
-func RegisterRegexp(name string, reg *regexp.Regexp) {
-	regexpMap[name] = reg
-}
-
-func RegisterFunc(name string, fn func([]byte) ([]byte, bool), descp string) {
-	funcMap[name] = fn
-	funcDescp[name] = descp
-}
-
-var rulesMap = map[reflect.Type]_RuleSliceT{}
-
 type _ValidatorParser struct {
 	current *_RuleT
 	all     _RuleSliceT
+	isJson  bool
 }
 
 func (p *_ValidatorParser) OnNestStruct(f *reflect.StructField) bool {
-	return true
+	return f.Anonymous
 }
 
 func (p *_ValidatorParser) OnBegin(field *reflect.StructField) bool {
@@ -46,28 +34,47 @@ func (p *_ValidatorParser) OnBegin(field *reflect.StructField) bool {
 	case reflect.String:
 		rule.t = _String
 	case reflect.Slice:
-		switch field.Type.Elem().Kind() {
-		case reflect.Uint8:
+		rule.isSlice = true
+		ele := reflect.MakeSlice(field.Type, 1, 1).Interface()
+		switch ele.(type) {
+		case [][]byte:
+			rule.t = _BytesSlice
+		case []uint8:
 			rule.t = _Bytes
-		case reflect.Bool:
-			rule.t = _BoolSlice
-		case reflect.Int64:
+			rule.isSlice = false
+		case []int64:
 			rule.t = _IntSlice
-		case reflect.Uint64:
-			rule.t = _Uint64
-		case reflect.String:
+		case []uint64:
+			rule.t = _UintSlice
+		case []bool:
+			rule.t = _BoolSlice
+		case []string:
 			rule.t = _StringSlice
+		case utils.JsonArray:
+			rule.isSlice = false
+			rule.t = _JsonArray
+		case JoinedBoolSlice:
+			rule.t = _JoinedBoolSlice
+			rule.isJoined = true
+		case JoinedIntSlice:
+			rule.t = _JoinedIntSlice
+			rule.isJoined = true
+		case JoinedUintSlice:
+			rule.t = _JoinedUintSlice
+			rule.isJoined = true
 		default:
 			return false
 		}
 	case reflect.Struct:
-		subRules := getRules(field.Type)
-		p.all = append(p.all, subRules...)
+		subP := GetRules(field.Type)
+		p.all = append(p.all, subP.all...)
 		return false
 	case reflect.Map:
-		if field.Type.Key().Kind() == reflect.String && field.Type.Elem().Kind() == reflect.Interface {
+		ele := reflect.MakeMap(field.Type).Interface()
+		switch ele.(type) {
+		case utils.JsonObject:
 			rule.t = _JsonObject
-		} else {
+		default:
 			return false
 		}
 	default:
@@ -82,7 +89,7 @@ func (p *_ValidatorParser) OnName(name string) {
 }
 
 func (p *_ValidatorParser) OnAttr(key, val string) {
-	var rangeErr = fmt.Errorf("suna.validator: error length range `%s`", val)
+	var rangeErr = fmt.Errorf("suna.validator: error range `%s`", val)
 	rule := p.current
 	switch key {
 	case "R", "regexp":
@@ -107,12 +114,16 @@ func (p *_ValidatorParser) OnAttr(key, val string) {
 		if e != nil {
 			panic(rangeErr)
 		}
-		rule.minL = int(minL)
+		rule.minL = minL
 		maxL, e := strconv.ParseInt(vs[1], 10, 32)
 		if e != nil {
 			panic(rangeErr)
 		}
-		rule.maxL = int(maxL)
+		rule.maxL = maxL
+
+		if rule.maxL < rule.minL {
+			panic(rangeErr)
+		}
 	case "V", "value":
 		rule.vrange = true
 		vs := strings.Split(val, "-")
@@ -130,6 +141,9 @@ func (p *_ValidatorParser) OnAttr(key, val string) {
 				panic(rangeErr)
 			}
 			rule.maxV = maxV
+			if rule.maxV < rule.minV {
+				panic(rangeErr)
+			}
 		} else if rule.t == _Uint64 {
 			minV, e := strconv.ParseUint(vs[0], 10, 64)
 			if e != nil {
@@ -141,9 +155,31 @@ func (p *_ValidatorParser) OnAttr(key, val string) {
 				panic(rangeErr)
 			}
 			rule.maxUV = maxV
+			if rule.maxUV < rule.minUV {
+				panic(rangeErr)
+			}
 		}
 	case "D", "default":
 		rule.defaultV = []byte(val)
+	case "S", "size":
+		rule.srange = true
+		vs := strings.Split(val, "-")
+		if len(vs) != 2 {
+			panic(rangeErr)
+		}
+		minV, e := strconv.ParseInt(vs[0], 10, 64)
+		if e != nil {
+			panic(rangeErr)
+		}
+		rule.minS = minV
+		maxV, e := strconv.ParseInt(vs[1], 10, 64)
+		if e != nil {
+			panic(rangeErr)
+		}
+		rule.maxS = maxV
+		if rule.maxS < rule.minS {
+			panic(rangeErr)
+		}
 	case "optional":
 		rule.required = false
 	}
@@ -154,16 +190,28 @@ func (p *_ValidatorParser) OnDone() {
 	p.current = nil
 }
 
-func getRules(p reflect.Type) _RuleSliceT {
+var rulesMap = map[reflect.Type]*_ValidatorParser{}
+
+func GetRules(p reflect.Type) *_ValidatorParser {
 	rs, ok := rulesMap[p]
 	if ok {
 		return rs
 	}
 
-	parser := _ValidatorParser{}
-	reflectx.Tags(p, "validator", &parser)
+	parser := &_ValidatorParser{}
+	reflectx.Tags(p, "validator", parser)
 	sort.Sort(parser.all)
 
-	rulesMap[p] = parser.all
-	return parser.all
+	for _, r := range parser.all {
+		if r.t == _JsonObject || r.t == _JsonArray {
+			parser.isJson = true
+		}
+	}
+
+	if parser.isJson && len(parser.all) != 1 {
+		log.Fatalf("suna.validator: %s is contain a json field", p.Name())
+	}
+
+	rulesMap[p] = parser
+	return parser
 }

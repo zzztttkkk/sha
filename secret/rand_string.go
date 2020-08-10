@@ -1,66 +1,32 @@
 package secret
 
 import (
-	crand "crypto/rand"
+	"crypto/rand"
 	"math"
 	"math/big"
-	"math/rand"
+	mrand "math/rand"
 )
 
-var AsciiLowerLetters = []byte("abcdefghijklmnopqrstuvwxyz")
-var AsciiUpperLetters = []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-var AsciiLetters = make([]byte, 0)
-var Digits = []byte("0123456789")
-var Asciis = make([]byte, 0)
+var src mrand.Source
 
 func init() {
-	AsciiLetters = append(AsciiLetters, append(AsciiLowerLetters, AsciiUpperLetters...)...)
-	Asciis = append(Asciis, append(AsciiLetters, Digits...)...)
-}
-
-var SeedPoolSize uint32 = 512
-var _max = big.Int{}
-var seedChan chan int64
-
-func genSeed() {
-	rv, err := crand.Int(crand.Reader, &_max)
+	nBig, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 	if err != nil {
 		panic(err)
 	}
-	seedChan <- rv.Int64()
+	src = mrand.NewSource(nBig.Int64())
 }
 
-func init() {
-	_max.SetInt64(math.MaxInt64)
-	seedChan = make(chan int64, SeedPoolSize)
+var defaultPool = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-	var i uint32 = 0
-	for ; i < SeedPoolSize/5; i++ {
-		genSeed()
-	}
-
-	go func() {
-		for {
-			genSeed()
-		}
-	}()
-}
-
-func RandBytes(n int, pool []byte) []byte {
+func RandBytes(size int, pool []byte) []byte {
 	if pool == nil {
-		pool = Asciis
+		pool = defaultPool
 	}
-
-	seed := <-seedChan
-
-	rand.Seed(seed)
-
-	c := make([]byte, n)
-	rand.Read(c)
-
-	l := len(pool)
-	for i, b := range c {
-		c[i] = pool[int(b)%l]
+	rv := make([]byte, size, size)
+	_l := int64(len(pool))
+	for i := 0; i < size; i++ {
+		rv[i] = pool[src.Int63()%_l]
 	}
-	return c
+	return rv
 }

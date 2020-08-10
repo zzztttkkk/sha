@@ -19,5 +19,5 @@ func (enum *Enum) GetName() string {
 }
 
 func (enum Enum) TableDefinition(lines ...string) []string {
-	return enum.Model.TableDefinition(append(lines, "name char(30) not null unique")...)
+	return enum.Model.TableDefinition(append(lines, "name char(255) not null unique")...)
 }

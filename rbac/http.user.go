@@ -4,6 +4,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/validator"
 )
 
@@ -17,7 +18,11 @@ func _UserAddRoleHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := UserAddRole(wrapRCtx(ctx), form.Uid, form.Role); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer committer()
+
+	if err := UserAddRole(txc, form.Uid, form.Role); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -27,7 +32,11 @@ func _UserDelRoleHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := UserDelRole(wrapRCtx(ctx), form.Uid, form.Role); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer committer()
+
+	if err := UserDelRole(txc, form.Uid, form.Role); err != nil {
 		output.Error(ctx, err)
 	}
 }

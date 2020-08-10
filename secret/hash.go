@@ -177,4 +177,8 @@ func Equal(raw []byte, hexBytes []byte) bool { return _Default.Equal(raw, hexByt
 
 func StreamCalc(reader io.Reader) []byte { return _Default.StreamCalc(reader) }
 
-func StreamEqual(reader io.Reader, hexBytes []byte) bool { return _Default.StreamEqual(reader, hexBytes) }
+func StreamEqual(reader io.Reader, hexBytes []byte) bool {
+	return _Default.StreamEqual(reader, hexBytes)
+}
+
+func Size() int { return _Default.size }

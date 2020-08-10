@@ -13,8 +13,8 @@ import (
 var gSecretKey []byte
 
 func init() {
-	internal.LazyInvoke(
-		func(conf *config.Config) {
+	internal.Dig.LazyInvoke(
+		func(conf *config.Suna) {
 			gSecretKey = []byte(conf.Secret.Key)
 			if bytes.HasPrefix(gSecretKey, []byte("file://")) {
 				fp, e := filepath.Abs(string(gSecretKey[7:]))

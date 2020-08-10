@@ -15,10 +15,7 @@ func (_Role) TableName() string {
 }
 
 func (role _Role) TableDefinition() []string {
-	return role.Enum.TableDefinition(
-		"parent bigint default 0",
-		"descp text",
-	)
+	return role.Enum.TableDefinition("descp text")
 }
 
 type _RoleInheritance struct {

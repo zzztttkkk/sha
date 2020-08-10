@@ -4,9 +4,8 @@ import "github.com/zzztttkkk/suna/sqls"
 
 type _UserWithRole struct {
 	sqls.Model
-	Subject  int64 `json:"subject"`
-	Role     int64 `json:"role"`
-	Operator int64 `json:"operator"`
+	Subject int64 `json:"subject"`
+	Role    int64 `json:"role"`
 }
 
 func (_UserWithRole) TableName() string {
@@ -17,6 +16,5 @@ func (ele _UserWithRole) TableDefinition() []string {
 	return ele.Model.TableDefinition(
 		"subject bigint not null",
 		"role bigint not null",
-		"operator bigint not null",
 	)
 }

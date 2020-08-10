@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/output"
@@ -122,13 +123,13 @@ func (al *_AccessLogger) peekAllHeader(header _Header) string {
 
 func (al *_AccessLogger) peekSomeHeader(key string, hkeys []string, header _Header, m utils.M) {
 	for _, hk := range hkeys {
-		m[key+hk] = utils.B2s(header.Peek(hk))
+		m[key+hk] = gotils.B2S(header.Peek(hk))
 	}
 }
 
 func (al *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 	if al._ReqMethod {
-		m["ReqMethod"] = utils.B2s(ctx.Method())
+		m["ReqMethod"] = gotils.B2S(ctx.Method())
 	}
 
 	if al._ReqUrl {
@@ -183,15 +184,15 @@ func (al *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 }
 
 func (al *_AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
-	switch utils.B2s(ctx.Response.Header.Peek("Content-Encoding")) {
+	switch gotils.B2S(ctx.Response.Header.Peek("Content-Encoding")) {
 	case "deflate":
 		d, _ := ctx.Response.BodyInflate()
-		return utils.B2s(d)
+		return gotils.B2S(d)
 	case "gzip":
 		d, _ := ctx.Response.BodyGunzip()
-		return utils.B2s(d)
+		return gotils.B2S(d)
 	default:
-		return utils.B2s(ctx.Response.Body())
+		return gotils.B2S(ctx.Response.Body())
 	}
 }
 

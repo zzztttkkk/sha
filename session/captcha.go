@@ -2,10 +2,10 @@ package session
 
 import (
 	"github.com/dchest/captcha"
+	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/secret"
-	"github.com/zzztttkkk/suna/utils"
 	"time"
 )
 
@@ -17,7 +17,7 @@ func toString(digits []byte) string {
 	for i, b := range digits {
 		s[i] = _t[b]
 	}
-	return utils.B2s(s)
+	return gotils.B2S(s)
 }
 
 const (
@@ -36,7 +36,7 @@ func _initCaptcha() {
 	captchaHeight = cfg.Session.Captcha.Height
 	captchaWidth = cfg.Session.Captcha.Width
 	captchaForm = cfg.Session.Captcha.Form
-	captchaMaxage = int64(cfg.Session.Captcha.MaxAge)
+	captchaMaxage = int64(cfg.Session.Captcha.Maxage)
 }
 
 func (ss Session) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
@@ -83,7 +83,7 @@ func (ss Session) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
 		return
 	}
 
-	if code != utils.B2s(v) {
+	if code != gotils.B2S(v) {
 		return
 	}
 	ok = true

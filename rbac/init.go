@@ -2,8 +2,6 @@ package rbac
 
 import (
 	"context"
-	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/utils"
@@ -16,9 +14,6 @@ var initPriority = utils.NewPriority(1)
 var permTablePriority = initPriority.Incr()
 var rbacPriority = permTablePriority.Incr().Incr()
 var loader = utils.NewLoader()
-
-var wrapRCtx func(ctx *fasthttp.RequestCtx) context.Context
-var getUserFromCtx func(ctx context.Context) auth.User
 
 type modifyType int
 
@@ -43,17 +38,16 @@ func Loader() *utils.Loader {
 		func(kwargs utils.Kwargs) { Load(context.Background()) },
 		rbacPriority,
 	)
+	lazier.Execute(nil)
 	return loader
 }
 
-var cfg *config.Config
+var cfg *config.Suna
 
 func init() {
-	internal.LazyInvoke(
-		func(confV *config.Config, di *internal.RbacDi) {
+	internal.Dig.LazyInvoke(
+		func(confV *config.Suna) {
 			cfg = confV
-			wrapRCtx = di.WrapCtx.(func(ctx *fasthttp.RequestCtx) context.Context)
-			getUserFromCtx = di.GetUserFromCtx.(func(ctx context.Context) auth.User)
 			tablePrefix = confV.Rbac.TablenamePrefix
 
 			l := cfg.SqlLeader()
@@ -61,7 +55,6 @@ func init() {
 				log.Println("suna.rbac: init error")
 				return
 			}
-			lazier.Execute(nil)
 		},
 	)
 }

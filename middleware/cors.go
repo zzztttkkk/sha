@@ -1,14 +1,13 @@
 package middleware
 
 import (
+	"github.com/savsgio/gotils"
 	"strconv"
 	"strings"
 
 	"github.com/valyala/fasthttp"
 
 	"github.com/zzztttkkk/router"
-
-	"github.com/zzztttkkk/suna/utils"
 )
 
 type CorsOption struct {
@@ -67,7 +66,7 @@ func (option *CorsOption) writeHeaders(ctx *fasthttp.RequestCtx) {
 	}
 
 	if len(option.m) != 0 {
-		os := utils.B2s(origin)
+		os := gotils.B2S(origin)
 		_, ok := option.m[os]
 		if !ok {
 			return

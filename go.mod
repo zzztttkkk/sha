@@ -13,6 +13,7 @@ require (
 	github.com/imdario/mergo v0.3.10
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/rs/xid v1.2.1
+	github.com/savsgio/gotils v0.0.0-20200616100644-13ff1fd2c28c
 	github.com/valyala/fasthttp v1.15.1
 	github.com/zzztttkkk/router v1.2.4-0.20200802232648-aa5655cc47f5
 	go.uber.org/dig v1.10.0

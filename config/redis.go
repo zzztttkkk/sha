@@ -9,7 +9,7 @@ import (
 
 var redisUnknownModeError = errors.New("suna.config: unknown redis mode,[singleton,ring]")
 
-func (t *Config) RedisClient() redis.Cmdable {
+func (t *Suna) RedisClient() redis.Cmdable {
 	if t.Redis.c != nil {
 		return t.Redis.c
 	}

@@ -7,8 +7,8 @@ import (
 )
 
 func init() {
-	internal.LazyInvoke(
-		func(conf *config.Config) {
+	internal.Dig.LazyInvoke(
+		func(conf *config.Suna) {
 			errors.MaxStackDepth = conf.Errors.MaxDepth
 			if errors.MaxStackDepth < 1 {
 				errors.MaxStackDepth = 20

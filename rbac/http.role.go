@@ -4,6 +4,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/validator"
 )
 
@@ -20,7 +21,12 @@ func _RoleCreateHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := NewRole(wrapRCtx(ctx), form.Name, form.Descp); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer func() { go reload() }()
+	defer committer()
+
+	if err := NewRole(txc, form.Name, form.Descp); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -30,7 +36,12 @@ func _RoleDeleteHandler(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := DelRole(wrapRCtx(ctx), form.Name); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer func() { go reload() }()
+	defer committer()
+
+	if err := DelRole(txc, form.Name); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -61,7 +72,12 @@ func _RoleAddBased(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := RoleAddBased(wrapRCtx(ctx), form.Name, form.Based); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer func() { go reload() }()
+	defer committer()
+
+	if err := RoleAddBased(txc, form.Name, form.Based); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -71,7 +87,12 @@ func _RoleDelBased(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := RoleDelBased(wrapRCtx(ctx), form.Name, form.Based); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer func() { go reload() }()
+	defer committer()
+
+	if err := RoleDelBased(txc, form.Name, form.Based); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -102,7 +123,12 @@ func _RoleAddPerm(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := RoleAddPerm(wrapRCtx(ctx), form.Name, form.Perm); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer func() { go reload() }()
+	defer committer()
+
+	if err := RoleAddPerm(txc, form.Name, form.Perm); err != nil {
 		output.Error(ctx, err)
 	}
 }
@@ -112,7 +138,12 @@ func _RoleDelPerm(ctx *fasthttp.RequestCtx) {
 	if !validator.Validate(ctx, &form) {
 		return
 	}
-	if err := RoleDelPerm(wrapRCtx(ctx), form.Name, form.Perm); err != nil {
+
+	txc, committer := sqls.TxByUser(ctx)
+	defer func() { go reload() }()
+	defer committer()
+
+	if err := RoleDelPerm(txc, form.Name, form.Perm); err != nil {
 		output.Error(ctx, err)
 	}
 }

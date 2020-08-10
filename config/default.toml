@@ -1,9 +1,0 @@
-env = "debug"
-
-[sql]
-driver = "mysql"
-leader = "root:123456@localhost:3306/aaa"
-
-[redis]
-mode = "singleton"
-nodes = ["redis://localhost:6379"]

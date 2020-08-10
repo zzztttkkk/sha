@@ -1,13 +1,15 @@
 package rbac
 
-import "github.com/zzztttkkk/suna/sqls"
+import (
+	"github.com/zzztttkkk/suna/sqls"
+	"github.com/zzztttkkk/suna/utils"
+)
 
 type Log struct {
 	sqls.Model
-	Name     string          `json:"name"`
-	Operator int64           `json:"operator"`
-	Info     sqls.JsonObject `json:"info"`
-	Success  bool            `json:"success"`
+	Name     string           `json:"name"`
+	Operator int64            `json:"operator"`
+	Info     utils.JsonObject `json:"info"`
 }
 
 func (Log) TableName() string {
@@ -18,7 +20,6 @@ func (log Log) TableDefinition() []string {
 	return log.Model.TableDefinition(
 		"name char(30) not null",
 		"operator bigint not null",
-		"success bool not null",
 		"info json",
 	)
 }

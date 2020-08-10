@@ -16,18 +16,18 @@ type Authenticator interface {
 
 var authenticator Authenticator
 
-func init() {
-	internal.LazyInvoke(
-		func(aor Authenticator) { authenticator = aor },
-	)
-}
-
 func GetUser(ctx *fasthttp.RequestCtx) User {
-	return authenticator.Auth(ctx)
+	ui := ctx.UserValue(internal.RCtxUserKey)
+	if ui != nil {
+		return ui.(User)
+	}
+	u := authenticator.Auth(ctx)
+	ctx.SetUserValue(internal.RCtxUserKey, u)
+	return u
 }
 
 func GetUserMust(ctx *fasthttp.RequestCtx) (u User) {
-	if u := authenticator.Auth(ctx); u == nil {
+	if u = GetUser(ctx); u == nil {
 		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 	}
 	return

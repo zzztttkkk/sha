@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-
-
 type Loader struct {
 	parent   *Loader
 	children map[string]*Loader
@@ -121,7 +119,13 @@ func (loader *Loader) RunAsHttpServer(root router.Router, address string) {
 		}
 	}
 	ReleaseGroupLogger(glog)
-	log.Fatal(fasthttp.ListenAndServe(address, r.Handler))
+
+	server := &fasthttp.Server{
+		Handler:               r.Handler,
+		NoDefaultServerHeader: true,
+		NoDefaultDate:         true,
+	}
+	log.Fatal(server.ListenAndServe(address))
 }
 
 func (loader *Loader) RunAsGrpcServer(server *grpc.Server, address string) {

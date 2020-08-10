@@ -25,7 +25,7 @@ func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
 			_UserOperator.roles.Init(reflect.ValueOf(_UserWithRole{}))
-			cache.NewLru(cfg.Cache.Lru.UserSize)
+			_UserOperator.lru = cache.NewLru(cfg.Cache.Lru.UserSize)
 		},
 		permTablePriority.Incr(),
 	)
@@ -77,8 +77,17 @@ func (op *_UserOp) getRoles(ctx context.Context, userId int64) []int64 {
 	if ok {
 		return v.([]int64)
 	}
-	var lst []int64
-	op.roles.XQ1n(ctx, &lst, fmt.Sprintf(`select distinct role from %s where user=? and role>0 order by role`, op.roles.TableName()), userId)
+
+	lst := make([]int64, 0)
+	op.roles.XQ1n(
+		ctx,
+		&lst,
+		fmt.Sprintf(
+			`select distinct role from %s where subject=? and role>0 and status>=0 and deleted=0 order by role`,
+			op.roles.TableName(),
+		),
+		userId,
+	)
 	op.lru.Add(strconv.FormatInt(userId, 16), lst)
 	return lst
 }

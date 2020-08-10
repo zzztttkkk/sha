@@ -1,29 +1,26 @@
 package config
 
 import (
-	"github.com/BurntSushi/toml"
 	"github.com/go-redis/redis/v7"
-	"github.com/imdario/mergo"
 	"github.com/jmoiron/sqlx"
-	"io/ioutil"
-	"os"
+	"github.com/zzztttkkk/suna/utils"
 	"strings"
 	"time"
 )
 
-type Config struct {
+type Suna struct {
 	Env           string
-	TimeFormatter string
+	TimeFormatter string `toml:"time-formatter"`
 
 	Secret struct {
 		Key           string
-		HashAlgorithm string
+		HashAlgorithm string `toml:"hash-algorithm"`
 	}
 
 	Cache struct {
 		Lru struct {
-			UserSize    int
-			ContentSize int
+			UserSize    int `toml:"user-size"`
+			ContentSize int `toml:"content-size"`
 		}
 	}
 
@@ -31,14 +28,14 @@ type Config struct {
 		Header  string
 		Cookie  string
 		Prefix  string
-		MaxAge  time.Duration
+		Maxage  utils.TomlDuration
 		Captcha struct {
-			MaxAge      int
+			Maxage      int
 			Form        string
 			Words       int
 			Width       int
 			Height      int
-			SkipInDebug bool
+			SkipInDebug bool `toml:"skip-in-debug"`
 		}
 	}
 
@@ -50,9 +47,9 @@ type Config struct {
 		Driver          string
 		Leader          string
 		Followers       []string
-		MaxOpen         int
-		MaxLifetime     time.Duration
-		EnumCacheMaxAge time.Duration
+		MaxOpen         int                `toml:"max-open"`
+		MaxLifetime     utils.TomlDuration `toml:"max-lifetime"`
+		EnumCacheMaxage utils.TomlDuration `toml:"enum-cache-maxage"`
 		Log             bool
 
 		l   *sqlx.DB `toml:"-"`
@@ -61,7 +58,7 @@ type Config struct {
 	}
 
 	Rbac struct {
-		TablenamePrefix string
+		TablenamePrefix string `toml:"tablename-prefix"`
 	}
 
 	Redis struct {
@@ -76,69 +73,33 @@ type Config struct {
 	isTest    bool
 }
 
-func New() *Config {
-	t := &Config{}
-	t.Env = "debug"
-	t.Secret.HashAlgorithm = "sha256-512"
-	t.Cache.Lru.ContentSize = 2000
-	t.Cache.Lru.UserSize = 1000
-	t.Errors.MaxDepth = 20
-	t.Session.Cookie = "sck"
-	t.Session.Header = "Suna-Session"
-	t.Session.MaxAge = time.Minute * 30
-	t.Session.Prefix = "session"
-	t.Session.Captcha.Form = "captcha"
-	t.Session.Captcha.Height = 120
-	t.Session.Captcha.Width = 640
-	t.Session.Captcha.Words = 6
-	t.Session.Captcha.MaxAge = 300
-	t.Rbac.TablenamePrefix = "rbac_"
-	return t
+var defaultV = Suna{}
+
+func init() {
+	defaultV.Env = "debug"
+	defaultV.Secret.HashAlgorithm = "sha256-512"
+	defaultV.Cache.Lru.ContentSize = 2000
+	defaultV.Cache.Lru.UserSize = 1000
+	defaultV.Errors.MaxDepth = 20
+	defaultV.Session.Cookie = "sck"
+	defaultV.Session.Header = "Suna-Session"
+	defaultV.Session.Maxage.Duration = time.Minute * 30
+	defaultV.Session.Prefix = "session"
+	defaultV.Session.Captcha.Form = "captcha"
+	defaultV.Session.Captcha.Height = 120
+	defaultV.Session.Captcha.Width = 640
+	defaultV.Session.Captcha.Words = 6
+	defaultV.Session.Captcha.Maxage = 300
+	defaultV.Rbac.TablenamePrefix = "rbac_"
 }
 
-func FromFile(fp string) *Config {
-	f, e := os.Open(fp)
-	if e != nil {
-		panic(e)
-	}
-	defer f.Close()
+func GetDefault() *Suna { return &defaultV }
 
-	v, e := ioutil.ReadAll(f)
-	if e != nil {
-		panic(e)
-	}
-	return FromBytes(v)
-}
-
-func FromBytes(data []byte) *Config {
-	conf := New()
-	if err := toml.Unmarshal(data, conf); err != nil {
-		panic(err)
-	}
-	conf.done()
-	return conf
-}
-
-func FromFiles(fps ...string) *Config {
-	var t *Config
-	for _, fp := range fps {
-		nt := FromFile(fp)
-		if t == nil {
-			t = nt
-		} else {
-			if err := mergo.Merge(t, nt, mergo.WithOverride); err != nil {
-				panic(err)
-			}
-		}
-	}
-	return t
-}
-
-func (t *Config) done() {
+func (t *Suna) Done() {
 	t.Sql.Driver = strings.ToLower(t.Sql.Driver)
 	t.Redis.Mode = strings.ToLower(t.Redis.Mode)
 
-	switch t.Env {
+	switch strings.ToLower(t.Env) {
 	case "debug":
 		t.isDebug = true
 	case "release":
@@ -149,3 +110,9 @@ func (t *Config) done() {
 		t.isRelease = true
 	}
 }
+
+func (t *Suna) IsDebug() bool { return t.isDebug }
+
+func (t *Suna) IsRelease() bool { return t.isRelease }
+
+func (t *Suna) IsTest() bool { return t.isTest }

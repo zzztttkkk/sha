@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/utils"
 	"html"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -18,11 +20,19 @@ const (
 	_Uint64
 	_Bytes
 	_String
+
 	_JsonObject
+	_JsonArray
+
 	_BoolSlice
 	_IntSlice
 	_UintSlice
 	_StringSlice
+	_BytesSlice
+
+	_JoinedIntSlice
+	_JoinedUintSlice
+	_JoinedBoolSlice
 )
 
 var typeNames = []string{
@@ -31,11 +41,19 @@ var typeNames = []string{
 	"Uint",
 	"String",
 	"String",
+
 	"JsonObject",
+	"JsonArray",
+
 	"BoolArray",
 	"IntArray",
 	"UintArray",
 	"StringArray",
+	"StringArray",
+
+	"JoinedIntString",
+	"JoinedUintString",
+	"JoinedBoolString",
 }
 
 type _RuleT struct {
@@ -44,29 +62,35 @@ type _RuleT struct {
 	t        int
 	required bool
 
-	vrange bool
+	vrange bool // int value value range
 	minV   int64
 	maxV   int64
 	minUV  uint64
 	maxUV  uint64
 
-	lrange bool
-	minL   int
-	maxL   int
+	lrange bool // bytes value length range
+	minL   int64
+	maxL   int64
+
+	srange bool // slice value size range
+	minS   int64
+	maxS   int64
 
 	defaultV []byte
 
 	reg     *regexp.Regexp
 	regName string
-	fn      func([]byte) ([]byte, bool)
-	fnName  string
-}
 
-var TrueBytes = []byte("true")
+	fn     func([]byte) ([]byte, bool)
+	fnName string
+
+	isSlice  bool
+	isJoined bool
+}
 
 func (rule *_RuleT) toBytes(v []byte) (val []byte, ok bool) {
 	if rule.lrange {
-		l := len(v)
+		l := int64(len(v))
 		if rule.minL > 0 && l < rule.minL {
 			return nil, false
 		}
@@ -96,7 +120,12 @@ func (rule *_RuleT) toBool(v []byte) (r bool, ok bool) {
 	if !ok {
 		return false, false
 	}
-	return bytes.Equal(v, TrueBytes), true
+
+	_v, err := strconv.ParseBool(gotils.B2S(v))
+	if err != nil {
+		return false, false
+	}
+	return _v, true
 }
 
 func (rule *_RuleT) toI64(v []byte) (num int64, ok bool) {
@@ -105,7 +134,7 @@ func (rule *_RuleT) toI64(v []byte) (num int64, ok bool) {
 		return 0, false
 	}
 
-	rv, err := strconv.ParseInt(utils.B2s(v), 10, 64)
+	rv, err := strconv.ParseInt(gotils.B2S(v), 10, 64)
 	if err != nil {
 		return 0, false
 	}
@@ -129,7 +158,7 @@ func (rule *_RuleT) toUI64(v []byte) (num uint64, ok bool) {
 		return 0, false
 	}
 
-	rv, err := strconv.ParseUint(utils.B2s(v), 10, 64)
+	rv, err := strconv.ParseUint(gotils.B2S(v), 10, 64)
 	if err != nil {
 		return 0, false
 	}
@@ -149,7 +178,7 @@ func (rule *_RuleT) toUI64(v []byte) (num uint64, ok bool) {
 
 func (rule *_RuleT) toJsonObj(v []byte) (map[string]interface{}, bool) {
 	if rule.lrange {
-		l := len(v)
+		l := int64(len(v))
 		if rule.minL > 0 && l < rule.minL {
 			return nil, false
 		}
@@ -164,6 +193,33 @@ func (rule *_RuleT) toJsonObj(v []byte) (map[string]interface{}, bool) {
 		return nil, false
 	}
 	return m, true
+}
+
+func (rule *_RuleT) toJsonAry(v []byte) ([]interface{}, bool) {
+	if rule.lrange {
+		l := int64(len(v))
+		if rule.minL > 0 && l < rule.minL {
+			return nil, false
+		}
+		if rule.maxL > 0 && l > rule.maxL {
+			return nil, false
+		}
+	}
+
+	var s []interface{}
+	err := json.Unmarshal(v, &s)
+	if err != nil {
+		return nil, false
+	}
+	return s, true
+}
+
+func (rule *_RuleT) checkSize(v *reflect.Value) bool {
+	if !rule.srange {
+		return true
+	}
+	_l := int64(v.Len())
+	return _l >= rule.minS && _l <= rule.maxS
 }
 
 func mapMultiForm(ctx *fasthttp.RequestCtx, name string, fn func([]byte) bool) bool {
@@ -182,7 +238,7 @@ func mapMultiForm(ctx *fasthttp.RequestCtx, name string, fn func([]byte) bool) b
 	mf, _ := ctx.MultipartForm()
 	if mf != nil {
 		for _, v := range mf.Value[name] {
-			if !fn(utils.S2b(v)) {
+			if !fn(gotils.S2B(v)) {
 				return false
 			}
 		}
@@ -210,6 +266,23 @@ func (rule *_RuleT) toBoolSlice(ctx *fasthttp.RequestCtx) ([]bool, bool) {
 	return nil, false
 }
 
+var joinSep = []byte(",")
+
+func (rule *_RuleT) toJoinedBoolSlice(ctx *fasthttp.RequestCtx) (lst []bool, ok bool) {
+	formV := ctx.FormValue(rule.form)
+	if len(formV) < 1 {
+		return nil, false
+	}
+	for _, b := range bytes.Split(formV, joinSep) {
+		_v, _ok := rule.toBool(b)
+		if !_ok {
+			return nil, false
+		}
+		lst = append(lst, _v)
+	}
+	return lst, true
+}
+
 func (rule *_RuleT) toIntSlice(ctx *fasthttp.RequestCtx) ([]int64, bool) {
 	var lst []int64
 	ok := mapMultiForm(
@@ -228,6 +301,21 @@ func (rule *_RuleT) toIntSlice(ctx *fasthttp.RequestCtx) ([]int64, bool) {
 		return lst, true
 	}
 	return nil, false
+}
+
+func (rule *_RuleT) toJoinedIntSlice(ctx *fasthttp.RequestCtx) (lst []int64, ok bool) {
+	formV := ctx.FormValue(rule.form)
+	if len(formV) < 1 {
+		return nil, false
+	}
+	for _, b := range bytes.Split(formV, joinSep) {
+		_v, _ok := rule.toI64(b)
+		if !_ok {
+			return nil, false
+		}
+		lst = append(lst, _v)
+	}
+	return lst, true
 }
 
 func (rule *_RuleT) toUintSlice(ctx *fasthttp.RequestCtx) ([]uint64, bool) {
@@ -250,6 +338,21 @@ func (rule *_RuleT) toUintSlice(ctx *fasthttp.RequestCtx) ([]uint64, bool) {
 	return nil, false
 }
 
+func (rule *_RuleT) toJoinedUintSlice(ctx *fasthttp.RequestCtx) (lst []uint64, ok bool) {
+	formV := ctx.FormValue(rule.form)
+	if len(formV) < 1 {
+		return nil, false
+	}
+	for _, b := range bytes.Split(formV, joinSep) {
+		_v, _ok := rule.toUI64(b)
+		if !_ok {
+			return nil, false
+		}
+		lst = append(lst, _v)
+	}
+	return lst, true
+}
+
 func (rule *_RuleT) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
 	var lst []string
 	ok := mapMultiForm(
@@ -260,7 +363,7 @@ func (rule *_RuleT) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
 			if !ok {
 				return false
 			}
-			lst = append(lst, utils.B2s(v))
+			lst = append(lst, gotils.B2S(v))
 			return true
 		},
 	)
@@ -270,7 +373,7 @@ func (rule *_RuleT) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
 	return nil, false
 }
 
-var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{default}|{regexp}|{function}|")
+var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{srange}|{default}|{regexp}|{function}|")
 
 func (rule *_RuleT) String() string {
 	m := utils.M{
@@ -293,6 +396,16 @@ func (rule *_RuleT) String() string {
 		m["lrange"] = fmt.Sprintf("%d-%d", rule.minL, rule.maxL)
 	} else {
 		m["lrange"] = "/"
+	}
+
+	if rule.srange {
+		if rule.isJoined {
+			m["srange"] = fmt.Sprintf("%d-%d;joined", rule.minS, rule.maxS)
+		} else {
+			m["srange"] = fmt.Sprintf("%d-%d", rule.minS, rule.maxS)
+		}
+	} else {
+		m["srange"] = "/"
 	}
 
 	if rule.reg != nil {
@@ -340,8 +453,8 @@ func (a _RuleSliceT) Less(i, j int) bool {
 // markdown table
 func (a _RuleSliceT) String() string {
 	buf := strings.Builder{}
-	buf.WriteString("|name|type|required|lrange|vrange|default|regexp|function|\n")
-	buf.WriteString("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n")
+	buf.WriteString("|name|type|required|lrange|vrange|srange|default|regexp|function|\n")
+	buf.WriteString("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n")
 	for _, r := range a {
 		buf.WriteString(r.String())
 		buf.WriteByte('\n')

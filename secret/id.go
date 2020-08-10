@@ -1,21 +1,29 @@
 package secret
 
 import (
+	"encoding/base64"
 	"fmt"
-	"github.com/zzztttkkk/suna/utils"
+	"github.com/savsgio/gotils"
 	"strconv"
 	"strings"
 	"time"
 )
 
 func DumpId(id int64, seconds int64) string {
-	v := fmt.Sprintf("%x@%x:%s", id, time.Now().Unix()+seconds, utils.B2s(RandBytes(12, nil)))
-	return fmt.Sprintf("%s|%s", v, utils.B2s(_Default.Calc(utils.S2b(v))))
+	v := fmt.Sprintf("%x@%x:%s", id, time.Now().Unix()+seconds, gotils.B2S(RandBytes(8, nil)))
+	return base64.StdEncoding.EncodeToString(gotils.S2B(fmt.Sprintf("%s|%s", v, gotils.B2S(_Default.Calc(gotils.S2B(v))))))
 }
 
 func LoadId(s string) (int64, bool) {
-	ind := strings.IndexByte(s, '|')
-	if ind < 23 {
+	_v, e := base64.StdEncoding.DecodeString(s)
+	if e != nil {
+		return 0, false
+	}
+
+	s = gotils.B2S(_v)
+
+	ind := strings.IndexByte(gotils.B2S(_v), '|')
+	if ind < 19 {
 		return 0, false
 	}
 
@@ -37,7 +45,7 @@ func LoadId(s string) (int64, bool) {
 		return 0, false
 	}
 
-	if !_Default.Equal(utils.S2b(v), utils.S2b(h)) {
+	if !_Default.Equal(gotils.S2B(v), gotils.S2B(h)) {
 		return 0, false
 	}
 
