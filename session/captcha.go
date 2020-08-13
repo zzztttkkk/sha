@@ -4,6 +4,7 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/secret"
 	"time"
@@ -20,16 +21,12 @@ func toString(digits []byte) string {
 	return gotils.B2S(s)
 }
 
-const (
-	captchaIdKey   = "~.suna.captcha.id"
-	captchaUnixKey = "~.suna.captcha.unix"
-)
-
 var captchaWordSize int
 var captchaWidth int
 var captchaHeight int
 var captchaForm string
 var captchaMaxage int64
+var captchaSkipVerify bool
 
 func _initCaptcha() {
 	captchaWordSize = cfg.Session.Captcha.Words
@@ -37,12 +34,13 @@ func _initCaptcha() {
 	captchaWidth = cfg.Session.Captcha.Width
 	captchaForm = cfg.Session.Captcha.Form
 	captchaMaxage = int64(cfg.Session.Captcha.Maxage)
+	captchaSkipVerify = cfg.IsDebug() && cfg.Session.Captcha.SkipInDebug
 }
 
 func (ss Session) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 	digits := secret.RandBytes(captchaWordSize, bytesPool)
-	ss.Set(captchaIdKey, toString(digits))
-	ss.Set(captchaIdKey, time.Now().Unix())
+	ss.Set(internal.SessionCaptchaIdKey, toString(digits))
+	ss.Set(internal.SessionCaptchaUnixKey, time.Now().Unix())
 
 	ctx.Response.Header.Set("Cache-control", "no-store")
 	ctx.Response.Header.Set("Content-type", "image/png")
@@ -56,12 +54,12 @@ func (ss Session) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 }
 
 func (ss Session) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
-	if cfg.Session.Captcha.SkipInDebug && cfg.IsDebug() {
+	if captchaSkipVerify {
 		return true
 	}
 
 	defer func() {
-		ss.Del(captchaIdKey, captchaUnixKey) // del captcha anyway
+		ss.Del(internal.SessionCaptchaUnixKey, internal.SessionExistsKey) // del captcha anyway
 		if !ok {
 			output.Error(ctx, output.HttpErrors[fasthttp.StatusBadRequest])
 		}
@@ -74,12 +72,12 @@ func (ss Session) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
 	}
 
 	var code string
-	if !ss.Get(captchaIdKey, &code) {
+	if !ss.Get(internal.SessionCaptchaIdKey, &code) {
 		return
 	}
 
 	var unix int64
-	if !ss.Get(captchaUnixKey, &unix) || time.Now().Unix()-unix > captchaMaxage {
+	if !ss.Get(internal.SessionCaptchaUnixKey, &unix) || time.Now().Unix()-unix > captchaMaxage {
 		return
 	}
 

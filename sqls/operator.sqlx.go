@@ -3,152 +3,18 @@ package sqls
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"github.com/zzztttkkk/suna/utils"
-	"strings"
-
 	"github.com/jmoiron/sqlx"
+	"github.com/zzztttkkk/sqrl"
+	"github.com/zzztttkkk/suna/sqls/builder"
+	"github.com/zzztttkkk/suna/utils"
+	"reflect"
 )
 
-// X: 	sqlx
-
-// one col one row
-func (op *Operator) XQ11(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
-	doSqlLog(q, args)
-	if err := Executor(ctx).GetContext(ctx, dist, q, args...); err != nil {
-		if err == sql.ErrNoRows {
-			return false
-		}
-		panic(err)
-	}
-	return true
-}
-
-// one col many rows
-func (op *Operator) XQ1n(ctx context.Context, silceDist interface{}, q string, args ...interface{}) bool {
-	doSqlLog(q, args)
-	if err := Executor(ctx).SelectContext(ctx, silceDist, q, args...); err != nil {
-		if err == sql.ErrNoRows {
-			return true
-		}
-		panic(err)
-	}
-	return true
-}
-
-func (op *Operator) XQ1nScan(ctx context.Context, dist interface{}, afterScan func() error, q string, args ...interface{}) int64 {
-	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
+func (op *Operator) XSelectScan(ctx context.Context, builder *sqrl.SelectBuilder, scanner *Scanner) int {
+	q, args, err := builder.ToSql()
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0
-		}
 		panic(err)
 	}
-
-	var count int64
-	for rows.Next() {
-		if err = rows.Scan(dist); err != nil {
-			panic(err)
-		}
-		if afterScan != nil {
-			if err = afterScan(); err != nil {
-				panic(err)
-			}
-		}
-		count++
-	}
-	return count
-}
-
-// many cols one row
-func (op *Operator) XQn1(ctx context.Context, dist []interface{}, q string, args ...interface{}) bool {
-	doSqlLog(q, args)
-	row := Executor(ctx).QueryRowxContext(ctx, q, args...)
-	if err := row.Err(); err != nil {
-		if err == sql.ErrNoRows {
-			return false
-		}
-		panic(err)
-	}
-	if err := row.Scan(dist...); err != nil {
-		panic(err)
-	}
-	return true
-}
-
-// many cols many rows, each row use each dists
-func (op *Operator) XQnn(ctx context.Context, distsGen func() []interface{}, afterScan func(...interface{}) error, q string, args ...interface{}) int64 {
-	doSqlLog(q, args)
-	var count int64
-	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return count
-		}
-		panic(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		vl := distsGen()
-		if err := rows.Scan(vl...); err != nil {
-			panic(err)
-		}
-		if afterScan != nil {
-			if err := afterScan(vl...); err != nil {
-				panic(err)
-			}
-		}
-		count++
-	}
-	return count
-}
-
-// many cols multi rows, each row use same dists
-func (op *Operator) XQnnScan(ctx context.Context, dists []interface{}, afterScan func() error, q string, args ...interface{}) int64 {
-	doSqlLog(q, args)
-	var count int64
-	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return count
-		}
-		panic(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		if err := rows.Scan(dists...); err != nil {
-			panic(err)
-		}
-		if afterScan != nil {
-			if err := afterScan(); err != nil {
-				panic(err)
-			}
-		}
-		count++
-	}
-	return count
-}
-
-// struct single row
-func (op *Operator) XQs1(ctx context.Context, dist interface{}, q string, args ...interface{}) bool {
-	doSqlLog(q, args)
-	row := Executor(ctx).QueryRowxContext(ctx, q, args...)
-	if err := row.Err(); err != nil {
-		if err == sql.ErrNoRows {
-			return false
-		}
-		panic(err)
-	}
-	if err := row.StructScan(dist); err != nil {
-		panic(err)
-	}
-	return true
-}
-
-// struct multi rows, each row use each dist
-func (op *Operator) XQsn(ctx context.Context, constructor func() interface{}, afterScan func(context.Context, interface{}) error, q string, args ...interface{}) int64 {
 	doSqlLog(q, args)
 	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
 	if err != nil {
@@ -159,62 +25,35 @@ func (op *Operator) XQsn(ctx context.Context, constructor func() interface{}, af
 	}
 	defer rows.Close()
 
-	var count int64
-	for rows.Next() {
-		ele := constructor()
-		err := rows.StructScan(ele)
-		if err != nil {
-			panic(err)
-		}
-		if afterScan != nil {
-			if err = afterScan(ctx, ele); err != nil {
-				panic(err)
-			}
-		}
-		count++
-	}
-	return count
+	return scanner.Scan(rows)
 }
 
-// struct multi row, each row use same dist
-func (op *Operator) XQsnScan(ctx context.Context, ele interface{}, afterScan func(context.Context) error, q string, args ...interface{}) int64 {
+func (op *Operator) XSelect(ctx context.Context, dist interface{}, builder *sqrl.SelectBuilder) bool {
+	q, args, err := builder.ToSql()
+	if err != nil {
+		panic(err)
+	}
 	doSqlLog(q, args)
-	rows, err := Executor(ctx).QueryxContext(ctx, q, args...)
+
+	dT := reflect.TypeOf(dist).Elem()
+	switch dT.Kind() {
+	case reflect.Slice:
+		if dT.Elem().Kind() == reflect.Uint8 { // []byte
+			err = Executor(ctx).GetContext(ctx, dist, q, args...)
+		} else {
+			err = Executor(ctx).SelectContext(ctx, dist, q, args...)
+		}
+	default:
+		err = Executor(ctx).GetContext(ctx, dist, q, args...)
+	}
+
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return 0
+			return false
 		}
 		panic(err)
 	}
-	defer rows.Close()
-
-	var count int64
-	for rows.Next() {
-		err := rows.StructScan(ele)
-		if err != nil {
-			panic(err)
-		}
-		if afterScan != nil {
-			if err = afterScan(ctx); err != nil {
-				panic(err)
-			}
-		}
-		count++
-	}
-	return count
-}
-
-func (op *Operator) XCount(ctx context.Context, key string, condition string, args ...interface{}) (c int64) {
-	q := fmt.Sprintf(`select count(%s) from %s`, key, op.tablename)
-	if len(condition) > 0 {
-		q += " where " + condition
-	}
-	op.XQ11(ctx, &c, q, args...)
-	return
-}
-
-func (op *Operator) XExists(ctx context.Context, key string, condition string, args ...interface{}) bool {
-	return op.XCount(ctx, key, condition, args...) > 0
+	return true
 }
 
 func (op *Operator) XStmt(ctx context.Context, q string) *sqlx.Stmt {
@@ -235,94 +74,74 @@ func (op *Operator) XExecute(ctx context.Context, q string, args ...interface{})
 	return r
 }
 
-func mysqlCreate(ctx context.Context, op *Operator, q string, args []interface{}) int64 {
-	doSqlLog(q, args)
-	result, err := Executor(ctx).ExecContext(ctx, q, args...)
-	if err != nil {
-		panic(err)
-	}
-	lid, _ := result.LastInsertId()
-	return lid
-}
-
-func postgresCreate(ctx context.Context, op *Operator, q string, args []interface{}) int64 {
-	q = strings.TrimSpace(q)
-	if q[0] != 'i' {
-		panic(fmt.Errorf("suna.sqls: not a insert query"))
-	}
-	if q[len(q)-1] == ';' {
-		q = q[:len(q)-1]
-	}
-
-	idField := "id"
-	if len(op.idField) > 0 {
-		idField = op.idField
-	}
-
-	q += " returning " + idField
-	var lid int64
-	doSqlLog(q, args)
-	err := Executor(ctx).GetContext(ctx, &lid, q, args...)
-	if err != nil {
-		panic(err)
-	}
-	return lid
-}
-
-func (op *Operator) XCreate(ctx context.Context, m utils.M) int64 {
+func (op *Operator) XCreate(ctx context.Context, kvs *utils.Kvs) int64 {
 	var ks []string
-	var pls []string
+	var vs []interface{}
 
-	for k, v := range m {
-		ks = append(ks, k)
-		switch rv := v.(type) {
-		case Raw:
-			pls = append(pls, string(rv))
-		default:
-			pls = append(pls, ":"+k)
-		}
-	}
-
-	s, vl := op.BindNamed(
-		fmt.Sprintf(
-			"insert into %s (%s) values (%s)",
-			op.tablename, strings.Join(ks, ","),
-			strings.Join(pls, ","),
-		),
-		m,
+	kvs.EachNode(
+		func(s string, i interface{}) {
+			ks = append(ks, s)
+			vs = append(vs, i)
+		},
 	)
 
-	return doCreate(ctx, op, s, vl)
-}
-
-func (op *Operator) XUpdate(ctx context.Context, updates utils.M, condition string, conditionArgs ...interface{}) int64 {
-	var pls []string
-	var vl []interface{}
-
-	for k, v := range updates {
-		switch rv := v.(type) {
-		case Raw:
-			pls = append(pls, fmt.Sprintf("%s=%s", k, string(rv)))
-		default:
-			pls = append(pls, fmt.Sprintf("%s=:%s", k, k))
-			vl = append(vl, v)
-		}
+	b := builder.NewInsert(op.tablename).Columns(ks...).Values(vs...)
+	if isPostgres {
+		b.Returning(op.idField)
 	}
 
-	s := fmt.Sprintf("update %s set %s", op.TableName(), strings.Join(pls, ","))
-	if len(condition) > 0 {
-		s += " where " + condition
-	}
-
-	q, vl := op.BindNamed(s, updates)
-	vl = append(vl, conditionArgs...)
-
-	doSqlLog(q, conditionArgs)
-	result, err := Executor(ctx).ExecContext(ctx, q, append(vl, conditionArgs)...)
+	q, args, err := b.ToSql()
 	if err != nil {
 		panic(err)
 	}
+	doSqlLog(q, args)
 
-	count, _ := result.RowsAffected()
-	return count
+	var lid int64
+	var e error
+	var r sql.Result
+
+	if isPostgres {
+		e = Executor(ctx).GetContext(ctx, &lid, q, args...)
+	} else {
+		r, e = Executor(ctx).ExecContext(ctx, q, args...)
+		if r != nil {
+			lid, e = r.LastInsertId()
+		}
+	}
+	if e != nil {
+		panic(e)
+	}
+	return lid
+}
+
+func (op *Operator) XUpdate(ctx context.Context, kvs *utils.Kvs, conditions sqrl.Sqlizer, limit int64) int64 {
+	b := builder.NewUpdate(op.tablename)
+	kvs.EachNode(
+		func(s string, i interface{}) {
+			b.Set(s, i)
+		},
+	)
+	if conditions != nil {
+		b.Where(conditions)
+	}
+	if limit > -1 {
+		b.Limit(uint64(limit))
+	}
+	q, args, e := b.ToSql()
+	if e != nil {
+		panic(e)
+	}
+	doSqlLog(q, args)
+	r, e := Executor(ctx).ExecContext(ctx, q, args...)
+	if e != nil {
+		if e == sql.ErrNoRows {
+			return 0
+		}
+		panic(e)
+	}
+	c, e := r.RowsAffected()
+	if e != nil {
+		panic(e)
+	}
+	return c
 }

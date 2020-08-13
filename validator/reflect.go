@@ -67,7 +67,7 @@ func (p *_ValidatorParser) OnBegin(field *reflect.StructField) bool {
 		}
 	case reflect.Struct:
 		subP := GetRules(field.Type)
-		p.all = append(p.all, subP.all...)
+		p.all = append(p.all, subP.lst...)
 		return false
 	case reflect.Map:
 		ele := reflect.MakeMap(field.Type).Interface()
@@ -190,9 +190,10 @@ func (p *_ValidatorParser) OnDone() {
 	p.current = nil
 }
 
-var rulesMap = map[reflect.Type]*_ValidatorParser{}
+var rulesMap = map[reflect.Type]*Rules{}
 
-func GetRules(p reflect.Type) *_ValidatorParser {
+func GetRules(v interface{}) *Rules {
+	p := reflect.TypeOf(v)
 	rs, ok := rulesMap[p]
 	if ok {
 		return rs
@@ -212,6 +213,11 @@ func GetRules(p reflect.Type) *_ValidatorParser {
 		log.Fatalf("suna.validator: %s is contain a json field", p.Name())
 	}
 
-	rulesMap[p] = parser
-	return parser
+	rules := &Rules{
+		lst:    parser.all,
+		isJson: parser.isJson,
+	}
+
+	rulesMap[p] = rules
+	return rules
 }

@@ -13,10 +13,9 @@ import (
 	"github.com/zzztttkkk/suna/secret"
 	"github.com/zzztttkkk/suna/session"
 	"github.com/zzztttkkk/suna/sqls"
+	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/validator"
 	"log"
-	"reflect"
-	"strings"
 )
 
 type InitOption struct {
@@ -24,7 +23,32 @@ type InitOption struct {
 	Authenticator auth.Authenticator
 }
 
+var disableReservedKeysWarning bool
+
+func DisableReservedKeysWarning() {
+	disableReservedKeysWarning = true
+}
+
+func doReservedKeysWarning() {
+	if disableReservedKeysWarning {
+		return
+	}
+	log.Printf(
+		"suna: reserved fasthttp.RequestCtx.UserValue keys: `%s`, `%s`\n",
+		internal.RCtxSessionKey,
+		internal.RCtxUserKey,
+	)
+	log.Printf(
+		"suna: reserved suna.session.Session keys: `%s`, `%s`, `%s`\n",
+		internal.SessionExistsKey,
+		internal.SessionCaptchaIdKey,
+		internal.SessionCaptchaUnixKey,
+	)
+}
+
 func Init(opt *InitOption) {
+	doReservedKeysWarning()
+
 	internal.Dig.Provide(
 		func() *config.Suna {
 			if opt == nil {
@@ -49,19 +73,16 @@ func Init(opt *InitOption) {
 }
 
 // trigger internal.LazyInvoke
-func _LoadSubModules() string {
-	buf := strings.Builder{}
-
-	buf.WriteString(reflect.ValueOf(cache.NewLru).String())
-	buf.WriteString(reflect.ValueOf(middleware.NewAccessLogger).String())
-	buf.WriteString(reflect.ValueOf(output.Error).String())
-	buf.WriteString(reflect.ValueOf(rbac.Loader).String())
-	buf.WriteString(reflect.ValueOf(reflectx.ExportedKeys).String())
-	buf.WriteString(reflect.ValueOf(secret.AesDecrypt).String())
-	buf.WriteString(reflect.ValueOf(session.New).String())
-	buf.WriteString(reflect.ValueOf(sqls.CreateTable).String())
-	buf.WriteString(reflect.ValueOf(validator.RegisterFunc).String())
-	buf.WriteString(reflect.ValueOf(redlock.New).String())
-
-	return buf.String()
+func _LoadSubModules() {
+	internal.Dig.Index(cache.NewLru)
+	internal.Dig.Index(middleware.NewAccessLogger)
+	internal.Dig.Index(output.Error)
+	internal.Dig.Index(rbac.Loader)
+	internal.Dig.Index(reflectx.ExportedKeys)
+	internal.Dig.Index(secret.AesDecrypt)
+	internal.Dig.Index(session.New)
+	internal.Dig.Index(sqls.CreateTable)
+	internal.Dig.Index(builder.And)
+	internal.Dig.Index(validator.RegisterFunc)
+	internal.Dig.Index(redlock.New)
 }

@@ -12,7 +12,7 @@ func init() {
 			router.GET(
 				"/status/errors",
 				newPermChecker(
-					"admin.rbac.status.errors",
+					"rbac.status.errors",
 					func(ctx *fasthttp.RequestCtx) {
 						g.RLock()
 						defer g.RUnlock()

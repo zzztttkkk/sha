@@ -2,7 +2,7 @@ package sqls
 
 import (
 	"context"
-	"fmt"
+	"github.com/zzztttkkk/suna/sqls/builder"
 	"sync"
 	"time"
 
@@ -38,15 +38,33 @@ func (cache *EnumCache) load(ctx context.Context) {
 
 	cache.all = make([]EnumItem, 0, len(cache.all))
 
-	cache.op.XQsn(
+	sb := builder.NewSelect("*").From(cache.op.TableName()).Where(
+		builder.AndConditions().
+			Gte(true, "status", 0).
+			NotEq(true, "deleted", 0),
+	).OrderBy("id")
+
+	cache.op.XSelectScan(
 		ctx,
-		func() interface{} {
-			obj := cache.constructor()
-			cache.all = append(cache.all, obj)
-			return obj
-		},
-		cache.afterScan,
-		fmt.Sprintf(`select * from %s where deleted=0 and status>=0 order by id`, cache.op.TableName()),
+		sb,
+		NewScanner(
+			make([]interface{}, 1, 1),
+			func(dist *[]interface{}) {
+				ele := cache.constructor()
+				(*dist)[0] = ele
+			},
+			func(dist *[]interface{}) error {
+				v := (*dist)[0].(EnumItem)
+				if cache.afterScan != nil {
+					e := cache.afterScan(ctx, v)
+					if e != nil {
+						return e
+					}
+				}
+				cache.all = append(cache.all, v)
+				return nil
+			},
+		),
 	)
 
 	for _, obj := range cache.all {

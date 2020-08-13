@@ -114,7 +114,7 @@ func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHan
 }
 
 func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.RequestHandler, item *_ItemT) {
-	key := "snow:rcache:" + c.getKey(ctx)
+	key := "suna:rcache:" + c.getKey(ctx)
 
 	v, _ := redisc.Get(key).Bytes()
 	if len(v) > 0 {

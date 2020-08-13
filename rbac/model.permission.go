@@ -2,15 +2,15 @@ package rbac
 
 import "github.com/zzztttkkk/suna/sqls"
 
-type _Permission struct {
+type permissionT struct {
 	sqls.Enum
 	Descp string ` json:"descp"`
 }
 
-func (_Permission) TableName() string {
+func (permissionT) TableName() string {
 	return tablePrefix + "permission"
 }
 
-func (perm _Permission) TableDefinition() []string {
+func (perm permissionT) TableDefinition() []string {
 	return perm.Enum.TableDefinition("descp text")
 }

@@ -87,7 +87,7 @@ func init() {
 	defaultV.Session.Prefix = "session"
 	defaultV.Session.Captcha.Form = "captcha"
 	defaultV.Session.Captcha.Height = 120
-	defaultV.Session.Captcha.Width = 640
+	defaultV.Session.Captcha.Width = 300
 	defaultV.Session.Captcha.Words = 6
 	defaultV.Session.Captcha.Maxage = 300
 	defaultV.Rbac.TablenamePrefix = "rbac_"

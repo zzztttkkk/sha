@@ -18,15 +18,15 @@ var loader = utils.NewLoader()
 type modifyType int
 
 const (
-	Del = modifyType(-1)
-	Add = modifyType(1)
+	_Del = modifyType(-1)
+	_Add = modifyType(1)
 )
 
 func (v modifyType) String() string {
 	switch v {
-	case Add:
+	case _Add:
 		return "add"
-	case Del:
+	case _Del:
 		return "del"
 	default:
 		return ""

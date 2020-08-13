@@ -274,7 +274,7 @@ func (rule *_RuleT) toJoinedBoolSlice(ctx *fasthttp.RequestCtx) (lst []bool, ok 
 		return nil, false
 	}
 	for _, b := range bytes.Split(formV, joinSep) {
-		_v, _ok := rule.toBool(b)
+		_v, _ok := rule.toBool(bytes.TrimSpace(b))
 		if !_ok {
 			return nil, false
 		}
@@ -309,7 +309,7 @@ func (rule *_RuleT) toJoinedIntSlice(ctx *fasthttp.RequestCtx) (lst []int64, ok 
 		return nil, false
 	}
 	for _, b := range bytes.Split(formV, joinSep) {
-		_v, _ok := rule.toI64(b)
+		_v, _ok := rule.toI64(bytes.TrimSpace(b))
 		if !_ok {
 			return nil, false
 		}
@@ -344,7 +344,7 @@ func (rule *_RuleT) toJoinedUintSlice(ctx *fasthttp.RequestCtx) (lst []uint64, o
 		return nil, false
 	}
 	for _, b := range bytes.Split(formV, joinSep) {
-		_v, _ok := rule.toUI64(b)
+		_v, _ok := rule.toUI64(bytes.TrimSpace(b))
 		if !_ok {
 			return nil, false
 		}
@@ -460,4 +460,28 @@ func (a _RuleSliceT) String() string {
 		buf.WriteByte('\n')
 	}
 	return buf.String()
+}
+
+type Rules struct {
+	lst    _RuleSliceT
+	isJson bool
+	doc    *Doc
+}
+
+func (r *Rules) NewDoc(descp string) *Doc {
+	return &Doc{
+		descp:  descp,
+		fields: r.lst.String(),
+	}
+}
+
+type Doc struct {
+	descp  string
+	fields string
+}
+
+func (d *Doc) DocDescp() string { return d.descp }
+
+func (d *Doc) ApiFields() string {
+	return d.fields
 }

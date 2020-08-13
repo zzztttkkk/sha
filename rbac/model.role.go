@@ -2,7 +2,7 @@ package rbac
 
 import "github.com/zzztttkkk/suna/sqls"
 
-type _Role struct {
+type roleT struct {
 	sqls.Enum
 	Descp string `json:"descp"`
 
@@ -10,24 +10,24 @@ type _Role struct {
 	Permissions []int64 `json:"permissions" db:"-"`
 }
 
-func (_Role) TableName() string {
+func (roleT) TableName() string {
 	return tablePrefix + "role"
 }
 
-func (role _Role) TableDefinition() []string {
+func (role roleT) TableDefinition() []string {
 	return role.Enum.TableDefinition("descp text")
 }
 
-type _RoleInheritance struct {
+type roleInheritanceT struct {
 	Role  int64 `json:"role"`
 	Based int64 `json:"based"`
 }
 
-func (_RoleInheritance) TableName() string {
+func (roleInheritanceT) TableName() string {
 	return tablePrefix + "role_inheritance"
 }
 
-func (ele _RoleInheritance) TableDefinition() []string {
+func (ele roleInheritanceT) TableDefinition() []string {
 	return []string{
 		"role bigint not null",
 		"based bigint not null",
@@ -35,16 +35,16 @@ func (ele _RoleInheritance) TableDefinition() []string {
 	}
 }
 
-type _RoleWithPerm struct {
+type roleWithPermT struct {
 	Role int64 `json:"role"`
 	Perm int64 `json:"perm"`
 }
 
-func (_RoleWithPerm) TableName() string {
+func (roleWithPermT) TableName() string {
 	return tablePrefix + "role_with_perm"
 }
 
-func (ele _RoleWithPerm) TableDefinition() []string {
+func (ele roleWithPermT) TableDefinition() []string {
 	return []string{
 		"role bigint not null",
 		"perm bigint not null",

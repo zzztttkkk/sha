@@ -1,10 +1,12 @@
 package rbac
 
 import (
+	"context"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/output"
+	"log"
 )
 
 var PermissionDeniedError = output.NewError(fasthttp.StatusForbidden, -1, "permission denied")
@@ -18,13 +20,18 @@ func NewPermissionCheckHandler(
 	permissions []string,
 	next fasthttp.RequestHandler,
 ) fasthttp.RequestHandler {
+	for _, p := range permissions {
+		if !_PermissionOperator.ExistsByName(context.Background(), p) {
+			log.Fatalf("suna.rbac: permission `%s` is not exists", p)
+		}
+	}
+
 	return func(ctx *fasthttp.RequestCtx) {
-		user := auth.GetUserMust(ctx)
+		user := auth.MustGetUser(ctx)
 		if !IsGranted(ctx, user, policy, permissions...) {
 			output.Error(ctx, PermissionDeniedError)
 			return
 		}
-
 		next(ctx)
 	}
 }

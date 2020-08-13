@@ -11,9 +11,9 @@ import (
 
 var g sync.RWMutex
 
-var permIdMap map[int64]*_Permission
-var permNameMap map[string]*_Permission
-var roleIdMap map[int64]*_Role
+var permIdMap map[int64]*permissionT
+var permNameMap map[string]*permissionT
+var roleIdMap map[int64]*roleT
 var errs []string
 var rolePermMap map[int64]map[int64]bool
 var rolePermCache = cache.NewLru(200)
@@ -23,9 +23,9 @@ func Load(ctx context.Context) {
 	defer g.Unlock()
 
 	errs = make([]string, 0)
-	permIdMap = map[int64]*_Permission{}
-	permNameMap = map[string]*_Permission{}
-	roleIdMap = map[int64]*_Role{}
+	permIdMap = map[int64]*permissionT{}
+	permNameMap = map[string]*permissionT{}
+	roleIdMap = map[int64]*roleT{}
 	rolePermMap = map[int64]map[int64]bool{}
 	rolePermCache.Clear()
 
@@ -53,7 +53,7 @@ func buildRolePermMap() {
 	}
 }
 
-func makeOneRole(role *_Role) map[int64]bool {
+func makeOneRole(role *roleT) map[int64]bool {
 	pm := map[int64]bool{}
 	err := false
 
@@ -65,7 +65,7 @@ func makeOneRole(role *_Role) map[int64]bool {
 	return pm
 }
 
-func _makeOneRole(role *_Role, footprints map[int64]bool, permMap map[int64]bool, errPtr *bool) {
+func _makeOneRole(role *roleT, footprints map[int64]bool, permMap map[int64]bool, errPtr *bool) {
 	_, ok := footprints[role.GetId()]
 	if ok {
 		*errPtr = true

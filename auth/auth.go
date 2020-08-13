@@ -26,7 +26,7 @@ func GetUser(ctx *fasthttp.RequestCtx) User {
 	return u
 }
 
-func GetUserMust(ctx *fasthttp.RequestCtx) (u User) {
+func MustGetUser(ctx *fasthttp.RequestCtx) (u User) {
 	if u = GetUser(ctx); u == nil {
 		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 	}

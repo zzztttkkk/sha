@@ -43,15 +43,15 @@ var jsonCt = []byte("application/json")
 
 func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 	_v := reflect.ValueOf(ptr).Elem()
-	parser := GetRules(_v.Type())
+	rules := GetRules(_v.Type())
 	isJsonReq := bytes.HasPrefix(ctx.Request.Header.ContentType(), jsonCt)
 
-	if parser.isJson {
+	if rules.isJson {
 		if isJsonReq {
-			rule := parser.all[0]
+			rule := rules.lst[0]
 			field := _v.FieldByName(rule.field)
 			val := ctx.Request.Body()
-
+			var value reflect.Value
 			switch rule.t {
 			case _JsonObject:
 				m, ok := rule.toJsonObj(val)
@@ -59,18 +59,16 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 					output.Error(ctx, newInvalidError(rule.form))
 					return false
 				}
-				field.Set(reflect.ValueOf(m))
+				value = reflect.ValueOf(m)
 			case _JsonArray:
 				m, ok := rule.toJsonAry(val)
 				if !ok {
 					output.Error(ctx, newInvalidError(rule.form))
 					return false
 				}
-				field.Set(reflect.ValueOf(m))
-			default:
-				output.Error(ctx, ErrNotJsonRequest)
-				return false
+				value = reflect.ValueOf(m)
 			}
+			field.Set(value)
 			return true
 		} else {
 			output.Error(ctx, ErrNotJsonRequest)
@@ -83,9 +81,9 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 		return false
 	}
 
-	for _, rule := range parser.all {
+	for _, rule := range rules.lst {
 		val := ctx.FormValue(rule.form)
-		if val != nil {
+		if len(val) > 0 {
 			val = bytes.TrimSpace(val)
 		}
 
@@ -104,57 +102,39 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 		field := _v.FieldByName(rule.field)
 
 		if rule.isSlice {
-			var sV reflect.Value
+			var ok bool
+			var s interface{}
+
 			switch rule.t {
 			case _BoolSlice:
-				s, ok := rule.toBoolSlice(ctx)
-				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
-					return false
-				}
-				sV = reflect.ValueOf(s)
+				s, ok = rule.toBoolSlice(ctx)
 			case _IntSlice:
-				s, ok := rule.toIntSlice(ctx)
-				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
-					return false
-				}
-				sV = reflect.ValueOf(s)
+				s, ok = rule.toIntSlice(ctx)
 			case _UintSlice:
-				s, ok := rule.toUintSlice(ctx)
-				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
-					return false
-				}
-				sV = reflect.ValueOf(s)
+				s, ok = rule.toUintSlice(ctx)
 			case _StringSlice:
-				s, ok := rule.toStrSlice(ctx)
-				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
-					return false
-				}
-				sV = reflect.ValueOf(s)
+				s, ok = rule.toStrSlice(ctx)
 			case _JoinedIntSlice:
-				s, ok := rule.toJoinedIntSlice(ctx)
-				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
-					return false
-				}
-				sV = reflect.ValueOf(s)
+				s, ok = rule.toJoinedIntSlice(ctx)
 			case _JoinedUintSlice:
-				s, ok := rule.toJoinedUintSlice(ctx)
-				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
-					return false
-				}
-				sV = reflect.ValueOf(s)
+				s, ok = rule.toJoinedUintSlice(ctx)
 			case _JoinedBoolSlice:
-				s, ok := rule.toJoinedBoolSlice(ctx)
-				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
+				s, ok = rule.toJoinedBoolSlice(ctx)
+			}
+
+			if !ok {
+				output.Error(ctx, newInvalidError(rule.form))
+				return false
+			}
+
+			sV := reflect.ValueOf(s)
+			if !sV.IsValid() {
+				if rule.required {
+					output.Error(ctx, newNullError(rule.form))
 					return false
+				} else {
+					continue
 				}
-				sV = reflect.ValueOf(s)
 			}
 
 			if !rule.checkSize(&sV) {

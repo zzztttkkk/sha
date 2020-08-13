@@ -56,7 +56,7 @@ func (loader *Loader) Path() string {
 func (loader *Loader) AddChild(name string, child *Loader) {
 	_, exists := loader.children[name]
 	if exists {
-		panic(fmt.Errorf("suna.loader: `%s`.`%s` is already exists", loader.Path(), name))
+		panic(fmt.Errorf("suna.utils.loader: `%s`.`%s` is already exists", loader.Path(), name))
 	}
 	child.parent = loader
 	child.name = name

@@ -7,31 +7,32 @@ import (
 	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
+	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
 	"reflect"
 	"strconv"
 )
 
-type _UserOp struct {
+type userOpT struct {
 	roles *sqls.Operator
 	lru   *cache.Lru
 }
 
-var _UserOperator = &_UserOp{
+var _UserOperator = &userOpT{
 	roles: &sqls.Operator{},
 }
 
 func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
-			_UserOperator.roles.Init(reflect.ValueOf(_UserWithRole{}))
+			_UserOperator.roles.Init(reflect.ValueOf(userWithRoleT{}))
 			_UserOperator.lru = cache.NewLru(cfg.Cache.Lru.UserSize)
 		},
 		permTablePriority.Incr(),
 	)
 }
 
-func (op *_UserOp) changeRole(ctx context.Context, subjectId int64, roleName string, mt modifyType) error {
+func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName string, mt modifyType) error {
 	roleId := _RoleOperator.GetIdByName(ctx, roleName)
 	if roleId < 1 {
 		return output.HttpErrors[fasthttp.StatusNotFound]
@@ -43,50 +44,53 @@ func (op *_UserOp) changeRole(ctx context.Context, subjectId int64, roleName str
 	)
 	defer op.lru.Remove(strconv.FormatInt(subjectId, 16))
 
-	q, vl := op.roles.BindNamed(
-		fmt.Sprintf("select role from %s where role=:rid and user=:uid", op.roles.TableName()),
-		utils.M{"rid": roleId, "uid": subjectId},
-	)
+	cond := builder.AndConditions().
+		Eq(true, "role", roleId).
+		Eq(true, "subject", subjectId)
+
+	srb := builder.NewSelect("role").From(op.roles.TableName()).Where(cond)
+
 	var _id int64
-	op.roles.XQ11(ctx, &_id, q, vl...)
+	op.roles.XSelect(ctx, &_id, srb)
 	if _id < 1 {
-		if mt == Add {
+		if mt == _Add {
 			return nil
 		}
-		op.roles.XCreate(
-			ctx,
-			utils.M{
-				"user": subjectId,
-				"role": roleId,
-			},
-		)
+
+		kvs := utils.AcquireKvs()
+		defer kvs.Free()
+		kvs.Set("subject", subjectId)
+		kvs.Set("role", roleId)
+
+		op.roles.XCreate(ctx, kvs)
 		return nil
 	}
 
-	if mt == Add {
+	if mt == _Add {
 		return nil
 	}
 
-	q, vl = op.roles.BindNamed("delete from %s where role=:rid and user=:uid", utils.M{"rid": roleId, "uid": subjectId})
-	op.roles.XExecute(ctx, q, vl...)
+	q, args, err := builder.NewDelete().From(op.roles.TableName()).Where(cond).Limit(1).ToSql()
+	if err != nil {
+		panic(err)
+	}
+	op.roles.XExecute(ctx, q, args...)
 	return nil
 }
 
-func (op *_UserOp) getRoles(ctx context.Context, userId int64) []int64 {
+func (op *userOpT) getRoles(ctx context.Context, userId int64) []int64 {
 	v, ok := op.lru.Get(strconv.FormatInt(userId, 16))
 	if ok {
 		return v.([]int64)
 	}
 
 	lst := make([]int64, 0)
-	op.roles.XQ1n(
+	op.roles.XSelect(
 		ctx,
 		&lst,
-		fmt.Sprintf(
-			`select distinct role from %s where subject=? and role>0 and status>=0 and deleted=0 order by role`,
-			op.roles.TableName(),
-		),
-		userId,
+		builder.NewSelect("role").From(op.roles.TableName()).Prefix("distinct").Where(
+			"subject=? and role>0 and status>=0 and deleted=0", userId,
+		).OrderBy("role"),
 	)
 	op.lru.Add(strconv.FormatInt(userId, 16), lst)
 	return lst

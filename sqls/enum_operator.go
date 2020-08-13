@@ -3,6 +3,7 @@ package sqls
 import (
 	"context"
 	"fmt"
+	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
 	"reflect"
 	"sync"
@@ -39,19 +40,26 @@ func (op *EnumOperator) Init(ele reflect.Value, constructor func() EnumItem, aft
 	op.cache = op.NewEnumCache(int64(expire/time.Second), constructor, afterScan)
 }
 
-func (op *EnumOperator) Create(ctx context.Context, dict utils.M) int64 {
+func (op *EnumOperator) Create(ctx context.Context, kvs *utils.Kvs) int64 {
 	defer op.cache.doExpire()
-	dict["created"] = time.Now().Unix()
-	return op.XCreate(ctx, dict)
+	return op.XCreate(ctx, kvs)
 }
 
 func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 	defer op.cache.doExpire()
+
+	kvs := utils.AcquireKvs()
+	defer kvs.Free()
+	kvs.Set("deleted", time.Now().Unix())
+	kvs.Set("name", fmt.Sprintf("Deleted<%s>", name))
+
 	return op.XUpdate(
 		ctx,
-		utils.M{"deleted": time.Now().Unix(), "name": fmt.Sprintf("Deleted<%s>", name)},
-		"name=:name and deleted=0",
-		utils.M{"name": name},
+		kvs,
+		builder.AndConditions().
+			Eq(true, "name", name).
+			Eq(true, "deleted", 0),
+		1,
 	) > 0
 }
 

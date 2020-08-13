@@ -6,18 +6,19 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
+	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
 	"reflect"
 )
 
-type _RoleOp struct {
+type roleOpT struct {
 	sqls.EnumOperator
 	perms     *sqls.Operator
 	inherits  *sqls.Operator
 	conflicts *sqls.Operator
 }
 
-var _RoleOperator = &_RoleOp{
+var _RoleOperator = &roleOpT{
 	perms:    &sqls.Operator{},
 	inherits: &sqls.Operator{},
 }
@@ -25,14 +26,14 @@ var _RoleOperator = &_RoleOp{
 func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
-			_RoleOperator.perms.Init(reflect.ValueOf(_RoleWithPerm{}))
-			_RoleOperator.inherits.Init(reflect.ValueOf(_RoleInheritance{}))
+			_RoleOperator.perms.Init(reflect.ValueOf(roleWithPermT{}))
+			_RoleOperator.inherits.Init(reflect.ValueOf(roleInheritanceT{}))
 
 			_RoleOperator.EnumOperator.Init(
-				reflect.ValueOf(_Role{}),
-				func() sqls.EnumItem { return &_Role{} },
+				reflect.ValueOf(roleT{}),
+				func() sqls.EnumItem { return &roleT{} },
 				func(ctx context.Context, i interface{}) error {
-					role := i.(*_Role)
+					role := i.(*roleT)
 					_RoleOperator.getAllPerms(ctx, role)
 					_RoleOperator.getAllBasedRoles(ctx, role)
 					return nil
@@ -43,7 +44,7 @@ func init() {
 	)
 }
 
-func (op *_RoleOp) changePerm(ctx context.Context, roleName, permName string, mt modifyType) error {
+func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt modifyType) error {
 	permId := _PermissionOperator.GetIdByName(ctx, permName)
 	if permId < 1 {
 		return output.HttpErrors[fasthttp.StatusNotFound]
@@ -63,40 +64,48 @@ func (op *_RoleOp) changePerm(ctx context.Context, roleName, permName string, mt
 		},
 	)
 
-	q, vl := op.BindNamed(
-		fmt.Sprintf("select perm from %s where role=:rid and perm=:pid", op.perms.TableName()),
-		utils.M{"rid": roleId, "pid": permId},
-	)
+	cond := builder.AndConditions().
+		Eq(true, "role", roleId).
+		Eq(true, "perm", permId)
+
+	spb := builder.NewSelect("id").From(op.perms.TableName()).Where(cond)
+
 	var _id int64
-	op.perms.XQ11(ctx, &_id, q, vl...)
+	op.perms.XSelect(ctx, &_id, spb)
 	if _id < 1 {
-		if mt == Add {
+		if mt == _Add {
 			return nil
 		}
-		op.perms.XCreate(
-			ctx,
-			utils.M{
-				"perm": permId,
-				"role": roleId,
-			},
-		)
+
+		kvs := utils.AcquireKvs()
+		defer kvs.Free()
+		kvs.Set("perm", permId)
+		kvs.Set("role", roleId)
+
+		op.perms.XCreate(ctx, kvs)
 		return nil
 	}
 
-	if mt == Add {
+	if mt == _Add {
 		return nil
 	}
 
-	q, vl = op.BindNamed("delete from %s where role=:rid and perm=:pid", utils.M{"rid": roleId, "pid": permId})
-	op.perms.XExecute(ctx, q, vl...)
+	q, args, err := builder.NewDelete().From(op.perms.TableName()).Where(cond).Limit(1).ToSql()
+	if err != nil {
+		panic(err)
+	}
+	op.perms.XExecute(ctx, q, args...)
 	return nil
 }
 
-func (op *_RoleOp) getAllPerms(ctx context.Context, role *_Role) {
-	op.perms.XQ1n(ctx, &role.Permissions, fmt.Sprintf(`select distinct perm from %s where role=?`, op.perms.TableName()), role.Id)
+func (op *roleOpT) getAllPerms(ctx context.Context, role *roleT) {
+	sb := builder.NewSelect("perm").Prefix("distinct").From(op.perms.TableName()).
+		Where("role=?", role.Id)
+
+	op.perms.XSelect(ctx, &role.Permissions, sb)
 }
 
-func (op *_RoleOp) changeInherits(ctx context.Context, roleName, basedRoleName string, mt modifyType) error {
+func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName string, mt modifyType) error {
 	roleId := _RoleOperator.GetIdByName(ctx, roleName)
 	if roleId < 1 {
 		return output.HttpErrors[fasthttp.StatusNotFound]
@@ -117,42 +126,45 @@ func (op *_RoleOp) changeInherits(ctx context.Context, roleName, basedRoleName s
 		},
 	)
 
-	q, vl := op.BindNamed(
-		fmt.Sprintf("select role from %s where role=:rid and based=:brid", op.inherits.TableName()),
-		utils.M{"rid": roleId, "brid": basedRoleId},
-	)
+	cond := builder.AndConditions().
+		Eq(true, "role", roleId).
+		Eq(true, "based", basedRoleId)
+
 	var _id int64
-	op.inherits.XQ11(ctx, &_id, q, vl...)
+	op.inherits.XSelect(ctx, &_id, builder.NewSelect("based").From(op.inherits.TableName()).Where(cond))
 	if _id < 1 {
-		if mt == Add {
+		if mt == _Add {
 			return nil
 		}
-		op.perms.XCreate(
-			ctx,
-			utils.M{
-				"role":  roleId,
-				"based": basedRoleId,
-			},
-		)
+		kvs := utils.AcquireKvs()
+		defer kvs.Free()
+		kvs.Set("role", roleId)
+		kvs.Set("based", basedRoleId)
+		op.perms.XCreate(ctx, kvs)
 		return nil
 	}
 
-	if mt == Add {
+	if mt == _Add {
 		return nil
 	}
 
-	q, vl = op.BindNamed("delete from %s where role=:rid and based=:brid", utils.M{"rid": roleId, "based": basedRoleId})
-	op.inherits.XExecute(ctx, q, vl...)
+	q, args, err := builder.NewDelete().From(op.inherits.TableName()).Where(cond).Limit(1).ToSql()
+	if err != nil {
+		panic(err)
+	}
+	op.inherits.XExecute(ctx, q, args...)
 	return nil
 }
 
-func (op *_RoleOp) getAllBasedRoles(ctx context.Context, role *_Role) {
-	op.inherits.XQ1n(ctx, &role.Based, fmt.Sprintf(`select distinct based from %s where role=?`, op.inherits.TableName()), role.Id)
+func (op *roleOpT) getAllBasedRoles(ctx context.Context, role *roleT) {
+	sb := builder.NewSelect("based").Prefix("distinct").From(op.inherits.TableName()).
+		Where("role=?", role.Id)
+	op.inherits.XSelect(ctx, &role.Based, sb)
 }
 
-func (op *_RoleOp) List(ctx context.Context) (lst []*_Role) {
+func (op *roleOpT) List(ctx context.Context) (lst []*roleT) {
 	for _, enum := range op.EnumOperator.List(ctx) {
-		lst = append(lst, enum.(*_Role))
+		lst = append(lst, enum.(*roleT))
 	}
 	return
 }

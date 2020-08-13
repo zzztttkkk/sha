@@ -1,7 +1,6 @@
 package sqls
 
 import (
-	"context"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/suna/config"
@@ -12,7 +11,6 @@ import (
 
 var cfg *config.Suna
 var isPostgres bool
-var doCreate func(ctx context.Context, op *Operator, q string, args []interface{}) int64
 var leader *sqlx.DB
 
 func doSqlLog(q string, args []interface{}) {
@@ -34,7 +32,7 @@ func doSqlLog(q string, args []interface{}) {
 
 	s := fmt.Sprintf(strings.Repeat("'%v',", len(args)), args...)
 
-	log.Printf("suna.sqls.log: `%s` `%s`\n", q, s)
+	log.Printf("suna.sqls.log: `%s` [%s]\n", q, s)
 }
 
 func init() {
@@ -47,10 +45,6 @@ func init() {
 			}
 			leader = cfg.SqlLeader()
 			isPostgres = leader.DriverName() == "postgres"
-			doCreate = mysqlCreate
-			if isPostgres {
-				doCreate = postgresCreate
-			}
 		},
 	)
 }

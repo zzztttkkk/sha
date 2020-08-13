@@ -2,32 +2,31 @@ package rbac
 
 import (
 	"context"
-	"fmt"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
+	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
 	"reflect"
-	"strings"
 	"time"
 )
 
-type _LogOp struct {
+type logOpT struct {
 	sqls.Operator
 }
 
-var LogOperator = &_LogOp{}
+var LogOperator = &logOpT{}
 
 func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
-			LogOperator.Init(reflect.ValueOf(Log{}))
+			LogOperator.Init(reflect.ValueOf(logT{}))
 		},
 		initPriority.Incr(),
 	)
 }
 
-func (op *_LogOp) Create(ctx context.Context, name string, info utils.M) int64 {
+func (op *logOpT) Create(ctx context.Context, name string, info utils.M) int64 {
 	v := recover()
 	if v != nil {
 		panic(v)
@@ -37,93 +36,43 @@ func (op *_LogOp) Create(ctx context.Context, name string, info utils.M) int64 {
 	if user == nil {
 		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 	}
-	return op.XCreate(
-		ctx,
-		utils.M{
-			"created":  time.Now().Unix(),
-			"name":     name,
-			"operator": user.GetId(),
-			"info":     utils.JsonObject(info),
-		},
-	)
+
+	kvs := utils.AcquireKvs()
+	defer kvs.Free()
+
+	kvs.Set("created", time.Now())
+	kvs.Set("name", name)
+	kvs.Set("operator", user.GetId())
+	kvs.Set("info", utils.JsonObject(info))
+	return op.XCreate(ctx, kvs)
 }
 
-const (
-	LogOrderByCreated = iota + 1
-	LogOrderByName
-	LogOrderByUid
-)
-
-func (op *_LogOp) List(
+func (op *logOpT) List(
 	ctx context.Context,
-	begin, end int64, names []string,
-	uids []int64,
-	order int,
+	begin, end int64,
+	names []string, uids []int64,
 	asc bool,
-	cursor interface{},
+	cursor int64,
 	limit int,
-) (lst []*Log) {
-	var filters []string
-	var args []interface{}
-
-	// time
-	if end < begin {
-		begin, end = end, begin
-	}
-	if begin > 0 {
-		filters = append(filters, fmt.Sprintf("created>=%d", begin))
-	}
-	if end > 0 {
-		filters = append(filters, fmt.Sprintf("created<=%d", end))
-	}
-
-	// names
-	if len(names) > 0 {
-		filters = append(filters, "name in ?")
-		args = append(args, names)
-	}
-
-	// uids
-	if len(uids) > 0 {
-		filters = append(filters, "operator in ?")
-		args = append(args, uids)
-	}
-
-	// order
-	orderKey := "created"
-	switch order {
-	case LogOrderByName:
-		orderKey = "name"
-	case LogOrderByUid:
-		orderKey = "operator"
-	}
-
-	filters = append(filters, fmt.Sprintf("%s>?", orderKey))
-	args = append(args, cursor)
-
-	q := fmt.Sprintf("select * from %s", op.TableName())
-	if len(filters) > 0 {
-		q = q + strings.Join(filters, " and ")
-	}
+) (lst []logT) {
+	conditions := builder.AndConditions()
+	conditions.Gte(begin > 0, "created", begin)
+	conditions.Lte(end > 0, "created", end)
+	conditions.Eq(len(names) > 0, "name", names)
+	conditions.Eq(len(uids) > 0, "operator", uids)
 	if asc {
-		q += fmt.Sprintf(" order by %s", orderKey)
+		conditions.Gt(cursor > 0, "id", cursor)
 	} else {
-		q += fmt.Sprintf(" order by %s desc", orderKey)
+		conditions.Lt(cursor > 0, "id", cursor)
 	}
 
-	q += "limit ?"
-	args = append(args, limit)
+	sb := builder.NewSelect("*").From(op.TableName()).Where(conditions).Limit(uint64(limit))
+	if asc {
+		sb.OrderBy("id")
+	} else {
+		sb.OrderBy("id desc")
+	}
 
-	op.XQsn(
-		ctx,
-		func() interface{} {
-			log := &Log{}
-			lst = append(lst, log)
-			return log
-		},
-		nil,
-		q,
-		args...,
-	)
+	op.XSelect(ctx, &lst, sb)
 	return
 }

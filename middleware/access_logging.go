@@ -5,6 +5,7 @@ import (
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
+	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/utils"
 	"log"
@@ -24,7 +25,7 @@ type _AccessLogger struct {
 	_costT  bool
 
 	_ReqMethod  bool
-	_ReqUrl     bool
+	_ReqPath    bool
 	_ReqHeaders bool
 	_ReqQuery   bool
 	_ReqForm    bool
@@ -39,6 +40,8 @@ type _AccessLogger struct {
 
 	_ReqHeader []string
 	_ResHeader []string
+
+	_UserId bool
 }
 
 type AccessLoggingOption struct {
@@ -64,8 +67,8 @@ func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) 
 			rv._costT = true
 		case "ReqMethod":
 			rv._ReqMethod = true
-		case "ReqUrl":
-			rv._ReqUrl = true
+		case "ReqPath":
+			rv._ReqPath = true
 		case "ReqHeaders":
 			rv._ReqHeaders = true
 		case "ReqQuery":
@@ -84,6 +87,8 @@ func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) 
 			rv._ResBody = true
 		case "ErrStack":
 			rv._ErrStack = true
+		case "UserId":
+			rv._UserId = true
 		default:
 			if strings.HasPrefix(name, "ReqHeader@") {
 				rv._ReqHeader = append(rv._ReqHeader, name[10:])
@@ -100,6 +105,9 @@ func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) 
 		rv._beginT = true
 	}
 
+	if len(opt.TimeFmt) < 1 {
+		opt.TimeFmt = "2006-01-02 15:04:05.999999999"
+	}
 	return rv
 }
 
@@ -132,8 +140,8 @@ func (al *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 		m["ReqMethod"] = gotils.B2S(ctx.Method())
 	}
 
-	if al._ReqUrl {
-		m["ReqUrl"] = ctx.Request.URI()
+	if al._ReqPath {
+		m["ReqPath"] = gotils.B2S(ctx.Request.URI().Path())
 	}
 
 	if al._ReqRemote {
@@ -269,6 +277,15 @@ func (al *_AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.Reques
 
 			if al._endT {
 				m["End"] = end.Format(al.opt.TimeFmt)
+			}
+
+			if al._UserId {
+				u := auth.GetUser(ctx)
+				if u != nil {
+					m["UserId"] = u.GetId()
+				} else {
+					m["UserId"] = 0
+				}
 			}
 
 			l := al.nfmt.Render(m)
