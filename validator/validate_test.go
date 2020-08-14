@@ -3,7 +3,6 @@ package validator
 import (
 	"fmt"
 	"github.com/zzztttkkk/suna/utils"
-	"reflect"
 	"regexp"
 	"testing"
 
@@ -31,7 +30,7 @@ func TestValidate(t *testing.T) {
 		XIDs      JoinedIntSlice
 		Cs        JoinedBoolSlice
 	}
-	fmt.Println(GetRules(reflect.TypeOf(Form{})).Fields())
+	fmt.Println(GetRules(Form{}).NewDoc(""))
 
 	ctx := fasthttp.RequestCtx{}
 	ctx.Request.SetRequestURI("http://localhost:8080/?password=123456&name=ztk&fid=1&fid=2&fid=3&xids=1,23,34&cs=1,0,t,f")

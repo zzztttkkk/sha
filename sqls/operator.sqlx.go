@@ -56,6 +56,12 @@ func (op *Operator) XSelect(ctx context.Context, dist interface{}, builder *sqrl
 	return true
 }
 
+func (op *Operator) XExists(ctx context.Context, conditions sqrl.Sqlizer) bool {
+	c := 0
+	op.XSelect(ctx, &c, builder.NewSelect("count(*)").From(op.tablename).Where(conditions))
+	return c > 0
+}
+
 func (op *Operator) XStmt(ctx context.Context, q string) *sqlx.Stmt {
 	doSqlLog("stmt:<"+q+">", nil)
 	stmt, err := Executor(ctx).PreparexContext(ctx, q)

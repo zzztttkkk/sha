@@ -43,7 +43,7 @@ var jsonCt = []byte("application/json")
 
 func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 	_v := reflect.ValueOf(ptr).Elem()
-	rules := GetRules(_v.Type())
+	rules := getRules(_v.Type())
 	isJsonReq := bytes.HasPrefix(ctx.Request.Header.ContentType(), jsonCt)
 
 	if rules.isJson {

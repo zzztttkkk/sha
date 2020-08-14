@@ -6,7 +6,6 @@ import (
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/validator"
-	"reflect"
 )
 
 func init() {
@@ -35,7 +34,7 @@ func init() {
 						}
 					},
 				),
-				validator.GetRules(reflect.TypeOf(UserRoleForm{})).NewDoc(""),
+				validator.GetRules(UserRoleForm{}).NewDoc(""),
 			)
 
 			router.POSTWithDoc(
@@ -56,7 +55,7 @@ func init() {
 						}
 					},
 				),
-				validator.GetRules(reflect.TypeOf(UserRoleForm{})).NewDoc(""),
+				validator.GetRules(UserRoleForm{}).NewDoc(""),
 			)
 
 		},
@@ -82,7 +81,7 @@ func init() {
 						output.MsgOK(ctx, _UserOperator.getRoles(ctx, form.Uid))
 					},
 				),
-				validator.GetRules(reflect.TypeOf(UidForm{})).NewDoc(""),
+				validator.GetRules(UidForm{}).NewDoc(""),
 			)
 		},
 	)

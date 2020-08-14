@@ -48,10 +48,11 @@ func NewScanner(dist []interface{}, before BeforeScan, after AfterScan) *Scanner
 	}
 }
 
-func NewStaticScanner(columns []interface{}, after AfterScan) *Scanner {
+func NewStructScanner(before BeforeScan, after AfterScan) *Scanner {
 	return &Scanner{
-		beforeScan: nil,
+		beforeScan: before,
 		afterScan:  after,
-		dist:       columns,
+		dist:       make([]interface{}, 1, 1),
+		isStruct:   true,
 	}
 }

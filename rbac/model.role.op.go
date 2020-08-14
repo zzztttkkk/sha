@@ -64,7 +64,7 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 		},
 	)
 
-	cond := builder.AndConditions().
+	cond := builder.NewConditions(builder.AND).
 		Eq(true, "role", roleId).
 		Eq(true, "perm", permId)
 
@@ -126,7 +126,7 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 		},
 	)
 
-	cond := builder.AndConditions().
+	cond := builder.NewConditions(builder.AND).
 		Eq(true, "role", roleId).
 		Eq(true, "based", basedRoleId)
 

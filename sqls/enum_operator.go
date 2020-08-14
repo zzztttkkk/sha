@@ -42,6 +42,7 @@ func (op *EnumOperator) Init(ele reflect.Value, constructor func() EnumItem, aft
 
 func (op *EnumOperator) Create(ctx context.Context, kvs *utils.Kvs) int64 {
 	defer op.cache.doExpire()
+	kvs.Set("created", time.Now().Unix())
 	return op.XCreate(ctx, kvs)
 }
 
@@ -50,13 +51,13 @@ func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 
 	kvs := utils.AcquireKvs()
 	defer kvs.Free()
-	kvs.Set("deleted", time.Now().Unix())
-	kvs.Set("name", fmt.Sprintf("Deleted<%s>", name))
+	kvs.Append("deleted", time.Now().Unix())
+	kvs.Append("name", fmt.Sprintf("Deleted<%s>", name))
 
 	return op.XUpdate(
 		ctx,
 		kvs,
-		builder.AndConditions().
+		builder.NewConditions(builder.AND).
 			Eq(true, "name", name).
 			Eq(true, "deleted", 0),
 		1,

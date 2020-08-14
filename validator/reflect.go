@@ -17,7 +17,7 @@ type _ValidatorParser struct {
 	isJson  bool
 }
 
-func (p *_ValidatorParser) OnNestStruct(f *reflect.StructField) bool {
+func (p *_ValidatorParser) OnNestedStruct(f *reflect.StructField) bool {
 	return f.Anonymous
 }
 
@@ -192,8 +192,9 @@ func (p *_ValidatorParser) OnDone() {
 
 var rulesMap = map[reflect.Type]*Rules{}
 
-func GetRules(v interface{}) *Rules {
-	p := reflect.TypeOf(v)
+func GetRules(v interface{}) *Rules { return getRules(reflect.TypeOf(v)) }
+
+func getRules(p reflect.Type) *Rules {
 	rs, ok := rulesMap[p]
 	if ok {
 		return rs

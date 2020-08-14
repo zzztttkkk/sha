@@ -34,9 +34,8 @@ func NewRole(ctx context.Context, name, descp string) error {
 	kvs := utils.AcquireKvs()
 	defer kvs.Free()
 
-	kvs.Set("name", name)
-	kvs.Set("descp", descp)
-	kvs.Set("created", time.Now().Unix())
+	kvs.Append("name", name)
+	kvs.Append("descp", descp)
 	_RoleOperator.Create(ctx, kvs)
 	return nil
 }

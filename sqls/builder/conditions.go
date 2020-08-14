@@ -2,13 +2,15 @@ package builder
 
 import "github.com/zzztttkkk/sqrl"
 
+type _CJT int
+
 const (
-	AND = iota
+	AND = _CJT(iota)
 	OR
 )
 
 type _Conditions struct {
-	v int
+	v _CJT
 
 	lt  sqrl.Lt
 	gt  sqrl.Gt
@@ -200,10 +202,6 @@ func (l *_Conditions) ToSql() (string, []interface{}, error) {
 	return sqrl.And(sqlizers).ToSql()
 }
 
-func AndConditions() *_Conditions { return &_Conditions{v: AND} }
-
-func OrConditions() *_Conditions { return &_Conditions{v: OR} }
-
 func And(v ...sqrl.Sqlizer) sqrl.And {
 	rv := sqrl.And{}
 	for _, i := range v {
@@ -219,3 +217,5 @@ func Or(v ...sqrl.Sqlizer) sqrl.Or {
 	}
 	return rv
 }
+
+func NewConditions(joined _CJT) *_Conditions { return &_Conditions{v: joined} }

@@ -9,7 +9,7 @@ import (
 )
 
 type TagParser interface {
-	OnNestStruct(f *reflect.StructField) bool
+	OnNestedStruct(f *reflect.StructField) bool
 	OnBegin(f *reflect.StructField) bool
 	OnName(name string)
 	OnAttr(key, name string)
@@ -83,7 +83,7 @@ func Tags(p reflect.Type, tag string, parser TagParser) {
 		p,
 		&_VisitorT{
 			onNS: func(field *reflect.StructField) bool {
-				if parser.OnNestStruct(field) {
+				if parser.OnNestedStruct(field) {
 					return true
 				}
 				parseTag(p, tag, parser, field)

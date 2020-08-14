@@ -13,7 +13,7 @@ type Kvs struct {
 }
 
 func (kvs *Kvs) Append(k string, v interface{}) *Kvs {
-	kvs.data = append(kvs.data, _KvNode{key: k, value: v})
+	kvs.data = append(kvs.data, _KvNode{key: k, value: v, isValid: true})
 	return kvs
 }
 
