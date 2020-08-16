@@ -57,7 +57,7 @@ func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 	return op.XUpdate(
 		ctx,
 		kvs,
-		builder.NewConditions(builder.AND).
+		builder.AndConditions().
 			Eq(true, "name", name).
 			Eq(true, "deleted", 0),
 		1,

@@ -21,30 +21,37 @@ func newSqlDB(dn, url string, maxLifeTime time.Duration, openConns int) *sqlx.DB
 }
 
 func (t *Suna) SqlLeader() *sqlx.DB {
-	if t.Sql.l != nil {
-		return t.Sql.l
+	if t.Internal.sqlLeader != nil {
+		return t.Internal.sqlLeader
 	}
 	if len(t.Sql.Driver) < 1 {
 		return nil
 	}
 
-	t.Sql.l = newSqlDB(t.Sql.Driver, t.Sql.Leader, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen)
-	return t.Sql.l
+	t.Internal.sqlLeader = newSqlDB(t.Sql.Driver, t.Sql.Leader, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen)
+	return t.Internal.sqlLeader
 }
 
 func (t *Suna) SqlFollower() *sqlx.DB {
-	if t.Sql.fs != nil {
-		rand.Seed(time.Now().UnixNano())
-		return t.Sql.fs[rand.Int()%len(t.Sql.fs)]
+	if t.Internal.sqlFollowers != nil {
+		return t.randomFollower()
 	}
-	if t.Sql.nfs || len(t.Sql.Driver) < 1 {
+	if t.Internal.sqlNullFollowers || len(t.Sql.Driver) < 1 {
 		return nil
 	}
 	for _, url := range t.Sql.Followers {
-		t.Sql.fs = append(t.Sql.fs, newSqlDB(t.Sql.Driver, url, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen))
+		t.Internal.sqlFollowers = append(t.Internal.sqlFollowers, newSqlDB(t.Sql.Driver, url, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen))
 	}
-	if len(t.Sql.fs) < 1 {
-		t.Sql.nfs = true
+	if len(t.Internal.sqlFollowers) < 1 {
+		t.Internal.sqlNullFollowers = true
 	}
-	return t.SqlFollower()
+	return t.randomFollower()
+}
+
+func (t *Suna) randomFollower() *sqlx.DB {
+	if len(t.Internal.sqlFollowers) > 0 {
+		rand.Seed(time.Now().UnixNano())
+		return t.Internal.sqlFollowers[rand.Int()%len(t.Internal.sqlFollowers)]
+	}
+	return nil
 }

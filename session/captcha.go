@@ -27,6 +27,7 @@ var captchaHeight int
 var captchaForm string
 var captchaMaxage int64
 var captchaSkipVerify bool
+var captchaAudioLang string
 
 func _initCaptcha() {
 	captchaWordSize = cfg.Session.Captcha.Words
@@ -35,9 +36,10 @@ func _initCaptcha() {
 	captchaForm = cfg.Session.Captcha.Form
 	captchaMaxage = int64(cfg.Session.Captcha.Maxage)
 	captchaSkipVerify = cfg.IsDebug() && cfg.Session.Captcha.SkipInDebug
+	captchaAudioLang = cfg.Session.Captcha.AudioLanguage
 }
 
-func (ss Session) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
+func (ss Session) CaptchaGenerateImage(ctx *fasthttp.RequestCtx) {
 	digits := secret.RandBytes(captchaWordSize, bytesPool)
 	ss.Set(internal.SessionCaptchaIdKey, toString(digits))
 	ss.Set(internal.SessionCaptchaUnixKey, time.Now().Unix())
@@ -47,6 +49,22 @@ func (ss Session) CaptchaGenerate(ctx *fasthttp.RequestCtx) {
 
 	image := captcha.NewImage(string(ss), digits, captchaWidth, captchaHeight)
 	_, err := image.WriteTo(output.NewCompressionWriter(ctx))
+	if err != nil {
+		output.Error(ctx, err)
+		return
+	}
+}
+
+func (ss Session) CaptchaGenerateAudio(ctx *fasthttp.RequestCtx) {
+	digits := secret.RandBytes(captchaWordSize, bytesPool)
+	ss.Set(internal.SessionCaptchaIdKey, toString(digits))
+	ss.Set(internal.SessionCaptchaUnixKey, time.Now().Unix())
+
+	ctx.Response.Header.Set("Cache-control", "no-store")
+	ctx.Response.Header.Set("Content-type", "audio/wav")
+
+	audio := captcha.NewAudio(string(ss), digits, captchaAudioLang)
+	_, err := audio.WriteTo(output.NewCompressionWriter(ctx))
 	if err != nil {
 		output.Error(ctx, err)
 		return

@@ -53,7 +53,7 @@ func Init(opt *InitOption) {
 		func() *config.Suna {
 			if opt == nil {
 				log.Println("suna: nil config, use the default value")
-				return config.GetDefault()
+				return config.Default()
 			}
 			return opt.Config
 		},
@@ -82,7 +82,7 @@ func _LoadSubModules() {
 	internal.Dig.Index(secret.AesDecrypt)
 	internal.Dig.Index(session.New)
 	internal.Dig.Index(sqls.CreateTable)
-	internal.Dig.Index(builder.And)
+	internal.Dig.Index(builder.AndConditions)
 	internal.Dig.Index(validator.RegisterFunc)
 	internal.Dig.Index(redlock.New)
 }

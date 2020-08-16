@@ -15,3 +15,11 @@ func Recover(ctx *fasthttp.RequestCtx, val interface{}) {
 		Error(ctx, HttpErrors[fasthttp.StatusInternalServerError])
 	}
 }
+
+func NotFound(ctx *fasthttp.RequestCtx) {
+	Error(ctx, HttpErrors[fasthttp.StatusNotFound])
+}
+
+func MethodNotAllowed(ctx *fasthttp.RequestCtx) {
+	Error(ctx, HttpErrors[fasthttp.StatusMethodNotAllowed])
+}

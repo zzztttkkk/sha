@@ -26,7 +26,7 @@ func TestValidate(t *testing.T) {
 		Password  []byte  `validator:":R<password>"`
 		Name      []byte  `validator:":F<username>"`
 		KeepLogin bool    `validator:"kl:optional"`
-		FIDs      []int64 `validator:"fid:S<1-7>"`
+		FIDs      []int64 `validator:"fid:S<7>"`
 		XIDs      JoinedIntSlice
 		Cs        JoinedBoolSlice
 	}

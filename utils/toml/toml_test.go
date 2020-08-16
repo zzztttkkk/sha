@@ -1,4 +1,4 @@
-package utils
+package toml
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type X struct {
 	}
 	B struct {
 		C int64
-		D TomlDuration
+		D Duration
 	}
 	E struct {
 		F struct {
@@ -29,6 +29,6 @@ type X struct {
 
 func TestTomlFromFiles(t *testing.T) {
 	var conf X
-	TomlFromFiles(&conf, nil, "./toml_default.toml", "./toml_local.toml")
+	FromFiles(&conf, nil, "./toml_default.toml", "./toml_local.toml")
 	fmt.Println(conf)
 }

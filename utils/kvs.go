@@ -10,10 +10,12 @@ type _KvNode struct {
 
 type Kvs struct {
 	data []_KvNode
+	size int
 }
 
 func (kvs *Kvs) Append(k string, v interface{}) *Kvs {
 	kvs.data = append(kvs.data, _KvNode{key: k, value: v, isValid: true})
+	kvs.size++
 	return kvs
 }
 
@@ -73,6 +75,7 @@ func (kvs *Kvs) Remove(k string) (v interface{}, ok bool) {
 		}
 		if node.key == k {
 			node.isValid = false
+			kvs.size--
 			return node.value, true
 		}
 	}
@@ -109,6 +112,8 @@ func (kvs *Kvs) EachNode(fn func(string, interface{})) {
 	}
 }
 
+func (kvs *Kvs) Len() int { return kvs.size }
+
 var kvsPool = sync.Pool{New: func() interface{} { return &Kvs{} }}
 
 func AcquireKvs() *Kvs {
@@ -117,5 +122,6 @@ func AcquireKvs() *Kvs {
 
 func (kvs *Kvs) Free() {
 	kvs.data = kvs.data[:0]
+	kvs.size = 0
 	kvsPool.Put(kvs)
 }

@@ -41,8 +41,8 @@ func (lock *RedLock) Acquire(ctx context.Context) (context.Context, error) {
 	return nctx, nil
 }
 
-func (lock *RedLock) Release(releaseRedisKey bool) {
-	if releaseRedisKey {
+func (lock *RedLock) Release(alsoReleaseRedisKey bool) {
+	if alsoReleaseRedisKey {
 		redisc.Del(lock.key)
 	}
 	lock.cfn()

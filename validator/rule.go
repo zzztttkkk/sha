@@ -63,17 +63,25 @@ type _RuleT struct {
 	required bool
 
 	vrange bool // int value value range
+	minVF  bool
 	minV   int64
+	maxVF  bool
 	maxV   int64
+	minUVF bool
 	minUV  uint64
+	maxUVF bool
 	maxUV  uint64
 
 	lrange bool // bytes value length range
+	minLF  bool
 	minL   int64
+	maxLF  bool
 	maxL   int64
 
 	srange bool // slice value size range
+	minSF  bool
 	minS   int64
+	maxSF  bool
 	maxS   int64
 
 	defaultV []byte
@@ -91,10 +99,12 @@ type _RuleT struct {
 func (rule *_RuleT) toBytes(v []byte) (val []byte, ok bool) {
 	if rule.lrange {
 		l := int64(len(v))
-		if rule.minL > 0 && l < rule.minL {
+
+		if rule.minLF && l < rule.minL {
 			return nil, false
 		}
-		if rule.maxL > 0 && l > rule.maxL {
+
+		if rule.maxLF && l > rule.maxL {
 			return nil, false
 		}
 	}
@@ -140,11 +150,10 @@ func (rule *_RuleT) toI64(v []byte) (num int64, ok bool) {
 	}
 
 	if rule.vrange {
-		if rv < rule.minV {
+		if rule.minVF && rv < rule.minV {
 			return 0, false
 		}
-
-		if rv > rule.maxV {
+		if rule.maxVF && rv > rule.maxV {
 			return 0, false
 		}
 	}
@@ -164,11 +173,11 @@ func (rule *_RuleT) toUI64(v []byte) (num uint64, ok bool) {
 	}
 
 	if rule.vrange {
-		if rv < rule.minUV {
+		if rule.minUVF && rv < rule.minUV {
 			return 0, false
 		}
 
-		if rv > rule.maxUV {
+		if rule.maxUVF && rv > rule.maxUV {
 			return 0, false
 		}
 	}
@@ -219,7 +228,14 @@ func (rule *_RuleT) checkSize(v *reflect.Value) bool {
 		return true
 	}
 	_l := int64(v.Len())
-	return _l >= rule.minS && _l <= rule.maxS
+
+	if rule.minSF && _l < rule.minS {
+		return false
+	}
+	if rule.maxSF && _l > rule.maxS {
+		return false
+	}
+	return true
 }
 
 func mapMultiForm(ctx *fasthttp.RequestCtx, name string, fn func([]byte) bool) bool {
@@ -384,25 +400,53 @@ func (rule *_RuleT) String() string {
 
 	if rule.vrange {
 		if rule.t == _Int64 {
-			m["vrange"] = fmt.Sprintf("%d-%d", rule.minV, rule.maxV)
+			if rule.minVF && rule.maxVF {
+				m["vrange"] = fmt.Sprintf("%d-%d", rule.minV, rule.maxV)
+			} else if rule.minVF {
+				m["vrange"] = fmt.Sprintf("%d-", rule.minV)
+			} else if rule.maxVF {
+				m["vrange"] = fmt.Sprintf("-%d", rule.maxV)
+			} else {
+				m["vrange"] = "/"
+			}
 		} else {
-			m["vrange"] = fmt.Sprintf("%d-%d", rule.minUV, rule.maxUV)
+			if rule.minUVF && rule.maxUVF {
+				m["vrange"] = fmt.Sprintf("%d-%d", rule.minUV, rule.maxUV)
+			} else if rule.minUVF {
+				m["vrange"] = fmt.Sprintf("%d-", rule.minUV)
+			} else if rule.maxUVF {
+				m["vrange"] = fmt.Sprintf("-%d", rule.maxUV)
+			} else {
+				m["vrange"] = "/"
+			}
 		}
 	} else {
 		m["vrange"] = "/"
 	}
 
 	if rule.lrange {
-		m["lrange"] = fmt.Sprintf("%d-%d", rule.minL, rule.maxL)
+		if rule.minLF && rule.maxLF {
+			m["lrange"] = fmt.Sprintf("%d-%d", rule.minL, rule.maxL)
+		} else if rule.minLF {
+			m["lrange"] = fmt.Sprintf("%d-", rule.minL)
+		} else if rule.maxUVF {
+			m["lrange"] = fmt.Sprintf("-%d", rule.maxL)
+		} else {
+			m["lrange"] = "/"
+		}
 	} else {
 		m["lrange"] = "/"
 	}
 
 	if rule.srange {
-		if rule.isJoined {
-			m["srange"] = fmt.Sprintf("%d-%d;joined", rule.minS, rule.maxS)
-		} else {
+		if rule.minSF && rule.maxSF {
 			m["srange"] = fmt.Sprintf("%d-%d", rule.minS, rule.maxS)
+		} else if rule.minSF {
+			m["srange"] = fmt.Sprintf("%d-", rule.minS)
+		} else if rule.maxSF {
+			m["srange"] = fmt.Sprintf("-%d", rule.maxS)
+		} else {
+			m["srange"] = "/"
 		}
 	} else {
 		m["srange"] = "/"

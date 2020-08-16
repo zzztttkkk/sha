@@ -22,7 +22,7 @@ func Test_Gen(t *testing.T) {
 	c2.Gt(true, "created", 333)
 	fmt.Println(c2.ToSql())
 
-	fmt.Println(NewSelect("*").From("users").Where(And(c1, c2)).ToSql())
+	fmt.Println(NewSelect("*").From("users").Where(sqrl.And{c1, c2}).ToSql())
 
 	c3 := AndConditions()
 	c3.Eq(true, "x", sqrl.Raw("now()"))

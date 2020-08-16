@@ -1,4 +1,4 @@
-package utils
+package toml
 
 import (
 	btoml "github.com/BurntSushi/toml"
@@ -14,14 +14,14 @@ import (
 	"time"
 )
 
-func TomlFromBytes(conf interface{}, data []byte) error {
+func FromBytes(conf interface{}, data []byte) error {
 	_, err := btoml.Decode(string(data), conf)
 	return err
 }
 
-var tomlEnvReg = regexp.MustCompile(`\$ENV{\s*\w+\s*}`)
+var envReg = regexp.MustCompile(`\$ENV{\s*\w+\s*}`)
 
-func tomlDoReplace(fp, name string, value *reflect.Value, path []string) {
+func doReplace(fp, name string, value *reflect.Value, path []string) {
 	key := strings.Join(path, ".") + "." + name
 
 	rawValue := (*value).Interface().(string)
@@ -48,7 +48,7 @@ func tomlDoReplace(fp, name string, value *reflect.Value, path []string) {
 		return
 	}
 
-	s := tomlEnvReg.ReplaceAllFunc(
+	s := envReg.ReplaceAllFunc(
 		gotils.S2B(rawValue),
 		func(data []byte) []byte {
 			envK := strings.TrimSpace(string(data[5 : len(data)-1]))
@@ -58,7 +58,7 @@ func tomlDoReplace(fp, name string, value *reflect.Value, path []string) {
 	value.SetString(string(s))
 }
 
-func tomlReflectMap(filePath string, value reflect.Value, path []string) {
+func reflectMap(filePath string, value reflect.Value, path []string) {
 	ele := value.Elem()
 	t := ele.Type()
 
@@ -71,16 +71,16 @@ func tomlReflectMap(filePath string, value reflect.Value, path []string) {
 		}
 		switch filed.Type().Kind() {
 		case reflect.String:
-			tomlDoReplace(filePath, tf.Name, &filed, path)
+			doReplace(filePath, tf.Name, &filed, path)
 		case reflect.Struct:
 			cp := path[:]
 			cp = append(cp, tf.Name)
-			tomlReflectMap(filePath, filed.Addr(), cp)
+			reflectMap(filePath, filed.Addr(), cp)
 		}
 	}
 }
 
-func TomlFromFile(conf interface{}, fp string) error {
+func FromFile(conf interface{}, fp string) error {
 	f, e := os.Open(fp)
 	if e != nil {
 		panic(e)
@@ -92,21 +92,21 @@ func TomlFromFile(conf interface{}, fp string) error {
 		panic(e)
 	}
 
-	err := TomlFromBytes(conf, v)
+	err := FromBytes(conf, v)
 	if err != nil {
 		return err
 	}
-	tomlReflectMap(fp, reflect.ValueOf(conf), []string{})
+	reflectMap(fp, reflect.ValueOf(conf), []string{})
 	return nil
 }
 
-func TomlFromFiles(conf interface{}, defaultV interface{}, fps ...string) {
+func FromFiles(conf interface{}, defaultV interface{}, fps ...string) {
 	t := conf
 	ct := reflect.TypeOf(conf).Elem()
 
 	for _, fp := range fps {
 		ele := reflect.New(ct).Interface()
-		err := TomlFromFile(ele, fp)
+		err := FromFile(ele, fp)
 		if err != nil {
 			panic(err)
 		}
@@ -126,11 +126,11 @@ func TomlFromFiles(conf interface{}, defaultV interface{}, fps ...string) {
 	}
 }
 
-type TomlDuration struct {
+type Duration struct {
 	time.Duration
 }
 
-func (d *TomlDuration) UnmarshalText(text []byte) error {
+func (d *Duration) UnmarshalText(text []byte) error {
 	var err error
 	d.Duration, err = time.ParseDuration(string(text))
 	return err

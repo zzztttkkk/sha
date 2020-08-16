@@ -3,7 +3,7 @@ package config
 import (
 	"github.com/go-redis/redis/v7"
 	"github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/suna/utils"
+	"github.com/zzztttkkk/suna/utils/toml"
 	"strings"
 	"time"
 )
@@ -28,14 +28,15 @@ type Suna struct {
 		Header  string
 		Cookie  string
 		Prefix  string
-		Maxage  utils.TomlDuration
+		Maxage  toml.Duration
 		Captcha struct {
-			Maxage      int
-			Form        string
-			Words       int
-			Width       int
-			Height      int
-			SkipInDebug bool `toml:"skip-in-debug"`
+			Maxage        int
+			Form          string
+			Words         int
+			Width         int
+			Height        int
+			AudioLanguage string `toml:"audio-lang"`
+			SkipInDebug   bool   `toml:"skip-in-debug"`
 		}
 	}
 
@@ -47,14 +48,10 @@ type Suna struct {
 		Driver          string
 		Leader          string
 		Followers       []string
-		MaxOpen         int                `toml:"max-open"`
-		MaxLifetime     utils.TomlDuration `toml:"max-lifetime"`
-		EnumCacheMaxage utils.TomlDuration `toml:"enum-cache-maxage"`
+		MaxOpen         int           `toml:"max-open"`
+		MaxLifetime     toml.Duration `toml:"max-lifetime"`
+		EnumCacheMaxage toml.Duration `toml:"enum-cache-maxage"`
 		Log             bool
-
-		l   *sqlx.DB `toml:"-"`
-		nfs bool
-		fs  []*sqlx.DB `toml:"-"`
 	}
 
 	Rbac struct {
@@ -64,13 +61,19 @@ type Suna struct {
 	Redis struct {
 		Mode  string
 		Nodes []string
-
-		c redis.Cmdable `toml:"-"`
 	}
 
-	isDebug   bool
-	isRelease bool
-	isTest    bool
+	Internal struct {
+		isDebug   bool
+		isRelease bool
+		isTest    bool
+
+		redisc redis.Cmdable
+
+		sqlLeader        *sqlx.DB
+		sqlNullFollowers bool
+		sqlFollowers     []*sqlx.DB
+	} `toml:"-"`
 }
 
 var defaultV = Suna{}
@@ -90,10 +93,11 @@ func init() {
 	defaultV.Session.Captcha.Width = 300
 	defaultV.Session.Captcha.Words = 6
 	defaultV.Session.Captcha.Maxage = 300
+	defaultV.Session.Captcha.AudioLanguage = "zh"
 	defaultV.Rbac.TablenamePrefix = "rbac_"
 }
 
-func GetDefault() *Suna { return &defaultV }
+func Default() *Suna { return &defaultV }
 
 func (t *Suna) Done() {
 	t.Sql.Driver = strings.ToLower(t.Sql.Driver)
@@ -101,18 +105,18 @@ func (t *Suna) Done() {
 
 	switch strings.ToLower(t.Env) {
 	case "debug":
-		t.isDebug = true
+		t.Internal.isDebug = true
 	case "release":
-		t.isRelease = true
+		t.Internal.isRelease = true
 	case "test":
-		t.isTest = true
+		t.Internal.isTest = true
 	default:
-		t.isRelease = true
+		t.Internal.isDebug = true
 	}
 }
 
-func (t *Suna) IsDebug() bool { return t.isDebug }
+func (t *Suna) IsDebug() bool { return t.Internal.isDebug }
 
-func (t *Suna) IsRelease() bool { return t.isRelease }
+func (t *Suna) IsRelease() bool { return t.Internal.isRelease }
 
-func (t *Suna) IsTest() bool { return t.isTest }
+func (t *Suna) IsTest() bool { return t.Internal.isTest }

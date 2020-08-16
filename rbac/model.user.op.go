@@ -44,7 +44,7 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 	)
 	defer op.lru.Remove(strconv.FormatInt(subjectId, 16))
 
-	cond := builder.NewConditions(builder.AND).
+	cond := builder.AndConditions().
 		Eq(true, "role", roleId).
 		Eq(true, "subject", subjectId)
 

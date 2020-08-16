@@ -11,17 +11,17 @@ import (
 	"strings"
 )
 
-type _ValidatorParser struct {
+type _TagParser struct {
 	current *_RuleT
 	all     _RuleSliceT
 	isJson  bool
 }
 
-func (p *_ValidatorParser) OnNestedStruct(f *reflect.StructField) bool {
-	return f.Anonymous
+func (p *_TagParser) OnNestedStruct(f *reflect.StructField) bool {
+	return true
 }
 
-func (p *_ValidatorParser) OnBegin(field *reflect.StructField) bool {
+func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 	rule := &_RuleT{field: field.Name, required: true}
 
 	switch field.Type.Kind() {
@@ -84,12 +84,102 @@ func (p *_ValidatorParser) OnBegin(field *reflect.StructField) bool {
 	return true
 }
 
-func (p *_ValidatorParser) OnName(name string) {
+func (p *_TagParser) OnName(name string) {
 	p.current.form = name
 }
 
-func (p *_ValidatorParser) OnAttr(key, val string) {
-	var rangeErr = fmt.Errorf("suna.validator: error range `%s`", val)
+func parseIntRange(s string) (int64, int64, bool, bool) {
+	if len(s) < 1 {
+		return 0, 0, false, false
+	}
+
+	if strings.HasPrefix(s, "-") {
+		v, e := strconv.ParseInt(s[1:], 10, 64)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return 0, v, false, true
+	}
+
+	if strings.HasSuffix(s, "-") {
+		v, e := strconv.ParseInt(s[:len(s)-1], 10, 64)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return v, 0, true, false
+	}
+
+	ss := strings.Split(s, "-")
+	if len(ss) == 1 {
+		v, e := strconv.ParseInt(s, 10, 64)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return v, v, true, true
+	}
+
+	if len(ss) != 2 {
+		return 0, 0, false, false
+	}
+
+	minV, e := strconv.ParseInt(ss[0], 10, 64)
+	if e != nil {
+		return 0, 0, false, false
+	}
+
+	maxV, e := strconv.ParseInt(ss[1], 10, 64)
+	if e != nil {
+		return 0, 0, false, false
+	}
+	return minV, maxV, true, true
+}
+
+func parseUintRange(s string) (uint64, uint64, bool, bool) {
+	if len(s) < 1 {
+		return 0, 0, false, false
+	}
+
+	if strings.HasPrefix(s, "-") {
+		v, e := strconv.ParseUint(s[1:], 10, 64)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return 0, v, false, true
+	}
+
+	if strings.HasSuffix(s, "-") {
+		v, e := strconv.ParseUint(s[:len(s)-1], 10, 64)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return v, 0, true, false
+	}
+
+	ss := strings.Split(s, "-")
+	if len(ss) == 1 {
+		v, e := strconv.ParseUint(s, 10, 64)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return v, v, true, true
+	}
+	if len(ss) != 2 {
+		return 0, 0, false, false
+	}
+
+	minV, e := strconv.ParseUint(ss[0], 10, 64)
+	if e != nil {
+		return 0, 0, false, false
+	}
+
+	maxV, e := strconv.ParseUint(ss[1], 10, 64)
+	if e != nil {
+		return 0, 0, false, false
+	}
+	return minV, maxV, true, true
+}
+
+func (p *_TagParser) OnAttr(key, val string) {
 	rule := p.current
 	switch key {
 	case "R", "regexp":
@@ -106,86 +196,25 @@ func (p *_ValidatorParser) OnAttr(key, val string) {
 		}
 	case "L", "length":
 		rule.lrange = true
-		vs := strings.Split(val, "-")
-		if len(vs) != 2 {
-			panic(rangeErr)
-		}
-		minL, e := strconv.ParseInt(vs[0], 10, 32)
-		if e != nil {
-			panic(rangeErr)
-		}
-		rule.minL = minL
-		maxL, e := strconv.ParseInt(vs[1], 10, 32)
-		if e != nil {
-			panic(rangeErr)
-		}
-		rule.maxL = maxL
-
-		if rule.maxL < rule.minL {
-			panic(rangeErr)
-		}
+		rule.minL, rule.maxL, rule.minLF, rule.maxLF = parseIntRange(val)
 	case "V", "value":
 		rule.vrange = true
-		vs := strings.Split(val, "-")
-		if len(vs) != 2 {
-			panic(rangeErr)
-		}
 		if rule.t == _Int64 {
-			minV, e := strconv.ParseInt(vs[0], 10, 64)
-			if e != nil {
-				panic(rangeErr)
-			}
-			rule.minV = minV
-			maxV, e := strconv.ParseInt(vs[1], 10, 64)
-			if e != nil {
-				panic(rangeErr)
-			}
-			rule.maxV = maxV
-			if rule.maxV < rule.minV {
-				panic(rangeErr)
-			}
+			rule.minV, rule.maxV, rule.minVF, rule.maxVF = parseIntRange(val)
 		} else if rule.t == _Uint64 {
-			minV, e := strconv.ParseUint(vs[0], 10, 64)
-			if e != nil {
-				panic(rangeErr)
-			}
-			rule.minUV = minV
-			maxV, e := strconv.ParseUint(vs[1], 10, 64)
-			if e != nil {
-				panic(rangeErr)
-			}
-			rule.maxUV = maxV
-			if rule.maxUV < rule.minUV {
-				panic(rangeErr)
-			}
+			rule.minUV, rule.maxUV, rule.minUVF, rule.maxUVF = parseUintRange(val)
 		}
 	case "D", "default":
 		rule.defaultV = []byte(val)
 	case "S", "size":
 		rule.srange = true
-		vs := strings.Split(val, "-")
-		if len(vs) != 2 {
-			panic(rangeErr)
-		}
-		minV, e := strconv.ParseInt(vs[0], 10, 64)
-		if e != nil {
-			panic(rangeErr)
-		}
-		rule.minS = minV
-		maxV, e := strconv.ParseInt(vs[1], 10, 64)
-		if e != nil {
-			panic(rangeErr)
-		}
-		rule.maxS = maxV
-		if rule.maxS < rule.minS {
-			panic(rangeErr)
-		}
+		rule.minS, rule.maxS, rule.minSF, rule.maxSF = parseIntRange(val)
 	case "optional":
 		rule.required = false
 	}
 }
 
-func (p *_ValidatorParser) OnDone() {
+func (p *_TagParser) OnDone() {
 	p.all = append(p.all, p.current)
 	p.current = nil
 }
@@ -200,7 +229,7 @@ func getRules(p reflect.Type) *Rules {
 		return rs
 	}
 
-	parser := &_ValidatorParser{}
+	parser := &_TagParser{}
 	reflectx.Tags(p, "validator", parser)
 	sort.Sort(parser.all)
 

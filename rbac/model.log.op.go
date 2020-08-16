@@ -55,7 +55,7 @@ func (op *logOpT) List(
 	cursor int64,
 	limit int,
 ) (lst []logT) {
-	conditions := builder.NewConditions(builder.AND)
+	conditions := builder.AndConditions()
 	conditions.Gte(begin > 0, "created", begin)
 	conditions.Lte(end > 0, "created", end)
 	conditions.Eq(len(names) > 0, "name", names)

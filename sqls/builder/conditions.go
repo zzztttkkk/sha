@@ -2,15 +2,15 @@ package builder
 
 import "github.com/zzztttkkk/sqrl"
 
-type _CJT int
+type _logicT int
 
 const (
-	AND = _CJT(iota)
-	OR
+	_AND = _logicT(iota)
+	_OR
 )
 
 type _Conditions struct {
-	v _CJT
+	v _logicT
 
 	lt  sqrl.Lt
 	gt  sqrl.Gt
@@ -196,26 +196,16 @@ func (l *_Conditions) ToSql() (string, []interface{}, error) {
 		sqlizers = append(sqlizers, l.unilike)
 	}
 
-	if l.v == OR {
+	if l.v == _OR {
 		return sqrl.Or(sqlizers).ToSql()
 	}
 	return sqrl.And(sqlizers).ToSql()
 }
 
-func And(v ...sqrl.Sqlizer) sqrl.And {
-	rv := sqrl.And{}
-	for _, i := range v {
-		rv = append(rv, i)
-	}
-	return rv
+func AndConditions() *_Conditions {
+	return &_Conditions{v: _AND}
 }
 
-func Or(v ...sqrl.Sqlizer) sqrl.Or {
-	rv := sqrl.Or{}
-	for _, i := range v {
-		rv = append(rv, i)
-	}
-	return rv
+func OrConditions() *_Conditions {
+	return &_Conditions{v: _OR}
 }
-
-func NewConditions(joined _CJT) *_Conditions { return &_Conditions{v: joined} }
