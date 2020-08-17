@@ -58,7 +58,7 @@ func (op *Operator) XSelect(ctx context.Context, dist interface{}, builder *sqrl
 
 func (op *Operator) XExists(ctx context.Context, conditions sqrl.Sqlizer) bool {
 	c := 0
-	op.XSelect(ctx, &c, builder.NewSelect("count(*)").From(op.tablename).Where(conditions))
+	op.XSelect(ctx, &c, builder.NewSelect("count(*)").From(op.TableName()).Where(conditions))
 	return c > 0
 }
 
@@ -91,7 +91,7 @@ func (op *Operator) XCreate(ctx context.Context, kvs *utils.Kvs) int64 {
 		},
 	)
 
-	b := builder.NewInsert(op.tablename).Columns(ks...).Values(vs...)
+	b := builder.NewInsert(op.TableName()).Columns(ks...).Values(vs...)
 	if isPostgres {
 		b.Returning(op.idField)
 	}

@@ -8,15 +8,17 @@ type Model struct {
 }
 
 func (Model) TableDefinition(lines ...string) []string {
+	var s []string
 	idLine := "id bigint not null auto_increment primary key"
 	if isPostgres {
 		idLine = "id serial8 primary key"
 	}
-	return append(
-		lines,
-		idLine,
+	s = append(s, idLine)
+	s = append(
+		s,
 		"status int default 0",
 		"created bigint not null",
 		"deleted bigint default 0",
 	)
+	return append(s, lines...)
 }

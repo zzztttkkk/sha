@@ -9,9 +9,14 @@ import (
 type Operator struct {
 	tablename string
 	idField   string
+	ele       reflect.Value
 }
 
 func (op *Operator) TableName() string {
+	if len(op.tablename) > 0 {
+		return op.tablename
+	}
+	op.tablename = getTableName(op.ele)
 	return op.tablename
 }
 
@@ -20,8 +25,8 @@ func (op *Operator) SetIdField(f string) {
 }
 
 func (op *Operator) Init(ele reflect.Value) {
-	op.tablename = getTableName(ele)
-	CreateTable(ele)
+	op.ele = ele
+	CreateTable(ele, op.TableName())
 }
 
 func getTableName(ele reflect.Value) string {
@@ -32,7 +37,7 @@ func getTableName(ele reflect.Value) string {
 	return strings.ToLower(ele.Type().Name())
 }
 
-func CreateTable(ele reflect.Value) {
+func CreateTable(ele reflect.Value, name string) {
 	tablecreationFn := ele.MethodByName("TableDefinition")
 	if !tablecreationFn.IsValid() {
 		return
@@ -41,7 +46,7 @@ func CreateTable(ele reflect.Value) {
 	lines := (tablecreationFn.Call(nil)[0]).Interface().([]string)
 	q := fmt.Sprintf(
 		"create table if not exists %s (%s)",
-		getTableName(ele),
+		name,
 		strings.Join(lines, ","),
 	)
 	leader.MustExec(q)
