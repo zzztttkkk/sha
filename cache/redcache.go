@@ -17,16 +17,18 @@ type _RedCacheT struct {
 	headers     map[string]bool
 	statusCodes map[int]bool
 	getKey      func(ctx *fasthttp.RequestCtx) string
+	prefix      string
 }
 
 type RedCacheOption struct {
+	KeyPrefix     string
 	StatusCodes   []int
 	Headers       []string
 	ExpireSeconds int
 	GetKey        func(ctx *fasthttp.RequestCtx) string
 }
 
-const DisableRedCacheKey = "Snow-Disable-Redcache"
+const DisableRedCacheKey = "Suna-Disable-Redcache"
 
 func NewRed(opt *RedCacheOption) *_RedCacheT {
 	c := &_RedCacheT{
@@ -34,10 +36,15 @@ func NewRed(opt *RedCacheOption) *_RedCacheT {
 		headers:     map[string]bool{},
 		statusCodes: map[int]bool{},
 		getKey:      opt.GetKey,
+		prefix:      opt.KeyPrefix,
 	}
 
 	if c.getKey == nil {
 		c.getKey = func(ctx *fasthttp.RequestCtx) string { return gotils.B2S(ctx.Path()) }
+	}
+
+	if len(c.prefix) < 1 {
+		c.prefix = "suna:redcache:"
 	}
 
 	if len(opt.StatusCodes) < 1 {
@@ -114,7 +121,7 @@ func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHan
 }
 
 func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.RequestHandler, item *_ItemT) {
-	key := "suna:rcache:" + c.getKey(ctx)
+	key := c.prefix + c.getKey(ctx)
 
 	v, _ := redisc.Get(key).Bytes()
 	if len(v) > 0 {

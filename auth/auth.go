@@ -10,25 +10,47 @@ type User interface {
 	GetId() int64
 }
 
+type _EU struct {
+}
+
+func (*_EU) GetId() int64 {
+	return 0
+}
+
 type Authenticator interface {
-	Auth(*fasthttp.RequestCtx) User
+	Auth(*fasthttp.RequestCtx) (User, bool)
 }
 
 var authenticator Authenticator
+var emptyUser = &_EU{}
 
-func GetUser(ctx *fasthttp.RequestCtx) User {
+func GetUser(ctx *fasthttp.RequestCtx) (User, bool) {
 	ui := ctx.UserValue(internal.RCtxUserKey)
 	if ui != nil {
-		return ui.(User)
+		if ui == emptyUser {
+			return nil, false
+		}
+		return ui.(User), true
 	}
-	u := authenticator.Auth(ctx)
-	ctx.SetUserValue(internal.RCtxUserKey, u)
-	return u
+
+	u, ok := authenticator.Auth(ctx)
+	if ok {
+		ctx.SetUserValue(internal.RCtxUserKey, u)
+		return u, true
+	}
+
+	ctx.SetUserValue(internal.RCtxUserKey, emptyUser)
+	return nil, false
 }
 
-func MustGetUser(ctx *fasthttp.RequestCtx) (u User) {
-	if u = GetUser(ctx); u == nil {
-		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
+func MustGetUser(ctx *fasthttp.RequestCtx) User {
+	v, ok := GetUser(ctx)
+	if ok {
+		return v
 	}
-	return
+	panic(output.HttpErrors[fasthttp.StatusUnauthorized])
+}
+
+func Reset(ctx *fasthttp.RequestCtx) {
+	ctx.SetUserValue(internal.RCtxUserKey, nil)
 }

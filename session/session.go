@@ -35,8 +35,8 @@ func _initSession() {
 func newSession(ctx *fasthttp.RequestCtx) Session {
 	var sessionId string
 
-	subject := auth.GetUser(ctx)
-	if subject != nil {
+	subject, ok := auth.GetUser(ctx)
+	if ok {
 		sidKey := fmt.Sprintf("%su:%d", sessionKeyPrefix, subject.GetId())
 		sessionId = redisc.Get(sidKey).String()
 		if len(sessionId) > 0 {

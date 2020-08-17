@@ -68,7 +68,8 @@ type Suna struct {
 		isRelease bool
 		isTest    bool
 
-		redisc redis.Cmdable
+		rediscOk bool
+		redisc   redis.Cmdable
 
 		sqlLeader        *sqlx.DB
 		sqlNullFollowers bool

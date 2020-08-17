@@ -31,8 +31,7 @@ func JustUseMaster(ctx context.Context) context.Context {
 func doNothing() {}
 
 func TxByUser(ctx *fasthttp.RequestCtx) (context.Context, func()) {
-	nctx := context.WithValue(ctx, userKey, auth.GetUser(ctx))
-	return Tx(nctx)
+	return Tx(context.WithValue(ctx, userKey, auth.MustGetUser(ctx)))
 }
 
 func Tx(ctx context.Context) (context.Context, func()) {

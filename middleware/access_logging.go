@@ -280,8 +280,8 @@ func (al *_AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.Reques
 			}
 
 			if al._UserId {
-				u := auth.GetUser(ctx)
-				if u != nil {
+				u, ok := auth.GetUser(ctx)
+				if ok {
 					m["UserId"] = u.GetId()
 				} else {
 					m["UserId"] = 0

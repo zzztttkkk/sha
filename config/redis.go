@@ -10,7 +10,7 @@ import (
 var redisUnknownModeError = errors.New("suna.config: unknown redis mode,[singleton,ring]")
 
 func (t *Suna) RedisClient() redis.Cmdable {
-	if t.Internal.redisc != nil {
+	if t.Internal.rediscOk {
 		return t.Internal.redisc
 	}
 
@@ -30,6 +30,7 @@ func (t *Suna) RedisClient() redis.Cmdable {
 	switch strings.ToLower(t.Redis.Mode) {
 	case "singleton":
 		t.Internal.redisc = redis.NewClient(opts[0])
+		t.Internal.rediscOk = true
 		return t.Internal.redisc
 	case "ring":
 		addrs := map[string]string{}
@@ -39,6 +40,7 @@ func (t *Suna) RedisClient() redis.Cmdable {
 			pwds[fmt.Sprintf("node.%d", ind)] = opt.Password
 		}
 		t.Internal.redisc = redis.NewRing(&redis.RingOptions{Addrs: addrs, Passwords: pwds})
+		t.Internal.rediscOk = true
 		return t.Internal.redisc
 	case "cluster":
 		var addrs []string
@@ -52,6 +54,7 @@ func (t *Suna) RedisClient() redis.Cmdable {
 				Password: opts[0].Password,
 			},
 		)
+		t.Internal.rediscOk = true
 		return t.Internal.redisc
 	default:
 		panic(redisUnknownModeError)
