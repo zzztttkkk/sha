@@ -15,9 +15,9 @@
 # vendor/
 
 
-/.idea
-/.vs
-/.vscode
+**/.idea
+**/.vs
+**/.vscode
 *.log
 *.ini
 *.env

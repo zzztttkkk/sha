@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/big"
 	mrand "math/rand"
+	"time"
 )
 
 var src mrand.Source
@@ -15,6 +16,7 @@ func init() {
 		panic(err)
 	}
 	src = mrand.NewSource(nBig.Int64())
+	src.Seed(time.Now().UnixNano())
 }
 
 var defaultPool = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")

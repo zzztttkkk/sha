@@ -48,9 +48,12 @@ func (t *Suna) SqlFollower() *sqlx.DB {
 	return t.randomFollower()
 }
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 func (t *Suna) randomFollower() *sqlx.DB {
 	if len(t.Internal.sqlFollowers) > 0 {
-		rand.Seed(time.Now().UnixNano())
 		return t.Internal.sqlFollowers[rand.Int()%len(t.Internal.sqlFollowers)]
 	}
 	return nil

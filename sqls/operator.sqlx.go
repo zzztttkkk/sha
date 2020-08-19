@@ -28,6 +28,7 @@ func (op *Operator) XSelectScan(ctx context.Context, builder *sqrl.SelectBuilder
 	return scanner.Scan(rows)
 }
 
+// dist must be a pointer.
 func (op *Operator) XSelect(ctx context.Context, dist interface{}, builder *sqrl.SelectBuilder) bool {
 	q, args, err := builder.ToSql()
 	if err != nil {
@@ -93,7 +94,11 @@ func (op *Operator) XCreate(ctx context.Context, kvs *utils.Kvs) int64 {
 
 	b := builder.NewInsert(op.TableName()).Columns(ks...).Values(vs...)
 	if isPostgres {
-		b.Returning(op.idField)
+		if len(op.idField) > 0 {
+			b.Returning(op.idField)
+		} else {
+			b.Returning("id")
+		}
 	}
 
 	q, args, err := b.ToSql()

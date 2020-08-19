@@ -10,10 +10,10 @@ type User interface {
 	GetId() int64
 }
 
-type _EU struct {
+type _EmptyUser struct {
 }
 
-func (*_EU) GetId() int64 {
+func (*_EmptyUser) GetId() int64 {
 	return 0
 }
 
@@ -22,7 +22,7 @@ type Authenticator interface {
 }
 
 var authenticator Authenticator
-var emptyUser = &_EU{}
+var emptyUser = &_EmptyUser{}
 
 func GetUser(ctx *fasthttp.RequestCtx) (User, bool) {
 	ui := ctx.UserValue(internal.RCtxUserKey)

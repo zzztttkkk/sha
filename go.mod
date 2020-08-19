@@ -14,8 +14,8 @@ require (
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/rs/xid v1.2.1
 	github.com/savsgio/gotils v0.0.0-20200616100644-13ff1fd2c28c
-	github.com/valyala/fasthttp v1.15.1
-	github.com/zzztttkkk/router v1.2.4-0.20200814165054-307f66ea4057
+	github.com/valyala/fasthttp v1.16.0
+	github.com/zzztttkkk/router v1.2.4-0.20200816121612-7158f422ee48
 	github.com/zzztttkkk/sqrl v0.0.0-20200813111908-88812b11e084
 	go.uber.org/dig v1.10.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208

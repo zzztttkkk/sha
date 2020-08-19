@@ -88,10 +88,10 @@ func (c *_RedCacheT) AsMiddleware() fasthttp.RequestHandler {
 }
 
 func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
-	item := acquireItem()
-	defer releaseItem(item)
-
 	return func(ctx *fasthttp.RequestCtx) {
+		item := acquireItem()
+		defer releaseItem(item)
+
 		cacheKey := c.getKey(ctx)
 		if len(cacheKey) < 1 {
 			next(ctx)
