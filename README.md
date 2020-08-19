@@ -39,14 +39,14 @@ type reflect tools.
 ### secret
 - some hash functions
 - generate random bytes
-- id token
+- id token dump/load
 - ase encode/decode
 
 ### session
-redis session implementation. if the authentication is passed, it
-will try to use the user's previous session.
+redis session implementation.(if the authentication is passed, it will
+try to use the previous session)
 
-- generate captcha image and audio.
+- captcha generate(image&audio)/verify, based on [captcha](https://github.com/dchest/captcha).
 
 ### sqls
 some [sqlx](https://github.com/jmoiron/sqlx) wrapper functions, make execute sql easy.
