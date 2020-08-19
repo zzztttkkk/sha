@@ -6,8 +6,8 @@ type Example struct {
 	config.Suna
 
 	Auth struct {
-		HeaderName string
-		CookieName string
+		HeaderName string `toml:"header"`
+		CookieName string `toml:"cookie"`
 	}
 }
 
