@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// auto create table monthly.
 type MonthlyOperator struct {
 	Operator
 	end  time.Time

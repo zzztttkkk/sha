@@ -90,10 +90,9 @@ type _Cors struct {
 	opt *CorsOption
 }
 
-func NewCors(opt *CorsOption, root *router.Root) *_Cors {
+func NewCors(opt *CorsOption) *_Cors {
 	c := &_Cors{opt: opt}
 	c.opt.init()
-	root.GlobalOPTIONS = func(ctx *fasthttp.RequestCtx) { c.opt.writeHeaders(ctx) }
 	return c
 }
 
@@ -106,4 +105,8 @@ func (c *_Cors) handle(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 
 func (c *_Cors) AsMiddleware() fasthttp.RequestHandler {
 	return c.handle(router.Next)
+}
+
+func (c *_Cors) OptionsHandler() fasthttp.RequestHandler {
+	return func(ctx *fasthttp.RequestCtx) { c.opt.writeHeaders(ctx) }
 }

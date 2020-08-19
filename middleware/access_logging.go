@@ -50,6 +50,41 @@ type AccessLoggingOption struct {
 	DurationUnit time.Duration
 }
 
+// named formatter kwargs:
+//
+// 		Begin: begin time of the current request;
+//
+// 		End: end time of the current request;
+//
+// 		Cost: time spent processing current request
+//
+// 		ReqMethod: method of the current request
+//
+// 		ReqPath: path of the current request
+//
+//		ReqHeaders: all headers of the current request
+//
+//		ReqQuery: query of the current request
+//
+//		ReqForm: form body of the current request
+//
+//		ReqRemote: remote ip of the current request
+//
+//		ReqHeader@***: some header of the current request
+//
+//		ResStatusCode: status code of the current response
+//
+//		ResStatusText: status text of the current response
+//
+//		ResHeaders: all headers of the current response
+//
+//		ResBody: body of the current response
+//
+//		ResHeader@***: some header of the current response
+//
+//		ErrStack: error stack if an internal server error occurred
+//
+//		UserId: user id of the current request
 func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) *_AccessLogger {
 	rv := &_AccessLogger{
 		nfmt:   utils.NewNamedFmt(fstr),

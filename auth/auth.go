@@ -24,6 +24,8 @@ type Authenticator interface {
 var authenticator Authenticator
 var emptyUser = &_EmptyUser{}
 
+// Use the global `Authenticator` to get the user information of the current request
+// and cache it in the `fasthttp.RequestCtx.UserValue` (even if the authentication fails).
 func GetUser(ctx *fasthttp.RequestCtx) (User, bool) {
 	ui := ctx.UserValue(internal.RCtxUserKey)
 	if ui != nil {
@@ -43,6 +45,7 @@ func GetUser(ctx *fasthttp.RequestCtx) (User, bool) {
 	return nil, false
 }
 
+// If authentication fails, a 401 exception will be thrown.
 func MustGetUser(ctx *fasthttp.RequestCtx) User {
 	v, ok := GetUser(ctx)
 	if ok {
@@ -51,6 +54,8 @@ func MustGetUser(ctx *fasthttp.RequestCtx) User {
 	panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 }
 
-func Reset(ctx *fasthttp.RequestCtx) {
+// Clear the user info cache, then call `GetUser` again to re-authenticate.
+func Reset(ctx *fasthttp.RequestCtx) (User, bool) {
 	ctx.SetUserValue(internal.RCtxUserKey, nil)
+	return GetUser(ctx)
 }

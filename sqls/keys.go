@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// get table filed form model type.
 func Keys(rt reflect.Type, exclude []string, extra []string) string {
 	m := map[string]bool{}
 	for _, key := range reflectx.Keys(rt, "db") {

@@ -21,15 +21,16 @@ type _RedCacheT struct {
 }
 
 type RedCacheOption struct {
-	KeyPrefix     string
-	StatusCodes   []int
-	Headers       []string
-	ExpireSeconds int
-	GetKey        func(ctx *fasthttp.RequestCtx) string
+	KeyPrefix     string                                // key prefix in Redis, default "suna:redcache:"
+	StatusCodes   []int                                 // response status code filters, default [200]
+	Headers       []string                              // cache headers, default [`Content-Type`, `Content-Encoding`]
+	ExpireSeconds int                                   // cache expire seconds
+	GetKey        func(ctx *fasthttp.RequestCtx) string // get identify form request, default `ctx.Path()`
 }
 
 const DisableRedCacheKey = "Suna-Disable-Redcache"
 
+// Cache the entire response in Redis
 func NewRed(opt *RedCacheOption) *_RedCacheT {
 	c := &_RedCacheT{
 		seconds:     opt.ExpireSeconds,

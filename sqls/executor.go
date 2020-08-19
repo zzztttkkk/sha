@@ -21,11 +21,11 @@ type ctxKeyT int
 const (
 	txKey = ctxKeyT(iota + 1000)
 	userKey
-	justMasterKey
+	justLeaderKey
 )
 
-func JustUseMaster(ctx context.Context) context.Context {
-	return context.WithValue(ctx, justMasterKey, true)
+func JustUseLeader(ctx context.Context) context.Context {
+	return context.WithValue(ctx, justLeaderKey, true)
 }
 
 func doNothing() {}
@@ -34,6 +34,7 @@ func TxByUser(ctx *fasthttp.RequestCtx) (context.Context, func()) {
 	return Tx(context.WithValue(ctx, userKey, auth.MustGetUser(ctx)))
 }
 
+// starts a transaction, return a sub context and a commit function
 func Tx(ctx context.Context) (context.Context, func()) {
 	_tx := ctx.Value(txKey)
 	if _tx != nil {
@@ -69,14 +70,13 @@ func TxOperator(ctx context.Context) auth.User {
 	return nil
 }
 
-//noinspection GoExportedFuncWithUnexportedType
 func Executor(ctx context.Context) executor {
 	tx := ctx.Value(txKey)
 	if tx != nil {
 		return tx.(*sqlx.Tx)
 	}
 
-	if ctx.Value(justMasterKey) != nil {
+	if ctx.Value(justLeaderKey) != nil {
 		return leader
 	}
 
