@@ -186,7 +186,7 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 }
 
 func ValidateJson(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
-	if !bytes.Equal(ctx.Request.Header.ContentType(), jsonCt) {
+	if !bytes.HasPrefix(ctx.Request.Header.ContentType(), jsonCt) {
 		output.Error(ctx, output.HttpErrors[fasthttp.StatusBadRequest])
 		return false
 	}
