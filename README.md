@@ -1,9 +1,10 @@
 # suna
-
 a web framework based on [fasthttp](https://github.com/valyala/fasthttp).
 
-## sub modules
+## example
+[example](https://github.com/zzztttkkk/suna/tree/master/example)
 
+## sub modules
 ### auth
 get user information from `fasthttp.RequestCtx`
 
