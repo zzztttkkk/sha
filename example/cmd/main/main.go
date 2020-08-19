@@ -42,6 +42,7 @@ func main() {
 	var example config.Example
 	var defaultV = config.Default()
 	toml.FromFiles(&example, &defaultV, files...)
+	example.Done()
 
 	// init suna
 	suna.Init(
