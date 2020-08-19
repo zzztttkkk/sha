@@ -98,7 +98,7 @@ func init() {
 	defaultV.Rbac.TablenamePrefix = "rbac_"
 }
 
-func Default() *Suna { return &defaultV }
+func Default() Suna { return defaultV }
 
 func (t *Suna) Done() {
 	t.Sql.Driver = strings.ToLower(t.Sql.Driver)

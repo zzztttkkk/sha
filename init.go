@@ -53,7 +53,8 @@ func Init(opt *InitOption) {
 		func() *config.Suna {
 			if opt == nil {
 				log.Println("suna: nil config, use the default value")
-				return config.Default()
+				defV := config.Default()
+				return &defV
 			}
 			return opt.Config
 		},

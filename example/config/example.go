@@ -16,7 +16,7 @@ var defaultV = Example{}
 func init() {
 	defaultV.Auth.CookieName = "alk"
 	defaultV.Auth.HeaderName = "X-Auth-Token"
-	defaultV.Suna = *config.Default()
+	defaultV.Suna = config.Default()
 }
 
-func Default() *Example { return &defaultV }
+func Default() Example { return defaultV }
