@@ -34,12 +34,11 @@ func AcquireGroupLogger(name string) *groupLogger {
 	return v
 }
 
-func ReleaseGroupLogger(logger *groupLogger) {
-	logger.output()
-
-	logger.buf.Reset()
-	logger.name = ""
-	groupLoggerPool.Put(logger)
+func (l *groupLogger) Free() {
+	l.output()
+	l.buf.Reset()
+	l.name = ""
+	groupLoggerPool.Put(l)
 }
 
 type DailyOutput struct {

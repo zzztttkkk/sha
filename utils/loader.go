@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
+	"github.com/zzztttkkk/suna/config"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -104,7 +105,7 @@ func (loader *Loader) bindGrpc(server *grpc.Server) {
 	}
 }
 
-func (loader *Loader) RunAsHttpServer(root router.Router, address string) {
+func (loader *Loader) RunAsHttpServer(root router.Router, conf *config.Suna) {
 	r, ok := root.(*router.Root)
 	if !ok {
 		panic("")
@@ -118,14 +119,21 @@ func (loader *Loader) RunAsHttpServer(root router.Router, address string) {
 			glog.Println(fmt.Sprintf("%s: %s", method, path))
 		}
 	}
-	ReleaseGroupLogger(glog)
+	glog.Free()
 
 	server := &fasthttp.Server{
 		Handler:               r.Handler,
 		NoDefaultServerHeader: true,
 		NoDefaultDate:         true,
 	}
-	log.Fatal(server.ListenAndServe(address))
+
+	var err error
+	if len(conf.Http.TLS.Key) > 0 {
+		err = server.ListenAndServeTLS(conf.Http.Address, conf.Http.TLS.Cert, conf.Http.TLS.Key)
+	} else {
+		err = server.ListenAndServe(conf.Http.Address)
+	}
+	log.Fatal(err)
 }
 
 func (loader *Loader) RunAsGrpcServer(server *grpc.Server, address string) {

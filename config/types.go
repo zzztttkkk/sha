@@ -12,6 +12,15 @@ type Suna struct {
 	Env           string
 	TimeFormatter string `toml:"time-formatter"`
 
+	Http struct {
+		Address  string
+		Hostname string
+		TLS      struct {
+			Cert string
+			Key  string
+		}
+	}
+
 	Secret struct {
 		Key           string
 		HashAlgorithm string `toml:"hash-algorithm"`
@@ -81,6 +90,7 @@ var defaultV = Suna{}
 
 func init() {
 	defaultV.Env = "debug"
+	defaultV.Http.Address = "127.0.0.1:8080"
 	defaultV.Secret.HashAlgorithm = "sha256-512"
 	defaultV.Cache.Lru.ContentSize = 2000
 	defaultV.Cache.Lru.UserSize = 1000
