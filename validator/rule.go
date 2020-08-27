@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/graphql-go/graphql"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/utils"
@@ -29,10 +30,6 @@ const (
 	_UintSlice
 	_StringSlice
 	_BytesSlice
-
-	_JoinedIntSlice
-	_JoinedUintSlice
-	_JoinedBoolSlice
 )
 
 var typeNames = []string{
@@ -50,10 +47,6 @@ var typeNames = []string{
 	"UintArray",
 	"StringArray",
 	"StringArray",
-
-	"JoinedIntString",
-	"JoinedUintString",
-	"JoinedBoolString",
 }
 
 type _RuleT struct {
@@ -92,8 +85,7 @@ type _RuleT struct {
 	fn     func([]byte) ([]byte, bool)
 	fnName string
 
-	isSlice  bool
-	isJoined bool
+	isSlice bool
 }
 
 func (rule *_RuleT) toBytes(v []byte) (val []byte, ok bool) {
@@ -389,6 +381,20 @@ func (rule *_RuleT) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
 	return nil, false
 }
 
+func (rule *_RuleT) ToGraphqlArgument() *graphql.ArgumentConfig {
+	ac := &graphql.ArgumentConfig{}
+
+	switch rule.t {
+	case _Bool:
+		ac.Type = graphql.Boolean
+	case _Int64, _Uint64:
+		ac.Type = graphql.Int
+	case _Bytes, _String:
+		ac.Type = graphql.String
+	}
+	return ac
+}
+
 var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{srange}|{default}|{regexp}|{function}|")
 
 func (rule *_RuleT) String() string {
@@ -497,7 +503,7 @@ func (a _RuleSliceT) Less(i, j int) bool {
 // markdown table
 func (a _RuleSliceT) String() string {
 	buf := strings.Builder{}
-	buf.WriteString("|name|type|required|lrange|vrange|srange|default|regexp|function|\n")
+	buf.WriteString("|name|type|required|length range|value range|size range|default|regexp|function|\n")
 	buf.WriteString("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n")
 	for _, r := range a {
 		buf.WriteString(r.String())
@@ -510,13 +516,18 @@ type Rules struct {
 	lst    _RuleSliceT
 	isJson bool
 	doc    *Doc
+	raw    reflect.Type
 }
 
-func (r *Rules) NewDoc(descp string) *Doc {
+func (rs *Rules) NewDoc(descp string) *Doc {
 	return &Doc{
 		descp:  descp,
-		fields: r.lst.String(),
+		fields: rs.lst.String(),
 	}
+}
+
+func (rs *Rules) RawType() reflect.Type {
+	return rs.raw
 }
 
 type Doc struct {

@@ -1,15 +1,15 @@
 package rbac
 
 import (
+	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/sqls"
-	"github.com/zzztttkkk/suna/utils"
 )
 
 type logT struct {
 	sqls.Model
-	Name     string           `json:"Name"`
-	Operator int64            `json:"operator"`
-	Info     utils.JsonObject `json:"info"`
+	Name     string       `json:"Name"`
+	Operator int64        `json:"operator"`
+	Info     jsonx.Object `json:"info"`
 }
 
 func (logT) TableName() string {

@@ -12,5 +12,5 @@ func TestAcquireGroupLogger(t *testing.T) {
 
 	log.SetOutput(&DailyOutput{prefix: "C:/Users/ztk/Codes/go/src/github.com/zzztttkkk/suna/"})
 
-	ReleaseGroupLogger(l)
+	l.Free()
 }

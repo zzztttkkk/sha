@@ -1,4 +1,4 @@
-package utils
+package jsonx
 
 import (
 	"database/sql/driver"
@@ -8,13 +8,13 @@ import (
 	"strconv"
 )
 
-type JsonArray []interface{}
+type Array []interface{}
 
-var emptyJsonArrayBytes = []byte("[]")
+var _EmptyJsonArrayBytes = []byte("[]")
 
-func (a JsonArray) Value() (driver.Value, error) {
+func (a Array) Value() (driver.Value, error) {
 	if len(a) == 0 {
-		return emptyJsonArrayBytes, nil
+		return _EmptyJsonArrayBytes, nil
 	}
 	v, err := json.Marshal(a)
 	if err != nil {
@@ -23,7 +23,7 @@ func (a JsonArray) Value() (driver.Value, error) {
 	return v, nil
 }
 
-func (a *JsonArray) Scan(src interface{}) error {
+func (a *Array) Scan(src interface{}) error {
 	var bytes []byte
 	switch v := src.(type) {
 	case string:
@@ -36,14 +36,14 @@ func (a *JsonArray) Scan(src interface{}) error {
 	return json.Unmarshal(bytes, a)
 }
 
-func (a JsonArray) get(key int) (interface{}, error) {
+func (a Array) get(key int) (interface{}, error) {
 	if key < 0 || key >= len(a) {
 		return nil, ErrJsonValue
 	}
 	return a[key], nil
 }
 
-var ErrJsonValue = errors.New("suna.utils: json type error")
+var ErrJsonValue = errors.New("suna.jsonx: json type error")
 
 func s2i4(s string) (int, error) {
 	v, err := strconv.ParseInt(s, 10, 64)
@@ -53,8 +53,8 @@ func s2i4(s string) (int, error) {
 	return int(v), nil
 }
 
-func (a JsonArray) Get(key string) (interface{}, error) {
-	k := _JsonKey{}
+func (a Array) Get(key string) (interface{}, error) {
+	k := _Key{}
 	k.init(key)
 
 	var rv interface{} = a
@@ -74,10 +74,39 @@ func (a JsonArray) Get(key string) (interface{}, error) {
 	return rv, nil
 }
 
-func (a JsonArray) MustGet(key string) interface{} {
+func (a Array) GetMust(key string) interface{} {
 	v, e := a.Get(key)
 	if e != nil {
 		panic(e)
 	}
 	return v
+}
+
+func ParseArray(v interface{}) (Array, error) {
+	var data []byte
+	switch rv := v.(type) {
+	case string:
+		data = gotils.S2B(rv)
+	case *string:
+		if rv == nil {
+			data = nil
+		} else {
+			data = gotils.S2B(*rv)
+		}
+	case []byte:
+		data = rv
+	case *[]byte:
+		if rv == nil {
+			data = nil
+		} else {
+			data = *rv
+		}
+	default:
+		return nil, ErrJsonValue
+	}
+	m := Array{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }

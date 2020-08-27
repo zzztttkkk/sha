@@ -2,7 +2,7 @@ package validator
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/suna/utils"
+	"github.com/zzztttkkk/suna/jsonx"
 	"regexp"
 	"testing"
 
@@ -27,25 +27,23 @@ func TestValidate(t *testing.T) {
 		Name      []byte  `validator:":F<username>"`
 		KeepLogin bool    `validator:"kl:optional"`
 		FIDs      []int64 `validator:"fid:S<7>"`
-		XIDs      JoinedIntSlice
-		Cs        JoinedBoolSlice
 	}
 	fmt.Println(GetRules(Form{}).NewDoc(""))
 
 	ctx := fasthttp.RequestCtx{}
-	ctx.Request.SetRequestURI("http://localhost:8080/?password=123456&name=ztk&fid=1&fid=2&fid=3&xids=1,23,34&cs=1,0,t,f")
+	ctx.Request.SetRequestURI("http://localhost:8080/?password=123456&name=ztk&fid=1&fid=2&fid=3")
 
 	form := Form{}
 	if !Validate(&ctx, &form) {
 		t.Fatalf("%s", string(ctx.Response.Body()))
 		return
 	}
-	fmt.Println(string(form.Password), string(form.Name), form.FIDs, form.XIDs, form.Cs)
+	fmt.Println(string(form.Password), string(form.Name), form.FIDs)
 }
 
 func TestJsonRequest(t *testing.T) {
 	type Form struct {
-		A utils.JsonObject
+		A jsonx.Object
 	}
 
 	ctx := fasthttp.RequestCtx{}

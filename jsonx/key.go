@@ -1,4 +1,4 @@
-package utils
+package jsonx
 
 import (
 	"reflect"
@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-type _JsonKey struct {
+type _Key struct {
 	raw          string
 	buf          []byte
 	cursor       int
@@ -15,7 +15,7 @@ type _JsonKey struct {
 	lastEmptyFix bool
 }
 
-func (key *_JsonKey) init(v string) {
+func (key *_Key) init(v string) {
 	key.raw = v
 	key.end = len(key.raw) - 1
 
@@ -32,7 +32,7 @@ func (key *_JsonKey) init(v string) {
 	}
 }
 
-func (key *_JsonKey) getStr() *string {
+func (key *_Key) getStr() *string {
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&key.buf))
 	key.str.Data = sh.Data
 	key.str.Len = sh.Len
@@ -40,7 +40,7 @@ func (key *_JsonKey) getStr() *string {
 	return (*string)(unsafe.Pointer(&key.str))
 }
 
-func (key *_JsonKey) next() (*string, bool) {
+func (key *_Key) next() (*string, bool) {
 	key.buf = key.buf[:0]
 	if key.cursor > key.end {
 		if key.lastEmptyFix {
@@ -77,7 +77,7 @@ func (key *_JsonKey) next() (*string, bool) {
 
 func getFromInterface(key string, v interface{}) (interface{}, error) {
 	switch rv := v.(type) {
-	case JsonArray:
+	case Array:
 		ind, err := s2i4(key)
 		if err != nil {
 			return nil, err
@@ -88,11 +88,11 @@ func getFromInterface(key string, v interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return JsonArray(rv).get(ind)
-	case JsonObject:
+		return Array(rv).get(ind)
+	case Object:
 		return rv.get(key)
 	case map[string]interface{}:
-		return JsonObject(rv).get(key)
+		return Object(rv).get(key)
 	default:
 		return nil, ErrJsonValue
 	}

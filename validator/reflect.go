@@ -2,13 +2,14 @@ package validator
 
 import (
 	"fmt"
+	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/reflectx"
-	"github.com/zzztttkkk/suna/utils"
 	"log"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type _TagParser struct {
@@ -24,59 +25,46 @@ func (p *_TagParser) OnNestedStruct(f *reflect.StructField) bool {
 func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 	rule := &_RuleT{field: field.Name, required: true}
 
-	switch field.Type.Kind() {
-	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int, reflect.Int64:
-		rule.t = _Int64
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		rule.t = _Uint64
-	case reflect.Bool:
-		rule.t = _Bool
-	case reflect.String:
-		rule.t = _String
-	case reflect.Slice:
-		rule.isSlice = true
-		ele := reflect.MakeSlice(field.Type, 1, 1).Interface()
-		switch ele.(type) {
-		case [][]byte:
-			rule.t = _BytesSlice
-		case []uint8:
-			rule.t = _Bytes
-			rule.isSlice = false
-		case []int64:
-			rule.t = _IntSlice
-		case []uint64:
-			rule.t = _UintSlice
-		case []bool:
-			rule.t = _BoolSlice
-		case []string:
-			rule.t = _StringSlice
-		case utils.JsonArray:
-			rule.isSlice = false
-			rule.t = _JsonArray
-		case JoinedBoolSlice:
-			rule.t = _JoinedBoolSlice
-			rule.isJoined = true
-		case JoinedIntSlice:
-			rule.t = _JoinedIntSlice
-			rule.isJoined = true
-		case JoinedUintSlice:
-			rule.t = _JoinedUintSlice
-			rule.isJoined = true
-		default:
-			return false
-		}
-	case reflect.Struct:
+	if field.Type.Kind() == reflect.Struct {
 		subP := GetRules(field.Type)
 		p.all = append(p.all, subP.lst...)
 		return false
-	case reflect.Map:
-		ele := reflect.MakeMap(field.Type).Interface()
-		switch ele.(type) {
-		case utils.JsonObject:
-			rule.t = _JsonObject
-		default:
-			return false
-		}
+	}
+	if field.Type.Kind() == reflect.Ptr {
+		log.Println("suna.validator: field is required by default, so do not use pointer")
+		return false
+	}
+
+	switch reflect.New(field.Type).Interface().(type) {
+	case int64, int32, int16, int8, int:
+		rule.t = _Int64
+	case uint64, uint32, uint16, uint8, uint:
+		rule.t = _Uint64
+	case bool:
+		rule.t = _Bool
+	case string:
+		rule.t = _String
+	case []byte:
+		rule.t = _Bytes
+	case []interface{}, jsonx.Array:
+		rule.t = _JsonArray
+	case map[string]interface{}, jsonx.Object:
+		rule.t = _JsonObject
+	case [][]byte:
+		rule.isSlice = true
+		rule.t = _BytesSlice
+	case []int64, []int32, []int16, []int8, []int:
+		rule.t = _IntSlice
+		rule.isSlice = true
+	case []uint64, []uint32, []uint16, []uint:
+		rule.t = _UintSlice
+		rule.isSlice = true
+	case []bool:
+		rule.t = _BoolSlice
+		rule.isSlice = true
+	case []string:
+		rule.t = _StringSlice
+		rule.isSlice = true
 	default:
 		return false
 	}
@@ -219,14 +207,14 @@ func (p *_TagParser) OnDone() {
 	p.current = nil
 }
 
-var rulesMap = map[reflect.Type]*Rules{}
+var _RuleCache sync.Map
 
 func GetRules(v interface{}) *Rules { return getRules(reflect.TypeOf(v)) }
 
 func getRules(p reflect.Type) *Rules {
-	rs, ok := rulesMap[p]
+	rs, ok := _RuleCache.Load(p)
 	if ok {
-		return rs
+		return rs.(*Rules)
 	}
 
 	parser := &_TagParser{}
@@ -246,8 +234,9 @@ func getRules(p reflect.Type) *Rules {
 	rules := &Rules{
 		lst:    parser.all,
 		isJson: parser.isJson,
+		raw:    p,
 	}
 
-	rulesMap[p] = rules
+	_RuleCache.Store(p, rules)
 	return rules
 }

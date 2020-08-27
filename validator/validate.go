@@ -30,11 +30,11 @@ func (e *FormError) Message() *output.Message {
 	}
 }
 
-func newNullError(name string) *FormError {
+func _NewFormNullError(name string) *FormError {
 	return &FormError{v: fmt.Sprintf("`%s` is required", name)}
 }
 
-func newInvalidError(name string) *FormError {
+func _NewFormInvalidError(name string) *FormError {
 	return &FormError{v: fmt.Sprintf("`%s` is invalid", name)}
 }
 
@@ -56,14 +56,14 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 			case _JsonObject:
 				m, ok := rule.toJsonObj(val)
 				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
+					output.Error(ctx, _NewFormInvalidError(rule.form))
 					return false
 				}
 				value = reflect.ValueOf(m)
 			case _JsonArray:
 				m, ok := rule.toJsonAry(val)
 				if !ok {
-					output.Error(ctx, newInvalidError(rule.form))
+					output.Error(ctx, _NewFormInvalidError(rule.form))
 					return false
 				}
 				value = reflect.ValueOf(m)
@@ -93,7 +93,7 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 
 		if len(val) == 0 {
 			if rule.required {
-				output.Error(ctx, newNullError(rule.form))
+				output.Error(ctx, _NewFormNullError(rule.form))
 				return false
 			}
 			continue
@@ -114,23 +114,17 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 				s, ok = rule.toUintSlice(ctx)
 			case _StringSlice:
 				s, ok = rule.toStrSlice(ctx)
-			case _JoinedIntSlice:
-				s, ok = rule.toJoinedIntSlice(ctx)
-			case _JoinedUintSlice:
-				s, ok = rule.toJoinedUintSlice(ctx)
-			case _JoinedBoolSlice:
-				s, ok = rule.toJoinedBoolSlice(ctx)
 			}
 
 			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
+				output.Error(ctx, _NewFormInvalidError(rule.form))
 				return false
 			}
 
 			sV := reflect.ValueOf(s)
 			if !sV.IsValid() {
 				if rule.required {
-					output.Error(ctx, newNullError(rule.form))
+					output.Error(ctx, _NewFormNullError(rule.form))
 					return false
 				} else {
 					continue
@@ -138,7 +132,7 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 			}
 
 			if !rule.checkSize(&sV) {
-				output.Error(ctx, newNullError(rule.form))
+				output.Error(ctx, _NewFormNullError(rule.form))
 				return false
 			}
 			return true
@@ -148,35 +142,35 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 		case _Bool:
 			b, ok := rule.toBool(val)
 			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
+				output.Error(ctx, _NewFormInvalidError(rule.form))
 				return false
 			}
 			field.SetBool(b)
 		case _Int64:
 			v, ok := rule.toI64(val)
 			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
+				output.Error(ctx, _NewFormInvalidError(rule.form))
 				return false
 			}
 			field.SetInt(v)
 		case _Uint64:
 			v, ok := rule.toUI64(val)
 			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
+				output.Error(ctx, _NewFormInvalidError(rule.form))
 				return false
 			}
 			field.SetUint(v)
 		case _Bytes:
 			v, ok := rule.toBytes(val)
 			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
+				output.Error(ctx, _NewFormInvalidError(rule.form))
 				return false
 			}
 			field.SetBytes(v)
 		case _String:
 			v, ok := rule.toBytes(val)
 			if !ok {
-				output.Error(ctx, newInvalidError(rule.form))
+				output.Error(ctx, _NewFormInvalidError(rule.form))
 				return false
 			}
 			field.SetString(gotils.B2S(v))

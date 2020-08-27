@@ -1,4 +1,4 @@
-package utils
+package jsonx
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestJsonKey(t *testing.T) {
-	v := _JsonKey{}
+	v := _Key{}
 	v.init(`...\\.`)
 	for {
 		k, ok := v.next()
@@ -20,7 +20,7 @@ func TestJsonKey(t *testing.T) {
 
 func TestJsonGet(t *testing.T) {
 	data := `{"a": {"b.": [1, 2, 3, {"": "0.0"}]}}`
-	var obj JsonObject
+	var obj Object
 	err := json.Unmarshal([]byte(data), &obj)
 	if err != nil {
 		panic(err)
@@ -30,4 +30,8 @@ func TestJsonGet(t *testing.T) {
 		panic(err)
 	}
 	fmt.Println(v.(string))
+}
+
+func TestParseJsonObject(t *testing.T) {
+	fmt.Println(ParseObject(`{"a":34}`))
 }

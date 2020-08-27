@@ -3,6 +3,7 @@ package rbac
 import (
 	"context"
 	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/sqls/builder"
@@ -43,7 +44,7 @@ func (op *logOpT) Create(ctx context.Context, name string, info utils.M) int64 {
 	kvs.Set("created", time.Now())
 	kvs.Set("name", name)
 	kvs.Set("operator", user.GetId())
-	kvs.Set("info", utils.JsonObject(info))
+	kvs.Set("info", jsonx.Object(info))
 	return op.XCreate(ctx, kvs)
 }
 

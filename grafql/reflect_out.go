@@ -7,7 +7,12 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
+
+type Outer interface {
+	GraphqlScalar() *graphql.Scalar
+}
 
 type _OutVisitor struct {
 	fields map[string]*graphql.Field
@@ -27,7 +32,28 @@ func (v *_OutVisitor) getTag(f *reflect.StructField) string {
 }
 
 func (v *_OutVisitor) OnNestStructField(field *reflect.StructField) bool {
-	return v.getTag(field) != "-"
+	t := v.getTag(field)
+	if t == "-" {
+		return false
+	}
+
+	ele := reflect.New(field.Type)
+	switch rv := ele.Interface().(type) {
+	case Outer:
+		var name string
+		if len(t) < 1 {
+			name = strings.ToLower(field.Name)
+		} else {
+			name = strings.TrimSpace(strings.Split(t, ",")[0])
+		}
+		name = strings.TrimLeft(name, "_")
+
+		f := &graphql.Field{Type: rv.GraphqlScalar()}
+		f.Name = strings.TrimLeft(field.Name, "_")
+		v.fields[name] = f
+		return false
+	}
+	return true
 }
 
 func (v *_OutVisitor) OnField(field *reflect.StructField) {
@@ -42,21 +68,35 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 	} else {
 		name = strings.TrimSpace(strings.Split(t, ",")[0])
 	}
+	name = strings.TrimLeft(name, "_")
+
 	var f *graphql.Field
 	ele := reflect.New(field.Type)
 
-	switch ele.Interface().(type) {
-	case string, *string:
+	switch rv := ele.Interface().(type) {
+	case string, *string, []byte, *[]byte:
 		f = &graphql.Field{Type: graphql.String}
+	case []string, [][]byte:
+		f = &graphql.Field{Type: graphql.NewList(graphql.String)}
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64,
 		*int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
 		f = &graphql.Field{Type: graphql.Int}
+	case []int, []int8, []int16, []int32, []int64, []uint, []uint16, []uint32, []uint64:
+		f = &graphql.Field{Type: graphql.NewList(graphql.Int)}
 	case float32, float64, *float32, *float64:
 		f = &graphql.Field{Type: graphql.Float}
+	case []float32, []float64:
+		f = &graphql.Field{Type: graphql.NewList(graphql.Float)}
 	case bool, *bool:
 		f = &graphql.Field{Type: graphql.Boolean}
-	case []byte, *[]byte:
-		f = &graphql.Field{Type: graphql.String}
+	case []bool:
+		f = &graphql.Field{Type: graphql.NewList(graphql.Boolean)}
+	case time.Time, *time.Time:
+		f = &graphql.Field{Type: graphql.DateTime}
+	case []time.Time, []*time.Time:
+		f = &graphql.Field{Type: graphql.NewList(graphql.DateTime)}
+	case Outer:
+		f = &graphql.Field{Type: rv.GraphqlScalar()}
 	default:
 		return
 	}
@@ -72,22 +112,22 @@ func NewOutObject(v reflect.Value) *graphql.Object {
 	t := v.Type()
 
 	name := strings.TrimLeft(t.Name(), "_")
-	fields, ok := _ReflectOutCache.Load(t)
+	obj, ok := _ReflectOutCache.Load(t)
 	if ok {
-		return graphql.NewObject(
-			graphql.ObjectConfig{
-				Name:   name,
-				Fields: fields.(map[string]*graphql.Field),
-			},
-		)
+		return obj.(*graphql.Object)
 	}
 
 	visitor := _OutVisitor{fields: map[string]*graphql.Field{}, names: map[string]string{}}
 	reflectx.Map(t, &visitor)
-	_ReflectOutCache.Store(t, visitor.fields)
 
 	for k, field := range visitor.fields {
-		fn := fmt.Sprintf("Resolve%s", visitor.names[k])
+		_RawFieldName := visitor.names[k]
+		if len(_RawFieldName) < 1 {
+			// custom scalar type
+			continue
+		}
+
+		fn := fmt.Sprintf("ResolveOut%s", _RawFieldName)
 		fv := v.MethodByName(fn)
 		if !fv.IsValid() {
 			continue
@@ -100,10 +140,12 @@ func NewOutObject(v reflect.Value) *graphql.Object {
 		}
 	}
 
-	return graphql.NewObject(
+	rv := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name:   name,
 			Fields: visitor.fields,
 		},
 	)
+	_ReflectOutCache.Store(t, rv)
+	return rv
 }
