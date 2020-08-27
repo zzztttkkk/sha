@@ -13,17 +13,20 @@ import (
 )
 
 type _TagParser struct {
-	current *_RuleT
+	current *_Rule
 	all     _RuleSliceT
 	isJson  bool
 }
 
 func (p *_TagParser) OnNestedStruct(f *reflect.StructField) bool {
+	if !f.Anonymous {
+		log.Println("suna.validator: do not support nested struct")
+	}
 	return true
 }
 
 func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
-	rule := &_RuleT{field: field.Name, required: true}
+	rule := &_Rule{field: field.Name, required: true}
 
 	if field.Type.Kind() == reflect.Struct {
 		subP := GetRules(field.Type)
@@ -35,7 +38,8 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 		return false
 	}
 
-	switch reflect.New(field.Type).Interface().(type) {
+	ele := reflect.New(field.Type).Elem()
+	switch ele.Interface().(type) {
 	case int64, int32, int16, int8, int:
 		rule.t = _Int64
 	case uint64, uint32, uint16, uint8, uint:
@@ -197,6 +201,8 @@ func (p *_TagParser) OnAttr(key, val string) {
 	case "S", "size":
 		rule.srange = true
 		rule.minS, rule.maxS, rule.minSF, rule.maxSF = parseIntRange(val)
+	case "I", "info":
+		rule.info = val
 	case "optional":
 		rule.required = false
 	}

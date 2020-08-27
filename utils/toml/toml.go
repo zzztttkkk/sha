@@ -1,6 +1,7 @@
 package toml
 
 import (
+	"fmt"
 	btoml "github.com/BurntSushi/toml"
 	"github.com/imdario/mergo"
 	"github.com/savsgio/gotils"
@@ -100,9 +101,15 @@ func FromFile(conf interface{}, fp string) error {
 	return nil
 }
 
-func FromFiles(conf interface{}, defaultV interface{}, fps ...string) {
-	t := conf
-	ct := reflect.TypeOf(conf).Elem()
+func FromFiles(dist interface{}, defaultV interface{}, fps ...string) {
+	t := dist
+	if reflect.TypeOf(t).Kind() != reflect.Ptr {
+		panic(fmt.Errorf("suna.utils.toml: dist is not a pointer"))
+	}
+	ct := reflect.TypeOf(dist).Elem()
+	if ct.Kind() != reflect.Struct {
+		panic(fmt.Errorf("suna.utils.toml: dist is not a struct pointer"))
+	}
 
 	for _, fp := range fps {
 		ele := reflect.New(ct).Interface()

@@ -23,7 +23,7 @@ var (
 	internalServerErrorMsg = []byte(`{"errno":500,"errmsg":"internal server error","data":""}`)
 )
 
-func toJson(ctx *fasthttp.RequestCtx, data interface{}) {
+func ToJson(ctx *fasthttp.RequestCtx, data interface{}) {
 	writer := _CtxCompressionWriter{raw: ctx}
 	encoder := json.NewEncoder(&writer)
 	err := encoder.Encode(data)
@@ -46,7 +46,7 @@ func Msg(ctx *fasthttp.RequestCtx, code int, data interface{}) {
 	}
 
 	msg := Message{Data: data}
-	toJson(ctx, &msg)
+	ToJson(ctx, &msg)
 }
 
 func MsgOK(ctx *fasthttp.RequestCtx, data interface{}) {
@@ -63,7 +63,7 @@ func ErrorAndErrorStack(ctx *fasthttp.RequestCtx, err error) string {
 	case Err:
 		code = v.StatusCode()
 		ctx.SetStatusCode(v.StatusCode())
-		toJson(ctx, v.Message())
+		ToJson(ctx, v.Message())
 	default:
 		code = fasthttp.StatusInternalServerError
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)

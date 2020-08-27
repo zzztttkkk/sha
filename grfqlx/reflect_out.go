@@ -1,7 +1,7 @@
-package grafql
+package grfqlx
 
 import (
-	"fmt"
+	"context"
 	"github.com/graphql-go/graphql"
 	"github.com/zzztttkkk/suna/reflectx"
 	"reflect"
@@ -10,25 +10,18 @@ import (
 	"time"
 )
 
-type Outer interface {
+type GraphqlScalarer interface {
 	GraphqlScalar() *graphql.Scalar
 }
 
+type ResolveOutFunction func(ctx context.Context, info *graphql.ResolveInfo) (interface{}, error)
+
 type _OutVisitor struct {
-	fields map[string]*graphql.Field
-	names  map[string]string
+	fields graphql.Fields
 }
 
 func (v *_OutVisitor) getTag(f *reflect.StructField) string {
-	jt := f.Tag.Get("json")
-	if len(jt) > 0 {
-		return jt
-	}
-	gt := f.Tag.Get("graphql")
-	if len(gt) > 0 {
-		return gt
-	}
-	return ""
+	return f.Tag.Get("json")
 }
 
 func (v *_OutVisitor) OnNestStructField(field *reflect.StructField) bool {
@@ -37,9 +30,9 @@ func (v *_OutVisitor) OnNestStructField(field *reflect.StructField) bool {
 		return false
 	}
 
-	ele := reflect.New(field.Type)
+	ele := reflect.New(field.Type).Elem()
 	switch rv := ele.Interface().(type) {
-	case Outer:
+	case GraphqlScalarer:
 		var name string
 		if len(t) < 1 {
 			name = strings.ToLower(field.Name)
@@ -71,7 +64,7 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 	name = strings.TrimLeft(name, "_")
 
 	var f *graphql.Field
-	ele := reflect.New(field.Type)
+	ele := reflect.New(field.Type).Elem()
 
 	switch rv := ele.Interface().(type) {
 	case string, *string, []byte, *[]byte:
@@ -95,7 +88,7 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 		f = &graphql.Field{Type: graphql.DateTime}
 	case []time.Time, []*time.Time:
 		f = &graphql.Field{Type: graphql.NewList(graphql.DateTime)}
-	case Outer:
+	case GraphqlScalarer:
 		f = &graphql.Field{Type: rv.GraphqlScalar()}
 	default:
 		return
@@ -103,49 +96,36 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 
 	f.Name = name
 	v.fields[name] = f
-	v.names[name] = field.Name
 }
 
 var _ReflectOutCache sync.Map
 
-func NewOutObject(v reflect.Value) *graphql.Object {
-	t := v.Type()
-
-	name := strings.TrimLeft(t.Name(), "_")
+func getOutputFields(t reflect.Type) *graphql.ObjectConfig {
 	obj, ok := _ReflectOutCache.Load(t)
 	if ok {
-		return obj.(*graphql.Object)
+		return obj.(*graphql.ObjectConfig)
 	}
-
-	visitor := _OutVisitor{fields: map[string]*graphql.Field{}, names: map[string]string{}}
+	name := strings.TrimLeft(t.Name(), "_")
+	visitor := _OutVisitor{fields: map[string]*graphql.Field{}}
 	reflectx.Map(t, &visitor)
 
-	for k, field := range visitor.fields {
-		_RawFieldName := visitor.names[k]
-		if len(_RawFieldName) < 1 {
-			// custom scalar type
-			continue
-		}
-
-		fn := fmt.Sprintf("ResolveOut%s", _RawFieldName)
-		fv := v.MethodByName(fn)
-		if !fv.IsValid() {
-			continue
-		}
-
-		rf, ok := fv.Interface().(func(params graphql.ResolveParams) (interface{}, error))
-		if ok {
-			field.Resolve = rf
-			continue
-		}
+	rv := &graphql.ObjectConfig{
+		Name:   name,
+		Fields: visitor.fields,
 	}
 
-	rv := graphql.NewObject(
-		graphql.ObjectConfig{
-			Name:   name,
-			Fields: visitor.fields,
-		},
-	)
 	_ReflectOutCache.Store(t, rv)
 	return rv
+}
+
+func NewOutObjectType(v reflect.Value) graphql.Output {
+	t := v.Type()
+	if t.Kind() == reflect.Slice {
+		et := t.Elem()
+		if et.Kind() != reflect.Struct {
+			panic("suna.grfqlx: not a struct slice")
+		}
+		return graphql.NewList(graphql.NewObject(*getOutputFields(et)))
+	}
+	return graphql.NewObject(*getOutputFields(t))
 }

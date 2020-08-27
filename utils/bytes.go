@@ -48,6 +48,14 @@ func S2I64(s string) int64 {
 	return v
 }
 
+func S2U64(s string) uint64 {
+	v, e := strconv.ParseUint(s, 10, 64)
+	if e != nil {
+		panic(e)
+	}
+	return v
+}
+
 func B2I32(b []byte) int32 { return S2I32(gotils.B2S(b)) }
 
 type BytesPool struct {

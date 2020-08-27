@@ -26,9 +26,9 @@ func TestValidate(t *testing.T) {
 		Password  []byte  `validator:":R<password>"`
 		Name      []byte  `validator:":F<username>"`
 		KeepLogin bool    `validator:"kl:optional"`
-		FIDs      []int64 `validator:"fid:S<7>"`
+		FIDs      []int64 `validator:"fid:S<3>"`
 	}
-	fmt.Println(GetRules(Form{}).NewDoc(""))
+	fmt.Print(GetRules(Form{}).NewDoc("").Document())
 
 	ctx := fasthttp.RequestCtx{}
 	ctx.Request.SetRequestURI("http://localhost:8080/?password=123456&name=ztk&fid=1&fid=2&fid=3")
@@ -71,4 +71,22 @@ func TestJsonRequest(t *testing.T) {
 		return
 	}
 	fmt.Println(info)
+}
+
+func TestN(t *testing.T) {
+	type A struct {
+		Id int64
+	}
+
+	type B struct {
+		Name string
+	}
+
+	type C struct {
+		A
+		b    B
+		Info string
+	}
+
+	GetRules(C{})
 }

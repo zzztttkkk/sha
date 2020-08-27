@@ -83,6 +83,10 @@ func Tags(p reflect.Type, tag string, parser TagParser) {
 		p,
 		&_VisitorT{
 			onNS: func(field *reflect.StructField) bool {
+				t := field.Tag.Get(tag)
+				if t == "-" {
+					return false
+				}
 				if parser.OnNestedStruct(field) {
 					return true
 				}

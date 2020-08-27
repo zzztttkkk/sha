@@ -1,13 +1,10 @@
-package grafql
+package grfqlx
 
 import (
 	"fmt"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/savsgio/gotils"
-	"github.com/zzztttkkk/suna/auth"
-	"github.com/zzztttkkk/suna/ctxs"
-	"github.com/zzztttkkk/suna/rbac"
 	"github.com/zzztttkkk/suna/utils"
 	"reflect"
 	"strings"
@@ -17,16 +14,6 @@ import (
 type B struct {
 	Id   int64
 	Name string
-}
-
-func (b *B) ResolveOutName(p graphql.ResolveParams) (interface{}, error) {
-	rbac.IsGranted(
-		p.Context,
-		auth.MustGetUser(ctxs.MustUnwrap(p.Context)),
-		rbac.PolicyAny,
-		"b.name.read", "b.name.*", "b.*.read", "b.*.*",
-	)
-	return b.Name, nil
 }
 
 type C struct {
@@ -102,6 +89,8 @@ type D struct {
 }
 
 func TestNewObject(t *testing.T) {
-	v := NewOutObject(reflect.ValueOf(D{}))
+	v := NewOutObjectType(reflect.ValueOf(D{}))
+	fmt.Println(v)
+	v = NewOutObjectType(reflect.ValueOf([]D{}))
 	fmt.Println(v)
 }

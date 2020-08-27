@@ -72,6 +72,10 @@ type Suna struct {
 		Nodes []string
 	}
 
+	Graphql struct {
+		ShowFormatError bool
+	}
+
 	Internal struct {
 		isDebug   bool
 		isRelease bool
@@ -106,6 +110,7 @@ func init() {
 	defaultV.Session.Captcha.Maxage = 300
 	defaultV.Session.Captcha.AudioLanguage = "zh"
 	defaultV.Rbac.TablenamePrefix = "rbac_"
+	defaultV.Graphql.ShowFormatError = true
 }
 
 func Default() Suna { return defaultV }
@@ -123,6 +128,10 @@ func (t *Suna) Done() {
 		t.Internal.isTest = true
 	default:
 		t.Internal.isDebug = true
+	}
+
+	if t.IsDebug() {
+		t.Graphql.ShowFormatError = true
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/graphql-go/graphql"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/utils"
@@ -49,11 +48,12 @@ var typeNames = []string{
 	"StringArray",
 }
 
-type _RuleT struct {
+type _Rule struct {
 	form     string
 	field    string
 	t        int
 	required bool
+	info     string
 
 	vrange bool // int value value range
 	minVF  bool
@@ -88,7 +88,7 @@ type _RuleT struct {
 	isSlice bool
 }
 
-func (rule *_RuleT) toBytes(v []byte) (val []byte, ok bool) {
+func (rule *_Rule) toBytes(v []byte) (val []byte, ok bool) {
 	if rule.lrange {
 		l := int64(len(v))
 
@@ -117,7 +117,7 @@ func (rule *_RuleT) toBytes(v []byte) (val []byte, ok bool) {
 	return v, true
 }
 
-func (rule *_RuleT) toBool(v []byte) (r bool, ok bool) {
+func (rule *_Rule) toBool(v []byte) (r bool, ok bool) {
 	v, ok = rule.toBytes(v)
 	if !ok {
 		return false, false
@@ -130,7 +130,7 @@ func (rule *_RuleT) toBool(v []byte) (r bool, ok bool) {
 	return _v, true
 }
 
-func (rule *_RuleT) toI64(v []byte) (num int64, ok bool) {
+func (rule *_Rule) toI64(v []byte) (num int64, ok bool) {
 	v, ok = rule.toBytes(v)
 	if !ok {
 		return 0, false
@@ -153,7 +153,7 @@ func (rule *_RuleT) toI64(v []byte) (num int64, ok bool) {
 	return rv, true
 }
 
-func (rule *_RuleT) toUI64(v []byte) (num uint64, ok bool) {
+func (rule *_Rule) toUI64(v []byte) (num uint64, ok bool) {
 	v, ok = rule.toBytes(v)
 	if !ok {
 		return 0, false
@@ -177,7 +177,7 @@ func (rule *_RuleT) toUI64(v []byte) (num uint64, ok bool) {
 	return rv, true
 }
 
-func (rule *_RuleT) toJsonObj(v []byte) (map[string]interface{}, bool) {
+func (rule *_Rule) toJsonObj(v []byte) (map[string]interface{}, bool) {
 	if rule.lrange {
 		l := int64(len(v))
 		if rule.minL > 0 && l < rule.minL {
@@ -196,7 +196,7 @@ func (rule *_RuleT) toJsonObj(v []byte) (map[string]interface{}, bool) {
 	return m, true
 }
 
-func (rule *_RuleT) toJsonAry(v []byte) ([]interface{}, bool) {
+func (rule *_Rule) toJsonAry(v []byte) ([]interface{}, bool) {
 	if rule.lrange {
 		l := int64(len(v))
 		if rule.minL > 0 && l < rule.minL {
@@ -215,7 +215,7 @@ func (rule *_RuleT) toJsonAry(v []byte) ([]interface{}, bool) {
 	return s, true
 }
 
-func (rule *_RuleT) checkSize(v *reflect.Value) bool {
+func (rule *_Rule) checkSize(v *reflect.Value) bool {
 	if !rule.srange {
 		return true
 	}
@@ -254,7 +254,7 @@ func mapMultiForm(ctx *fasthttp.RequestCtx, name string, fn func([]byte) bool) b
 	return true
 }
 
-func (rule *_RuleT) toBoolSlice(ctx *fasthttp.RequestCtx) ([]bool, bool) {
+func (rule *_Rule) toBoolSlice(ctx *fasthttp.RequestCtx) ([]bool, bool) {
 	var lst []bool
 	ok := mapMultiForm(
 		ctx,
@@ -276,7 +276,7 @@ func (rule *_RuleT) toBoolSlice(ctx *fasthttp.RequestCtx) ([]bool, bool) {
 
 var joinSep = []byte(",")
 
-func (rule *_RuleT) toJoinedBoolSlice(ctx *fasthttp.RequestCtx) (lst []bool, ok bool) {
+func (rule *_Rule) toJoinedBoolSlice(ctx *fasthttp.RequestCtx) (lst []bool, ok bool) {
 	formV := ctx.FormValue(rule.form)
 	if len(formV) < 1 {
 		return nil, false
@@ -291,7 +291,7 @@ func (rule *_RuleT) toJoinedBoolSlice(ctx *fasthttp.RequestCtx) (lst []bool, ok 
 	return lst, true
 }
 
-func (rule *_RuleT) toIntSlice(ctx *fasthttp.RequestCtx) ([]int64, bool) {
+func (rule *_Rule) toIntSlice(ctx *fasthttp.RequestCtx) ([]int64, bool) {
 	var lst []int64
 	ok := mapMultiForm(
 		ctx,
@@ -311,7 +311,7 @@ func (rule *_RuleT) toIntSlice(ctx *fasthttp.RequestCtx) ([]int64, bool) {
 	return nil, false
 }
 
-func (rule *_RuleT) toJoinedIntSlice(ctx *fasthttp.RequestCtx) (lst []int64, ok bool) {
+func (rule *_Rule) toJoinedIntSlice(ctx *fasthttp.RequestCtx) (lst []int64, ok bool) {
 	formV := ctx.FormValue(rule.form)
 	if len(formV) < 1 {
 		return nil, false
@@ -326,7 +326,7 @@ func (rule *_RuleT) toJoinedIntSlice(ctx *fasthttp.RequestCtx) (lst []int64, ok 
 	return lst, true
 }
 
-func (rule *_RuleT) toUintSlice(ctx *fasthttp.RequestCtx) ([]uint64, bool) {
+func (rule *_Rule) toUintSlice(ctx *fasthttp.RequestCtx) ([]uint64, bool) {
 	var lst []uint64
 	ok := mapMultiForm(
 		ctx,
@@ -346,7 +346,7 @@ func (rule *_RuleT) toUintSlice(ctx *fasthttp.RequestCtx) ([]uint64, bool) {
 	return nil, false
 }
 
-func (rule *_RuleT) toJoinedUintSlice(ctx *fasthttp.RequestCtx) (lst []uint64, ok bool) {
+func (rule *_Rule) toJoinedUintSlice(ctx *fasthttp.RequestCtx) (lst []uint64, ok bool) {
 	formV := ctx.FormValue(rule.form)
 	if len(formV) < 1 {
 		return nil, false
@@ -361,7 +361,7 @@ func (rule *_RuleT) toJoinedUintSlice(ctx *fasthttp.RequestCtx) (lst []uint64, o
 	return lst, true
 }
 
-func (rule *_RuleT) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
+func (rule *_Rule) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
 	var lst []string
 	ok := mapMultiForm(
 		ctx,
@@ -381,27 +381,14 @@ func (rule *_RuleT) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
 	return nil, false
 }
 
-func (rule *_RuleT) ToGraphqlArgument() *graphql.ArgumentConfig {
-	ac := &graphql.ArgumentConfig{}
+var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{srange}|{default}|{regexp}|{function}|{descp}|")
 
-	switch rule.t {
-	case _Bool:
-		ac.Type = graphql.Boolean
-	case _Int64, _Uint64:
-		ac.Type = graphql.Int
-	case _Bytes, _String:
-		ac.Type = graphql.String
-	}
-	return ac
-}
-
-var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{srange}|{default}|{regexp}|{function}|")
-
-func (rule *_RuleT) String() string {
+func (rule *_Rule) String() string {
 	m := utils.M{
 		"name":     rule.form,
 		"type":     typeNames[rule.t],
 		"required": rule.required,
+		"descp":    rule.info,
 	}
 
 	if rule.vrange {
@@ -486,7 +473,7 @@ func (rule *_RuleT) String() string {
 	return ruleFmt.Render(m)
 }
 
-type _RuleSliceT []*_RuleT
+type _RuleSliceT []*_Rule
 
 func (a _RuleSliceT) Len() int      { return len(a) }
 func (a _RuleSliceT) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -503,8 +490,8 @@ func (a _RuleSliceT) Less(i, j int) bool {
 // markdown table
 func (a _RuleSliceT) String() string {
 	buf := strings.Builder{}
-	buf.WriteString("|name|type|required|length range|value range|size range|default|regexp|function|\n")
-	buf.WriteString("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n")
+	buf.WriteString("|name|type|required|length range|value range|size range|default|regexp|function|description|\n")
+	buf.WriteString("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n")
 	for _, r := range a {
 		buf.WriteString(r.String())
 		buf.WriteByte('\n')
@@ -526,17 +513,11 @@ func (rs *Rules) NewDoc(descp string) *Doc {
 	}
 }
 
-func (rs *Rules) RawType() reflect.Type {
-	return rs.raw
-}
-
 type Doc struct {
 	descp  string
 	fields string
 }
 
-func (d *Doc) DocDescp() string { return d.descp }
-
-func (d *Doc) ApiFields() string {
-	return d.fields
+func (d *Doc) Document() string {
+	return fmt.Sprintf(`### description\n%s\n### fields\n%s\n`, d.descp, d.fields)
 }
