@@ -16,6 +16,7 @@ type _TagParser struct {
 	current *_Rule
 	all     _RuleSliceT
 	isJson  bool
+	name    string
 }
 
 func (p *_TagParser) OnNestedStruct(f *reflect.StructField) bool {
@@ -42,19 +43,10 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 	switch ele.Interface().(type) {
 	case int64:
 		rule.t = _Int64
-	case int32, int16, int8, int:
-		log.Printf("suna.validator: use `int64` as int")
-		return false
 	case uint64:
 		rule.t = _Uint64
-	case uint32, uint16, uint8, uint:
-		log.Printf("suna.validator: use `uint64` as uint")
-		return false
 	case float64:
 		rule.t = _Float64
-	case float32:
-		log.Printf("suna.validator: use `float64` as float")
-		return false
 	case bool:
 		rule.t = _Bool
 	case string:
@@ -71,15 +63,9 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 	case []int64:
 		rule.t = _IntSlice
 		rule.isSlice = true
-	case []int32, []int16, []int8, []int:
-		log.Printf("suna.validator: use `[]int64` as int slice")
-		return false
 	case []uint64:
 		rule.t = _UintSlice
 		rule.isSlice = true
-	case []uint32, []uint16, []uint:
-		log.Printf("suna.validator: use `[]int64` as uint slice")
-		return false
 	case []bool:
 		rule.t = _BoolSlice
 		rule.isSlice = true
@@ -89,8 +75,8 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 	case []float64:
 		rule.t = _FloatSlice
 		rule.isSlice = true
-	case []float32:
-		log.Printf("suna.validator: use `[]float64` as float slice")
+	case int32, int16, int8, int, uint32, uint16, uint8, uint, float32, []int32, []int16, []int8, []int, []uint32, []uint16, []uint, []float32:
+		log.Printf("suna.validator: use 64 bit value, not `%s`. %s.%s", field.Type.Name(), p.name, field.Name)
 		return false
 	default:
 		return false
@@ -295,7 +281,7 @@ func getRules(p reflect.Type) *Rules {
 		return rs.(*Rules)
 	}
 
-	parser := &_TagParser{}
+	parser := &_TagParser{name: p.Name()}
 	reflectx.Tags(p, "validator", parser)
 	sort.Sort(parser.all)
 

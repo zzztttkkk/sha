@@ -1,4 +1,4 @@
-package gqlx
+package graphqlx
 
 import (
 	"fmt"
