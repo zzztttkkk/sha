@@ -281,7 +281,7 @@ func getRules(p reflect.Type) *Rules {
 		return rs.(*Rules)
 	}
 
-	parser := &_TagParser{name: p.Name()}
+	parser := &_TagParser{name: fmt.Sprintf("%s.%s", p.PkgPath(), p.Name())}
 	reflectx.Tags(p, "validator", parser)
 	sort.Sort(parser.all)
 

@@ -16,7 +16,7 @@ func init() {
 		Operators []int64  `validate:"optional"`
 
 		Cursor int64 `validate:"optional"`
-		Limit  int   `validate:"V<10-30>;D<10>;optional"`
+		Limit  int64 `validate:"V<10-30>;D<10>;optional"`
 		Asc    bool  `validate:"D<true>;optional"`
 	}
 

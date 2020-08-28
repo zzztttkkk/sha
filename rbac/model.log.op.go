@@ -54,7 +54,7 @@ func (op *logOpT) List(
 	names []string, uids []int64,
 	asc bool,
 	cursor int64,
-	limit int,
+	limit int64,
 ) (lst []logT) {
 	conditions := builder.AndConditions()
 	conditions.Gte(begin > 0, "created", begin)
