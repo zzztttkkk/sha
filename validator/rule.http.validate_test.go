@@ -27,11 +27,12 @@ func TestValidate(t *testing.T) {
 		Name      []byte  `validator:":F<username>"`
 		KeepLogin bool    `validator:"kl:optional"`
 		FIDs      []int64 `validator:"fid:S<3>"`
+		Float     float64
 	}
 	fmt.Print(GetRules(Form{}).NewDoc("").Document())
 
 	ctx := fasthttp.RequestCtx{}
-	ctx.Request.SetRequestURI("http://localhost:8080/?password=123456&name=ztk&fid=1&fid=2&fid=3")
+	ctx.Request.SetRequestURI("http://localhost:8080/?password=123456&name=ztk&fid=1&fid=22&fid=3&float=0.123")
 
 	form := Form{}
 	if !Validate(&ctx, &form) {
@@ -39,6 +40,7 @@ func TestValidate(t *testing.T) {
 		return
 	}
 	fmt.Println(string(form.Password), string(form.Name), form.FIDs)
+	fmt.Println(form)
 }
 
 func TestJsonRequest(t *testing.T) {

@@ -112,6 +112,8 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 				s, ok = rule.toIntSlice(ctx)
 			case _UintSlice:
 				s, ok = rule.toUintSlice(ctx)
+			case _FloatSlice:
+				s, ok = rule.toFloatSlice(ctx)
 			case _StringSlice:
 				s, ok = rule.toStrSlice(ctx)
 			}
@@ -131,11 +133,12 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 				}
 			}
 
-			if !rule.checkSize(&sV) {
+			if !rule.checkSizeRange(&sV) {
 				output.Error(ctx, _NewFormNullError(rule.form))
 				return false
 			}
-			return true
+			field.Set(sV)
+			continue
 		}
 
 		switch rule.t {
@@ -147,19 +150,26 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 			}
 			field.SetBool(b)
 		case _Int64:
-			v, ok := rule.toI64(val)
+			v, ok := rule.toInt(val)
 			if !ok {
 				output.Error(ctx, _NewFormInvalidError(rule.form))
 				return false
 			}
 			field.SetInt(v)
 		case _Uint64:
-			v, ok := rule.toUI64(val)
+			v, ok := rule.toUint(val)
 			if !ok {
 				output.Error(ctx, _NewFormInvalidError(rule.form))
 				return false
 			}
 			field.SetUint(v)
+		case _Float64:
+			v, ok := rule.toFloat(val)
+			if !ok {
+				output.Error(ctx, _NewFormInvalidError(rule.form))
+				return false
+			}
+			field.SetFloat(v)
 		case _Bytes:
 			v, ok := rule.toBytes(val)
 			if !ok {

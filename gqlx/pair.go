@@ -1,4 +1,4 @@
-package grfqlx
+package gqlx
 
 import (
 	"context"
@@ -22,22 +22,38 @@ type Pair struct {
 
 func NewPair(inV, outV interface{}, resolveFunc ResolveFunc) *Pair {
 	p := &Pair{in: inV, out: outV}
-	p.rules = validator.GetRules(inV)
-	p.am = p.rules.ArgumentMap()
+
+	if inV != nil {
+		p.rules = validator.GetRules(inV)
+		p.am = p.rules.ArgumentMap()
+	} else {
+		p.am = nil
+	}
+
 	p.resolve = resolveFunc
 	return p
 }
 
 func (p *Pair) toField(name, descp string) *graphql.Field {
+	var otype graphql.Output
+	if p.out == nil {
+		otype = nil
+	} else {
+		otype = NewOutObjectType(reflect.ValueOf(p.out))
+	}
+
 	field := &graphql.Field{
-		Type:        NewOutObjectType(reflect.ValueOf(p.out)),
+		Type:        otype,
 		Name:        name,
 		Description: descp,
 		Args:        p.am,
 	}
 	field.Resolve = func(params graphql.ResolveParams) (interface{}, error) {
-		ele := p.rules.BindValue(params.Args).Addr().Interface()
-		return p.resolve(params.Context, ele, &params.Info)
+		v, err := p.rules.ValidateAndBind(params.Args)
+		if err != nil {
+			return nil, err
+		}
+		return p.resolve(params.Context, v.Addr().Interface(), &params.Info)
 	}
 	return field
 }

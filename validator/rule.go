@@ -1,16 +1,11 @@
 package validator
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"github.com/savsgio/gotils"
-	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/utils"
 	"html"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -18,6 +13,7 @@ const (
 	_Bool = iota
 	_Int64
 	_Uint64
+	_Float64
 	_Bytes
 	_String
 
@@ -27,6 +23,7 @@ const (
 	_BoolSlice
 	_IntSlice
 	_UintSlice
+	_FloatSlice
 	_StringSlice
 	_BytesSlice
 )
@@ -35,6 +32,7 @@ var typeNames = []string{
 	"Bool",
 	"Int",
 	"Uint",
+	"Float",
 	"String",
 	"String",
 
@@ -44,6 +42,7 @@ var typeNames = []string{
 	"BoolArray",
 	"IntArray",
 	"UintArray",
+	"FloatArray",
 	"StringArray",
 	"StringArray",
 }
@@ -54,16 +53,24 @@ type _Rule struct {
 	t        int
 	required bool
 	info     string
+	bits     int
 
 	vrange bool // int value value range
-	minVF  bool
-	minV   int64
-	maxVF  bool
-	maxV   int64
+
+	minVF bool  // min int value validate flag
+	minV  int64 // min int value
+	maxVF bool  // max int value validate flag
+	maxV  int64 // max int value
+
 	minUVF bool
 	minUV  uint64
 	maxUVF bool
 	maxUV  uint64
+
+	minFVF bool
+	minFV  float64
+	maxFVF bool
+	maxFV  float64
 
 	lrange bool // bytes value length range
 	minLF  bool
@@ -86,299 +93,6 @@ type _Rule struct {
 	fnName string
 
 	isSlice bool
-}
-
-func (rule *_Rule) toBytes(v []byte) (val []byte, ok bool) {
-	if rule.lrange {
-		l := int64(len(v))
-
-		if rule.minLF && l < rule.minL {
-			return nil, false
-		}
-
-		if rule.maxLF && l > rule.maxL {
-			return nil, false
-		}
-	}
-
-	if rule.reg != nil {
-		if !rule.reg.Match(v) {
-			return nil, false
-		}
-	}
-
-	if rule.fn != nil {
-		v, ok = rule.fn(v)
-		if !ok {
-			return nil, false
-		}
-	}
-
-	return v, true
-}
-
-func (rule *_Rule) toBool(v []byte) (r bool, ok bool) {
-	v, ok = rule.toBytes(v)
-	if !ok {
-		return false, false
-	}
-
-	_v, err := strconv.ParseBool(gotils.B2S(v))
-	if err != nil {
-		return false, false
-	}
-	return _v, true
-}
-
-func (rule *_Rule) toI64(v []byte) (num int64, ok bool) {
-	v, ok = rule.toBytes(v)
-	if !ok {
-		return 0, false
-	}
-
-	rv, err := strconv.ParseInt(gotils.B2S(v), 10, 64)
-	if err != nil {
-		return 0, false
-	}
-
-	if rule.vrange {
-		if rule.minVF && rv < rule.minV {
-			return 0, false
-		}
-		if rule.maxVF && rv > rule.maxV {
-			return 0, false
-		}
-	}
-
-	return rv, true
-}
-
-func (rule *_Rule) toUI64(v []byte) (num uint64, ok bool) {
-	v, ok = rule.toBytes(v)
-	if !ok {
-		return 0, false
-	}
-
-	rv, err := strconv.ParseUint(gotils.B2S(v), 10, 64)
-	if err != nil {
-		return 0, false
-	}
-
-	if rule.vrange {
-		if rule.minUVF && rv < rule.minUV {
-			return 0, false
-		}
-
-		if rule.maxUVF && rv > rule.maxUV {
-			return 0, false
-		}
-	}
-
-	return rv, true
-}
-
-func (rule *_Rule) toJsonObj(v []byte) (map[string]interface{}, bool) {
-	if rule.lrange {
-		l := int64(len(v))
-		if rule.minL > 0 && l < rule.minL {
-			return nil, false
-		}
-		if rule.maxL > 0 && l > rule.maxL {
-			return nil, false
-		}
-	}
-
-	m := map[string]interface{}{}
-	err := json.Unmarshal(v, &m)
-	if err != nil {
-		return nil, false
-	}
-	return m, true
-}
-
-func (rule *_Rule) toJsonAry(v []byte) ([]interface{}, bool) {
-	if rule.lrange {
-		l := int64(len(v))
-		if rule.minL > 0 && l < rule.minL {
-			return nil, false
-		}
-		if rule.maxL > 0 && l > rule.maxL {
-			return nil, false
-		}
-	}
-
-	var s []interface{}
-	err := json.Unmarshal(v, &s)
-	if err != nil {
-		return nil, false
-	}
-	return s, true
-}
-
-func (rule *_Rule) checkSize(v *reflect.Value) bool {
-	if !rule.srange {
-		return true
-	}
-	_l := int64(v.Len())
-
-	if rule.minSF && _l < rule.minS {
-		return false
-	}
-	if rule.maxSF && _l > rule.maxS {
-		return false
-	}
-	return true
-}
-
-func mapMultiForm(ctx *fasthttp.RequestCtx, name string, fn func([]byte) bool) bool {
-	for _, v := range ctx.QueryArgs().PeekMulti(name) {
-		if !fn(v) {
-			return false
-		}
-	}
-
-	for _, v := range ctx.PostArgs().PeekMulti(name) {
-		if !fn(v) {
-			return false
-		}
-	}
-
-	mf, _ := ctx.MultipartForm()
-	if mf != nil {
-		for _, v := range mf.Value[name] {
-			if !fn(gotils.S2B(v)) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func (rule *_Rule) toBoolSlice(ctx *fasthttp.RequestCtx) ([]bool, bool) {
-	var lst []bool
-	ok := mapMultiForm(
-		ctx,
-		rule.form,
-		func(i []byte) bool {
-			v, ok := rule.toBool(i)
-			if !ok {
-				return false
-			}
-			lst = append(lst, v)
-			return true
-		},
-	)
-	if ok {
-		return lst, true
-	}
-	return nil, false
-}
-
-var joinSep = []byte(",")
-
-func (rule *_Rule) toJoinedBoolSlice(ctx *fasthttp.RequestCtx) (lst []bool, ok bool) {
-	formV := ctx.FormValue(rule.form)
-	if len(formV) < 1 {
-		return nil, false
-	}
-	for _, b := range bytes.Split(formV, joinSep) {
-		_v, _ok := rule.toBool(bytes.TrimSpace(b))
-		if !_ok {
-			return nil, false
-		}
-		lst = append(lst, _v)
-	}
-	return lst, true
-}
-
-func (rule *_Rule) toIntSlice(ctx *fasthttp.RequestCtx) ([]int64, bool) {
-	var lst []int64
-	ok := mapMultiForm(
-		ctx,
-		rule.form,
-		func(i []byte) bool {
-			v, ok := rule.toI64(i)
-			if !ok {
-				return false
-			}
-			lst = append(lst, v)
-			return true
-		},
-	)
-	if ok {
-		return lst, true
-	}
-	return nil, false
-}
-
-func (rule *_Rule) toJoinedIntSlice(ctx *fasthttp.RequestCtx) (lst []int64, ok bool) {
-	formV := ctx.FormValue(rule.form)
-	if len(formV) < 1 {
-		return nil, false
-	}
-	for _, b := range bytes.Split(formV, joinSep) {
-		_v, _ok := rule.toI64(bytes.TrimSpace(b))
-		if !_ok {
-			return nil, false
-		}
-		lst = append(lst, _v)
-	}
-	return lst, true
-}
-
-func (rule *_Rule) toUintSlice(ctx *fasthttp.RequestCtx) ([]uint64, bool) {
-	var lst []uint64
-	ok := mapMultiForm(
-		ctx,
-		rule.form,
-		func(i []byte) bool {
-			v, ok := rule.toUI64(i)
-			if !ok {
-				return false
-			}
-			lst = append(lst, v)
-			return true
-		},
-	)
-	if ok {
-		return lst, true
-	}
-	return nil, false
-}
-
-func (rule *_Rule) toJoinedUintSlice(ctx *fasthttp.RequestCtx) (lst []uint64, ok bool) {
-	formV := ctx.FormValue(rule.form)
-	if len(formV) < 1 {
-		return nil, false
-	}
-	for _, b := range bytes.Split(formV, joinSep) {
-		_v, _ok := rule.toUI64(bytes.TrimSpace(b))
-		if !_ok {
-			return nil, false
-		}
-		lst = append(lst, _v)
-	}
-	return lst, true
-}
-
-func (rule *_Rule) toStrSlice(ctx *fasthttp.RequestCtx) ([]string, bool) {
-	var lst []string
-	ok := mapMultiForm(
-		ctx,
-		rule.form,
-		func(i []byte) bool {
-			v, ok := rule.toBytes(i)
-			if !ok {
-				return false
-			}
-			lst = append(lst, gotils.B2S(v))
-			return true
-		},
-	)
-	if ok {
-		return lst, true
-	}
-	return nil, false
 }
 
 var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{srange}|{default}|{regexp}|{function}|{descp}|")

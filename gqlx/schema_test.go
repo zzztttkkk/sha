@@ -1,7 +1,8 @@
-package grfqlx
+package gqlx
 
 import (
 	"context"
+	"fmt"
 	"github.com/graphql-go/graphql"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
@@ -16,29 +17,46 @@ type Product struct {
 	X     []int64
 }
 
-type QueryOneProduct struct {
+type QueryOneProductForm struct {
 	ID int64 `validator:"id:"`
 }
 
-func TestN(t *testing.T) {
-	_ShowFmtError = true
+type CreateOneProductForm struct {
+	Name  string
+	Info  string
+	Price float64 `validator:"V<0-1000>"`
+}
 
+func TestN(t *testing.T) {
 	s := NewSchema()
 
 	s.AddQuery(
 		"product",
 		"just query one product by id",
 		NewPair(
-			QueryOneProduct{}, Product{},
+			QueryOneProductForm{}, Product{},
 			func(ctx context.Context, in interface{}, info *graphql.ResolveInfo) (out interface{}, err error) {
-				q := in.(*QueryOneProduct)
+				q := in.(*QueryOneProductForm)
 				return &Product{ID: q.ID, Name: "sss", Info: "sdsd", Price: 12.12, X: []int64{1, 3, 4}}, nil
 			},
 		),
 	)
 
+	s.AddMutation(
+		"create",
+		"create a new product",
+		NewPair(
+			CreateOneProductForm{}, Product{},
+			func(ctx context.Context, in interface{}, info *graphql.ResolveInfo) (out interface{}, err error) {
+				q := in.(*CreateOneProductForm)
+				fmt.Println(q)
+				return &Product{ID: 17, Name: q.Name, Info: q.Info, Price: q.Price}, nil
+			},
+		),
+	)
+
 	root := router.New()
-	root.GET("/product", s.NewHandler("query"))
+	root.GET("/product", s.MakeHttpHandler("query"))
 
 	_ = fasthttp.ListenAndServe("127.0.0.1:8080", root.Handler)
 }

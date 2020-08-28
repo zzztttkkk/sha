@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -21,11 +20,10 @@ type C struct {
 }
 
 func TestRules_BindValue(t *testing.T) {
-	v := GetRules(C{}).BindValue(
+	GetRules(C{}).ValidateAndBind(
 		map[string]interface{}{
 			"id": 34, "name": "aaa",
 			"txt": "----", "aids": []string{"a", "b"},
 		},
 	)
-	fmt.Println(v)
 }

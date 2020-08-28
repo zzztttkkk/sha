@@ -1,4 +1,4 @@
-package grfqlx
+package gqlx
 
 import (
 	"context"
@@ -101,31 +101,33 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 var _ReflectOutCache sync.Map
 
 func getOutputFields(t reflect.Type) *graphql.ObjectConfig {
-	obj, ok := _ReflectOutCache.Load(t)
-	if ok {
-		return obj.(*graphql.ObjectConfig)
-	}
 	name := strings.TrimLeft(t.Name(), "_")
 	visitor := _OutVisitor{fields: map[string]*graphql.Field{}}
 	reflectx.Map(t, &visitor)
-
 	rv := &graphql.ObjectConfig{
 		Name:   name,
 		Fields: visitor.fields,
 	}
-
-	_ReflectOutCache.Store(t, rv)
 	return rv
 }
 
 func NewOutObjectType(v reflect.Value) graphql.Output {
 	t := v.Type()
+	o, ok := _ReflectOutCache.Load(t)
+	if ok {
+		return o.(graphql.Output)
+	}
+
 	if t.Kind() == reflect.Slice {
 		et := t.Elem()
 		if et.Kind() != reflect.Struct {
 			panic("suna.grfqlx: not a struct slice")
 		}
-		return graphql.NewList(graphql.NewObject(*getOutputFields(et)))
+		rv := graphql.NewList(graphql.NewObject(*getOutputFields(et)))
+		_ReflectOutCache.Store(t, rv)
+		return rv
 	}
-	return graphql.NewObject(*getOutputFields(t))
+	rv := graphql.NewObject(*getOutputFields(t))
+	_ReflectOutCache.Store(t, rv)
+	return rv
 }

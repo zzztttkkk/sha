@@ -40,10 +40,21 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 
 	ele := reflect.New(field.Type).Elem()
 	switch ele.Interface().(type) {
-	case int64, int32, int16, int8, int:
+	case int64:
 		rule.t = _Int64
-	case uint64, uint32, uint16, uint8, uint:
+	case int32, int16, int8, int:
+		log.Printf("suna.validator: use `int64` as int")
+		return false
+	case uint64:
 		rule.t = _Uint64
+	case uint32, uint16, uint8, uint:
+		log.Printf("suna.validator: use `uint64` as uint")
+		return false
+	case float64:
+		rule.t = _Float64
+	case float32:
+		log.Printf("suna.validator: use `float64` as float")
+		return false
 	case bool:
 		rule.t = _Bool
 	case string:
@@ -57,18 +68,30 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 	case [][]byte:
 		rule.isSlice = true
 		rule.t = _BytesSlice
-	case []int64, []int32, []int16, []int8, []int:
+	case []int64:
 		rule.t = _IntSlice
 		rule.isSlice = true
-	case []uint64, []uint32, []uint16, []uint:
+	case []int32, []int16, []int8, []int:
+		log.Printf("suna.validator: use `[]int64` as int slice")
+		return false
+	case []uint64:
 		rule.t = _UintSlice
 		rule.isSlice = true
+	case []uint32, []uint16, []uint:
+		log.Printf("suna.validator: use `[]int64` as uint slice")
+		return false
 	case []bool:
 		rule.t = _BoolSlice
 		rule.isSlice = true
 	case []string:
 		rule.t = _StringSlice
 		rule.isSlice = true
+	case []float64:
+		rule.t = _FloatSlice
+		rule.isSlice = true
+	case []float32:
+		log.Printf("suna.validator: use `[]float64` as float slice")
+		return false
 	default:
 		return false
 	}
@@ -171,6 +194,51 @@ func parseUintRange(s string) (uint64, uint64, bool, bool) {
 	return minV, maxV, true, true
 }
 
+func parseFloatRange(s string) (float64, float64, bool, bool) {
+	if len(s) < 1 {
+		return 0, 0, false, false
+	}
+
+	if strings.HasPrefix(s, "-") {
+		v, e := strconv.ParseFloat(s[1:], 10)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return 0, v, false, true
+	}
+
+	if strings.HasSuffix(s, "-") {
+		v, e := strconv.ParseFloat(s[:len(s)-1], 10)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return v, 0, true, false
+	}
+
+	ss := strings.Split(s, "-")
+	if len(ss) == 1 {
+		v, e := strconv.ParseFloat(s, 10)
+		if e != nil {
+			return 0, 0, false, false
+		}
+		return v, v, true, true
+	}
+	if len(ss) != 2 {
+		return 0, 0, false, false
+	}
+
+	minV, e := strconv.ParseFloat(ss[0], 10)
+	if e != nil {
+		return 0, 0, false, false
+	}
+
+	maxV, e := strconv.ParseFloat(ss[1], 10)
+	if e != nil {
+		return 0, 0, false, false
+	}
+	return minV, maxV, true, true
+}
+
 func (p *_TagParser) OnAttr(key, val string) {
 	rule := p.current
 	switch key {
@@ -195,6 +263,8 @@ func (p *_TagParser) OnAttr(key, val string) {
 			rule.minV, rule.maxV, rule.minVF, rule.maxVF = parseIntRange(val)
 		} else if rule.t == _Uint64 {
 			rule.minUV, rule.maxUV, rule.minUVF, rule.maxUVF = parseUintRange(val)
+		} else if rule.t == _Float64 {
+			rule.minFV, rule.maxFV, rule.minFVF, rule.maxFVF = parseFloatRange(val)
 		}
 	case "D", "default":
 		rule.defaultV = []byte(val)
@@ -209,8 +279,10 @@ func (p *_TagParser) OnAttr(key, val string) {
 }
 
 func (p *_TagParser) OnDone() {
-	p.all = append(p.all, p.current)
+	rule := p.current
 	p.current = nil
+	p.all = append(p.all, rule)
+
 }
 
 var _RuleCache sync.Map

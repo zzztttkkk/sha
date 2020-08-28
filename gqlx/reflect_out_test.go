@@ -1,4 +1,4 @@
-package grfqlx
+package gqlx
 
 import (
 	"fmt"

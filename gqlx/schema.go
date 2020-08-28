@@ -1,12 +1,12 @@
-package grfqlx
+package gqlx
 
 import (
-	"fmt"
 	"github.com/graphql-go/graphql"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/ctxs"
 	"github.com/zzztttkkk/suna/output"
+	"strings"
 )
 
 type Schema struct {
@@ -56,7 +56,7 @@ func (s *Schema) toGraphqlSchema() (graphql.Schema, error) {
 	return graphql.NewSchema(sc)
 }
 
-func (s *Schema) NewHandler(formName string) fasthttp.RequestHandler {
+func (s *Schema) MakeHttpHandler(formName string) fasthttp.RequestHandler {
 	schema, err := s.toGraphqlSchema()
 	if err != nil {
 		panic(err)
@@ -79,11 +79,15 @@ func (s *Schema) NewHandler(formName string) fasthttp.RequestHandler {
 
 		if len(result.Errors) > 0 {
 			var err error
-			if !_ShowFmtError {
-				err = output.HttpErrors[fasthttp.StatusBadRequest]
-			} else {
-				err = output.NewError(fasthttp.StatusBadRequest, 0, fmt.Sprintf("%v", result.Errors))
+			buf := strings.Builder{}
+			end := len(result.Errors) - 1
+			for i, e := range result.Errors {
+				buf.WriteString(e.Error())
+				if i < end {
+					buf.WriteByte(';')
+				}
 			}
+			err = output.NewError(fasthttp.StatusBadRequest, 0, buf.String())
 			output.Error(ctx, err)
 			return
 		}
