@@ -5,6 +5,7 @@ import (
 	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/rbac"
@@ -52,9 +53,10 @@ func Init(opt *InitOption) {
 	internal.Dig.Provide(
 		func() *config.Suna {
 			if opt == nil {
-				log.Println("suna: nil config, use the default value")
-				defV := config.Default()
-				return &defV
+				log.Fatalln("suna: nil init option")
+			}
+			if opt.Config == nil {
+				log.Fatalln("suna: nil init config")
 			}
 			return opt.Config
 		},
@@ -86,4 +88,5 @@ func _LoadSubModules() {
 	internal.Dig.Index(builder.AndConditions)
 	internal.Dig.Index(validator.RegisterFunc)
 	internal.Dig.Index(redlock.New)
+	internal.Dig.Index(jsonx.Marshal)
 }

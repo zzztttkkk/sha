@@ -1,9 +1,9 @@
 package validator
 
 import (
-	"encoding/json"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/suna/jsonx"
 	"reflect"
 	"strconv"
 )
@@ -133,7 +133,7 @@ func (rule *_Rule) toJsonObj(v []byte) (map[string]interface{}, bool) {
 	}
 
 	m := map[string]interface{}{}
-	err := json.Unmarshal(v, &m)
+	err := jsonx.Unmarshal(v, &m)
 	if err != nil {
 		return nil, false
 	}
@@ -152,7 +152,7 @@ func (rule *_Rule) toJsonAry(v []byte) ([]interface{}, bool) {
 	}
 
 	var s []interface{}
-	err := json.Unmarshal(v, &s)
+	err := jsonx.Unmarshal(v, &s)
 	if err != nil {
 		return nil, false
 	}

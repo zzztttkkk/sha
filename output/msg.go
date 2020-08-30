@@ -1,9 +1,9 @@
 package output
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/zzztttkkk/suna/jsonx"
 	"log"
 
 	"github.com/valyala/fasthttp"
@@ -23,14 +23,16 @@ var (
 	internalServerErrorMsg = []byte(`{"errno":500,"errmsg":"internal server error","data":""}`)
 )
 
-func ToJson(ctx *fasthttp.RequestCtx, data interface{}) {
+func Json(ctx *fasthttp.RequestCtx, data interface{}) {
 	writer := _CtxCompressionWriter{raw: ctx}
-	encoder := json.NewEncoder(&writer)
-	err := encoder.Encode(data)
-	if err == nil {
-		return
+	b, e := jsonx.Marshal(data)
+	if e != nil {
+		log.Printf("suna.output: json encode error, %s\r\n", e.Error())
 	}
-	log.Printf("suna.output: json encode error, %s\r\n", err.Error())
+	_, e = writer.Write(b)
+	if e != nil {
+		log.Printf("suna.output: %s\r\n", e.Error())
+	}
 }
 
 func Msg(ctx *fasthttp.RequestCtx, code int, data interface{}) {
@@ -46,7 +48,7 @@ func Msg(ctx *fasthttp.RequestCtx, code int, data interface{}) {
 	}
 
 	msg := Message{Data: data}
-	ToJson(ctx, &msg)
+	Json(ctx, &msg)
 }
 
 func MsgOK(ctx *fasthttp.RequestCtx, data interface{}) {
@@ -63,7 +65,7 @@ func ErrorAndErrorStack(ctx *fasthttp.RequestCtx, err error) string {
 	case Err:
 		code = v.StatusCode()
 		ctx.SetStatusCode(v.StatusCode())
-		ToJson(ctx, v.Message())
+		Json(ctx, v.Message())
 	default:
 		code = fasthttp.StatusInternalServerError
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)

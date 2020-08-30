@@ -2,8 +2,10 @@ package graphqlx
 
 import (
 	"context"
+	"fmt"
 	"github.com/graphql-go/graphql"
 	"github.com/zzztttkkk/suna/reflectx"
+	"log"
 	"reflect"
 	"strings"
 	"sync"
@@ -18,6 +20,7 @@ type ResolveOutFunction func(ctx context.Context, info *graphql.ResolveInfo) (in
 
 type _OutVisitor struct {
 	fields graphql.Fields
+	name   string
 }
 
 func (v *_OutVisitor) getTag(f *reflect.StructField) string {
@@ -67,20 +70,19 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 	ele := reflect.New(field.Type).Elem()
 
 	switch rv := ele.Interface().(type) {
-	case string, *string, []byte, *[]byte:
+	case string:
 		f = &graphql.Field{Type: graphql.String}
-	case []string, [][]byte:
+	case []string:
 		f = &graphql.Field{Type: graphql.NewList(graphql.String)}
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64,
-		*int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		f = &graphql.Field{Type: graphql.Int}
 	case []int, []int8, []int16, []int32, []int64, []uint, []uint16, []uint32, []uint64:
 		f = &graphql.Field{Type: graphql.NewList(graphql.Int)}
-	case float32, float64, *float32, *float64:
+	case float32, float64:
 		f = &graphql.Field{Type: graphql.Float}
 	case []float32, []float64:
 		f = &graphql.Field{Type: graphql.NewList(graphql.Float)}
-	case bool, *bool:
+	case bool:
 		f = &graphql.Field{Type: graphql.Boolean}
 	case []bool:
 		f = &graphql.Field{Type: graphql.NewList(graphql.Boolean)}
@@ -91,6 +93,7 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 	case GraphqlScalarer:
 		f = &graphql.Field{Type: rv.GraphqlScalar()}
 	default:
+		log.Printf("suna.graphqlx: unqupported type, %s.%s", v.name, field.Name)
 		return
 	}
 
@@ -102,7 +105,7 @@ var _ReflectOutCache sync.Map
 
 func getOutputFields(t reflect.Type) *graphql.ObjectConfig {
 	name := strings.TrimLeft(t.Name(), "_")
-	visitor := _OutVisitor{fields: map[string]*graphql.Field{}}
+	visitor := _OutVisitor{fields: map[string]*graphql.Field{}, name: fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())}
 	reflectx.Map(t, &visitor)
 	rv := &graphql.ObjectConfig{
 		Name:   name,

@@ -2,10 +2,10 @@ package validator
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/output"
 	"reflect"
 )
@@ -195,7 +195,7 @@ func ValidateJson(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 		return false
 	}
 
-	err := json.Unmarshal(ctx.Request.Body(), ptr)
+	err := jsonx.Unmarshal(ctx.Request.Body(), ptr)
 	if err != nil {
 		output.Error(ctx, output.HttpErrors[fasthttp.StatusBadRequest])
 		return false

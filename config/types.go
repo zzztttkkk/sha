@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"github.com/go-redis/redis/v7"
 	"github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/suna/utils/toml"
@@ -72,6 +73,11 @@ type Suna struct {
 		Nodes []string
 	}
 
+	Json struct {
+		Marshal   func(v interface{}) ([]byte, error)
+		Unmarshal func([]byte, interface{}) error
+	} `toml:"-"`
+
 	Internal struct {
 		isDebug   bool
 		isRelease bool
@@ -106,6 +112,8 @@ func init() {
 	defaultV.Session.Captcha.Maxage = 300
 	defaultV.Session.Captcha.AudioLanguage = "zh"
 	defaultV.Rbac.TablenamePrefix = "rbac_"
+	defaultV.Json.Unmarshal = json.Unmarshal
+	defaultV.Json.Marshal = json.Marshal
 }
 
 func Default() Suna { return defaultV }

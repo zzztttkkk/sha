@@ -38,33 +38,9 @@ func (f Object) get(key string) (interface{}, error) {
 	return v, nil
 }
 
-func (f Object) Get(key string) (interface{}, error) {
-	k := _Key{}
-	k.init(key)
-
-	var rv interface{} = f
-	var err error
-	var _k *string
-	var ok bool
-	for {
-		_k, ok = k.next()
-		if !ok {
-			break
-		}
-		rv, err = getFromInterface(*_k, rv)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return rv, nil
-}
-
-func (f Object) GetMust(key string) interface{} {
-	v, e := f.Get(key)
-	if e != nil {
-		panic(e)
-	}
-	return v
+func (f Object) set(key string, val interface{}) error {
+	f[key] = val
+	return nil
 }
 
 func ParseObject(v interface{}) (Object, error) {
@@ -90,7 +66,7 @@ func ParseObject(v interface{}) (Object, error) {
 		return nil, ErrJsonValue
 	}
 	m := Object{}
-	if err := json.Unmarshal(data, &m); err != nil {
+	if err := Unmarshal(data, &m); err != nil {
 		return nil, err
 	}
 	return m, nil

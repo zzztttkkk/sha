@@ -1,11 +1,11 @@
 package cache
 
 import (
-	"encoding/json"
 	"github.com/golang/groupcache/singleflight"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/router"
+	"github.com/zzztttkkk/suna/jsonx"
 	"net/textproto"
 	"sync"
 	"time"
@@ -126,7 +126,7 @@ func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.Request
 
 	v, _ := redisc.Get(key).Bytes()
 	if len(v) > 0 {
-		err := json.Unmarshal(v, item)
+		err := jsonx.Unmarshal(v, item)
 		if err == nil {
 			return
 		}
@@ -164,7 +164,7 @@ func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.Request
 			return
 		}
 
-		bs, _ := json.Marshal(item)
+		bs, _ := jsonx.Marshal(item)
 		redisc.Set(key, bs, time.Second*time.Duration(c.seconds))
 	}()
 

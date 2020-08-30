@@ -54,8 +54,7 @@ func MustGetUser(ctx *fasthttp.RequestCtx) User {
 	panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 }
 
-// Clear the user info cache, then call `GetUser` again to re-authenticate.
-func Reset(ctx *fasthttp.RequestCtx) (User, bool) {
+// Clear the user info cache
+func Reset(ctx *fasthttp.RequestCtx) {
 	ctx.SetUserValue(internal.RCtxUserKey, nil)
-	return GetUser(ctx)
 }

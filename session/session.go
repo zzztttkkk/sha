@@ -1,7 +1,6 @@
 package session
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
@@ -9,6 +8,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/output"
 	"strings"
 	"time"
@@ -92,11 +92,11 @@ func (ss Session) Get(key string, dist interface{}) bool {
 		}
 		panic(err)
 	}
-	return json.Unmarshal(bs, dist) == nil
+	return jsonx.Unmarshal(bs, dist) == nil
 }
 
 func (ss Session) Set(key string, val interface{}) {
-	bs, err := json.Marshal(val)
+	bs, err := jsonx.Marshal(val)
 	if err != nil {
 		panic(err)
 	}

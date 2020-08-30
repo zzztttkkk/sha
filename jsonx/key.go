@@ -78,17 +78,9 @@ func (key *_Key) next() (*string, bool) {
 func getFromInterface(key string, v interface{}) (interface{}, error) {
 	switch rv := v.(type) {
 	case Array:
-		ind, err := s2i4(key)
-		if err != nil {
-			return nil, err
-		}
-		return rv.get(ind)
+		return rv.get(key)
 	case []interface{}:
-		ind, err := s2i4(key)
-		if err != nil {
-			return nil, err
-		}
-		return Array(rv).get(ind)
+		return Array(rv).get(key)
 	case Object:
 		return rv.get(key)
 	case map[string]interface{}:
@@ -96,4 +88,141 @@ func getFromInterface(key string, v interface{}) (interface{}, error) {
 	default:
 		return nil, ErrJsonValue
 	}
+}
+
+type _JsonCollection interface {
+	get(string) (interface{}, error)
+	set(string, interface{}) error
+}
+
+func get(collection _JsonCollection, key string) (interface{}, error) {
+	if len(key) < 1 {
+		return collection, nil
+	}
+
+	k := _Key{}
+	k.init(key)
+
+	var rv interface{} = collection
+	var err error
+	var _k *string
+	var ok bool
+	for {
+		_k, ok = k.next()
+		if !ok {
+			break
+		}
+		rv, err = getFromInterface(*_k, rv)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return rv, nil
+}
+
+func set(collection _JsonCollection, key string, val interface{}) error {
+	k := _Key{}
+	k.init(key)
+
+	var prevRv interface{}
+	var rv interface{} = collection
+	var err error
+	var _k *string
+	var prevKey string
+	var ok bool
+	for {
+		if _k != nil {
+			prevKey = *_k
+		}
+
+		_k, ok = k.next()
+		if !ok {
+			break
+		}
+		prevRv = rv
+		rv, err = getFromInterface(*_k, rv)
+		if err != nil {
+			continue
+		}
+	}
+
+	if k.cursor <= k.end {
+		return ErrJsonValue
+	}
+
+	switch _v := prevRv.(type) {
+	case map[string]interface{}:
+		_ = Object(_v).set(prevKey, val)
+	case Object:
+		_ = _v.set(prevKey, val)
+	case []interface{}:
+		err = Array(_v).set(prevKey, val)
+		if err != nil {
+			return err
+		}
+	case Array:
+		err = _v.set(prevKey, val)
+		if err != nil {
+			return err
+		}
+	default:
+		return ErrJsonValue
+	}
+	return nil
+}
+
+func getInt64(collection _JsonCollection, key string) (int64, error) {
+	v, err := get(collection, key)
+	if err != nil {
+		return 0, err
+	}
+	switch rv := v.(type) {
+	case float64:
+		return int64(rv), nil
+	}
+	return 0, ErrJsonValue
+}
+
+func getString(collection _JsonCollection, key string) (string, error) {
+	v, err := get(collection, key)
+	if err != nil {
+		return "", err
+	}
+	switch rv := v.(type) {
+	case string:
+		return rv, nil
+	}
+	return "", ErrJsonValue
+}
+
+func getBool(collection _JsonCollection, key string) (bool, error) {
+	v, err := get(collection, key)
+	if err != nil {
+		return false, err
+	}
+	switch rv := v.(type) {
+	case bool:
+		return rv, nil
+	}
+	return false, ErrJsonValue
+}
+
+func getFloat(collection _JsonCollection, key string) (float64, error) {
+	v, err := get(collection, key)
+	if err != nil {
+		return 0, err
+	}
+	switch rv := v.(type) {
+	case float64:
+		return rv, nil
+	}
+	return 0, ErrJsonValue
+}
+
+func isNull(collection _JsonCollection, key string) (bool, error) {
+	v, err := get(collection, key)
+	if err != nil {
+		return false, err
+	}
+	return v == nil, nil
 }

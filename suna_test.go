@@ -1,9 +1,11 @@
 package suna
 
 import (
+	"github.com/zzztttkkk/suna/config"
 	"testing"
 )
 
 func TestInit(t *testing.T) {
-	Init(nil)
+	conf := config.Default()
+	Init(&InitOption{Config: &conf})
 }

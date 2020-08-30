@@ -1,14 +1,13 @@
 package jsonx
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 )
 
 func _ObjSerialize(m Object) string {
-	data, err := json.Marshal(m)
+	data, err := Marshal(m)
 	if err != nil {
 		panic(err)
 	}
@@ -16,7 +15,7 @@ func _ObjSerialize(m Object) string {
 }
 
 func _ArySerialize(m Array) string {
-	data, err := json.Marshal(m)
+	data, err := Marshal(m)
 	if err != nil {
 		panic(err)
 	}
