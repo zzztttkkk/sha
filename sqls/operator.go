@@ -42,7 +42,7 @@ func (op *Operator) _GetDbLeader() *sqlx.DB {
 func (op *Operator) Init(v interface{}) {
 	op.ele = reflect.ValueOf(v)
 
-	fnV := op.ele.MethodByName("DatabaseGroup")
+	fnV := op.ele.MethodByName("SqlsDatabaseGroup")
 	if fnV.IsValid() {
 		op.dbGroupName = fnV.Call(nil)[0].Interface().(string)
 	}
@@ -51,7 +51,7 @@ func (op *Operator) Init(v interface{}) {
 }
 
 func getTableName(ele reflect.Value) string {
-	tablenameFn := ele.MethodByName("TableName")
+	tablenameFn := ele.MethodByName("SqlsTableName")
 	if tablenameFn.IsValid() {
 		return (tablenameFn.Call(nil)[0]).Interface().(string)
 	}
@@ -59,10 +59,10 @@ func getTableName(ele reflect.Value) string {
 }
 
 func CreateTable(db *sqlx.DB, ele reflect.Value, name string) {
-	fnV := ele.MethodByName("TableDefinition")
+	fnV := ele.MethodByName("SqlsTableColumns")
 	fnT := fnV.Type()
 	msg := fmt.Sprintf(
-		"suna.sqls: `%s.%s` has no method `TableDefinition`\n",
+		"suna.sqls: `%s.%s` has no method `SqlsTableColumns`, or type error\n",
 		ele.Type().PkgPath(), ele.Type().Name(),
 	)
 	if !fnV.IsValid() || fnT.NumOut() != 1 {
@@ -79,7 +79,7 @@ func CreateTable(db *sqlx.DB, ele reflect.Value, name string) {
 
 	var fields []string
 	switch fnV.Type().NumIn() {
-	case 1: // TableDefinition(*sqlx.DB)
+	case 1: // SqlsTableColumns(*sqlx.DB)
 		switch reflect.New(fnT.In(0)).Elem().Interface().(type) {
 		case *sqlx.DB:
 		default:
@@ -87,7 +87,7 @@ func CreateTable(db *sqlx.DB, ele reflect.Value, name string) {
 			return
 		}
 		fields = (fnV.Call([]reflect.Value{reflect.ValueOf(db)})[0]).Interface().([]string)
-	case 0: // TableDefinition(*sqlx.DB)
+	case 0: // SqlsTableColumns(*sqlx.DB)
 		fields = (fnV.Call(nil)[0]).Interface().([]string)
 	default:
 		log.Print(msg)

@@ -31,8 +31,8 @@ func (User) TableName() string {
 	return "account_user"
 }
 
-func (user User) TableDefinition(db *sqlx.DB) []string {
-	return user.Model.TableDefinition(
+func (user User) SqlsTableColumns(db *sqlx.DB) []string {
+	return user.Model.SqlsTableColumns(
 		db,
 		"name char(30) unique not null",
 		"alias char(16) default ''",

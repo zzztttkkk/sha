@@ -20,6 +20,6 @@ func (enum *Enum) GetName() string {
 	return enum.Name
 }
 
-func (enum Enum) TableDefinition(db *sqlx.DB, lines ...string) []string {
-	return enum.Model.TableDefinition(db, append(lines, "name char(255) not null unique")...)
+func (enum Enum) SqlsTableColumns(db *sqlx.DB, lines ...string) []string {
+	return enum.Model.SqlsTableColumns(db, append(lines, "name char(255) not null unique")...)
 }

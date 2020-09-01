@@ -14,6 +14,6 @@ func (permissionT) TableName() string {
 	return tablePrefix + "permission"
 }
 
-func (perm permissionT) TableDefinition(db *sqlx.DB) []string {
-	return perm.Enum.TableDefinition(db, "descp text")
+func (perm permissionT) SqlsTableColumns(db *sqlx.DB) []string {
+	return perm.Enum.SqlsTableColumns(db, "descp text")
 }

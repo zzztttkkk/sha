@@ -17,8 +17,8 @@ func (roleT) TableName() string {
 	return tablePrefix + "role"
 }
 
-func (role roleT) TableDefinition(db *sqlx.DB) []string {
-	return role.Enum.TableDefinition(db, "descp text")
+func (role roleT) SqlsTableColumns(db *sqlx.DB) []string {
+	return role.Enum.SqlsTableColumns(db, "descp text")
 }
 
 type roleInheritanceT struct {
@@ -30,7 +30,7 @@ func (roleInheritanceT) TableName() string {
 	return tablePrefix + "role_inheritance"
 }
 
-func (ele roleInheritanceT) TableDefinition() []string {
+func (ele roleInheritanceT) SqlsTableColumns() []string {
 	return []string{
 		"role bigint not null",
 		"based bigint not null",
@@ -47,7 +47,7 @@ func (roleWithPermT) TableName() string {
 	return tablePrefix + "role_with_perm"
 }
 
-func (ele roleWithPermT) TableDefinition() []string {
+func (ele roleWithPermT) SqlsTableColumns() []string {
 	return []string{
 		"role bigint not null",
 		"perm bigint not null",

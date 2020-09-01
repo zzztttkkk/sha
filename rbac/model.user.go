@@ -15,8 +15,8 @@ func (userWithRoleT) TableName() string {
 	return tablePrefix + "subject_with_role"
 }
 
-func (ele userWithRoleT) TableDefinition(db *sqlx.DB) []string {
-	return ele.Model.TableDefinition(
+func (ele userWithRoleT) SqlsTableColumns(db *sqlx.DB) []string {
+	return ele.Model.SqlsTableColumns(
 		db,
 		"subject bigint not null",
 		"role bigint not null",

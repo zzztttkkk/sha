@@ -9,14 +9,14 @@ type Model struct {
 	Deleted int64 `json:"deleted"`
 }
 
-func (Model) TableDefinition(db *sqlx.DB, lines ...string) []string {
+func (Model) SqlsTableColumns(db *sqlx.DB, lines ...string) []string {
 	var s []string
 	idLine := ""
 	switch db.DriverName() {
 	case "postgres":
 		idLine = "id serial8 primary key"
 	case "sqlite3":
-		idLine = "id INTEGER PRIMARY KEY"
+		idLine = "id integer primary key"
 	case "mysql":
 		idLine = "id bigint not null auto_increment primary key"
 	}

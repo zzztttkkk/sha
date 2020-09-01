@@ -17,8 +17,8 @@ func (logT) TableName() string {
 	return tablePrefix + "log"
 }
 
-func (log logT) TableDefinition(db *sqlx.DB) []string {
-	return log.Model.TableDefinition(
+func (log logT) SqlsTableColumns(db *sqlx.DB) []string {
+	return log.Model.SqlsTableColumns(
 		db,
 		"Name char(30) not null",
 		"operator bigint not null",

@@ -9,10 +9,12 @@ require (
 	github.com/go-errors/errors v1.1.1
 	github.com/go-redis/redis/v7 v7.4.0
 	github.com/go-redis/redis_rate/v8 v8.0.0
+	github.com/go-sql-driver/mysql v1.4.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/graphql-go/graphql v0.7.9
 	github.com/imdario/mergo v0.3.10
 	github.com/jmoiron/sqlx v1.2.0
+	github.com/lib/pq v1.0.0
 	github.com/mattn/go-sqlite3 v1.9.0
 	github.com/rs/xid v1.2.1
 	github.com/savsgio/gotils v0.0.0-20200616100644-13ff1fd2c28c
