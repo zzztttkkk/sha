@@ -2,19 +2,19 @@ package suna
 
 import (
 	"github.com/zzztttkkk/suna/auth"
-	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/rbac"
-	"github.com/zzztttkkk/suna/redlock"
+	"github.com/zzztttkkk/suna/redisx"
 	"github.com/zzztttkkk/suna/reflectx"
 	"github.com/zzztttkkk/suna/secret"
 	"github.com/zzztttkkk/suna/session"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/sqls/builder"
+	"github.com/zzztttkkk/suna/utils"
 	"github.com/zzztttkkk/suna/validator"
 	"log"
 )
@@ -77,7 +77,7 @@ func Init(opt *InitOption) {
 
 // trigger internal.LazyInvoke
 func _LoadSubModules() {
-	internal.Dig.Index(cache.NewLru)
+	internal.Dig.Index(utils.NewLru)
 	internal.Dig.Index(middleware.NewAccessLogger)
 	internal.Dig.Index(output.Error)
 	internal.Dig.Index(rbac.Loader)
@@ -85,8 +85,8 @@ func _LoadSubModules() {
 	internal.Dig.Index(secret.AesDecrypt)
 	internal.Dig.Index(session.New)
 	internal.Dig.Index(sqls.CreateTable)
-	internal.Dig.Index(builder.AndConditions)
+	internal.Dig.Index(builder.AND)
 	internal.Dig.Index(validator.RegisterFunc)
-	internal.Dig.Index(redlock.New)
+	internal.Dig.Index(redisx.NewLock)
 	internal.Dig.Index(jsonx.Marshal)
 }

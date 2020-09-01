@@ -96,5 +96,5 @@ func main() {
 	)
 
 	service.Loader.AddChild("/rbac", rbac.Loader())
-	service.Loader.RunAsHttpServer(root, ":8080")
+	service.Loader.RunAsHttpServer(root, &example.Suna)
 }

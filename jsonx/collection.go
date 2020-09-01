@@ -6,7 +6,7 @@ type Collection struct {
 	raw _JsonCollection
 }
 
-func Parse(v interface{}) (*Collection, error) {
+func ParseCollection(v interface{}) (*Collection, error) {
 	var data []byte
 	switch rv := v.(type) {
 	case string:
@@ -49,7 +49,7 @@ func Parse(v interface{}) (*Collection, error) {
 }
 
 func MustParse(v interface{}) *Collection {
-	c, e := Parse(v)
+	c, e := ParseCollection(v)
 	if e != nil {
 		panic(e)
 	}

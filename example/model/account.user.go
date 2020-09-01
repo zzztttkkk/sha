@@ -3,18 +3,17 @@ package model
 import (
 	"context"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna.example/config"
 	"github.com/zzztttkkk/suna.example/internal"
 	"github.com/zzztttkkk/suna/auth"
-	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/secret"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
-	"reflect"
 	"time"
 )
 
@@ -32,8 +31,9 @@ func (User) TableName() string {
 	return "account_user"
 }
 
-func (user User) TableDefinition() []string {
+func (user User) TableDefinition(db *sqlx.DB) []string {
 	return user.Model.TableDefinition(
+		db,
 		"name char(30) unique not null",
 		"alias char(16) default ''",
 		"password char(64) not null",
@@ -49,7 +49,7 @@ func (user *User) GetId() int64 {
 
 type _UserOperator struct {
 	sqls.Operator
-	lru *cache.Lru
+	lru *utils.Lru
 }
 
 var authTokenInHeader string
@@ -110,7 +110,7 @@ func (op *_UserOperator) GetById(ctx context.Context, uid int64) (*User, bool) {
 	}
 
 	user := &User{}
-	op.XSelect(
+	op.ExecuteSelect(
 		ctx,
 		user,
 		builder.NewSelect("*").
@@ -126,7 +126,7 @@ func (op *_UserOperator) GetById(ctx context.Context, uid int64) (*User, bool) {
 }
 
 func (op *_UserOperator) Create(ctx context.Context, name, password []byte) (int64, []byte) {
-	if op.XExists(ctx, builder.AndConditions().Eq(true, "name", name)) {
+	if op.ExecuteExistsTest(ctx, builder.AND().Eq(true, "name", name)) {
 		panic(output.NewError(fasthttp.StatusBadRequest, -1, fmt.Sprintf("`%s` is already taken.", name)))
 	}
 	skey := secret.Sha256.Calc(secret.RandBytes(512, nil))
@@ -137,14 +137,14 @@ func (op *_UserOperator) Create(ctx context.Context, name, password []byte) (int
 	kvs.Append("name", name)
 	kvs.Append("password", secret.Calc(password))
 	kvs.Append("secret", skey)
-	return op.XCreate(ctx, kvs), skey
+	return op.ExecuteCreate(ctx, kvs), skey
 }
 
 func (op *_UserOperator) AuthByName(ctx context.Context, name, password []byte) (int64, bool) {
 	var pwdHash []byte
 	var uid int64
 
-	op.XSelectScan(
+	op.ExecuteScan(
 		ctx,
 		builder.NewSelect("id,password").From(op.TableName()).Where("name=?", name).Limit(1),
 		sqls.NewScanner(
@@ -162,7 +162,7 @@ func (op *_UserOperator) AuthByName(ctx context.Context, name, password []byte) 
 
 func (op *_UserOperator) AuthById(ctx context.Context, id int64, password []byte) bool {
 	var pwdHash []byte
-	op.XSelect(
+	op.ExecuteSelect(
 		ctx,
 		&pwdHash,
 		builder.NewSelect("password").From(op.TableName()).Where("id=?", id).Limit(1),
@@ -176,13 +176,17 @@ func (op *_UserOperator) AuthById(ctx context.Context, id int64, password []byte
 func (op *_UserOperator) Update(ctx context.Context, uid int64, kvs *utils.Kvs, secret []byte) bool {
 	op.lru.Remove(uid)
 	kvs.Remove("deleted")
-	return op.XUpdate(
-		ctx,
-		kvs,
-		builder.AndConditions().
-			Eq(true, "id", uid).
-			Eq(len(secret) > 0, "secret", secret),
-		1,
+
+	v, a, e := builder.AND().
+		Eq(true, "id", uid).
+		Eq(len(secret) > 0, "secret", secret).ToSql()
+	if e != nil {
+		panic(e)
+	}
+
+	return op.ExecuteUpdate(
+		ctx, kvs,
+		sqls.NewWhere(v, a...).Limit(1),
 	) > 0
 }
 
@@ -191,13 +195,9 @@ func (op *_UserOperator) Delete(ctx context.Context, user *User, skey string) bo
 	kvs := utils.AcquireKvs()
 	defer kvs.Free()
 	kvs.Append("deleted", time.Now().Unix())
-	return op.XUpdate(
-		ctx,
-		kvs,
-		builder.AndConditions().
-			Eq(true, "id", user.Id).
-			Eq(true, "secret", skey),
-		1,
+	return op.ExecuteUpdate(
+		ctx, kvs,
+		sqls.NewWhere("id=? and secret=?", user.Id, skey).Limit(1),
 	) > 0
 }
 
@@ -206,8 +206,8 @@ var UserOperator = &_UserOperator{}
 func init() {
 	internal.LazyExecutor.Register(
 		func(kwargs utils.Kwargs) {
-			UserOperator.Init(reflect.ValueOf(User{}))
-			UserOperator.lru = cache.NewLru(cfg.Cache.Lru.UserSize)
+			UserOperator.Init(User{})
+			UserOperator.lru = utils.NewLru(cfg.Cache.Lru.UserSize)
 		},
 	)
 }

@@ -1,4 +1,4 @@
-package cache
+package utils
 
 import (
 	"github.com/golang/groupcache/lru"

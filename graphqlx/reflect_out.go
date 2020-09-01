@@ -19,8 +19,9 @@ type GraphqlScalarer interface {
 type ResolveOutFunction func(ctx context.Context, info *graphql.ResolveInfo) (interface{}, error)
 
 type _OutVisitor struct {
-	fields graphql.Fields
-	name   string
+	fields  graphql.Fields
+	name    string
+	current reflect.Type
 }
 
 func (v *_OutVisitor) getTag(f *reflect.StructField) string {
@@ -36,6 +37,15 @@ func (v *_OutVisitor) OnNestStructField(field *reflect.StructField) bool {
 	ele := reflect.New(field.Type).Elem()
 	switch rv := ele.Interface().(type) {
 	case GraphqlScalarer:
+		if field.Anonymous {
+			panic(
+				fmt.Errorf(
+					"suna.graphqlx: interface `GraphqlScalarer` can not be inherited; %s.%s",
+					v.name, field.Name,
+				),
+			)
+		}
+
 		var name string
 		if len(t) < 1 {
 			name = strings.ToLower(field.Name)
@@ -93,6 +103,43 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 	case GraphqlScalarer:
 		f = &graphql.Field{Type: rv.GraphqlScalar()}
 	default:
+		// handle []CustomStruct/[]*CustomStruct
+		if field.Type.Kind() == reflect.Slice {
+			var ele reflect.Value
+			eleT := field.Type.Elem()
+			if eleT.Kind() == reflect.Struct {
+				if eleT == v.current {
+					panic(fmt.Errorf("suna.graphqlx: circular reference, %s.%s", v.name, field.Name))
+				}
+				ele = reflect.New(eleT).Elem() // []A
+			} else if eleT.Kind() == reflect.Ptr {
+				eleT = eleT.Elem()
+				if eleT.Kind() == reflect.Struct {
+					if eleT == v.current {
+						panic(fmt.Errorf("suna.graphqlx: circular reference, %s.%s", v.name, field.Name))
+					}
+					ele = reflect.New(eleT).Elem() // []*A
+				}
+			}
+			if ele.IsValid() {
+				switch rv := ele.Interface().(type) {
+				case GraphqlScalarer:
+					var name string
+					if len(t) < 1 {
+						name = strings.ToLower(field.Name)
+					} else {
+						name = strings.TrimSpace(strings.Split(t, ",")[0])
+					}
+					name = strings.TrimLeft(name, "_")
+					f = &graphql.Field{Type: graphql.NewList(rv.GraphqlScalar())}
+				default:
+					f = &graphql.Field{Type: graphql.NewList(NewOutObjectType(ele))}
+				}
+			}
+		}
+	}
+
+	if f == nil {
 		log.Printf("suna.graphqlx: unqupported type, %s.%s", v.name, field.Name)
 		return
 	}
@@ -105,7 +152,11 @@ var _ReflectOutCache sync.Map
 
 func getOutputFields(t reflect.Type) *graphql.ObjectConfig {
 	name := strings.TrimLeft(t.Name(), "_")
-	visitor := _OutVisitor{fields: map[string]*graphql.Field{}, name: fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())}
+	visitor := _OutVisitor{
+		fields:  map[string]*graphql.Field{},
+		name:    fmt.Sprintf("%s.%s", t.PkgPath(), t.Name()),
+		current: t,
+	}
 	reflectx.Map(t, &visitor)
 	rv := &graphql.ObjectConfig{
 		Name:   name,

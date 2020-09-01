@@ -3,20 +3,18 @@ package sqls
 import (
 	"context"
 	"fmt"
-	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
-	"reflect"
 	"sync"
 	"time"
 )
 
 type EnumOperator struct {
 	Operator
-	cache *EnumCache
+	cache *_EnumCache
 }
 
-func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) *EnumCache {
-	cache := &EnumCache{
+func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) *_EnumCache {
+	cache := &_EnumCache{
 		im:          map[int64]EnumItem{},
 		nm:          map[string]EnumItem{},
 		last:        0,
@@ -30,7 +28,7 @@ func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem,
 	return cache
 }
 
-func (op *EnumOperator) Init(ele reflect.Value, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) {
+func (op *EnumOperator) Init(ele interface{}, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) {
 	op.Operator.Init(ele)
 
 	expire := cfg.Sql.EnumCacheMaxage.Duration
@@ -43,7 +41,7 @@ func (op *EnumOperator) Init(ele reflect.Value, constructor func() EnumItem, aft
 func (op *EnumOperator) Create(ctx context.Context, kvs *utils.Kvs) int64 {
 	defer op.cache.doExpire()
 	kvs.Set("created", time.Now().Unix())
-	return op.XCreate(ctx, kvs)
+	return op.ExecuteCreate(ctx, kvs)
 }
 
 func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
@@ -54,13 +52,10 @@ func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 	kvs.Append("deleted", time.Now().Unix())
 	kvs.Append("name", fmt.Sprintf("Deleted<%s>", name))
 
-	return op.XUpdate(
+	return op.ExecuteUpdate(
 		ctx,
 		kvs,
-		builder.AndConditions().
-			Eq(true, "name", name).
-			Eq(true, "deleted", 0),
-		1,
+		NewWhere("name=? and deleted=0 and status>=0", name),
 	) > 0
 }
 

@@ -1,6 +1,8 @@
 package reflectx
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type Visitor interface {
 	OnNestStructField(field *reflect.StructField) bool

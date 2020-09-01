@@ -7,12 +7,20 @@ import (
 	"strings"
 )
 
-var redisUnknownModeError = errors.New("suna.config: unknown redis mode,[singleton,ring]")
+var _RedisUnknownModeError = errors.New("suna.config: unknown redis mode,[singleton,ring]")
 
-func (t *Suna) RedisClient() redis.Cmdable {
-	if t.Internal.rediscOk {
-		return t.Internal.redisc
+func (t *Suna) _InitRedisClient() {
+	if t.Internal.redisc != nil {
+		return
 	}
+
+	defer func() {
+		if t.Internal.redisc != nil {
+			if err := t.Internal.redisc.Ping().Err(); err != nil {
+				panic(err)
+			}
+		}
+	}()
 
 	opts := make([]*redis.Options, 0)
 	for _, url := range t.Redis.Nodes {
@@ -24,14 +32,13 @@ func (t *Suna) RedisClient() redis.Cmdable {
 	}
 
 	if len(opts) < 1 {
-		return nil
+		return
 	}
 
 	switch strings.ToLower(t.Redis.Mode) {
 	case "singleton":
 		t.Internal.redisc = redis.NewClient(opts[0])
-		t.Internal.rediscOk = true
-		return t.Internal.redisc
+		return
 	case "ring":
 		addrs := map[string]string{}
 		pwds := map[string]string{}
@@ -40,8 +47,7 @@ func (t *Suna) RedisClient() redis.Cmdable {
 			pwds[fmt.Sprintf("node.%d", ind)] = opt.Password
 		}
 		t.Internal.redisc = redis.NewRing(&redis.RingOptions{Addrs: addrs, Passwords: pwds})
-		t.Internal.rediscOk = true
-		return t.Internal.redisc
+		return
 	case "cluster":
 		var addrs []string
 		for _, opt := range opts {
@@ -54,9 +60,15 @@ func (t *Suna) RedisClient() redis.Cmdable {
 				Password: opts[0].Password,
 			},
 		)
-		t.Internal.rediscOk = true
-		return t.Internal.redisc
+		return
 	default:
-		panic(redisUnknownModeError)
+		panic(_RedisUnknownModeError)
 	}
+}
+
+func (t *Suna) RedisClient() redis.Cmdable {
+	if t.Internal.redisc == nil {
+		t._InitRedisClient()
+	}
+	return t.Internal.redisc
 }

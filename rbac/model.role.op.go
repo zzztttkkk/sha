@@ -8,7 +8,6 @@ import (
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
-	"reflect"
 )
 
 type roleOpT struct {
@@ -26,11 +25,11 @@ var _RoleOperator = &roleOpT{
 func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
-			_RoleOperator.perms.Init(reflect.ValueOf(roleWithPermT{}))
-			_RoleOperator.inherits.Init(reflect.ValueOf(roleInheritanceT{}))
+			_RoleOperator.perms.Init(roleWithPermT{})
+			_RoleOperator.inherits.Init(roleInheritanceT{})
 
 			_RoleOperator.EnumOperator.Init(
-				reflect.ValueOf(roleT{}),
+				roleT{},
 				func() sqls.EnumItem { return &roleT{} },
 				func(ctx context.Context, i interface{}) error {
 					role := i.(*roleT)
@@ -64,14 +63,14 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 		},
 	)
 
-	cond := builder.AndConditions().
+	cond := builder.AND().
 		Eq(true, "role", roleId).
 		Eq(true, "perm", permId)
 
 	spb := builder.NewSelect("id").From(op.perms.TableName()).Where(cond)
 
 	var _id int64
-	op.perms.XSelect(ctx, &_id, spb)
+	op.perms.ExecuteSelect(ctx, &_id, spb)
 	if _id < 1 {
 		if mt == _Add {
 			return nil
@@ -82,7 +81,7 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 		kvs.Set("perm", permId)
 		kvs.Set("role", roleId)
 
-		op.perms.XCreate(ctx, kvs)
+		op.perms.ExecuteCreate(ctx, kvs)
 		return nil
 	}
 
@@ -94,7 +93,7 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 	if err != nil {
 		panic(err)
 	}
-	op.perms.XExecute(ctx, q, args...)
+	op.perms.ExecuteSql(ctx, q, args...)
 	return nil
 }
 
@@ -102,7 +101,7 @@ func (op *roleOpT) getAllPerms(ctx context.Context, role *roleT) {
 	sb := builder.NewSelect("perm").Prefix("distinct").From(op.perms.TableName()).
 		Where("role=?", role.Id)
 
-	op.perms.XSelect(ctx, &role.Permissions, sb)
+	op.perms.ExecuteSelect(ctx, &role.Permissions, sb)
 }
 
 func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName string, mt modifyType) error {
@@ -126,12 +125,12 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 		},
 	)
 
-	cond := builder.AndConditions().
+	cond := builder.AND().
 		Eq(true, "role", roleId).
 		Eq(true, "based", basedRoleId)
 
 	var _id int64
-	op.inherits.XSelect(ctx, &_id, builder.NewSelect("based").From(op.inherits.TableName()).Where(cond))
+	op.inherits.ExecuteSelect(ctx, &_id, builder.NewSelect("based").From(op.inherits.TableName()).Where(cond))
 	if _id < 1 {
 		if mt == _Add {
 			return nil
@@ -140,7 +139,7 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 		defer kvs.Free()
 		kvs.Set("role", roleId)
 		kvs.Set("based", basedRoleId)
-		op.perms.XCreate(ctx, kvs)
+		op.perms.ExecuteCreate(ctx, kvs)
 		return nil
 	}
 
@@ -152,14 +151,14 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 	if err != nil {
 		panic(err)
 	}
-	op.inherits.XExecute(ctx, q, args...)
+	op.inherits.ExecuteSql(ctx, q, args...)
 	return nil
 }
 
 func (op *roleOpT) getAllBasedRoles(ctx context.Context, role *roleT) {
 	sb := builder.NewSelect("based").Prefix("distinct").From(op.inherits.TableName()).
 		Where("role=?", role.Id)
-	op.inherits.XSelect(ctx, &role.Based, sb)
+	op.inherits.ExecuteSelect(ctx, &role.Based, sb)
 }
 
 func (op *roleOpT) List(ctx context.Context) (lst []*roleT) {

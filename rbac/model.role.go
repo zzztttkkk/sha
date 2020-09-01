@@ -1,6 +1,9 @@
 package rbac
 
-import "github.com/zzztttkkk/suna/sqls"
+import (
+	"github.com/jmoiron/sqlx"
+	"github.com/zzztttkkk/suna/sqls"
+)
 
 type roleT struct {
 	sqls.Enum
@@ -14,8 +17,8 @@ func (roleT) TableName() string {
 	return tablePrefix + "role"
 }
 
-func (role roleT) TableDefinition() []string {
-	return role.Enum.TableDefinition("descp text")
+func (role roleT) TableDefinition(db *sqlx.DB) []string {
+	return role.Enum.TableDefinition(db, "descp text")
 }
 
 type roleInheritanceT struct {

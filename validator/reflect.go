@@ -21,7 +21,8 @@ type _TagParser struct {
 
 func (p *_TagParser) OnNestedStruct(f *reflect.StructField) bool {
 	if !f.Anonymous {
-		log.Println("suna.validator: do not support nested struct")
+		log.Printf("suna.validator: nested-struct should be anonymous; %s.%s\n", p.name, f.Name)
+		return false
 	}
 	return true
 }
@@ -30,6 +31,9 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 	rule := &_Rule{field: field.Name, required: true}
 
 	if field.Type.Kind() == reflect.Struct {
+		if !field.Anonymous {
+			return false
+		}
 		subP := GetRules(field.Type)
 		p.all = append(p.all, subP.lst...)
 		return false

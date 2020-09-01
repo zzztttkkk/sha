@@ -13,11 +13,12 @@ require (
 	github.com/graphql-go/graphql v0.7.9
 	github.com/imdario/mergo v0.3.10
 	github.com/jmoiron/sqlx v1.2.0
+	github.com/mattn/go-sqlite3 v1.9.0
 	github.com/rs/xid v1.2.1
 	github.com/savsgio/gotils v0.0.0-20200616100644-13ff1fd2c28c
 	github.com/valyala/fasthttp v1.16.0
 	github.com/zzztttkkk/router v1.2.4-0.20200827052404-59c2a66b2a19
-	github.com/zzztttkkk/sqrl v0.0.0-20200813111908-88812b11e084
+	github.com/zzztttkkk/sqlr v0.0.0-20200831001229-6e63d18116ab
 	go.uber.org/dig v1.10.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.31.0

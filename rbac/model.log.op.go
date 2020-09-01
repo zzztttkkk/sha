@@ -8,7 +8,6 @@ import (
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
-	"reflect"
 	"time"
 )
 
@@ -21,7 +20,7 @@ var LogOperator = &logOpT{}
 func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
-			LogOperator.Init(reflect.ValueOf(logT{}))
+			LogOperator.Init(logT{})
 		},
 		initPriority.Incr(),
 	)
@@ -33,7 +32,7 @@ func (op *logOpT) Create(ctx context.Context, name string, info utils.M) int64 {
 		panic(v)
 	}
 
-	user := sqls.TxOperator(ctx)
+	user := sqls.GetTxOperator(ctx)
 	if user == nil {
 		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 	}
@@ -45,7 +44,7 @@ func (op *logOpT) Create(ctx context.Context, name string, info utils.M) int64 {
 	kvs.Set("name", name)
 	kvs.Set("operator", user.GetId())
 	kvs.Set("info", jsonx.Object(info))
-	return op.XCreate(ctx, kvs)
+	return op.ExecuteCreate(ctx, kvs)
 }
 
 func (op *logOpT) List(
@@ -56,7 +55,7 @@ func (op *logOpT) List(
 	cursor int64,
 	limit int64,
 ) (lst []logT) {
-	conditions := builder.AndConditions()
+	conditions := builder.AND()
 	conditions.Gte(begin > 0, "created", begin)
 	conditions.Lte(end > 0, "created", end)
 	conditions.Eq(len(names) > 0, "name", names)
@@ -74,6 +73,6 @@ func (op *logOpT) List(
 		sb.OrderBy("id desc")
 	}
 
-	op.XSelect(ctx, &lst, sb)
+	op.ExecuteSelect(ctx, &lst, sb)
 	return
 }

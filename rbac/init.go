@@ -50,7 +50,7 @@ func init() {
 			cfg = confV
 			tablePrefix = confV.Rbac.TablenamePrefix
 
-			l := cfg.SqlLeader()
+			l := cfg.GetSqlLeader()
 			if l == nil {
 				log.Println("suna.rbac: init error")
 				return

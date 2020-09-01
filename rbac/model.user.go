@@ -1,6 +1,9 @@
 package rbac
 
-import "github.com/zzztttkkk/suna/sqls"
+import (
+	"github.com/jmoiron/sqlx"
+	"github.com/zzztttkkk/suna/sqls"
+)
 
 type userWithRoleT struct {
 	sqls.Model
@@ -12,8 +15,9 @@ func (userWithRoleT) TableName() string {
 	return tablePrefix + "subject_with_role"
 }
 
-func (ele userWithRoleT) TableDefinition() []string {
+func (ele userWithRoleT) TableDefinition(db *sqlx.DB) []string {
 	return ele.Model.TableDefinition(
+		db,
 		"subject bigint not null",
 		"role bigint not null",
 	)

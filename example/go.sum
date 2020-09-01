@@ -48,6 +48,8 @@ github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5a
 github.com/google/go-cmp v0.4.0 h1:xsAVV57WRhGj6kEIi8ReJzQlHHqcBYCElAvkovg3B/4=
 github.com/google/go-cmp v0.4.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/gopherjs/gopherjs v0.0.0-20190910122728-9d188e94fb99/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
+github.com/graphql-go/graphql v0.7.9 h1:5Va/Rt4l5g3YjwDnid3vFfn43faaQBq7rMcIZ0VnV34=
+github.com/graphql-go/graphql v0.7.9/go.mod h1:k6yrAYQaSP59DC5UVxbgxESlmVyojThKdORUqGDGmrI=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/imdario/mergo v0.3.10 h1:6q5mVkdH/vYmqngx7kZQTjJ5HRsx+ImorDIEQ+beJgc=
@@ -107,8 +109,14 @@ github.com/zzztttkkk/router v1.2.4-0.20200814165054-307f66ea4057 h1:TAWNO/MPBwMN
 github.com/zzztttkkk/router v1.2.4-0.20200814165054-307f66ea4057/go.mod h1:K6ktsPKn55d9Rf/I0VO+XxfemyDSlm+bkMNNiQoDkRE=
 github.com/zzztttkkk/router v1.2.4-0.20200816121612-7158f422ee48 h1:m07DdowYN6U+XkOi9Exl42STNPd9x9ofzBIeMJFaZos=
 github.com/zzztttkkk/router v1.2.4-0.20200816121612-7158f422ee48/go.mod h1:K6ktsPKn55d9Rf/I0VO+XxfemyDSlm+bkMNNiQoDkRE=
+github.com/zzztttkkk/router v1.2.4-0.20200827052404-59c2a66b2a19 h1:Kjq7YswRwO4/jyeea4kFlSxKjeBKVJNoegk0eFBvaZc=
+github.com/zzztttkkk/router v1.2.4-0.20200827052404-59c2a66b2a19/go.mod h1:4seneEUFsKLV1JaF5gM+BOjgpGNfJ0Ss2Fs4JBk7N7Q=
+github.com/zzztttkkk/sqlr v0.0.0-20200831001229-6e63d18116ab h1:fzZrxJdS8f6PbJhiBvQvFXezqCGtcW+TzbYCfJsjopM=
+github.com/zzztttkkk/sqlr v0.0.0-20200831001229-6e63d18116ab/go.mod h1:OuSxGP+N55u+2BRsvYAGIqLUjfkSdTzV0pVwjsJOJEw=
 github.com/zzztttkkk/sqrl v0.0.0-20200813111908-88812b11e084 h1:oDvZ3DJMYX70NHjgbTnEH4Qsab+/I2G2KY9S9pr1qRE=
 github.com/zzztttkkk/sqrl v0.0.0-20200813111908-88812b11e084/go.mod h1:A96SHYSqO8k0NHQSWbGDWReOnyzHrMj/zeNy/4dXPNs=
+github.com/zzztttkkk/sqrl v0.0.0-20200830231058-fa3814fe6b6a h1:CqHI30XC40+jwxs+FXkBWrLbm1jCCY4lARPPpdIenvU=
+github.com/zzztttkkk/sqrl v0.0.0-20200830231058-fa3814fe6b6a/go.mod h1:A96SHYSqO8k0NHQSWbGDWReOnyzHrMj/zeNy/4dXPNs=
 github.com/zzztttkkk/suna v0.0.0-20200817050829-902f4a393247 h1:XvUvY+WRnBUpeBcoSkvVRhvwPCtilPNfo4Uj22L93TY=
 github.com/zzztttkkk/suna v0.0.0-20200817050829-902f4a393247/go.mod h1:PsiAt3Q2569dPiKkdZ19sbeGBU8OGoKhO8+uIoc+VT4=
 go.uber.org/dig v1.10.0 h1:yLmDDj9/zuDjv3gz8GQGviXMs9TfysIUMUilCpgzUJY=

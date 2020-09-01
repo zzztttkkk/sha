@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/utils"
-	"reflect"
 	"time"
 )
 
@@ -19,7 +18,7 @@ func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
 			_PermissionOperator.Init(
-				reflect.ValueOf(permissionT{}),
+				permissionT{},
 				func() sqls.EnumItem { return &permissionT{} },
 				nil,
 			)

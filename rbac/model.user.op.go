@@ -4,18 +4,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/suna/cache"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
-	"reflect"
 	"strconv"
 )
 
 type userOpT struct {
 	roles *sqls.Operator
-	lru   *cache.Lru
+	lru   *utils.Lru
 }
 
 var _UserOperator = &userOpT{
@@ -25,8 +23,8 @@ var _UserOperator = &userOpT{
 func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
-			_UserOperator.roles.Init(reflect.ValueOf(userWithRoleT{}))
-			_UserOperator.lru = cache.NewLru(cfg.Cache.Lru.UserSize)
+			_UserOperator.roles.Init(userWithRoleT{})
+			_UserOperator.lru = utils.NewLru(cfg.Cache.Lru.UserSize)
 		},
 		permTablePriority.Incr(),
 	)
@@ -44,14 +42,14 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 	)
 	defer op.lru.Remove(strconv.FormatInt(subjectId, 16))
 
-	cond := builder.AndConditions().
+	cond := builder.AND().
 		Eq(true, "role", roleId).
 		Eq(true, "subject", subjectId)
 
 	srb := builder.NewSelect("role").From(op.roles.TableName()).Where(cond)
 
 	var _id int64
-	op.roles.XSelect(ctx, &_id, srb)
+	op.roles.ExecuteSelect(ctx, &_id, srb)
 	if _id < 1 {
 		if mt == _Add {
 			return nil
@@ -62,7 +60,7 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 		kvs.Set("subject", subjectId)
 		kvs.Set("role", roleId)
 
-		op.roles.XCreate(ctx, kvs)
+		op.roles.ExecuteCreate(ctx, kvs)
 		return nil
 	}
 
@@ -74,7 +72,7 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 	if err != nil {
 		panic(err)
 	}
-	op.roles.XExecute(ctx, q, args...)
+	op.roles.ExecuteSql(ctx, q, args...)
 	return nil
 }
 
@@ -85,7 +83,7 @@ func (op *userOpT) getRoles(ctx context.Context, userId int64) []int64 {
 	}
 
 	lst := make([]int64, 0)
-	op.roles.XSelect(
+	op.roles.ExecuteSelect(
 		ctx,
 		&lst,
 		builder.NewSelect("role").From(op.roles.TableName()).Prefix("distinct").Where(

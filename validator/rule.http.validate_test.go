@@ -57,7 +57,7 @@ func TestJsonRequest(t *testing.T) {
 		t.Fatalf("%s", string(ctx.Response.Body()))
 		return
 	}
-	fmt.Println(form.A.Get("a.b.c.0"))
+	fmt.Println(form.A.MustGet("a.b.c.0"))
 
 	type Info struct {
 		A struct {
@@ -90,5 +90,5 @@ func TestN(t *testing.T) {
 		Info string
 	}
 
-	GetRules(C{})
+	fmt.Println(GetRules(C{}).NewDoc("").Document())
 }

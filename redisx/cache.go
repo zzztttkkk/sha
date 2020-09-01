@@ -1,4 +1,4 @@
-package cache
+package redisx
 
 import (
 	"github.com/golang/groupcache/singleflight"
@@ -31,7 +31,7 @@ type RedCacheOption struct {
 const DisableRedCacheKey = "Suna-Disable-Redcache"
 
 // Cache the entire response in Redis
-func NewRed(opt *RedCacheOption) *_RedCacheT {
+func NewCache(opt *RedCacheOption) *_RedCacheT {
 	c := &_RedCacheT{
 		seconds:     opt.ExpireSeconds,
 		headers:     map[string]bool{},

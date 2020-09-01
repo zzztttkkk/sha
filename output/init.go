@@ -6,13 +6,16 @@ import (
 	"github.com/zzztttkkk/suna/internal"
 )
 
+var _JsonPCallbackParams string
+
 func init() {
 	internal.Dig.LazyInvoke(
 		func(conf *config.Suna) {
-			errors.MaxStackDepth = conf.Errors.MaxDepth
+			errors.MaxStackDepth = conf.Output.ErrorMaxDepth
 			if errors.MaxStackDepth < 1 {
 				errors.MaxStackDepth = 20
 			}
+			_JsonPCallbackParams = conf.Output.JsonPCallbackParam
 		},
 	)
 }

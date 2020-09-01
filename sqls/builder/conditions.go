@@ -1,6 +1,6 @@
 package builder
 
-import "github.com/zzztttkkk/sqrl"
+import "github.com/zzztttkkk/sqlr"
 
 type _logicT int
 
@@ -12,18 +12,18 @@ const (
 type _Conditions struct {
 	v _logicT
 
-	lt  sqrl.Lt
-	gt  sqrl.Gt
-	lte sqrl.LtOrEq
-	gte sqrl.GtOrEq
-	eq  sqrl.Eq
-	neq sqrl.NotEq
+	lt  sqlr.Lt
+	gt  sqlr.Gt
+	lte sqlr.LtOrEq
+	gte sqlr.GtOrEq
+	eq  sqlr.Eq
+	neq sqlr.NotEq
 
-	like   sqrl.Like
-	unlike sqrl.NotLike
+	like   sqlr.Like
+	unlike sqlr.NotLike
 
-	ilike   sqrl.ILike
-	unilike sqrl.NotILike
+	ilike   sqlr.ILike
+	unilike sqlr.NotILike
 }
 
 func (l *_Conditions) Lt(ok bool, key string, value interface{}) *_Conditions {
@@ -31,7 +31,7 @@ func (l *_Conditions) Lt(ok bool, key string, value interface{}) *_Conditions {
 		return l
 	}
 	if l.lt == nil {
-		l.lt = sqrl.Lt{key: value}
+		l.lt = sqlr.Lt{key: value}
 	} else {
 		l.lt[key] = value
 	}
@@ -44,7 +44,7 @@ func (l *_Conditions) Gt(ok bool, key string, value interface{}) *_Conditions {
 		return l
 	}
 	if l.gt == nil {
-		l.gt = sqrl.Gt{key: value}
+		l.gt = sqlr.Gt{key: value}
 	} else {
 		l.gt[key] = value
 	}
@@ -57,7 +57,7 @@ func (l *_Conditions) Lte(ok bool, key string, value interface{}) *_Conditions {
 		return l
 	}
 	if l.lte == nil {
-		l.lte = sqrl.LtOrEq{key: value}
+		l.lte = sqlr.LtOrEq{key: value}
 	} else {
 		l.lte[key] = value
 	}
@@ -70,7 +70,7 @@ func (l *_Conditions) Gte(ok bool, key string, value interface{}) *_Conditions {
 		return l
 	}
 	if l.gte == nil {
-		l.gte = sqrl.GtOrEq{key: value}
+		l.gte = sqlr.GtOrEq{key: value}
 	} else {
 		l.gte[key] = value
 	}
@@ -83,7 +83,7 @@ func (l *_Conditions) Eq(ok bool, key string, value interface{}) *_Conditions {
 		return l
 	}
 	if l.eq == nil {
-		l.eq = sqrl.Eq{key: value}
+		l.eq = sqlr.Eq{key: value}
 	} else {
 		l.eq[key] = value
 	}
@@ -96,7 +96,7 @@ func (l *_Conditions) NotEq(ok bool, key string, value interface{}) *_Conditions
 		return l
 	}
 	if l.neq == nil {
-		l.neq = sqrl.NotEq{key: value}
+		l.neq = sqlr.NotEq{key: value}
 	} else {
 		l.neq[key] = value
 	}
@@ -109,7 +109,7 @@ func (l *_Conditions) Like(ok bool, key string, value interface{}) *_Conditions 
 		return l
 	}
 	if l.like == nil {
-		l.like = sqrl.Like{key: value}
+		l.like = sqlr.Like{key: value}
 	} else {
 		l.like[key] = value
 	}
@@ -122,7 +122,7 @@ func (l *_Conditions) NotLike(ok bool, key string, value interface{}) *_Conditio
 		return l
 	}
 	if l.unlike == nil {
-		l.unlike = sqrl.NotLike{key: value}
+		l.unlike = sqlr.NotLike{key: value}
 	} else {
 		l.unlike[key] = value
 	}
@@ -134,7 +134,7 @@ func (l *_Conditions) ILike(ok bool, key string, value interface{}) *_Conditions
 		return l
 	}
 	if l.ilike == nil {
-		l.ilike = sqrl.ILike{key: value}
+		l.ilike = sqlr.ILike{key: value}
 	} else {
 		l.ilike[key] = value
 	}
@@ -146,7 +146,7 @@ func (l *_Conditions) NotILike(ok bool, key string, value interface{}) *_Conditi
 		return l
 	}
 	if l.unilike == nil {
-		l.unilike = sqrl.NotILike{key: value}
+		l.unilike = sqlr.NotILike{key: value}
 	} else {
 		l.unilike[key] = value
 	}
@@ -154,7 +154,7 @@ func (l *_Conditions) NotILike(ok bool, key string, value interface{}) *_Conditi
 }
 
 func (l *_Conditions) ToSql() (string, []interface{}, error) {
-	var sqlizers []sqrl.Sqlizer
+	var sqlizers []sqlr.Sqlizer
 
 	if len(l.lt) > 0 {
 		sqlizers = append(sqlizers, l.lt)
@@ -197,15 +197,15 @@ func (l *_Conditions) ToSql() (string, []interface{}, error) {
 	}
 
 	if l.v == _OR {
-		return sqrl.Or(sqlizers).ToSql()
+		return sqlr.Or(sqlizers).ToSql()
 	}
-	return sqrl.And(sqlizers).ToSql()
+	return sqlr.And(sqlizers).ToSql()
 }
 
-func AndConditions() *_Conditions {
+func AND() *_Conditions {
 	return &_Conditions{v: _AND}
 }
 
-func OrConditions() *_Conditions {
+func OR() *_Conditions {
 	return &_Conditions{v: _OR}
 }

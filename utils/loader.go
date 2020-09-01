@@ -105,16 +105,11 @@ func (loader *Loader) bindGrpc(server *grpc.Server) {
 	}
 }
 
-func (loader *Loader) RunAsHttpServer(root router.Router, conf *config.Suna) {
-	r, ok := root.(*router.Root)
-	if !ok {
-		panic("")
-	}
-
+func (loader *Loader) RunAsHttpServer(root *router.Root, conf *config.Suna) {
 	loader.bindHttp(root)
 
 	glog := AcquireGroupLogger("Root")
-	for method, paths := range r.List() {
+	for method, paths := range root.List() {
 		for _, path := range paths {
 			glog.Println(fmt.Sprintf("%s: %s", method, path))
 		}
@@ -122,7 +117,7 @@ func (loader *Loader) RunAsHttpServer(root router.Router, conf *config.Suna) {
 	glog.Free()
 
 	server := &fasthttp.Server{
-		Handler:               r.Handler,
+		Handler:               root.Handler,
 		NoDefaultServerHeader: true,
 		NoDefaultDate:         true,
 	}

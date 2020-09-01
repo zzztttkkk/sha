@@ -85,7 +85,8 @@ func (C) GraphqlScalar() *graphql.Scalar {
 
 type D struct {
 	B
-	C
+	C C
+	X []*C
 }
 
 func TestNewObject(t *testing.T) {

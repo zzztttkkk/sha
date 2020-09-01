@@ -1,4 +1,4 @@
-package redlock
+package redisx
 
 import (
 	"context"
@@ -12,7 +12,7 @@ type RedLock struct {
 	cfn func()
 }
 
-func New(key string, expire time.Duration) *RedLock {
+func NewLock(key string, expire time.Duration) *RedLock {
 	return &RedLock{
 		key: key,
 		du:  expire,
@@ -20,18 +20,18 @@ func New(key string, expire time.Duration) *RedLock {
 	}
 }
 
-var ErrKeyExists = errors.New("suna.redlock: the key is exists")
-var ErrTimeout = errors.New("suna.redlock: acquire timeout")
+var ErrLockKeyExists = errors.New("suna.redisx.lock: the key is exists")
+var ErrLockTimeout = errors.New("suna.redisx.lock: acquire timeout")
 
 func (lock *RedLock) Acquire(ctx context.Context) (context.Context, error) {
 	begin := time.Now()
 	if !redisc.SetNX(lock.key, 1, lock.du).Val() {
-		return nil, ErrKeyExists
+		return nil, ErrLockKeyExists
 	}
 
 	du := lock.du - (time.Now().Sub(begin))
 	if du <= 0 {
-		return nil, ErrTimeout
+		return nil, ErrLockTimeout
 	}
 	if du > time.Second {
 		du = du - time.Millisecond*30

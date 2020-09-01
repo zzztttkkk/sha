@@ -1,33 +1,33 @@
 package builder
 
 import (
-	"github.com/zzztttkkk/sqrl"
+	"github.com/zzztttkkk/sqlr"
 )
 
-func NewSelect(cols ...string) *sqrl.SelectBuilder {
+func NewSelect(cols ...string) *sqlr.SelectBuilder {
 	if isPostgres {
-		return sqrl.StatementBuilder.PlaceholderFormat(sqrl.Dollar).Select(cols...)
+		return sqlr.StatementBuilder.PlaceholderFormat(sqlr.Dollar).Select(cols...)
 	}
-	return sqrl.Select(cols...)
+	return sqlr.Select(cols...)
 }
 
-func NewUpdate(table string) *sqrl.UpdateBuilder {
+func NewUpdate(table string) *sqlr.UpdateBuilder {
 	if isPostgres {
-		return sqrl.StatementBuilder.PlaceholderFormat(sqrl.Dollar).Update(table)
+		return sqlr.StatementBuilder.PlaceholderFormat(sqlr.Dollar).Update(table)
 	}
-	return sqrl.Update(table)
+	return sqlr.Update(table)
 }
 
-func NewDelete(what ...string) *sqrl.DeleteBuilder {
+func NewDelete(what ...string) *sqlr.DeleteBuilder {
 	if isPostgres {
-		return sqrl.StatementBuilder.PlaceholderFormat(sqrl.Dollar).Delete(what...)
+		return sqlr.StatementBuilder.PlaceholderFormat(sqlr.Dollar).Delete(what...)
 	}
-	return sqrl.Delete(what...)
+	return sqlr.Delete(what...)
 }
 
-func NewInsert(table string) *sqrl.InsertBuilder {
+func NewInsert(table string) *sqlr.InsertBuilder {
 	if isPostgres {
-		return sqrl.StatementBuilder.PlaceholderFormat(sqrl.Dollar).Insert(table)
+		return sqlr.StatementBuilder.PlaceholderFormat(sqlr.Dollar).Insert(table)
 	}
-	return sqrl.Insert(table)
+	return sqlr.Insert(table)
 }

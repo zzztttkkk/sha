@@ -50,8 +50,9 @@ type Suna struct {
 		}
 	}
 
-	Errors struct {
-		MaxDepth int
+	Output struct {
+		ErrorMaxDepth      int
+		JsonPCallbackParam string
 	}
 
 	Sql struct {
@@ -61,7 +62,7 @@ type Suna struct {
 		MaxOpen         int           `toml:"max-open"`
 		MaxLifetime     toml.Duration `toml:"max-lifetime"`
 		EnumCacheMaxage toml.Duration `toml:"enum-cache-maxage"`
-		Log             bool
+		Logging         bool
 	}
 
 	Rbac struct {
@@ -83,12 +84,10 @@ type Suna struct {
 		isRelease bool
 		isTest    bool
 
-		rediscOk bool
-		redisc   redis.Cmdable
+		redisc redis.Cmdable
 
-		sqlLeader        *sqlx.DB
-		sqlNullFollowers bool
-		sqlFollowers     []*sqlx.DB
+		sqlLeader    *sqlx.DB
+		sqlFollowers []*sqlx.DB
 	} `toml:"-"`
 }
 
@@ -100,7 +99,7 @@ func init() {
 	defaultV.Secret.HashAlgorithm = "sha256-512"
 	defaultV.Cache.Lru.ContentSize = 2000
 	defaultV.Cache.Lru.UserSize = 1000
-	defaultV.Errors.MaxDepth = 20
+	defaultV.Output.ErrorMaxDepth = 20
 	defaultV.Session.Cookie = "sck"
 	defaultV.Session.Header = "Suna-Session"
 	defaultV.Session.Maxage.Duration = time.Minute * 30
@@ -132,6 +131,8 @@ func (t *Suna) Done() {
 	default:
 		t.Internal.isDebug = true
 	}
+
+	t._InitRedisClient()
 }
 
 func (t *Suna) IsDebug() bool { return t.Internal.isDebug }

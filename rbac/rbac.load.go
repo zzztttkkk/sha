@@ -3,7 +3,7 @@ package rbac
 import (
 	"context"
 	"fmt"
-	"github.com/zzztttkkk/suna/cache"
+	"github.com/zzztttkkk/suna/utils"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,7 +16,7 @@ var permNameMap map[string]*permissionT
 var roleIdMap map[int64]*roleT
 var errs []string
 var rolePermMap map[int64]map[int64]bool
-var rolePermCache = cache.NewLru(200)
+var rolePermCache = utils.NewLru(200)
 
 func Load(ctx context.Context) {
 	g.Lock()

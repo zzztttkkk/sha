@@ -71,3 +71,89 @@ func ParseObject(v interface{}) (Object, error) {
 	}
 	return m, nil
 }
+
+func (f Object) Len() int {
+	return len(f)
+}
+
+func (f Object) Get(key string) (interface{}, error) {
+	return get(f, key)
+}
+
+func (f Object) MustGet(key string) interface{} {
+	v, e := f.Get(key)
+	if e != nil {
+		panic(e)
+	}
+	return v
+}
+
+func (f Object) GetInt(key string) (int64, error) {
+	return getInt64(f, key)
+}
+
+func (f Object) MustGetInt(key string) int64 {
+	v, e := getInt64(f, key)
+	if e != nil {
+		panic(e)
+	}
+	return v
+}
+
+func (f Object) GetFloat(key string) (float64, error) {
+	return getFloat(f, key)
+}
+
+func (f Object) MustGetFloat(key string) float64 {
+	v, e := getFloat(f, key)
+	if e != nil {
+		panic(e)
+	}
+	return v
+}
+
+func (f Object) GetBool(key string) (bool, error) {
+	return getBool(f, key)
+}
+
+func (f Object) MustGetBool(key string) bool {
+	v, e := getBool(f, key)
+	if e != nil {
+		panic(e)
+	}
+	return v
+}
+
+func (f Object) GetString(key string) (string, error) {
+	return getString(f, key)
+}
+
+func (f Object) MustGetString(key string) string {
+	v, e := getString(f, key)
+	if e != nil {
+		panic(e)
+	}
+	return v
+}
+
+func (f Object) IsNull(key string) (bool, error) {
+	return isNull(f, key)
+}
+
+func (f Object) MustIsNull(key string) bool {
+	v, e := isNull(f, key)
+	if e != nil {
+		panic(e)
+	}
+	return v
+}
+
+func (f Object) Set(key string, val interface{}) error {
+	return set(f, key, val)
+}
+
+func (f Object) MustSet(key string, val interface{}) {
+	if err := f.Set(key, val); err != nil {
+		panic(err)
+	}
+}
