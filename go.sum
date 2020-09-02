@@ -23,6 +23,8 @@ github.com/fasthttp/router v1.2.2 h1:znEzZbSKjKDzXwUHiq/HQ17brnKx9ZF6ZphYKGrfkVk
 github.com/fasthttp/router v1.2.2/go.mod h1:7KEYuV4ieG9kNJqqxnH0pwIdO69cJCVhVqZx3CpOURw=
 github.com/fasthttp/router v1.3.1 h1:DYWvNcemX4CIYE6OmiaRaTN2ny8CONIw6g4tOM0EEbI=
 github.com/fasthttp/router v1.3.1/go.mod h1:athTSKMdel0Qhh3W4nB8qn+EPYuyj6YZMUo6ZcXWTgc=
+github.com/fasthttp/websocket v1.4.3-beta.2 h1:y6L7Ssa0caG1ozGX5xTikXnZE/8c+v8RUtqwcPq/6nw=
+github.com/fasthttp/websocket v1.4.3-beta.2/go.mod h1:9hYG0tD7IIBFVQ7bUJeoVWMiJQH/2yMkWEO7gdbw71k=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/glycerine/go-unsnap-stream v0.0.0-20181221182339-f9677308dec2 h1:Ujru1hufTHVb++eG6OuNDKMxZnGIvF6o/u8q/8h2+I4=
@@ -122,6 +124,10 @@ github.com/zzztttkkk/router v1.2.4-0.20200816121612-7158f422ee48 h1:m07DdowYN6U+
 github.com/zzztttkkk/router v1.2.4-0.20200816121612-7158f422ee48/go.mod h1:K6ktsPKn55d9Rf/I0VO+XxfemyDSlm+bkMNNiQoDkRE=
 github.com/zzztttkkk/router v1.2.4-0.20200827052404-59c2a66b2a19 h1:Kjq7YswRwO4/jyeea4kFlSxKjeBKVJNoegk0eFBvaZc=
 github.com/zzztttkkk/router v1.2.4-0.20200827052404-59c2a66b2a19/go.mod h1:4seneEUFsKLV1JaF5gM+BOjgpGNfJ0Ss2Fs4JBk7N7Q=
+github.com/zzztttkkk/router v1.2.4-0.20200902113311-20c88acb4265 h1:02gcK+jg/iOSDjwo/Bng7imqTQmF6dJ7F73QL6HdObU=
+github.com/zzztttkkk/router v1.2.4-0.20200902113311-20c88acb4265/go.mod h1:nod2blnjz2O9riQyUWcuNqb5/bNLYvno9rPw4l9iXXU=
+github.com/zzztttkkk/router v1.2.4-0.20200902114042-01366d475b42 h1:FfSNmc+LscmvCzWTtE1NcAZGj5cAiM4Iz34MVMNVeUg=
+github.com/zzztttkkk/router v1.2.4-0.20200902114042-01366d475b42/go.mod h1:nod2blnjz2O9riQyUWcuNqb5/bNLYvno9rPw4l9iXXU=
 github.com/zzztttkkk/sqlr v0.0.0-20200813111908-88812b11e084 h1:oDvZ3DJMYX70NHjgbTnEH4Qsab+/I2G2KY9S9pr1qRE=
 github.com/zzztttkkk/sqlr v0.0.0-20200813111908-88812b11e084/go.mod h1:A96SHYSqO8k0NHQSWbGDWReOnyzHrMj/zeNy/4dXPNs=
 github.com/zzztttkkk/sqlr v0.0.0-20200830231058-fa3814fe6b6a h1:CqHI30XC40+jwxs+FXkBWrLbm1jCCY4lARPPpdIenvU=
