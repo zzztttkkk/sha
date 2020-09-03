@@ -10,7 +10,7 @@ type permissionT struct {
 	Descp string ` json:"descp"`
 }
 
-func (permissionT) TableName() string {
+func (permissionT) SqlsTableName() string {
 	return tablePrefix + "permission"
 }
 

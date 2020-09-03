@@ -32,6 +32,3 @@ func (d *Dig) Invoke() {
 		}
 	}
 }
-
-func (d *Dig) Index(v ...interface{}) {
-}

@@ -4,18 +4,6 @@ import (
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/jsonx"
-	"github.com/zzztttkkk/suna/middleware"
-	"github.com/zzztttkkk/suna/output"
-	"github.com/zzztttkkk/suna/rbac"
-	"github.com/zzztttkkk/suna/redisx"
-	"github.com/zzztttkkk/suna/reflectx"
-	"github.com/zzztttkkk/suna/secret"
-	"github.com/zzztttkkk/suna/session"
-	"github.com/zzztttkkk/suna/sqls"
-	"github.com/zzztttkkk/suna/sqls/builder"
-	"github.com/zzztttkkk/suna/utils"
-	"github.com/zzztttkkk/suna/validator"
 	"log"
 )
 
@@ -71,22 +59,5 @@ func Init(opt *InitOption) {
 		},
 	)
 
-	_LoadSubModules()
 	internal.Dig.Invoke()
-}
-
-// trigger internal.LazyInvoke
-func _LoadSubModules() {
-	internal.Dig.Index(utils.NewLru)
-	internal.Dig.Index(middleware.NewAccessLogger)
-	internal.Dig.Index(output.Error)
-	internal.Dig.Index(rbac.Loader)
-	internal.Dig.Index(reflectx.ExportedKeys)
-	internal.Dig.Index(secret.AesDecrypt)
-	internal.Dig.Index(session.New)
-	internal.Dig.Index(sqls.CreateTable)
-	internal.Dig.Index(builder.AND)
-	internal.Dig.Index(validator.RegisterFunc)
-	internal.Dig.Index(redisx.NewLock)
-	internal.Dig.Index(jsonx.Marshal)
 }

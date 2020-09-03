@@ -107,6 +107,9 @@ func (c *_Cors) AsMiddleware() fasthttp.RequestHandler {
 	return c.handle(router.Next)
 }
 
-func (c *_Cors) OptionsHandler() fasthttp.RequestHandler {
-	return func(ctx *fasthttp.RequestCtx) { c.opt.writeHeaders(ctx) }
+func (c *_Cors) AsOptionsHandler() fasthttp.RequestHandler {
+	return func(ctx *fasthttp.RequestCtx) {
+		c.opt.writeHeaders(ctx)
+		ctx.Response.SetStatusCode(fasthttp.StatusNoContent)
+	}
 }

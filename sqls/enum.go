@@ -21,5 +21,5 @@ func (enum *Enum) GetName() string {
 }
 
 func (enum Enum) SqlsTableColumns(db *sqlx.DB, lines ...string) []string {
-	return enum.Model.SqlsTableColumns(db, append(lines, "name char(255) not null unique")...)
+	return enum.Model.SqlsTableColumns(db, append(lines, "name varchar(512) not null unique")...)
 }

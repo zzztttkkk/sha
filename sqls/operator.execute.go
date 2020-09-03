@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/sqlr"
-	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
 	"reflect"
 )
@@ -73,7 +72,7 @@ func (op *Operator) ExecuteSelect(ctx context.Context, dist interface{}, builder
 
 func (op *Operator) ExecuteExistsTest(ctx context.Context, conditions sqlr.Sqlizer) bool {
 	c := 0
-	op.ExecuteSelect(ctx, &c, builder.NewSelect("count(*)").From(op.TableName()).Where(conditions))
+	op.ExecuteSelect(ctx, &c, op.SelectBuilder(ctx, "count(*)").From(op.TableName()).Where(conditions))
 	return c > 0
 }
 
@@ -109,7 +108,7 @@ func (op *Operator) ExecuteCreate(ctx context.Context, kvs *utils.Kvs) int64 {
 	E := Executor(ctx)
 	isPostgres := E.DriverName() == "postgres"
 
-	b := builder.NewInsert(op.TableName()).Columns(ks...).Values(vs...)
+	b := op.InsertBuilder(ctx, op.TableName()).Columns(ks...).Values(vs...)
 	if isPostgres {
 		if len(op.idField) > 0 {
 			b.Returning(op.idField)
@@ -156,7 +155,7 @@ func (w *Where) Limit(limit int64) *Where {
 func NewWhere(s string, args ...interface{}) *Where { return &Where{s: s, args: args} }
 
 func (op *Operator) ExecuteUpdate(ctx context.Context, kvs *utils.Kvs, where *Where) int64 {
-	update := builder.NewUpdate(op.tablename)
+	update := op.UpdateBuilder(ctx, op.tablename)
 	kvs.EachNode(
 		func(s string, i interface{}) {
 			update.Set(s, i)
@@ -173,17 +172,37 @@ func (op *Operator) ExecuteUpdate(ctx context.Context, kvs *utils.Kvs, where *Wh
 	if e != nil {
 		panic(e)
 	}
-	_DoSqlLogging(q, args)
-	r, e := Executor(ctx).ExecContext(ctx, q, args...)
-	if e != nil {
-		if e == sql.ErrNoRows {
-			return 0
-		}
-		panic(e)
-	}
-	c, e := r.RowsAffected()
+
+	r := op.ExecuteSql(ctx, q, args...)
+	v, e := r.RowsAffected()
 	if e != nil {
 		panic(e)
 	}
-	return c
+	return v
+}
+
+func (op *Operator) ExecuteUpdate1(ctx context.Context, kvs *utils.Kvs, condition *_Conditions, limit int64) int64 {
+	update := op.UpdateBuilder(ctx, op.tablename)
+	kvs.EachNode(
+		func(s string, i interface{}) {
+			update.Set(s, i)
+		},
+	)
+	if condition == nil {
+		panic("suna.sqls: update without any conditions")
+	}
+	update.Where(condition)
+	if limit > 0 {
+		update.Limit(uint64(limit))
+	}
+	q, args, e := update.ToSql()
+	if e != nil {
+		panic(e)
+	}
+	r := op.ExecuteSql(ctx, q, args...)
+	v, e := r.RowsAffected()
+	if e != nil {
+		panic(e)
+	}
+	return v
 }

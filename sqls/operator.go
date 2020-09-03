@@ -28,15 +28,14 @@ func (op *Operator) SetIdField(f string) {
 }
 
 func (op *Operator) _GetDbLeader() *sqlx.DB {
-	var db = cfg.GetSqlLeader()
 	if len(op.dbGroupName) > 0 {
 		dbs, ok := _DbGroups[op.dbGroupName]
 		if !ok {
 			panic(fmt.Errorf("suna.sqls: database group `%s` is not exists", op.dbGroupName))
 		}
-		db = dbs.Leader
+		return dbs.Leader
 	}
-	return db
+	return cfg.GetSqlLeader()
 }
 
 func (op *Operator) Init(v interface{}) {
@@ -60,16 +59,20 @@ func getTableName(ele reflect.Value) string {
 
 func CreateTable(db *sqlx.DB, ele reflect.Value, name string) {
 	fnV := ele.MethodByName("SqlsTableColumns")
-	fnT := fnV.Type()
 	msg := fmt.Sprintf(
 		"suna.sqls: `%s.%s` has no method `SqlsTableColumns`, or type error\n",
 		ele.Type().PkgPath(), ele.Type().Name(),
 	)
-	if !fnV.IsValid() || fnT.NumOut() != 1 {
+
+	if !fnV.IsValid() {
 		log.Print(msg)
 		return
 	}
-
+	fnT := fnV.Type()
+	if fnT.NumOut() != 1 {
+		log.Print(msg)
+		return
+	}
 	switch reflect.New(fnT.Out(0)).Elem().Interface().(type) {
 	case []string:
 	default:

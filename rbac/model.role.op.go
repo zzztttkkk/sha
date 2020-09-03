@@ -6,7 +6,6 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
-	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
 )
 
@@ -63,11 +62,11 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 		},
 	)
 
-	cond := builder.AND().
+	cond := sqls.AND().
 		Eq(true, "role", roleId).
 		Eq(true, "perm", permId)
 
-	spb := builder.NewSelect("id").From(op.perms.TableName()).Where(cond)
+	spb := op.SelectBuilder(ctx, "id").From(op.perms.TableName()).Where(cond)
 
 	var _id int64
 	op.perms.ExecuteSelect(ctx, &_id, spb)
@@ -89,7 +88,7 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 		return nil
 	}
 
-	q, args, err := builder.NewDelete().From(op.perms.TableName()).Where(cond).Limit(1).ToSql()
+	q, args, err := op.DeleteBuilder(ctx).From(op.perms.TableName()).Where(cond).Limit(1).ToSql()
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +97,7 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 }
 
 func (op *roleOpT) getAllPerms(ctx context.Context, role *roleT) {
-	sb := builder.NewSelect("perm").Prefix("distinct").From(op.perms.TableName()).
+	sb := op.SelectBuilder(ctx, "perm").Prefix("distinct").From(op.perms.TableName()).
 		Where("role=?", role.Id)
 
 	op.perms.ExecuteSelect(ctx, &role.Permissions, sb)
@@ -125,12 +124,12 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 		},
 	)
 
-	cond := builder.AND().
+	cond := sqls.AND().
 		Eq(true, "role", roleId).
 		Eq(true, "based", basedRoleId)
 
 	var _id int64
-	op.inherits.ExecuteSelect(ctx, &_id, builder.NewSelect("based").From(op.inherits.TableName()).Where(cond))
+	op.inherits.ExecuteSelect(ctx, &_id, op.SelectBuilder(ctx, "based").From(op.inherits.TableName()).Where(cond))
 	if _id < 1 {
 		if mt == _Add {
 			return nil
@@ -147,7 +146,7 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 		return nil
 	}
 
-	q, args, err := builder.NewDelete().From(op.inherits.TableName()).Where(cond).Limit(1).ToSql()
+	q, args, err := op.DeleteBuilder(ctx).From(op.inherits.TableName()).Where(cond).Limit(1).ToSql()
 	if err != nil {
 		panic(err)
 	}
@@ -156,7 +155,7 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 }
 
 func (op *roleOpT) getAllBasedRoles(ctx context.Context, role *roleT) {
-	sb := builder.NewSelect("based").Prefix("distinct").From(op.inherits.TableName()).
+	sb := op.SelectBuilder(ctx, "based").Prefix("distinct").From(op.inherits.TableName()).
 		Where("role=?", role.Id)
 	op.inherits.ExecuteSelect(ctx, &role.Based, sb)
 }

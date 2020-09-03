@@ -6,7 +6,6 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
-	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
 	"strconv"
 )
@@ -42,11 +41,11 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 	)
 	defer op.lru.Remove(strconv.FormatInt(subjectId, 16))
 
-	cond := builder.AND().
+	cond := sqls.AND().
 		Eq(true, "role", roleId).
 		Eq(true, "subject", subjectId)
 
-	srb := builder.NewSelect("role").From(op.roles.TableName()).Where(cond)
+	srb := op.roles.SelectBuilder(ctx, "role").From(op.roles.TableName()).Where(cond)
 
 	var _id int64
 	op.roles.ExecuteSelect(ctx, &_id, srb)
@@ -68,7 +67,7 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 		return nil
 	}
 
-	q, args, err := builder.NewDelete().From(op.roles.TableName()).Where(cond).Limit(1).ToSql()
+	q, args, err := op.roles.DeleteBuilder(ctx).From(op.roles.TableName()).Where(cond).Limit(1).ToSql()
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +85,7 @@ func (op *userOpT) getRoles(ctx context.Context, userId int64) []int64 {
 	op.roles.ExecuteSelect(
 		ctx,
 		&lst,
-		builder.NewSelect("role").From(op.roles.TableName()).Prefix("distinct").Where(
+		op.roles.SelectBuilder(ctx, "role").From(op.roles.TableName()).Prefix("distinct").Where(
 			"subject=? and role>0 and status>=0 and deleted=0", userId,
 		).OrderBy("role"),
 	)

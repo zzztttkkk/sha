@@ -13,7 +13,7 @@ type roleT struct {
 	Permissions []int64 `json:"permissions" db:"-"`
 }
 
-func (roleT) TableName() string {
+func (roleT) SqlsTableName() string {
 	return tablePrefix + "role"
 }
 
@@ -26,7 +26,7 @@ type roleInheritanceT struct {
 	Based int64 `json:"based"`
 }
 
-func (roleInheritanceT) TableName() string {
+func (roleInheritanceT) SqlsTableName() string {
 	return tablePrefix + "role_inheritance"
 }
 
@@ -43,7 +43,7 @@ type roleWithPermT struct {
 	Perm int64 `json:"perm"`
 }
 
-func (roleWithPermT) TableName() string {
+func (roleWithPermT) SqlsTableName() string {
 	return tablePrefix + "role_with_perm"
 }
 

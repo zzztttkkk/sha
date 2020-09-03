@@ -11,7 +11,7 @@ type userWithRoleT struct {
 	Role    int64 `json:"role"`
 }
 
-func (userWithRoleT) TableName() string {
+func (userWithRoleT) SqlsTableName() string {
 	return tablePrefix + "subject_with_role"
 }
 

@@ -14,14 +14,20 @@ type _EmptyUser struct {
 }
 
 func (*_EmptyUser) GetId() int64 {
-	return 0
+	return -1
 }
 
 type Authenticator interface {
 	Auth(*fasthttp.RequestCtx) (User, bool)
 }
 
-var authenticator Authenticator
+type AuthenticatorFunc func(*fasthttp.RequestCtx) (User, bool)
+
+func (fn AuthenticatorFunc) Auth(ctx *fasthttp.RequestCtx) (User, bool) {
+	return fn(ctx)
+}
+
+var _Authenticator Authenticator
 var emptyUser = &_EmptyUser{}
 
 // Use the global `Authenticator` to get the user information of the current request
@@ -35,7 +41,7 @@ func GetUser(ctx *fasthttp.RequestCtx) (User, bool) {
 		return ui.(User), true
 	}
 
-	u, ok := authenticator.Auth(ctx)
+	u, ok := _Authenticator.Auth(ctx)
 	if ok {
 		ctx.SetUserValue(internal.RCtxUserKey, u)
 		return u, true
@@ -57,4 +63,8 @@ func MustGetUser(ctx *fasthttp.RequestCtx) User {
 // Clear the user info cache
 func Reset(ctx *fasthttp.RequestCtx) {
 	ctx.SetUserValue(internal.RCtxUserKey, nil)
+}
+
+func IsAvailable() bool {
+	return _Authenticator != nil
 }

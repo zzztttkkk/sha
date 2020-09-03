@@ -19,7 +19,11 @@ func _DoSqlLogging(q string, args []interface{}) {
 	}
 
 	if len(args) < 1 {
-		log.Printf("suna.sqls.log: `%s`\n", q)
+		if cfg.Logger == nil {
+			log.Printf("suna.sqls.log: `%s`\n", q)
+		} else {
+			cfg.Logger.Printf("suna.sqls.log: `%s`\n", q)
+		}
 		return
 	}
 
@@ -32,7 +36,11 @@ func _DoSqlLogging(q string, args []interface{}) {
 
 	s := fmt.Sprintf(strings.Repeat("'%v',", len(args)), args...)
 
-	log.Printf("suna.sqls.log: `%s` with args `[%s]`\n", q, s)
+	if cfg.Logger == nil {
+		log.Printf("suna.sqls.log: `%s` with args `[%s]`\n", q, s)
+	} else {
+		cfg.Logger.Printf("suna.sqls.log: `%s` with args `[%s]`\n", q, s)
+	}
 }
 
 func init() {

@@ -6,7 +6,6 @@ import (
 	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
-	"github.com/zzztttkkk/suna/sqls/builder"
 	"github.com/zzztttkkk/suna/utils"
 	"time"
 )
@@ -55,7 +54,7 @@ func (op *logOpT) List(
 	cursor int64,
 	limit int64,
 ) (lst []logT) {
-	conditions := builder.AND()
+	conditions := sqls.AND()
 	conditions.Gte(begin > 0, "created", begin)
 	conditions.Lte(end > 0, "created", end)
 	conditions.Eq(len(names) > 0, "name", names)
@@ -66,7 +65,7 @@ func (op *logOpT) List(
 		conditions.Lt(cursor > 0, "id", cursor)
 	}
 
-	sb := builder.NewSelect("*").From(op.TableName()).Where(conditions).Limit(uint64(limit))
+	sb := op.SelectBuilder(ctx, "*").From(op.TableName()).Where(conditions).Limit(uint64(limit))
 	if asc {
 		sb.OrderBy("id")
 	} else {

@@ -58,34 +58,42 @@ type AccessLoggingOption struct {
 //
 // 		Cost: time spent processing current request
 //
-// 		ReqMethod: method of the current request
+// 		Method: method of the current request
 //
-// 		ReqPath: path of the current request
+// 		Path: path of the current request
 //
 //		ReqHeaders: all headers of the current request
 //
-//		ReqQuery: query of the current request
+//		Query: query of the current request
 //
-//		ReqForm: form body of the current request
+//		Form: form body of the current request
 //
-//		ReqRemote: remote ip of the current request
+//		Remote: remote ip of the current request
 //
-//		ReqHeader@***: some header of the current request
+//		ReqHeader***: some header of the current request
 //
-//		ResStatusCode: status code of the current response
+//		StatusCode: status code of the current response
 //
-//		ResStatusText: status text of the current response
+//		StatusText: status text of the current response
 //
 //		ResHeaders: all headers of the current response
 //
 //		ResBody: body of the current response
 //
-//		ResHeader@***: some header of the current response
+//		ResHeader***: some header of the current response
 //
 //		ErrStack: error stack if an internal server error occurred
 //
 //		UserId: user id of the current request
 func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) *_AccessLogger {
+	if opt == nil {
+		log.Fatalln("suna.middleware: nil option")
+	}
+
+	if opt.DurationUnit == 0 {
+		opt.DurationUnit = time.Millisecond
+	}
+
 	rv := &_AccessLogger{
 		nfmt:   utils.NewNamedFmt(fstr),
 		logger: logger,
@@ -100,21 +108,21 @@ func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) 
 			rv._endT = true
 		case "Cost":
 			rv._costT = true
-		case "ReqMethod":
+		case "Method":
 			rv._ReqMethod = true
-		case "ReqPath":
+		case "Path":
 			rv._ReqPath = true
 		case "ReqHeaders":
 			rv._ReqHeaders = true
-		case "ReqQuery":
+		case "Query":
 			rv._ReqQuery = true
-		case "ReqForm":
+		case "Form":
 			rv._ReqForm = true
-		case "ReqRemote":
+		case "Remote":
 			rv._ReqRemote = true
-		case "ResStatusCode":
+		case "StatusCode":
 			rv._ResStatusCode = true
-		case "ResStatusText":
+		case "StatusText":
 			rv._ResStatusText = true
 		case "ResHeaders":
 			rv._ResHeaders = true
@@ -125,9 +133,9 @@ func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) 
 		case "UserId":
 			rv._UserId = true
 		default:
-			if strings.HasPrefix(name, "ReqHeader@") {
+			if strings.HasPrefix(name, "ReqHeader") {
 				rv._ReqHeader = append(rv._ReqHeader, name[10:])
-			} else if strings.HasPrefix(name, "ResHeader@") {
+			} else if strings.HasPrefix(name, "ResHeader") {
 				rv._ResHeader = append(rv._ResHeader, name[10:])
 			} else {
 				panic(fmt.Errorf("suna.middleware.access_logging: unknown name `%s`", name))
@@ -141,7 +149,7 @@ func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) 
 	}
 
 	if len(opt.TimeFmt) < 1 {
-		opt.TimeFmt = "2006-01-02 15:04:05.999999999"
+		opt.TimeFmt = "2006-01-02 15:04:05"
 	}
 	return rv
 }
@@ -172,24 +180,24 @@ func (al *_AccessLogger) peekSomeHeader(key string, hkeys []string, header _Head
 
 func (al *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 	if al._ReqMethod {
-		m["ReqMethod"] = gotils.B2S(ctx.Method())
+		m["Method"] = gotils.B2S(ctx.Method())
 	}
 
 	if al._ReqPath {
-		m["ReqPath"] = gotils.B2S(ctx.Request.URI().Path())
+		m["Path"] = gotils.B2S(ctx.Request.URI().Path())
 	}
 
 	if al._ReqRemote {
-		m["ReqRemote"] = ctx.RemoteIP().String()
+		m["Remote"] = ctx.RemoteIP().String()
 	}
 
 	if al._ReqQuery {
-		m["ReqQuery"] = ctx.QueryArgs().String()
+		m["Query"] = ctx.QueryArgs().String()
 	}
 
 	if al._ReqForm {
 		if ctx.PostArgs().Len() > 1 {
-			m["ReqForm"] = ctx.PostArgs().String()
+			m["Form"] = ctx.PostArgs().String()
 		} else {
 			mf, e := ctx.MultipartForm()
 			if e == nil {
@@ -210,9 +218,9 @@ func (al *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 					}
 					buf.WriteString("]")
 				}
-				m["ReqForm"] = buf.String()
+				m["Form"] = buf.String()
 			} else {
-				m["ReqForm"] = ""
+				m["Form"] = ""
 			}
 		}
 	}
@@ -222,7 +230,7 @@ func (al *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 	}
 
 	if len(al._ReqHeader) > 0 {
-		al.peekSomeHeader("ReqHeader@", al._ReqHeader, &ctx.Request.Header, m)
+		al.peekSomeHeader("ReqHeader", al._ReqHeader, &ctx.Request.Header, m)
 	}
 }
 
@@ -241,10 +249,10 @@ func (al *_AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
 
 func (al *_AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
 	if al._ResStatusCode {
-		m["ResStatusCode"] = ctx.Response.StatusCode()
+		m["StatusCode"] = ctx.Response.StatusCode()
 	}
 	if al._ResStatusText {
-		m["ResStatusText"] = http.StatusText(ctx.Response.StatusCode())
+		m["StatusText"] = http.StatusText(ctx.Response.StatusCode())
 	}
 	if al._ResBody {
 		m["ResBody"] = al.peekResBody(ctx)
@@ -254,7 +262,7 @@ func (al *_AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
 	}
 
 	if len(al._ResHeader) > 0 {
-		al.peekSomeHeader("ResHeader@", al._ResHeader, &ctx.Response.Header, m)
+		al.peekSomeHeader("ResHeader", al._ResHeader, &ctx.Response.Header, m)
 	}
 }
 

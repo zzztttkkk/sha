@@ -5,11 +5,13 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/suna/utils/toml"
+	"log"
 	"strings"
 	"time"
 )
 
 type Suna struct {
+	Logger        *log.Logger
 	Env           string
 	TimeFormatter string `toml:"time-formatter"`
 
@@ -39,6 +41,7 @@ type Suna struct {
 		Cookie  string
 		Prefix  string
 		Maxage  toml.Duration
+
 		Captcha struct {
 			Maxage        int
 			Form          string

@@ -1,6 +1,45 @@
-package builder
+package sqls
 
-import "github.com/zzztttkkk/sqlr"
+import (
+	"context"
+	"github.com/zzztttkkk/sqlr"
+)
+
+func isPostgres(ctx context.Context, op *Operator) bool {
+	db := GetLeaderDB(ctx)
+	if db == nil {
+		db = op._GetDbLeader()
+	}
+	return db.DriverName() == "postgres"
+}
+
+func (op *Operator) SelectBuilder(ctx context.Context, cols ...string) *sqlr.SelectBuilder {
+	if isPostgres(ctx, op) {
+		return sqlr.StatementBuilder.PlaceholderFormat(sqlr.Dollar).Select(cols...)
+	}
+	return sqlr.Select(cols...)
+}
+
+func (op *Operator) UpdateBuilder(ctx context.Context, table string) *sqlr.UpdateBuilder {
+	if isPostgres(ctx, op) {
+		return sqlr.StatementBuilder.PlaceholderFormat(sqlr.Dollar).Update(table)
+	}
+	return sqlr.Update(table)
+}
+
+func (op *Operator) DeleteBuilder(ctx context.Context, what ...string) *sqlr.DeleteBuilder {
+	if isPostgres(ctx, op) {
+		return sqlr.StatementBuilder.PlaceholderFormat(sqlr.Dollar).Delete(what...)
+	}
+	return sqlr.Delete(what...)
+}
+
+func (op *Operator) InsertBuilder(ctx context.Context, table string) *sqlr.InsertBuilder {
+	if isPostgres(ctx, op) {
+		return sqlr.StatementBuilder.PlaceholderFormat(sqlr.Dollar).Insert(table)
+	}
+	return sqlr.Insert(table)
+}
 
 type _logicT int
 

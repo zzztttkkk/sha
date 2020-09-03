@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/utils"
@@ -52,7 +53,11 @@ func init() {
 
 			l := cfg.GetSqlLeader()
 			if l == nil {
-				log.Println("suna.rbac: init error")
+				log.Fatalln("suna.rbac: nil sql")
+				return
+			}
+			if !auth.IsAvailable() {
+				log.Fatalln("suna.rbac: auth is unavailable")
 				return
 			}
 		},

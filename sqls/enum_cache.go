@@ -2,7 +2,6 @@ package sqls
 
 import (
 	"context"
-	"github.com/zzztttkkk/suna/sqls/builder"
 	"sync"
 	"time"
 
@@ -39,7 +38,7 @@ func (cache *_EnumCache) load(ctx context.Context) {
 	cache.all = make([]EnumItem, 0, len(cache.all))
 	cache.op.ExecuteScan(
 		ctx,
-		builder.NewSelect("*").From(cache.op.TableName()).
+		cache.op.SelectBuilder(ctx, "*").From(cache.op.TableName()).
 			Where("status>=0 and deleted=0").
 			OrderBy("id"),
 		NewStructScanner(
