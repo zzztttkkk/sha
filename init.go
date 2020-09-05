@@ -40,10 +40,7 @@ func Init(opt *InitOption) {
 
 	internal.Dig.Provide(
 		func() *config.Suna {
-			if opt == nil {
-				log.Fatalln("suna: nil init option")
-			}
-			if opt.Config == nil {
+			if opt == nil || opt.Config == nil {
 				log.Fatalln("suna: nil init config")
 			}
 			return opt.Config

@@ -37,19 +37,25 @@ type Suna struct {
 	}
 
 	Session struct {
-		Header  string
-		Cookie  string
-		Prefix  string
-		Maxage  toml.Duration
+		Header            string
+		Cookie            string
+		Prefix            string
+		Maxage            toml.Duration
+		SkipVerifyInDebug bool `toml:"skip-verify-in-debug"`
 
 		Captcha struct {
 			Maxage        int
 			Form          string
-			Words         int
-			Width         int
-			Height        int
+			TokenSize     int `toml:"token-size"`
+			ImageWidth    int
+			ImageHeight   int
 			AudioLanguage string `toml:"audio-lang"`
-			SkipInDebug   bool   `toml:"skip-in-debug"`
+		}
+
+		Crsf struct {
+			Maxage    int
+			Form      string
+			TokenSize int `toml:"token-size"`
 		}
 	}
 
@@ -108,9 +114,9 @@ func init() {
 	defaultV.Session.Maxage.Duration = time.Minute * 30
 	defaultV.Session.Prefix = "session"
 	defaultV.Session.Captcha.Form = "captcha"
-	defaultV.Session.Captcha.Height = 120
-	defaultV.Session.Captcha.Width = 300
-	defaultV.Session.Captcha.Words = 6
+	defaultV.Session.Captcha.ImageHeight = 120
+	defaultV.Session.Captcha.ImageWidth = 300
+	defaultV.Session.Captcha.TokenSize = 6
 	defaultV.Session.Captcha.Maxage = 300
 	defaultV.Session.Captcha.AudioLanguage = "zh"
 	defaultV.Rbac.TablenamePrefix = "rbac_"

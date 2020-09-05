@@ -84,8 +84,8 @@ func newSession(ctx *fasthttp.RequestCtx) Session {
 	return Session(sessionId)
 }
 
-func (ss Session) Get(key string, dist interface{}) bool {
-	bs, err := redisc.HGet(string(ss), key).Bytes()
+func (sion Session) Get(key string, dist interface{}) bool {
+	bs, err := redisc.HGet(string(sion), key).Bytes()
 	if err != nil {
 		if err == redis.Nil {
 			return false
@@ -95,18 +95,18 @@ func (ss Session) Get(key string, dist interface{}) bool {
 	return jsonx.Unmarshal(bs, dist) == nil
 }
 
-func (ss Session) Set(key string, val interface{}) {
+func (sion Session) Set(key string, val interface{}) {
 	bs, err := jsonx.Marshal(val)
 	if err != nil {
 		panic(err)
 	}
-	if err = redisc.HSet(string(ss), key, bs).Err(); err != nil {
+	if err = redisc.HSet(string(sion), key, bs).Err(); err != nil {
 		panic(err)
 	}
 }
 
-func (ss Session) Del(keys ...string) {
-	if err := redisc.HDel(string(ss), keys...).Err(); err != nil {
+func (sion Session) Del(keys ...string) {
+	if err := redisc.HDel(string(sion), keys...).Err(); err != nil {
 		if err == redis.Nil {
 			return
 		}
@@ -114,8 +114,8 @@ func (ss Session) Del(keys ...string) {
 	}
 }
 
-func (ss Session) Refresh() {
-	redisc.Expire(string(ss), sessionExpire)
+func (sion Session) Refresh() {
+	redisc.Expire(string(sion), sessionExpire)
 }
 
 func New(ctx *fasthttp.RequestCtx) (s Session) {

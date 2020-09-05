@@ -6,6 +6,8 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/RoaringBitmap/roaring v0.5.0
 	github.com/dchest/captcha v0.0.0-20170622155422-6a29415a8364
+	github.com/fasthttp/router v1.2.2
+	github.com/fasthttp/websocket v1.4.3-beta.2
 	github.com/go-errors/errors v1.1.1
 	github.com/go-redis/redis/v7 v7.4.0
 	github.com/go-redis/redis_rate/v8 v8.0.0
@@ -18,6 +20,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.9.0
 	github.com/rs/xid v1.2.1
 	github.com/savsgio/gotils v0.0.0-20200616100644-13ff1fd2c28c
+	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/fasthttp v1.16.0
 	github.com/zzztttkkk/router v1.2.4-0.20200902114042-01366d475b42
 	github.com/zzztttkkk/sqlr v0.0.0-20200831001229-6e63d18116ab

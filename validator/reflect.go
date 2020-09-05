@@ -80,7 +80,7 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 		rule.t = _FloatSlice
 		rule.isSlice = true
 	case int32, int16, int8, int, uint32, uint16, uint8, uint, float32, []int32, []int16, []int8, []int, []uint32, []uint16, []uint, []float32:
-		log.Printf("suna.validator: use 64 bit value, not `%s`. %s.%s", field.Type.Name(), p.name, field.Name)
+		log.Printf("suna.validator: use 64 bit value, not `%s`. %s.%s\n", field.Type.Name(), p.name, field.Name)
 		return false
 	default:
 		return false
