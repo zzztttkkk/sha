@@ -63,7 +63,7 @@ type BytesPool struct {
 	poll        sync.Pool
 }
 
-func NewBytesPool(cap, size int) *BytesPool {
+func NewFixSizeBytesPool(cap, size int) *BytesPool {
 	return &BytesPool{
 		defaultSize: size,
 		poll: sync.Pool{

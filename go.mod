@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/RoaringBitmap/roaring v0.5.0
 	github.com/dchest/captcha v0.0.0-20170622155422-6a29415a8364
-	github.com/fasthttp/router v1.2.2
 	github.com/fasthttp/websocket v1.4.3-beta.2
 	github.com/go-errors/errors v1.1.1
 	github.com/go-redis/redis/v7 v7.4.0

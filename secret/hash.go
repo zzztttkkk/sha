@@ -37,7 +37,7 @@ func NewHash(fn func() hash.Hash, withSecret bool) *Hash {
 	size := t.Size() * 2
 	return &Hash{
 		pool:       pool,
-		bytes:      utils.NewBytesPool(size, size),
+		bytes:      utils.NewFixSizeBytesPool(size, size),
 		size:       size,
 		withSecret: withSecret,
 	}
