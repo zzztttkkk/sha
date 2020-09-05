@@ -2,7 +2,7 @@ package sqls
 
 import (
 	"context"
-	"github.com/zzztttkkk/sqlr"
+	"github.com/zzztttkkk/suna/sqls/sqlr"
 )
 
 func isPostgres(ctx context.Context, op *Operator) bool {
@@ -58,11 +58,11 @@ type _Conditions struct {
 	eq  sqlr.Eq
 	neq sqlr.NotEq
 
-	like   sqlr.Like
-	unlike sqlr.NotLike
+	like    sqlr.Like
+	notLike sqlr.NotLike
 
-	ilike   sqlr.ILike
-	unilike sqlr.NotILike
+	iLike    sqlr.ILike
+	notILike sqlr.NotILike
 }
 
 func (l *_Conditions) Lt(ok bool, key string, value interface{}) *_Conditions {
@@ -160,10 +160,10 @@ func (l *_Conditions) NotLike(ok bool, key string, value interface{}) *_Conditio
 	if !ok {
 		return l
 	}
-	if l.unlike == nil {
-		l.unlike = sqlr.NotLike{key: value}
+	if l.notLike == nil {
+		l.notLike = sqlr.NotLike{key: value}
 	} else {
-		l.unlike[key] = value
+		l.notLike[key] = value
 	}
 	return l
 }
@@ -172,10 +172,10 @@ func (l *_Conditions) ILike(ok bool, key string, value interface{}) *_Conditions
 	if !ok {
 		return l
 	}
-	if l.ilike == nil {
-		l.ilike = sqlr.ILike{key: value}
+	if l.iLike == nil {
+		l.iLike = sqlr.ILike{key: value}
 	} else {
-		l.ilike[key] = value
+		l.iLike[key] = value
 	}
 	return l
 }
@@ -184,10 +184,10 @@ func (l *_Conditions) NotILike(ok bool, key string, value interface{}) *_Conditi
 	if !ok {
 		return l
 	}
-	if l.unilike == nil {
-		l.unilike = sqlr.NotILike{key: value}
+	if l.notILike == nil {
+		l.notILike = sqlr.NotILike{key: value}
 	} else {
-		l.unilike[key] = value
+		l.notILike[key] = value
 	}
 	return l
 }
@@ -223,16 +223,16 @@ func (l *_Conditions) ToSql() (string, []interface{}, error) {
 		sqlizers = append(sqlizers, l.like)
 	}
 
-	if len(l.unlike) > 0 {
-		sqlizers = append(sqlizers, l.unlike)
+	if len(l.notLike) > 0 {
+		sqlizers = append(sqlizers, l.notLike)
 	}
 
-	if len(l.ilike) > 0 {
-		sqlizers = append(sqlizers, l.ilike)
+	if len(l.iLike) > 0 {
+		sqlizers = append(sqlizers, l.iLike)
 	}
 
-	if len(l.unilike) > 0 {
-		sqlizers = append(sqlizers, l.unilike)
+	if len(l.notILike) > 0 {
+		sqlizers = append(sqlizers, l.notILike)
 	}
 
 	if l.v == _OR {

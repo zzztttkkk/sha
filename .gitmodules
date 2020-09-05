@@ -1,3 +1,6 @@
 [submodule "router"]
 	path = router
 	url = git@github.com:/zzztttkkk/fork.fasthttp.router
+[submodule "sqls/sqlr"]
+	path = sqls/sqlr
+	url = git@github.com:zzztttkkk/fork.elgris.sqrl.git

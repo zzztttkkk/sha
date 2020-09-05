@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/sqlr"
+	"github.com/zzztttkkk/suna/sqls/sqlr"
 	"github.com/zzztttkkk/suna/utils"
 	"reflect"
 )
