@@ -1,7 +1,7 @@
-package sqls
+package sqlx
 
 import (
-	"github.com/zzztttkkk/suna/reflectx"
+	"github.com/zzztttkkk/suna/internal/reflectx"
 	"reflect"
 	"strings"
 )

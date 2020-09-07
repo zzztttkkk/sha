@@ -1,8 +1,8 @@
-package sqls
+package sqlx
 
 import (
 	"context"
-	"github.com/zzztttkkk/suna/sqls/sqlr"
+	"github.com/zzztttkkk/suna/sqlx/sqlr"
 )
 
 func isPostgres(ctx context.Context, op *Operator) bool {

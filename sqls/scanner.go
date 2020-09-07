@@ -1,4 +1,4 @@
-package sqls
+package sqlx
 
 import "github.com/jmoiron/sqlx"
 
