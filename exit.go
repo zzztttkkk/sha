@@ -3,6 +3,7 @@ package suna
 import (
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 type _Call struct {
@@ -29,7 +30,14 @@ func (v *_Exit) wait() {
 		os.Exit(0)
 	}()
 
-	signal.Notify(Exit.c, os.Kill, os.Interrupt)
+	signal.Notify(
+		Exit.c,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+		os.Interrupt,
+	)
 }
 
 var Exit = &_Exit{c: make(chan os.Signal, 1)}

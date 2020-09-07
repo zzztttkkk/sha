@@ -2,8 +2,8 @@ package rbac
 
 import (
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/router"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/validator"
 )

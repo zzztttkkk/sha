@@ -15,7 +15,7 @@ func init() {
 			if errors.MaxStackDepth < 1 {
 				errors.MaxStackDepth = 20
 			}
-			_JsonPCallbackParams = conf.Output.JsonPCallbackParam
+			_JsonPCallbackParams = conf.Output.JsonPCallbackForm
 		},
 	)
 }

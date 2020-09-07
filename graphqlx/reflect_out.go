@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/graphql-go/graphql"
-	"github.com/zzztttkkk/suna/reflectx"
+	"github.com/zzztttkkk/suna/internal/reflectx"
 	"log"
 	"reflect"
 	"strings"
@@ -62,6 +62,7 @@ func (v *_OutVisitor) OnNestStructField(field *reflect.StructField) bool {
 	return true
 }
 
+//revive:disable:cyclomatic
 func (v *_OutVisitor) OnField(field *reflect.StructField) {
 	t := v.getTag(field)
 	if t == "-" {
@@ -124,7 +125,6 @@ func (v *_OutVisitor) OnField(field *reflect.StructField) {
 			if ele.IsValid() {
 				switch rv := ele.Interface().(type) {
 				case GraphqlScalarer:
-					var name string
 					if len(t) < 1 {
 						name = strings.ToLower(field.Name)
 					} else {

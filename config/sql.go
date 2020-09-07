@@ -13,6 +13,7 @@ func newSqlDB(dn, url string, maxLifeTime time.Duration, openConns int) *sqlx.DB
 	return db
 }
 
+//GetSqlLeader get sql leader
 func (t *Suna) GetSqlLeader() *sqlx.DB {
 	if t.Internal.sqlLeader != nil {
 		return t.Internal.sqlLeader

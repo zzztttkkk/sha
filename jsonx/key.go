@@ -120,6 +120,7 @@ func get(collection _JsonCollection, key string) (interface{}, error) {
 	return rv, nil
 }
 
+//revive:disable:cyclomatic
 func set(collection _JsonCollection, key string, val interface{}) error {
 	k := _Key{}
 	k.init(key)

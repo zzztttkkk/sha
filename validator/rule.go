@@ -2,11 +2,12 @@ package validator
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/suna/utils"
 	"html"
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/zzztttkkk/suna/utils"
 )
 
 const (
@@ -53,7 +54,6 @@ type _Rule struct {
 	t        int
 	required bool
 	info     string
-	bits     int
 
 	vrange bool // int value value range
 
@@ -97,6 +97,7 @@ type _Rule struct {
 
 var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{srange}|{default}|{regexp}|{function}|{descp}|")
 
+//revive:disable:cyclomatic
 func (rule *_Rule) String() string {
 	m := utils.M{
 		"name":     rule.form,
@@ -216,7 +217,6 @@ func (a _RuleSliceT) String() string {
 type Rules struct {
 	lst    _RuleSliceT
 	isJson bool
-	doc    *Doc
 	raw    reflect.Type
 }
 

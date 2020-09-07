@@ -29,7 +29,7 @@ func (lock *RedLock) Acquire(ctx context.Context) (context.Context, error) {
 		return nil, ErrLockKeyExists
 	}
 
-	du := lock.du - (time.Now().Sub(begin))
+	du := lock.du - time.Since(begin)
 	if du <= 0 {
 		return nil, ErrLockTimeout
 	}

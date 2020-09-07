@@ -18,8 +18,8 @@ func init() {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) {
 			_PermissionOperator.Init(
-				permissionT{},
-				func() sqls.EnumItem { return &permissionT{} },
+				Permission{},
+				func() sqls.EnumItem { return &Permission{} },
 				nil,
 			)
 		},
@@ -44,9 +44,9 @@ func (op *permOpT) Delete(ctx context.Context, name string) {
 	op.EnumOperator.Delete(ctx, name)
 }
 
-func (op *permOpT) List(ctx context.Context) (lst []*permissionT) {
+func (op *permOpT) List(ctx context.Context) (lst []*Permission) {
 	for _, enum := range op.EnumOperator.List(ctx) {
-		lst = append(lst, enum.(*permissionT))
+		lst = append(lst, enum.(*Permission))
 	}
 	return
 }

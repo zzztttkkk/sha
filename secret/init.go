@@ -6,12 +6,12 @@ import (
 	"github.com/zzztttkkk/suna/internal"
 )
 
-var gSecretKey []byte
+var _SecretKey []byte
 
 func init() {
 	internal.Dig.LazyInvoke(
 		func(conf *config.Suna) {
-			gSecretKey = []byte(conf.Secret.Key)
+			_SecretKey = []byte(conf.Secret.Key)
 			hashMethod := conf.Secret.HashAlgorithm
 			if len(hashMethod) < 1 {
 				hashMethod = "sha256-512"

@@ -3,9 +3,9 @@ package rbac
 import (
 	"context"
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/router"
 	"log"
 )
 

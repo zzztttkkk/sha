@@ -7,14 +7,11 @@ import (
 )
 
 var redisc redis.Cmdable
-var cors_option *config.Cors
 
 func init() {
 	internal.Dig.LazyInvoke(
 		func(conf *config.Suna) {
 			redisc = conf.RedisClient()
-			cors_option = &conf.Cors
-			initCors()
 		},
 	)
 }

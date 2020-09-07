@@ -29,6 +29,7 @@ func _ParseC(data string) interface{} {
 	return &C{CId: utils.S2I64(s[0]), CName: s[1]}
 }
 
+//revive:disable:cyclomatic
 func (C) GraphqlScalar() *graphql.Scalar {
 	return graphql.NewScalar(
 		graphql.ScalarConfig{

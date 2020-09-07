@@ -71,7 +71,6 @@ func newSession(ctx *fasthttp.RequestCtx) Session {
 			redisc.Expire(sessionId, sessionExpire)
 			return Session(sessionId)
 		}
-		sessionId = ""
 	}
 
 	now := time.Now()

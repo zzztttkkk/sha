@@ -5,13 +5,11 @@ import (
 	"github.com/go-redis/redis/v7"
 	"github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/suna/utils/toml"
-	"log"
 	"strings"
 	"time"
 )
 
 type Suna struct {
-	Logger        *log.Logger
 	Env           string
 	TimeFormatter string `toml:"time-formatter"`
 
@@ -60,8 +58,8 @@ type Suna struct {
 	}
 
 	Output struct {
-		ErrorMaxDepth      int
-		JsonPCallbackParam string
+		ErrorMaxDepth     int    `toml:"error-max-depth"`
+		JsonPCallbackForm string `toml:"jsonp-callback-form"`
 	}
 
 	Sql struct {

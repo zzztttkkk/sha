@@ -3,11 +3,12 @@ package validator
 import (
 	"bytes"
 	"fmt"
+	"reflect"
+
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/output"
-	"reflect"
 )
 
 type FormError struct {
@@ -34,13 +35,17 @@ func _NewFormNullError(name string) *FormError {
 	return &FormError{v: fmt.Sprintf("`%s` is required", name)}
 }
 
-func _NewFormInvalidError(name string) *FormError {
-	return &FormError{v: fmt.Sprintf("`%s` is invalid", name)}
+func (r *_Rule) toFormError() *FormError {
+	if len(r.info) > 0 {
+		return &FormError{v: fmt.Sprintf("`%s` is invalid. %s", r.form, r.info)}
+	}
+	return &FormError{v: fmt.Sprintf("`%s` is invalid", r.form)}
 }
 
 var ErrNotJsonRequest = &FormError{v: "not a json request"}
 var jsonCt = []byte("application/json")
 
+//revive:disable:cyclomatic
 func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 	_v := reflect.ValueOf(ptr).Elem()
 	rules := getRules(_v.Type())
@@ -56,14 +61,14 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 			case _JsonObject:
 				m, ok := rule.toJsonObj(val)
 				if !ok {
-					output.Error(ctx, _NewFormInvalidError(rule.form))
+					output.Error(ctx, rule.toFormError())
 					return false
 				}
 				value = reflect.ValueOf(m)
 			case _JsonArray:
 				m, ok := rule.toJsonAry(val)
 				if !ok {
-					output.Error(ctx, _NewFormInvalidError(rule.form))
+					output.Error(ctx, rule.toFormError())
 					return false
 				}
 				value = reflect.ValueOf(m)
@@ -119,7 +124,7 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 			}
 
 			if !ok {
-				output.Error(ctx, _NewFormInvalidError(rule.form))
+				output.Error(ctx, rule.toFormError())
 				return false
 			}
 
@@ -145,42 +150,42 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 		case _Bool:
 			b, ok := rule.toBool(val)
 			if !ok {
-				output.Error(ctx, _NewFormInvalidError(rule.form))
+				output.Error(ctx, rule.toFormError())
 				return false
 			}
 			field.SetBool(b)
 		case _Int64:
 			v, ok := rule.toInt(val)
 			if !ok {
-				output.Error(ctx, _NewFormInvalidError(rule.form))
+				output.Error(ctx, rule.toFormError())
 				return false
 			}
 			field.SetInt(v)
 		case _Uint64:
 			v, ok := rule.toUint(val)
 			if !ok {
-				output.Error(ctx, _NewFormInvalidError(rule.form))
+				output.Error(ctx, rule.toFormError())
 				return false
 			}
 			field.SetUint(v)
 		case _Float64:
 			v, ok := rule.toFloat(val)
 			if !ok {
-				output.Error(ctx, _NewFormInvalidError(rule.form))
+				output.Error(ctx, rule.toFormError())
 				return false
 			}
 			field.SetFloat(v)
 		case _Bytes:
 			v, ok := rule.toBytes(val)
 			if !ok {
-				output.Error(ctx, _NewFormInvalidError(rule.form))
+				output.Error(ctx, rule.toFormError())
 				return false
 			}
 			field.SetBytes(v)
 		case _String:
 			v, ok := rule.toBytes(val)
 			if !ok {
-				output.Error(ctx, _NewFormInvalidError(rule.form))
+				output.Error(ctx, rule.toFormError())
 				return false
 			}
 			field.SetString(gotils.B2S(v))

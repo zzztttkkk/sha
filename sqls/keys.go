@@ -1,4 +1,4 @@
-package sqlx
+package sqls
 
 import (
 	"github.com/zzztttkkk/suna/internal/reflectx"
@@ -16,7 +16,7 @@ func Columns(rt reflect.Type, exclude []string, extra []string) string {
 		delete(m, key)
 	}
 	var keys []string
-	for k, _ := range m {
+	for k := range m {
 		keys = append(keys, k)
 	}
 	keys = append(keys, extra...)

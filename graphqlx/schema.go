@@ -27,10 +27,18 @@ func (s *Schema) AddQuery(name, descp string, pair *Pair) *Schema {
 	return s
 }
 
+func (s *Schema) AddQueryFromFunction(name, descp string, v interface{}) *Schema {
+	return s.AddQuery(name, descp, NewPairFromFunction(v))
+}
+
 func (s *Schema) AddMutation(name, descp string, pair *Pair) *Schema {
 	field := pair.toField(name, descp)
 	s.ms[name] = field
 	return s
+}
+
+func (s *Schema) AddMutationFromFunction(name, descp string, v interface{}) *Schema {
+	return s.AddMutation(name, descp, NewPairFromFunction(v))
 }
 
 func (s *Schema) toGraphqlSchema() (graphql.Schema, error) {

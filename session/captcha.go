@@ -14,7 +14,7 @@ var bytesPool = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 var _t = []byte("0123456789")
 
 func toString(digits []byte) string {
-	s := make([]byte, len(digits), len(digits))
+	s := make([]byte, len(digits))
 	for i, b := range digits {
 		s[i] = _t[b]
 	}
@@ -26,7 +26,7 @@ var captchaWidth int
 var captchaHeight int
 var captchaForm string
 var captchaMaxage int64
-var captchaSkipVerify bool
+var skipVerify bool
 var captchaAudioLang string
 
 func _initCaptcha() {
@@ -35,7 +35,7 @@ func _initCaptcha() {
 	captchaWidth = cfg.Session.Captcha.ImageWidth
 	captchaForm = cfg.Session.Captcha.Form
 	captchaMaxage = int64(cfg.Session.Captcha.Maxage)
-	captchaSkipVerify = cfg.IsDebug() && cfg.Session.Captcha.SkipInDebug
+	skipVerify = cfg.IsDebug() && cfg.Session.SkipVerifyInDebug
 	captchaAudioLang = cfg.Session.Captcha.AudioLanguage
 }
 
@@ -72,7 +72,7 @@ func (sion Session) CaptchaGenerateAudio(ctx *fasthttp.RequestCtx) {
 }
 
 func (sion Session) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
-	if captchaSkipVerify {
+	if skipVerify {
 		return true
 	}
 

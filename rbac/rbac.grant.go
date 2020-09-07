@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+
 	"github.com/RoaringBitmap/roaring/roaring64"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/utils"
@@ -33,7 +34,7 @@ func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
 			// todo log
 			return nil
 		}
-		for p, _ := range m {
+		for p := range m {
 			set.Add(uint64(p))
 		}
 	}
@@ -42,6 +43,7 @@ func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
 	return set
 }
 
+//revive:disable:cyclomatic
 func IsGranted(ctx context.Context, user auth.User, policy CheckPolicy, permissions ...string) bool {
 	SubjectId := user.GetId()
 	if SubjectId < 1 {

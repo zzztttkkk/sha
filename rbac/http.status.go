@@ -2,21 +2,21 @@ package rbac
 
 import (
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/router"
 )
 
 func init() {
 	loader.Http(
 		func(router router.Router) {
 			router.GET(
-				"/status/errors",
+				"/status",
 				newPermChecker(
-					"rbac.status.errors",
+					"rbac.status",
 					func(ctx *fasthttp.RequestCtx) {
 						g.RLock()
 						defer g.RUnlock()
-						output.MsgOK(ctx, errs)
+						output.MsgOK(ctx, output.M{"errors": errs})
 					},
 				),
 			)

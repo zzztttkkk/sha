@@ -5,7 +5,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"time"
 
-	"github.com/zzztttkkk/router"
+	"github.com/zzztttkkk/suna/router"
 
 	"github.com/zzztttkkk/suna/output"
 )

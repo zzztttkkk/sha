@@ -2,8 +2,8 @@ package rbac
 
 import (
 	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/output"
+	"github.com/zzztttkkk/suna/router"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/validator"
 )
@@ -28,7 +28,6 @@ func init() {
 						}
 
 						txc, committer := sqls.TxByUser(ctx)
-						defer func() { go reload() }()
 						defer committer()
 
 						if err := NewRole(txc, form.Name, form.Descp); err != nil {
@@ -61,7 +60,6 @@ func init() {
 						}
 
 						txc, committer := sqls.TxByUser(ctx)
-						defer func() { go reload() }()
 						defer committer()
 
 						if err := DelRole(txc, form.Name); err != nil {
@@ -119,7 +117,6 @@ func init() {
 						}
 
 						txc, committer := sqls.TxByUser(ctx)
-						defer func() { go reload() }()
 						defer committer()
 
 						if err := RoleAddBased(txc, form.Name, form.Based); err != nil {
@@ -141,7 +138,6 @@ func init() {
 						}
 
 						txc, committer := sqls.TxByUser(ctx)
-						defer func() { go reload() }()
 						defer committer()
 
 						if err := RoleDelBased(txc, form.Name, form.Based); err != nil {
@@ -197,7 +193,6 @@ func init() {
 						}
 
 						txc, committer := sqls.TxByUser(ctx)
-						defer func() { go reload() }()
 						defer committer()
 
 						if err := RoleAddPerm(txc, form.Name, form.Perm); err != nil {
@@ -219,7 +214,6 @@ func init() {
 						}
 
 						txc, committer := sqls.TxByUser(ctx)
-						defer func() { go reload() }()
 						defer committer()
 
 						if err := RoleDelPerm(txc, form.Name, form.Perm); err != nil {

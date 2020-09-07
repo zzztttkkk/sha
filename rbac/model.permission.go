@@ -5,15 +5,15 @@ import (
 	"github.com/zzztttkkk/suna/sqls"
 )
 
-type permissionT struct {
+type Permission struct {
 	sqls.Enum
 	Descp string ` json:"descp"`
 }
 
-func (permissionT) SqlsTableName() string {
+func (Permission) SqlsTableName() string {
 	return tablePrefix + "permission"
 }
 
-func (perm permissionT) SqlsTableColumns(db *sqlx.DB) []string {
+func (perm Permission) SqlsTableColumns(db *sqlx.DB) []string {
 	return perm.Enum.SqlsTableColumns(db, "descp text")
 }

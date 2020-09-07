@@ -2,8 +2,9 @@ package validator
 
 import (
 	"errors"
-	"github.com/savsgio/gotils"
 	"reflect"
+
+	"github.com/savsgio/gotils"
 )
 
 func (rule *_Rule) checkVRangeByReflect(v interface{}) bool {
@@ -40,6 +41,7 @@ func (rule *_Rule) checkVRangeByReflect(v interface{}) bool {
 
 var GraphqlTypeError = errors.New("suna.validator: unexpected type")
 
+//revive:disable:cyclomatic
 func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, error) {
 	ele := reflect.New(rs.raw).Elem()
 	for _, rule := range rs.lst {
@@ -47,7 +49,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 		value, ok := m[rule.form]
 		if !ok {
 			if rule.required {
-				return nil, _NewFormInvalidError(rule.form)
+				return nil, rule.toFormError()
 			} else {
 				continue
 			}
@@ -65,7 +67,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 					if rule.vrange {
 						for _, n := range rv {
 							if !rule.checkVRangeByReflect(n) {
-								return nil, _NewFormInvalidError(rule.form)
+								return nil, rule.toFormError()
 							}
 						}
 					}
@@ -79,7 +81,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 					if rule.vrange {
 						for _, n := range rv {
 							if !rule.checkVRangeByReflect(n) {
-								return nil, _NewFormInvalidError(rule.form)
+								return nil, rule.toFormError()
 							}
 						}
 					}
@@ -101,7 +103,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 						for i, n := range rv {
 							v, ok := rule.toBytes(gotils.S2B(n))
 							if !ok {
-								return nil, _NewFormInvalidError(rule.form)
+								return nil, rule.toFormError()
 							}
 							rv[i] = string(v)
 						}
@@ -116,7 +118,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 					if rule.vrange {
 						for _, n := range rv {
 							if !rule.checkVRangeByReflect(n) {
-								return nil, _NewFormInvalidError(rule.form)
+								return nil, rule.toFormError()
 							}
 						}
 					}
@@ -128,7 +130,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 
 			if s.IsValid() {
 				if !rule.checkSizeRange(&s) {
-					return nil, _NewFormInvalidError(rule.form)
+					return nil, rule.toFormError()
 				}
 				field.Set(s)
 			}
@@ -148,20 +150,20 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 			}
 			v, ok := rule.toBytes(data)
 			if !ok {
-				return nil, _NewFormInvalidError(rule.form)
+				return nil, rule.toFormError()
 			}
 			field.SetString(gotils.B2S(v))
 		case _Uint64:
 			switch rv := value.(type) {
 			case uint64:
 				if !rule.checkVRangeByReflect(value) {
-					return nil, _NewFormInvalidError(rule.form)
+					return nil, rule.toFormError()
 				}
 				field.SetUint(rv)
 			case uint:
 				v := uint64(rv)
 				if !rule.checkVRangeByReflect(v) {
-					return nil, _NewFormInvalidError(rule.form)
+					return nil, rule.toFormError()
 				}
 				field.SetUint(v)
 			default:
@@ -171,13 +173,13 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 			switch rv := value.(type) {
 			case int64:
 				if !rule.checkVRangeByReflect(value) {
-					return nil, _NewFormInvalidError(rule.form)
+					return nil, rule.toFormError()
 				}
 				field.SetInt(rv)
 			case int:
 				v := int64(rv)
 				if !rule.checkVRangeByReflect(v) {
-					return nil, _NewFormInvalidError(rule.form)
+					return nil, rule.toFormError()
 				}
 				field.SetInt(v)
 			default:
@@ -187,7 +189,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 			switch rv := value.(type) {
 			case float64:
 				if !rule.checkVRangeByReflect(value) {
-					return nil, _NewFormInvalidError(rule.form)
+					return nil, rule.toFormError()
 				}
 				field.SetFloat(rv)
 			default:

@@ -30,7 +30,7 @@ func AesEncrypt(format string, args ...interface{}) (string, error) {
 		plain = append(plain, ' ')
 	}
 
-	block, err := aes.NewCipher(gSecretKey)
+	block, err := aes.NewCipher(_SecretKey)
 	if err != nil {
 		return "", err
 	}
@@ -46,7 +46,7 @@ func AesEncrypt(format string, args ...interface{}) (string, error) {
 	return hex.EncodeToString(ciphertext), nil
 }
 
-var _AesDecryptError = errors.New("suna.secret: decrypt value error")
+var AesDecryptError = errors.New("suna.secret: decrypt value error")
 
 func AesDecrypt(f string) (string, error) {
 	ciphertext, err := hex.DecodeString(f)
@@ -54,20 +54,20 @@ func AesDecrypt(f string) (string, error) {
 		return "", err
 	}
 
-	block, err := aes.NewCipher(gSecretKey)
+	block, err := aes.NewCipher(_SecretKey)
 	if err != nil {
 		return "", err
 	}
 
 	if len(ciphertext) < aes.BlockSize || len(ciphertext)%aes.BlockSize != 0 {
-		return "", _AesDecryptError
+		return "", AesDecryptError
 	}
 
 	iv := ciphertext[:aes.BlockSize]
 	ciphertext = ciphertext[aes.BlockSize:]
 
 	if len(ciphertext) < aes.BlockSize || len(ciphertext)%aes.BlockSize != 0 {
-		return "", _AesDecryptError
+		return "", AesDecryptError
 	}
 
 	mode := cipher.NewCBCDecrypter(block, iv)

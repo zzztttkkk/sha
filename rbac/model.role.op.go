@@ -13,7 +13,6 @@ type roleOpT struct {
 	sqls.EnumOperator
 	perms     *sqls.Operator
 	inherits  *sqls.Operator
-	conflicts *sqls.Operator
 }
 
 var _RoleOperator = &roleOpT{
@@ -28,10 +27,10 @@ func init() {
 			_RoleOperator.inherits.Init(roleInheritanceT{})
 
 			_RoleOperator.EnumOperator.Init(
-				roleT{},
-				func() sqls.EnumItem { return &roleT{} },
+				Role{},
+				func() sqls.EnumItem { return &Role{} },
 				func(ctx context.Context, i interface{}) error {
-					role := i.(*roleT)
+					role := i.(*Role)
 					_RoleOperator.getAllPerms(ctx, role)
 					_RoleOperator.getAllBasedRoles(ctx, role)
 					return nil
@@ -96,7 +95,7 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 	return nil
 }
 
-func (op *roleOpT) getAllPerms(ctx context.Context, role *roleT) {
+func (op *roleOpT) getAllPerms(ctx context.Context, role *Role) {
 	sb := op.SelectBuilder(ctx, "perm").Prefix("distinct").From(op.perms.TableName()).
 		Where("role=?", role.Id)
 
@@ -154,15 +153,15 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 	return nil
 }
 
-func (op *roleOpT) getAllBasedRoles(ctx context.Context, role *roleT) {
+func (op *roleOpT) getAllBasedRoles(ctx context.Context, role *Role) {
 	sb := op.SelectBuilder(ctx, "based").Prefix("distinct").From(op.inherits.TableName()).
 		Where("role=?", role.Id)
 	op.inherits.ExecuteSelect(ctx, &role.Based, sb)
 }
 
-func (op *roleOpT) List(ctx context.Context) (lst []*roleT) {
+func (op *roleOpT) List(ctx context.Context) (lst []*Role) {
 	for _, enum := range op.EnumOperator.List(ctx) {
-		lst = append(lst, enum.(*roleT))
+		lst = append(lst, enum.(*Role))
 	}
 	return
 }

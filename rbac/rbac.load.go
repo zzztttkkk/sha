@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/suna/utils"
 	"sync"
-	"sync/atomic"
-	"time"
 )
 
 var g sync.RWMutex
 
-var permIdMap map[int64]*permissionT
-var permNameMap map[string]*permissionT
-var roleIdMap map[int64]*roleT
+var permIdMap map[int64]*Permission
+var permNameMap map[string]*Permission
+var roleIdMap map[int64]*Role
 var errs []string
 var rolePermMap map[int64]map[int64]bool
 var rolePermCache = utils.NewLru(200)
@@ -23,9 +21,9 @@ func Load(ctx context.Context) {
 	defer g.Unlock()
 
 	errs = make([]string, 0)
-	permIdMap = map[int64]*permissionT{}
-	permNameMap = map[string]*permissionT{}
-	roleIdMap = map[int64]*roleT{}
+	permIdMap = map[int64]*Permission{}
+	permNameMap = map[string]*Permission{}
+	roleIdMap = map[int64]*Role{}
 	rolePermMap = map[int64]map[int64]bool{}
 	rolePermCache.Clear()
 
@@ -53,7 +51,7 @@ func buildRolePermMap() {
 	}
 }
 
-func makeOneRole(role *roleT) map[int64]bool {
+func makeOneRole(role *Role) map[int64]bool {
 	pm := map[int64]bool{}
 	err := false
 
@@ -65,7 +63,7 @@ func makeOneRole(role *roleT) map[int64]bool {
 	return pm
 }
 
-func _makeOneRole(role *roleT, footprints map[int64]bool, permMap map[int64]bool, errPtr *bool) {
+func _makeOneRole(role *Role, footprints map[int64]bool, permMap map[int64]bool, errPtr *bool) {
 	_, ok := footprints[role.GetId()]
 	if ok {
 		*errPtr = true
@@ -85,30 +83,5 @@ func _makeOneRole(role *roleT, footprints map[int64]bool, permMap map[int64]bool
 			return
 		}
 		_makeOneRole(rp, footprints, permMap, errPtr)
-	}
-}
-
-var changeCount int64
-var loading int32
-
-func reload() {
-	if v := recover(); v != nil {
-		panic(v)
-	}
-
-	if atomic.LoadInt32(&loading) > 0 {
-		atomic.AddInt64(&changeCount, 1)
-		return
-	}
-	atomic.StoreInt32(&loading, 1)
-	defer atomic.StoreInt32(&loading, 0)
-
-	atomic.StoreInt64(&changeCount, 0)
-	Load(context.Background())
-
-	if atomic.LoadInt64(&changeCount) > 0 {
-		atomic.StoreInt64(&changeCount, 0)
-		Load(context.Background())
-		time.Sleep(time.Millisecond * 500)
 	}
 }

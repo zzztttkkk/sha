@@ -6,6 +6,7 @@ type Collection struct {
 	raw _JsonCollection
 }
 
+//revive:disable:cyclomatic
 func ParseCollection(v interface{}) (*Collection, error) {
 	var data []byte
 	switch rv := v.(type) {

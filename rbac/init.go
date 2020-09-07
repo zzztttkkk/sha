@@ -51,8 +51,7 @@ func init() {
 			cfg = confV
 			tablePrefix = confV.Rbac.TablenamePrefix
 
-			l := cfg.GetSqlLeader()
-			if l == nil {
+			if cfg.GetSqlLeader() == nil {
 				log.Fatalln("suna.rbac: nil sql")
 				return
 			}

@@ -2,8 +2,8 @@ package rbac
 
 import (
 	"github.com/valyala/fasthttp"
-	rpkg "github.com/zzztttkkk/router"
 	"github.com/zzztttkkk/suna/output"
+	rpkg "github.com/zzztttkkk/suna/router"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/validator"
 )
@@ -33,7 +33,6 @@ func init() {
 						}
 
 						txc, committer := sqls.TxByUser(ctx)
-						defer func() { go reload() }()
 						defer committer()
 
 						if err := NewPermission(txc, form.Name, form.Descp); err != nil {
@@ -62,7 +61,6 @@ func init() {
 						}
 
 						txc, committer := sqls.TxByUser(ctx)
-						defer func() { go reload() }()
 						defer committer()
 
 						if err := DelPermission(txc, form.Name); err != nil {

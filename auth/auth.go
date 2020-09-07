@@ -6,52 +6,50 @@ import (
 	"github.com/zzztttkkk/suna/output"
 )
 
+// User is an interface, can `GetId() int64`
 type User interface {
 	GetId() int64
 }
 
-type _EmptyUser struct {
-}
-
-func (*_EmptyUser) GetId() int64 {
-	return -1
-}
-
+// Authenticator is an interface, do auth for `fasthttp.RequestCtx`
 type Authenticator interface {
 	Auth(*fasthttp.RequestCtx) (User, bool)
 }
 
+// AuthenticatorFunc auth function
 type AuthenticatorFunc func(*fasthttp.RequestCtx) (User, bool)
 
+// Auth do auth
 func (fn AuthenticatorFunc) Auth(ctx *fasthttp.RequestCtx) (User, bool) {
 	return fn(ctx)
 }
 
-var _Authenticator Authenticator
-var emptyUser = &_EmptyUser{}
+var authenticatorV Authenticator
 
-// Use the global `Authenticator` to get the user information of the current request
+// GetUser Use the global `Authenticator` to get the user information of the current request
 // and cache it in the `fasthttp.RequestCtx.UserValue` (even if the authentication fails).
 func GetUser(ctx *fasthttp.RequestCtx) (User, bool) {
 	ui := ctx.UserValue(internal.RCtxUserKey)
 	if ui != nil {
-		if ui == emptyUser {
+		switch rv := ui.(type) {
+		case User:
+			return rv, true
+		default:
 			return nil, false
 		}
-		return ui.(User), true
 	}
 
-	u, ok := _Authenticator.Auth(ctx)
+	u, ok := authenticatorV.Auth(ctx)
 	if ok {
 		ctx.SetUserValue(internal.RCtxUserKey, u)
 		return u, true
 	}
 
-	ctx.SetUserValue(internal.RCtxUserKey, emptyUser)
+	ctx.SetUserValue(internal.RCtxUserKey, 0)
 	return nil, false
 }
 
-// If authentication fails, a 401 exception will be thrown.
+// MustGetUser If authentication fails, a 401 exception will be thrown.
 func MustGetUser(ctx *fasthttp.RequestCtx) User {
 	v, ok := GetUser(ctx)
 	if ok {
@@ -60,11 +58,12 @@ func MustGetUser(ctx *fasthttp.RequestCtx) User {
 	panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 }
 
-// Clear the user info cache
+// Reset Clear the user info cache
 func Reset(ctx *fasthttp.RequestCtx) {
 	ctx.SetUserValue(internal.RCtxUserKey, nil)
 }
 
+// IsAvailable check the global `Authenticator` is not nil
 func IsAvailable() bool {
-	return _Authenticator != nil
+	return authenticatorV != nil
 }

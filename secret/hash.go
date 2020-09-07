@@ -28,7 +28,7 @@ func (h *Hash) getSecretKey() []byte {
 	if len(h.secretKey) > 0 {
 		return h.secretKey
 	}
-	return gSecretKey
+	return _SecretKey
 }
 
 func NewHash(fn func() hash.Hash, withSecret bool) *Hash {
@@ -94,7 +94,7 @@ func (h *Hash) StreamCalc(reader io.Reader) []byte {
 
 	result := make([]byte, h.size)
 
-	var buf = make([]byte, 128, 128)
+	var buf = make([]byte, 128)
 	for {
 		size, _ := reader.Read(buf)
 		if size < 1 {
@@ -114,7 +114,7 @@ func (h *Hash) StreamEqual(reader io.Reader, hexBytes []byte) bool {
 	method := h.pool.Get().(hash.Hash)
 	result := h.bytes.Get()
 
-	var buf = make([]byte, 128, 128)
+	var buf = make([]byte, 128)
 	for {
 		size, _ := reader.Read(buf)
 		if size < 1 {

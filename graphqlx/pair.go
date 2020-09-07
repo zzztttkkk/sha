@@ -2,16 +2,16 @@ package graphqlx
 
 import (
 	"context"
+	"fmt"
+	"reflect"
+
 	"github.com/graphql-go/graphql"
 	"github.com/zzztttkkk/suna/validator"
-	"reflect"
 )
 
 type ResolveFunc func(ctx context.Context, in interface{}, info *graphql.ResolveInfo) (out interface{}, err error)
 
 type Pair struct {
-	field *graphql.Field
-
 	in    interface{}
 	rules *validator.Rules
 	am    graphql.FieldConfigArgument
@@ -22,13 +22,8 @@ type Pair struct {
 
 func NewPair(inV, outV interface{}, resolveFunc ResolveFunc) *Pair {
 	p := &Pair{in: inV, out: outV}
-
-	if inV != nil {
-		p.rules = validator.GetRules(inV)
-		p.am = p.rules.ArgumentMap()
-	} else {
-		p.am = nil
-	}
+	p.rules = validator.GetRules(inV)
+	p.am = p.rules.ArgumentMap()
 
 	p.resolve = resolveFunc
 	return p
@@ -56,4 +51,30 @@ func (p *Pair) toField(name, descp string) *graphql.Field {
 		return p.resolve(params.Context, v.Addr().Interface(), &params.Info)
 	}
 	return field
+}
+
+func NewPairFromFunction(v interface{}) *Pair {
+	t := reflect.TypeOf(v)
+	if t.Kind() != reflect.Func {
+		panic(fmt.Errorf("suna.graphqlx: `%v` is not a function", v))
+	}
+
+	inT := t.In(1).Elem()
+	outT := t.Out(0).Elem()
+	fnV := reflect.ValueOf(v)
+
+	return NewPair(
+		reflect.New(inT).Elem().Interface(),
+		reflect.New(outT).Elem().Interface(),
+		func(ctx context.Context, in interface{}, info *graphql.ResolveInfo) (out interface{}, err error) {
+			rspV := fnV.Call(
+				[]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(in), reflect.ValueOf(info)},
+			)
+			ev := rspV[1].Interface()
+			if ev != nil {
+				return nil, ev.(error)
+			}
+			return rspV[0].Interface(), nil
+		},
+	)
 }

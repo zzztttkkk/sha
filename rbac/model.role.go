@@ -5,7 +5,7 @@ import (
 	"github.com/zzztttkkk/suna/sqls"
 )
 
-type roleT struct {
+type Role struct {
 	sqls.Enum
 	Descp string `json:"descp"`
 
@@ -13,11 +13,11 @@ type roleT struct {
 	Permissions []int64 `json:"permissions" db:"-"`
 }
 
-func (roleT) SqlsTableName() string {
+func (Role) SqlsTableName() string {
 	return tablePrefix + "role"
 }
 
-func (role roleT) SqlsTableColumns(db *sqlx.DB) []string {
+func (role Role) SqlsTableColumns(db *sqlx.DB) []string {
 	return role.Enum.SqlsTableColumns(db, "descp text")
 }
 

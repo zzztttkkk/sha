@@ -3,12 +3,15 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/go-redis/redis/v7"
 	"strings"
+
+	"github.com/go-redis/redis/v7"
 )
 
-var _RedisUnknownModeError = errors.New("suna.config: unknown redis mode,[singleton,ring]")
+// ErrRedisUnknownMode unknown redis mode error
+var ErrRedisUnknownMode = errors.New("suna.config: unknown redis mode,[singleton,ring]")
 
+//revive:disable:cyclomatic
 func (t *Suna) _InitRedisClient() {
 	if t.Internal.redisc != nil {
 		return
@@ -62,10 +65,11 @@ func (t *Suna) _InitRedisClient() {
 		)
 		return
 	default:
-		panic(_RedisUnknownModeError)
+		panic(ErrRedisUnknownMode)
 	}
 }
 
+// RedisClient get redis client
 func (t *Suna) RedisClient() redis.Cmdable {
 	if t.Internal.redisc == nil {
 		t._InitRedisClient()

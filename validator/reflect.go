@@ -2,14 +2,15 @@ package validator
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/suna/jsonx"
-	"github.com/zzztttkkk/suna/reflectx"
 	"log"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/zzztttkkk/suna/internal/reflectx"
+	"github.com/zzztttkkk/suna/jsonx"
 )
 
 type _TagParser struct {
@@ -21,8 +22,7 @@ type _TagParser struct {
 
 func (p *_TagParser) OnNestedStruct(f *reflect.StructField) bool {
 	if !f.Anonymous {
-		log.Printf("suna.validator: nested-struct should be anonymous; %s.%s\n", p.name, f.Name)
-		return false
+		panic(fmt.Errorf("suna.validator: nested-struct should be anonymous; %s.%s\n", p.name, f.Name))
 	}
 	return true
 }
@@ -93,11 +93,16 @@ func (p *_TagParser) OnName(name string) {
 	p.current.form = name
 }
 
+// 0-10: [0, 10]
+// 0: [0,0]
+// 0-: [0,)
+// -10: (,10]
 func parseIntRange(s string) (int64, int64, bool, bool) {
 	if len(s) < 1 {
 		return 0, 0, false, false
 	}
 
+	// -10
 	if strings.HasPrefix(s, "-") {
 		v, e := strconv.ParseInt(s[1:], 10, 64)
 		if e != nil {
@@ -106,6 +111,7 @@ func parseIntRange(s string) (int64, int64, bool, bool) {
 		return 0, v, false, true
 	}
 
+	// 0-
 	if strings.HasSuffix(s, "-") {
 		v, e := strconv.ParseInt(s[:len(s)-1], 10, 64)
 		if e != nil {
@@ -115,7 +121,7 @@ func parseIntRange(s string) (int64, int64, bool, bool) {
 	}
 
 	ss := strings.Split(s, "-")
-	if len(ss) == 1 {
+	if len(ss) == 1 { // 10
 		v, e := strconv.ParseInt(s, 10, 64)
 		if e != nil {
 			return 0, 0, false, false
@@ -229,6 +235,7 @@ func parseFloatRange(s string) (float64, float64, bool, bool) {
 	return minV, maxV, true, true
 }
 
+//revive:disable:cyclomatic
 func (p *_TagParser) OnAttr(key, val string) {
 	rule := p.current
 	switch key {
@@ -249,18 +256,36 @@ func (p *_TagParser) OnAttr(key, val string) {
 		rule.minL, rule.maxL, rule.minLF, rule.maxLF = parseIntRange(val)
 	case "V", "value":
 		rule.vrange = true
-		if rule.t == _Int64 {
+		ok := false
+		switch rule.t {
+		case _Int64, _IntSlice:
 			rule.minV, rule.maxV, rule.minVF, rule.maxVF = parseIntRange(val)
-		} else if rule.t == _Uint64 {
+			ok = rule.minVF || rule.maxVF
+		case _Uint64, _UintSlice:
 			rule.minUV, rule.maxUV, rule.minUVF, rule.maxUVF = parseUintRange(val)
-		} else if rule.t == _Float64 {
+			ok = rule.minUVF || rule.maxUVF
+		case _Float64, _FloatSlice:
 			rule.minFV, rule.maxFV, rule.minFVF, rule.maxFVF = parseFloatRange(val)
+			ok = rule.minFVF || rule.maxFVF
+		default:
+			log.Printf("suna.validator: invalid value range option. %s.%s", p.name, p.current.field)
+		}
+		if !ok {
+			log.Fatalf("suna.validatoe: error value range option. %s.%s", p.name, p.current.field)
 		}
 	case "D", "default":
 		rule.defaultV = []byte(val)
 	case "S", "size":
-		rule.srange = true
-		rule.minS, rule.maxS, rule.minSF, rule.maxSF = parseIntRange(val)
+		switch rule.t {
+		case _IntSlice, _UintSlice, _BoolSlice, _BytesSlice, _FloatSlice, _StringSlice:
+			rule.srange = true
+			rule.minS, rule.maxS, rule.minSF, rule.maxSF = parseIntRange(val)
+			if !rule.minSF && !rule.maxSF {
+				log.Fatalf("suna.validatoe: error size range option. %s.%s", p.name, p.current.field)
+			}
+		default:
+			log.Printf("suna.validator: invalid size range option. %s.%s", p.name, p.current.field)
+		}
 	case "I", "info":
 		rule.info = val
 	case "optional":

@@ -62,7 +62,7 @@ func RoleListAllBased(ctx context.Context, name string) ([]string, error) {
 		return nil, output.HttpErrors[fasthttp.StatusNotFound]
 	}
 
-	role := roleT{}
+	role := Role{}
 	role.Id = _role.GetId()
 	_RoleOperator.getAllBasedRoles(ctx, &role)
 

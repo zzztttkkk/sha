@@ -25,7 +25,7 @@ func RandBytes(size int, pool []byte) []byte {
 	if pool == nil {
 		pool = defaultPool
 	}
-	rv := make([]byte, size, size)
+	rv := make([]byte, size)
 	_l := int64(len(pool))
 	for i := 0; i < size; i++ {
 		rv[i] = pool[src.Int63()%_l]

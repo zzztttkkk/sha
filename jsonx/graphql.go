@@ -2,6 +2,7 @@ package jsonx
 
 import (
 	"errors"
+
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 )
@@ -43,7 +44,6 @@ var GraphqlObject = graphql.NewScalar(
 				return _ObjSerialize(*rv)
 			default:
 				panic(errors.New("suna.validator: not a json object"))
-				return nil
 			}
 		},
 		ParseValue: func(value interface{}) interface{} {
@@ -89,7 +89,6 @@ var GraphqlArray = graphql.NewScalar(
 				return _ArySerialize(*rv)
 			default:
 				panic(errors.New("suna.validator: not a json array"))
-				return nil
 			}
 		},
 		ParseValue: func(value interface{}) interface{} {

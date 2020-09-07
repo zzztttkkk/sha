@@ -8,24 +8,16 @@ import (
 
 type _CtxKey int
 
-var _rctxKey = _CtxKey(1111)
+var _RCtxKey = _CtxKey(1111)
 
 func Wrap(ctx *fasthttp.RequestCtx) context.Context {
-	return context.WithValue(ctx, _rctxKey, ctx)
+	return context.WithValue(ctx, _RCtxKey, ctx)
 }
 
 func Unwrap(ctx context.Context) *fasthttp.RequestCtx {
-	v := ctx.Value(_rctxKey)
-	if v == nil {
-		return nil
-	}
-	return v.(*fasthttp.RequestCtx)
-}
-
-func MustUnwrap(ctx context.Context) *fasthttp.RequestCtx {
-	v := Unwrap(ctx)
+	v := ctx.Value(_RCtxKey)
 	if v == nil {
 		panic(errors.New("suna.ctxs: empty *fasthttp.RequestCtx"))
 	}
-	return v
+	return v.(*fasthttp.RequestCtx)
 }

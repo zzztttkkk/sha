@@ -10,6 +10,7 @@ import (
 
 var crsfKeyLength = 16
 var crsfMaxAge = int64(300)
+var crsfForm = ""
 
 func (sion Session) CrsfGenerate(ctx *fasthttp.RequestCtx) string {
 	key := gotils.B2S(secret.RandBytes(crsfKeyLength, nil))
@@ -18,19 +19,23 @@ func (sion Session) CrsfGenerate(ctx *fasthttp.RequestCtx) string {
 	return key
 }
 
-func (sion Session) CrsfVerify(ctx *fasthttp.RequestCtx) (ok bool) {
-	if captchaSkipVerify {
+func (sion Session) CrsfVerify(ctx *fasthttp.RequestCtx) bool {
+	if skipVerify {
 		return true
+	}
+
+	var formV = ctx.FormValue(crsfForm)
+	if len(formV) != crsfKeyLength {
+		return false
 	}
 
 	var key string
 	if !sion.Get(internal.SessionCrsfValueKey, &key) || len(key) != crsfKeyLength {
-		return
+		return false
 	}
 	var unix int64
 	if !sion.Get(internal.SessionCrsfUnixKey, &unix) || time.Now().Unix()-unix >= crsfMaxAge {
-		return
+		return false
 	}
-
-	return false
+	return gotils.B2S(formV) == key
 }

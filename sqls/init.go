@@ -1,4 +1,4 @@
-package sqlx
+package sqls
 
 import (
 	"fmt"
@@ -19,11 +19,7 @@ func _DoSqlLogging(q string, args []interface{}) {
 	}
 
 	if len(args) < 1 {
-		if cfg.Logger == nil {
-			log.Printf("suna.sqls.log: `%s`\n", q)
-		} else {
-			cfg.Logger.Printf("suna.sqls.log: `%s`\n", q)
-		}
+		log.Printf("suna.sqls.log: `%s`\n", q)
 		return
 	}
 
@@ -35,12 +31,7 @@ func _DoSqlLogging(q string, args []interface{}) {
 	}
 
 	s := fmt.Sprintf(strings.Repeat("'%v',", len(args)), args...)
-
-	if cfg.Logger == nil {
-		log.Printf("suna.sqls.log: `%s` with args `[%s]`\n", q, s)
-	} else {
-		cfg.Logger.Printf("suna.sqls.log: `%s` with args `[%s]`\n", q, s)
-	}
+	log.Printf("suna.sqls.log: `%s` with args `[%s]`\n", q, s)
 }
 
 func init() {
