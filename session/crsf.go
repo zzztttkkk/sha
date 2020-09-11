@@ -1,18 +1,19 @@
 package session
 
 import (
+	"time"
+
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/secret"
-	"time"
 )
 
 var crsfKeyLength = 16
 var crsfMaxAge = int64(300)
 var crsfForm = ""
 
-func (sion Session) CrsfGenerate(ctx *fasthttp.RequestCtx) string {
+func (sion Session) CrsfGenerate() string {
 	key := gotils.B2S(secret.RandBytes(crsfKeyLength, nil))
 	sion.Set(internal.SessionCrsfValueKey, key)
 	sion.Set(internal.SessionCrsfUnixKey, time.Now().Unix())

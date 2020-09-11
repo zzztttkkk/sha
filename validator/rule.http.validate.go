@@ -75,10 +75,9 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 			}
 			field.Set(value)
 			return true
-		} else {
-			output.Error(ctx, ErrNotJsonRequest)
-			return false
 		}
+		output.Error(ctx, ErrNotJsonRequest)
+		return false
 	}
 
 	if isJsonReq {
@@ -133,9 +132,8 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 				if rule.required {
 					output.Error(ctx, _NewFormNullError(rule.form))
 					return false
-				} else {
-					continue
 				}
+				continue
 			}
 
 			if !rule.checkSizeRange(&sV) {

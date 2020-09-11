@@ -3,13 +3,14 @@ package graphqlx
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/graphql-go/graphql"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/router"
-	"testing"
 )
 
-func TestN(t *testing.T) {
+func TestN(_ *testing.T) {
 	s := NewSchema()
 
 	type Product struct {

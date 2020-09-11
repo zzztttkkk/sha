@@ -3,11 +3,12 @@ package rbac
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/utils"
-	"strconv"
 )
 
 type userOpT struct {
@@ -30,6 +31,8 @@ func init() {
 }
 
 func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName string, mt modifyType) error {
+	OP := op.roles
+
 	roleId := _RoleOperator.GetIdByName(ctx, roleName)
 	if roleId < 1 {
 		return output.HttpErrors[fasthttp.StatusNotFound]
@@ -41,25 +44,14 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 	)
 	defer op.lru.Remove(strconv.FormatInt(subjectId, 16))
 
-	cond := sqls.AND().
-		Eq(true, "role", roleId).
-		Eq(true, "subject", subjectId)
-
-	srb := op.roles.SelectBuilder(ctx, "role").From(op.roles.TableName()).Where(cond)
-
+	cond := sqls.STR("role=? and subject=?", roleId, subjectId)
 	var _id int64
-	op.roles.ExecuteSelect(ctx, &_id, srb)
+	OP.Select(ctx, &_id, sqls.Select("role").Where(cond))
 	if _id < 1 {
 		if mt == _Add {
 			return nil
 		}
-
-		kvs := utils.AcquireKvs()
-		defer kvs.Free()
-		kvs.Set("subject", subjectId)
-		kvs.Set("role", roleId)
-
-		op.roles.ExecuteCreate(ctx, kvs)
+		OP.Insert(ctx, sqls.Insert("").Columns("subject, role").Values(subjectId, roleId))
 		return nil
 	}
 
@@ -67,11 +59,7 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 		return nil
 	}
 
-	q, args, err := op.roles.DeleteBuilder(ctx).From(op.roles.TableName()).Where(cond).Limit(1).ToSql()
-	if err != nil {
-		panic(err)
-	}
-	op.roles.ExecuteSql(ctx, q, args...)
+	OP.Delete(ctx, sqls.Delete("").Where(cond).Limit(1))
 	return nil
 }
 
@@ -81,13 +69,13 @@ func (op *userOpT) getRoles(ctx context.Context, userId int64) []int64 {
 		return v.([]int64)
 	}
 
+	OP := op.roles
 	lst := make([]int64, 0)
-	op.roles.ExecuteSelect(
+	OP.Select(
 		ctx,
 		&lst,
-		op.roles.SelectBuilder(ctx, "role").From(op.roles.TableName()).Prefix("distinct").Where(
-			"subject=? and role>0 and status>=0 and deleted=0", userId,
-		).OrderBy("role"),
+		sqls.Select("role").Prefix("distinct").
+			Where("subject=? and role>0 and status>=0 and deleted=0", userId).OrderBy("role"),
 	)
 	op.lru.Add(strconv.FormatInt(userId, 16), lst)
 	return lst

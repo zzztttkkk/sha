@@ -43,7 +43,7 @@ var GraphqlObject = graphql.NewScalar(
 				}
 				return _ObjSerialize(*rv)
 			default:
-				panic(errors.New("suna.validator: not a json object"))
+				panic(errors.New("suna.jsonx: not a json object"))
 			}
 		},
 		ParseValue: func(value interface{}) interface{} {
@@ -88,7 +88,7 @@ var GraphqlArray = graphql.NewScalar(
 				}
 				return _ArySerialize(*rv)
 			default:
-				panic(errors.New("suna.validator: not a json array"))
+				panic(errors.New("suna.jsonx: not a json array"))
 			}
 		},
 		ParseValue: func(value interface{}) interface{} {

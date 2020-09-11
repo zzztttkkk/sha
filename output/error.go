@@ -2,31 +2,32 @@ package output
 
 import (
 	"fmt"
-	"net/http"
+
+	"github.com/valyala/fasthttp"
 )
 
-type Err interface {
+type MessageErr interface {
 	Error() string
 	StatusCode() int
 	Message() *Message
 }
 
-type _Error struct {
+type msgError struct {
 	hcode  int
 	errno  int
 	errmsg string
 	msg    *Message
 }
 
-func (e *_Error) Error() string {
+func (e *msgError) Error() string {
 	return fmt.Sprintf("%d %s", e.errno, e.errmsg)
 }
 
-func (e *_Error) StatusCode() int {
+func (e *msgError) StatusCode() int {
 	return e.hcode
 }
 
-func (e *_Error) Message() *Message {
+func (e *msgError) Message() *Message {
 	if e.msg != nil {
 		return e.msg
 	}
@@ -38,8 +39,9 @@ func (e *_Error) Message() *Message {
 	return e.msg
 }
 
-func NewError(httpCode, customErrno int, errmsg string) *_Error {
-	return &_Error{
+//revive:disable-next-line
+func NewError(httpCode, customErrno int, errmsg string) *msgError {
+	return &msgError{
 		hcode:  httpCode,
 		errno:  customErrno,
 		errmsg: errmsg,
@@ -47,11 +49,11 @@ func NewError(httpCode, customErrno int, errmsg string) *_Error {
 	}
 }
 
-var HttpErrors = map[int]*_Error{}
+var HttpErrors = map[int]*msgError{}
 
 func init() {
-	for v := 100; v < 550; v++ {
-		txt := http.StatusText(v)
+	for v := 100; v < 600; v++ {
+		txt := fasthttp.StatusMessage(v)
 		if len(txt) < 1 {
 			continue
 		}

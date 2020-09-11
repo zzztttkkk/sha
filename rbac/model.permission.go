@@ -7,7 +7,6 @@ import (
 
 type Permission struct {
 	sqls.Enum
-	Descp string ` json:"descp"`
 }
 
 func (Permission) SqlsTableName() string {
@@ -15,5 +14,5 @@ func (Permission) SqlsTableName() string {
 }
 
 func (perm Permission) SqlsTableColumns(db *sqlx.DB) []string {
-	return perm.Enum.SqlsTableColumns(db, "descp text")
+	return perm.Enum.SqlsTableColumns(db)
 }

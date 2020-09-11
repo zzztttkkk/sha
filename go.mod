@@ -22,5 +22,6 @@ require (
 	github.com/valyala/fasthttp v1.16.0
 	go.uber.org/dig v1.10.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/tools v0.0.0-20200909210914-44a2922940c2 // indirect
 	google.golang.org/grpc v1.31.1
 )

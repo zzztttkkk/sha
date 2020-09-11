@@ -4,8 +4,6 @@ import (
 	"context"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
-	"github.com/zzztttkkk/suna/utils"
-	"time"
 )
 
 // permission
@@ -13,7 +11,7 @@ func NewPermission(ctx context.Context, name, descp string) error {
 	if _PermissionOperator.ExistsByName(ctx, name) {
 		return output.HttpErrors[fasthttp.StatusBadRequest]
 	}
-	_PermissionOperator.Create(ctx, utils.M{"Name": name, "descp": descp, "created": time.Now().Unix()})
+	_PermissionOperator.Create(ctx, name, descp)
 	return nil
 }
 
@@ -30,13 +28,7 @@ func NewRole(ctx context.Context, name, descp string) error {
 	if _RoleOperator.ExistsByName(ctx, name) {
 		return output.HttpErrors[fasthttp.StatusBadRequest]
 	}
-
-	kvs := utils.AcquireKvs()
-	defer kvs.Free()
-
-	kvs.Append("name", name)
-	kvs.Append("descp", descp)
-	_RoleOperator.Create(ctx, kvs)
+	_RoleOperator.Create(ctx, name, descp)
 	return nil
 }
 

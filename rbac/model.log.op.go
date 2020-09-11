@@ -2,12 +2,13 @@ package rbac
 
 import (
 	"context"
+	"time"
+
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/utils"
-	"time"
 )
 
 type logOpT struct {
@@ -31,19 +32,18 @@ func (op *logOpT) Create(ctx context.Context, name string, info utils.M) int64 {
 		panic(v)
 	}
 
-	user := sqls.GetTxOperator(ctx)
+	user := sqls.TxUser(ctx)
 	if user == nil {
 		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 	}
 
-	kvs := utils.AcquireKvs()
-	defer kvs.Free()
-
-	kvs.Set("created", time.Now())
-	kvs.Set("name", name)
-	kvs.Set("operator", user.GetId())
-	kvs.Set("info", jsonx.Object(info))
-	return op.ExecuteCreate(ctx, kvs)
+	builder := sqls.Insert(op.TableName()).
+		Columns("name,operator,info,created").
+		Values(name, user.GetId(), jsonx.Object(info), time.Now().Unix())
+	if sqls.IsPostgres() {
+		builder = builder.Returning("id")
+	}
+	return op.Insert(ctx, builder)
 }
 
 func (op *logOpT) List(
@@ -55,23 +55,19 @@ func (op *logOpT) List(
 	limit int64,
 ) (lst []logT) {
 	conditions := sqls.AND()
-	conditions.Gte(begin > 0, "created", begin)
-	conditions.Lte(end > 0, "created", end)
-	conditions.Eq(len(names) > 0, "name", names)
-	conditions.Eq(len(uids) > 0, "operator", uids)
+	conditions.Gte(begin > 0, "created", begin).
+		Lte(end > 0, "created", end).
+		Eq(len(names) > 0, "name", names).
+		Eq(len(uids) > 0, "operator", uids)
 	if asc {
 		conditions.Gt(cursor > 0, "id", cursor)
 	} else {
 		conditions.Lt(cursor > 0, "id", cursor)
 	}
 
-	sb := op.SelectBuilder(ctx, "*").From(op.TableName()).Where(conditions).Limit(uint64(limit))
-	if asc {
-		sb.OrderBy("id")
-	} else {
-		sb.OrderBy("id desc")
+	if limit < 1 {
+		limit = 1
 	}
-
-	op.ExecuteSelect(ctx, &lst, sb)
+	op.FetchMany(ctx, &lst, conditions, uint64(limit))
 	return
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"time"
+	"regexp"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/valyala/fasthttp"
@@ -13,6 +13,7 @@ import (
 	"github.com/zzztttkkk/suna/rbac"
 	"github.com/zzztttkkk/suna/router"
 	"github.com/zzztttkkk/suna/utils"
+	"github.com/zzztttkkk/suna/validator"
 )
 
 var RedisUrl = "redis://127.0.0.1:6379"
@@ -41,26 +42,47 @@ func main() {
 	)
 
 	root := router.New(nil)
-
-	root.PanicHandler = output.Recover
+	root.PanicHandler = output.RecoverAndLogging
+	root.NotFound = output.NotFound
+	root.MethodNotAllowed = output.MethodNotAllowed
 
 	root.Use(
 		middleware.NewAccessLogger(
-			"UserId:{userId} <{method} {path}> UserAgent:{reqHeader/User-Agent} <{statusCode} {statusText}> {cost}ms {errStack}",
+			"{userId} {remote} {method} {path} UserAgent:{reqHeader/User-Agent} {statusCode} {statusText} {cost}ms\n",
 			nil,
-			&middleware.AccessLoggingOption{
-				Enabled:      true,
-				DurationUnit: time.Millisecond,
-			},
+			nil,
 		).AsMiddleware(),
 	)
 
-	root.GET(
+	var emptyRegexp = regexp.MustCompile(`\s+`)
+	var emptyBytes = []byte("")
+
+	validator.RegisterFunc(
+		"username",
+		func(data []byte) ([]byte, bool) {
+			v := emptyRegexp.ReplaceAll(data, emptyBytes)
+			return v, len(v) > 3
+		},
+		"remove all space characters and make sure the length is greater than 3",
+	)
+
+	type Form struct {
+		Ignore string `validator:"-"`
+		Name   string `validator:"L<3-20>;F<username>;D<null>;I<username>"`
+	}
+
+	root.GETWithDoc(
 		"/hello",
 		func(ctx *fasthttp.RequestCtx) {
-			output.MsgOK(ctx, "World!")
+			form := Form{}
+			if !validator.Validate(ctx, &form) {
+				return
+			}
+			output.MsgOK(ctx, form.Name)
 		},
+		validator.MakeDoc(Form{}, "print hello."),
 	)
+	root.BindDocHandler("/doc", nil)
 
 	loader := utils.NewLoader()
 	loader.AddChild("/rbac", rbac.Loader())

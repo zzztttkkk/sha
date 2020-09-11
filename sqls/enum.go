@@ -9,7 +9,8 @@ type EnumItem interface {
 
 type Enum struct {
 	Model
-	Name string `json:"name"`
+	Name  string `json:"name"`
+	Descp string `json:"description"`
 }
 
 func (enum *Enum) GetId() int64 {
@@ -21,5 +22,12 @@ func (enum *Enum) GetName() string {
 }
 
 func (enum Enum) SqlsTableColumns(db *sqlx.DB, lines ...string) []string {
-	return enum.Model.SqlsTableColumns(db, append(lines, "name varchar(512) not null unique")...)
+	return enum.Model.SqlsTableColumns(
+		db,
+		append(
+			lines,
+			"name varchar(512) not null unique",
+			"descp text",
+		)...,
+	)
 }

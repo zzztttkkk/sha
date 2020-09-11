@@ -16,7 +16,7 @@ import (
 	"github.com/zzztttkkk/suna/utils"
 )
 
-type _AccessLogger struct {
+type AccessLogger struct {
 	namedFmt *utils.NamedFmt
 	logger   *log.Logger
 	opt      *AccessLoggingOption
@@ -46,9 +46,9 @@ type _AccessLogger struct {
 }
 
 type AccessLoggingOption struct {
-	Enabled      bool
-	TimeFmt      string
-	DurationUnit time.Duration
+	TimeFmt         string
+	DurationUnit    time.Duration
+	AsGlobalRecover bool
 }
 
 //revive:disable:cyclomatic
@@ -87,16 +87,16 @@ type AccessLoggingOption struct {
 //		errStack: error stack if an internal server error occurred
 //
 //		userId: user id of the current request
-func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) *_AccessLogger {
+func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) *AccessLogger {
 	if opt == nil {
-		log.Fatalln("suna.middleware: nil option")
+		opt = &AccessLoggingOption{}
 	}
 
 	if opt.DurationUnit == 0 {
 		opt.DurationUnit = time.Millisecond
 	}
 
-	rv := &_AccessLogger{
+	rv := &AccessLogger{
 		namedFmt: utils.NewNamedFmt(fstr),
 		logger:   logger,
 		opt:      opt,
@@ -161,7 +161,7 @@ type _Header interface {
 	VisitAll(f func(key, value []byte))
 }
 
-func (al *_AccessLogger) peekAllHeader(header _Header) string {
+func (al *AccessLogger) peekAllHeader(header _Header) string {
 	buf := strings.Builder{}
 	header.VisitAll(
 		func(key, value []byte) {
@@ -174,13 +174,13 @@ func (al *_AccessLogger) peekAllHeader(header _Header) string {
 	return buf.String()
 }
 
-func (al *_AccessLogger) peekSomeHeader(key string, hkeys []string, header _Header, m utils.M) {
+func (al *AccessLogger) peekSomeHeader(key string, hkeys []string, header _Header, m utils.M) {
 	for _, hk := range hkeys {
 		m[key+hk] = gotils.B2S(header.Peek(hk))
 	}
 }
 
-func (al *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
+func (al *AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 	if al._ReqMethod {
 		m["method"] = gotils.B2S(ctx.Method())
 	}
@@ -236,7 +236,7 @@ func (al *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (al *_AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
+func (al *AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
 	switch gotils.B2S(ctx.Response.Header.Peek("Content-Encoding")) {
 	case "deflate":
 		d, _ := ctx.Response.BodyInflate()
@@ -249,7 +249,7 @@ func (al *_AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
 	}
 }
 
-func (al *_AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
+func (al *AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
 	if al._ResStatusCode {
 		m["statusCode"] = ctx.Response.StatusCode()
 	}
@@ -268,17 +268,8 @@ func (al *_AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (al *_AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
-	if !al.opt.Enabled {
-		return next
-	}
-
+func (al *AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
-		if !al.opt.Enabled {
-			next(ctx)
-			return
-		}
-
 		var m = utils.M{}
 		var begin time.Time
 		if al._beginT {
@@ -288,8 +279,17 @@ func (al *_AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.Reques
 		al.peekRequest(m, ctx)
 
 		defer func() {
-			v := recover()
-			var es string
+			var v interface{}
+			if al._ErrStack {
+				v = recover()
+				if v != nil {
+					m["errStack"] = output.ErrorStack(v, 1)
+					if al.opt.AsGlobalRecover {
+						output.Error(ctx, v)
+					}
+				}
+			}
+
 			var end time.Time
 			if al._endT {
 				end = time.Now()
@@ -298,23 +298,9 @@ func (al *_AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.Reques
 				m["cost"] = int64(end.Sub(begin) / al.opt.DurationUnit)
 			}
 
-			if v != nil {
-				if al._ErrStack {
-					switch val := v.(type) {
-					case error:
-						es = output.ErrorAndErrorStack(ctx, val)
-					default:
-						es = output.ErrorAndErrorStack(ctx, output.HttpErrors[fasthttp.StatusInternalServerError])
-					}
-					m["errStack"] = es
-				} else {
-					output.Recover(ctx, v)
-				}
-			} else if al._ErrStack {
-				m["errStack"] = ""
+			if v == nil || al.opt.AsGlobalRecover {
+				al.peekResponse(m, ctx)
 			}
-
-			al.peekResponse(m, ctx)
 
 			if al._beginT {
 				m["begin"] = begin.Format(al.opt.TimeFmt)
@@ -335,9 +321,13 @@ func (al *_AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.Reques
 
 			l := al.namedFmt.Render(m)
 			if al.logger == nil {
-				log.Println(l)
+				log.Print(l)
 			} else {
-				al.logger.Println(l)
+				al.logger.Print(l)
+			}
+
+			if v != nil && !al.opt.AsGlobalRecover {
+				panic(v)
 			}
 		}()
 
@@ -345,6 +335,6 @@ func (al *_AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.Reques
 	}
 }
 
-func (al *_AccessLogger) AsMiddleware() fasthttp.RequestHandler {
+func (al *AccessLogger) AsMiddleware() fasthttp.RequestHandler {
 	return al.AsHandler(router.Next)
 }

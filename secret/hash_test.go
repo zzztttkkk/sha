@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestSha(t *testing.T) {
+func TestSha(_ *testing.T) {
 	fmt.Println(string(Sha512.Calc([]byte("A"))))
 	fmt.Println(string(Md5.Calc([]byte(""))))
 	fmt.Println(string(_Default.Calc([]byte(""))))

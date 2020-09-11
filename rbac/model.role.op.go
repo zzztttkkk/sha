@@ -3,6 +3,7 @@ package rbac
 import (
 	"context"
 	"fmt"
+
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/sqls"
@@ -11,8 +12,8 @@ import (
 
 type roleOpT struct {
 	sqls.EnumOperator
-	perms     *sqls.Operator
-	inherits  *sqls.Operator
+	perms    *sqls.Operator
+	inherits *sqls.Operator
 }
 
 var _RoleOperator = &roleOpT{
@@ -42,6 +43,8 @@ func init() {
 }
 
 func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt modifyType) error {
+	OP := op.perms
+
 	permId := _PermissionOperator.GetIdByName(ctx, permName)
 	if permId < 1 {
 		return output.HttpErrors[fasthttp.StatusNotFound]
@@ -61,48 +64,41 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 		},
 	)
 
-	cond := sqls.AND().
-		Eq(true, "role", roleId).
-		Eq(true, "perm", permId)
-
-	spb := op.SelectBuilder(ctx, "id").From(op.perms.TableName()).Where(cond)
+	cond := sqls.STR("role=? and perm=?", roleId, permId)
 
 	var _id int64
-	op.perms.ExecuteSelect(ctx, &_id, spb)
+	OP.Select(ctx, &_id, sqls.Select("id").Where(cond))
 	if _id < 1 {
 		if mt == _Add {
 			return nil
 		}
 
-		kvs := utils.AcquireKvs()
-		defer kvs.Free()
-		kvs.Set("perm", permId)
-		kvs.Set("role", roleId)
-
-		op.perms.ExecuteCreate(ctx, kvs)
+		OP.Insert(
+			ctx,
+			sqls.Insert("").Columns("perm, role").Values(permId, roleId),
+		)
 		return nil
 	}
 
 	if mt == _Add {
 		return nil
 	}
-
-	q, args, err := op.DeleteBuilder(ctx).From(op.perms.TableName()).Where(cond).Limit(1).ToSql()
-	if err != nil {
-		panic(err)
-	}
-	op.perms.ExecuteSql(ctx, q, args...)
+	OP.Delete(ctx, sqls.Delete().Where(cond).Limit(1))
 	return nil
 }
 
 func (op *roleOpT) getAllPerms(ctx context.Context, role *Role) {
-	sb := op.SelectBuilder(ctx, "perm").Prefix("distinct").From(op.perms.TableName()).
-		Where("role=?", role.Id)
-
-	op.perms.ExecuteSelect(ctx, &role.Permissions, sb)
+	OP := op.perms
+	OP.Select(
+		ctx,
+		&role.Permissions,
+		sqls.Select("perm").Prefix("distinct").Where("role=?", role.Id),
+	)
 }
 
 func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName string, mt modifyType) error {
+	OP := op.inherits
+
 	roleId := _RoleOperator.GetIdByName(ctx, roleName)
 	if roleId < 1 {
 		return output.HttpErrors[fasthttp.StatusNotFound]
@@ -123,21 +119,18 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 		},
 	)
 
-	cond := sqls.AND().
-		Eq(true, "role", roleId).
-		Eq(true, "based", basedRoleId)
+	cond := sqls.STR("role=? and based=?", roleId, basedRoleId)
 
 	var _id int64
-	op.inherits.ExecuteSelect(ctx, &_id, op.SelectBuilder(ctx, "based").From(op.inherits.TableName()).Where(cond))
+	OP.Select(ctx, &_id, sqls.Select("based").Where(cond))
 	if _id < 1 {
 		if mt == _Add {
 			return nil
 		}
-		kvs := utils.AcquireKvs()
-		defer kvs.Free()
-		kvs.Set("role", roleId)
-		kvs.Set("based", basedRoleId)
-		op.perms.ExecuteCreate(ctx, kvs)
+		OP.Insert(
+			ctx,
+			sqls.Insert("").Columns("role,based").Values(roleId, basedRoleId),
+		)
 		return nil
 	}
 
@@ -145,18 +138,17 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 		return nil
 	}
 
-	q, args, err := op.DeleteBuilder(ctx).From(op.inherits.TableName()).Where(cond).Limit(1).ToSql()
-	if err != nil {
-		panic(err)
-	}
-	op.inherits.ExecuteSql(ctx, q, args...)
+	OP.Delete(ctx, sqls.Delete("").Where(cond).Limit(1))
 	return nil
 }
 
 func (op *roleOpT) getAllBasedRoles(ctx context.Context, role *Role) {
-	sb := op.SelectBuilder(ctx, "based").Prefix("distinct").From(op.inherits.TableName()).
-		Where("role=?", role.Id)
-	op.inherits.ExecuteSelect(ctx, &role.Based, sb)
+	OP := op.inherits
+	OP.Select(
+		ctx,
+		&role.Based,
+		sqls.Select("based").Prefix("distinct").Where("role=?", role.Id),
+	)
 }
 
 func (op *roleOpT) List(ctx context.Context) (lst []*Role) {

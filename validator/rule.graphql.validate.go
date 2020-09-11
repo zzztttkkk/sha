@@ -39,7 +39,7 @@ func (rule *_Rule) checkVRangeByReflect(v interface{}) bool {
 	return true
 }
 
-var GraphqlTypeError = errors.New("suna.validator: unexpected type")
+var ErrGraphqlType = errors.New("suna.validator: unexpected type")
 
 //revive:disable:cyclomatic
 func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, error) {
@@ -50,9 +50,8 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 		if !ok {
 			if rule.required {
 				return nil, rule.toFormError()
-			} else {
-				continue
 			}
+			continue
 		}
 
 		if rule.isSlice {
@@ -60,7 +59,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 
 			switch rule.t {
 			case _BytesSlice:
-				return nil, GraphqlTypeError
+				return nil, ErrGraphqlType
 			case _IntSlice:
 				switch rv := value.(type) {
 				case []int64:
@@ -73,7 +72,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 					}
 					s = reflect.ValueOf(rv)
 				default:
-					return nil, GraphqlTypeError
+					return nil, ErrGraphqlType
 				}
 			case _UintSlice:
 				switch rv := value.(type) {
@@ -87,14 +86,14 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 					}
 					s = reflect.ValueOf(rv)
 				default:
-					return nil, GraphqlTypeError
+					return nil, ErrGraphqlType
 				}
 			case _BoolSlice:
 				switch rv := value.(type) {
 				case []bool:
 					s = reflect.ValueOf(rv)
 				default:
-					return nil, GraphqlTypeError
+					return nil, ErrGraphqlType
 				}
 			case _StringSlice:
 				switch rv := value.(type) {
@@ -110,7 +109,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 					}
 					s = reflect.ValueOf(rv)
 				default:
-					return nil, GraphqlTypeError
+					return nil, ErrGraphqlType
 				}
 			case _FloatSlice:
 				switch rv := value.(type) {
@@ -124,7 +123,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 					}
 					s = reflect.ValueOf(rv)
 				default:
-					return nil, GraphqlTypeError
+					return nil, ErrGraphqlType
 				}
 			}
 
@@ -139,14 +138,14 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 
 		switch rule.t {
 		case _Bytes:
-			return nil, GraphqlTypeError
+			return nil, ErrGraphqlType
 		case _String:
 			var data []byte
 			switch rv := value.(type) {
 			case string:
 				data = gotils.S2B(rv)
 			default:
-				return nil, GraphqlTypeError
+				return nil, ErrGraphqlType
 			}
 			v, ok := rule.toBytes(data)
 			if !ok {
@@ -167,7 +166,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 				}
 				field.SetUint(v)
 			default:
-				return nil, GraphqlTypeError
+				return nil, ErrGraphqlType
 			}
 		case _Int64:
 			switch rv := value.(type) {
@@ -183,7 +182,7 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 				}
 				field.SetInt(v)
 			default:
-				return nil, GraphqlTypeError
+				return nil, ErrGraphqlType
 			}
 		case _Float64:
 			switch rv := value.(type) {
@@ -193,17 +192,17 @@ func (rs *Rules) ValidateAndBind(m map[string]interface{}) (*reflect.Value, erro
 				}
 				field.SetFloat(rv)
 			default:
-				return nil, GraphqlTypeError
+				return nil, ErrGraphqlType
 			}
 		case _Bool:
 			switch rv := value.(type) {
 			case bool:
 				field.SetBool(rv)
 			default:
-				return nil, GraphqlTypeError
+				return nil, ErrGraphqlType
 			}
 		default:
-			return nil, GraphqlTypeError
+			return nil, ErrGraphqlType
 		}
 	}
 	return &ele, nil

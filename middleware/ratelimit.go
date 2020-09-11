@@ -10,7 +10,7 @@ import (
 	"github.com/zzztttkkk/suna/output"
 )
 
-type _RateLimiter struct {
+type RateLimiter struct {
 	raw   *redis_rate.Limiter
 	opt   *RateLimiterOption
 	limit *redis_rate.Limit
@@ -23,8 +23,8 @@ type RateLimiterOption struct {
 	GetKey func(ctx *fasthttp.RequestCtx) string
 }
 
-func NewRateLimiter(opt *RateLimiterOption) *_RateLimiter {
-	return &_RateLimiter{
+func NewRateLimiter(opt *RateLimiterOption) *RateLimiter {
+	return &RateLimiter{
 		raw: redis_rate.NewLimiter(redisc),
 		opt: opt,
 		limit: &redis_rate.Limit{
@@ -35,7 +35,7 @@ func NewRateLimiter(opt *RateLimiterOption) *_RateLimiter {
 	}
 }
 
-func (rl *_RateLimiter) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
+func (rl *RateLimiter) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		key := rl.opt.GetKey(ctx)
 		if len(key) < 1 {
@@ -55,6 +55,6 @@ func (rl *_RateLimiter) AsHandler(next fasthttp.RequestHandler) fasthttp.Request
 	}
 }
 
-func (rl *_RateLimiter) AsMiddleware() fasthttp.RequestHandler {
+func (rl *RateLimiter) AsMiddleware() fasthttp.RequestHandler {
 	return rl.AsHandler(router.Next)
 }

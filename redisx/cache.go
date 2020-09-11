@@ -1,14 +1,15 @@
 package redisx
 
 import (
+	"net/textproto"
+	"sync"
+	"time"
+
 	"github.com/golang/groupcache/singleflight"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/router"
-	"net/textproto"
-	"sync"
-	"time"
 )
 
 type _RedCacheT struct {
@@ -30,6 +31,7 @@ type RedCacheOption struct {
 
 const DisableRedCacheKey = "Suna-Disable-Redcache"
 
+//revive:disable-next-line
 // Cache the entire response in Redis
 func NewCache(opt *RedCacheOption) *_RedCacheT {
 	c := &_RedCacheT{

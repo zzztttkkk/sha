@@ -2,11 +2,12 @@ package auth
 
 import (
 	"fmt"
-	"github.com/valyala/fasthttp"
 	"testing"
+
+	"github.com/valyala/fasthttp"
 )
 
-func TestGetUser(t *testing.T) {
+func TestGetUser(_ *testing.T) {
 	authenticatorV = AuthenticatorFunc(
 		func(ctx *fasthttp.RequestCtx) (User, bool) {
 			return nil, false

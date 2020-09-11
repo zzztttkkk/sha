@@ -7,7 +7,6 @@ import (
 
 type Role struct {
 	sqls.Enum
-	Descp string `json:"descp"`
 
 	Based       []int64 `json:"based" db:"-"`
 	Permissions []int64 `json:"permissions" db:"-"`
@@ -18,7 +17,7 @@ func (Role) SqlsTableName() string {
 }
 
 func (role Role) SqlsTableColumns(db *sqlx.DB) []string {
-	return role.Enum.SqlsTableColumns(db, "descp text")
+	return role.Enum.SqlsTableColumns(db)
 }
 
 type roleInheritanceT struct {

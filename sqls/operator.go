@@ -2,17 +2,16 @@ package sqls
 
 import (
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"log"
 	"reflect"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Operator struct {
-	tablename   string
-	idField     string
-	ele         reflect.Value
-	dbGroupName string
+	tablename string
+	ele       reflect.Value
 }
 
 func (op *Operator) TableName() string {
@@ -23,30 +22,9 @@ func (op *Operator) TableName() string {
 	return op.tablename
 }
 
-func (op *Operator) SetIdField(f string) {
-	op.idField = strings.TrimSpace(strings.Split(strings.TrimSpace(f), ",")[0])
-}
-
-func (op *Operator) _GetDbLeader() *sqlx.DB {
-	if len(op.dbGroupName) > 0 {
-		dbs, ok := _DbGroups[op.dbGroupName]
-		if !ok {
-			panic(fmt.Errorf("suna.sqls: database group `%s` is not exists", op.dbGroupName))
-		}
-		return dbs.Leader
-	}
-	return cfg.GetSqlLeader()
-}
-
 func (op *Operator) Init(v interface{}) {
 	op.ele = reflect.ValueOf(v)
-
-	fnV := op.ele.MethodByName("SqlsDatabaseGroup")
-	if fnV.IsValid() {
-		op.dbGroupName = fnV.Call(nil)[0].Interface().(string)
-	}
-
-	CreateTable(op._GetDbLeader(), op.ele, op.TableName())
+	CreateTable(cfg.GetSqlLeader(), op.ele, op.TableName())
 }
 
 func getTableName(ele reflect.Value) string {
@@ -90,7 +68,7 @@ func CreateTable(db *sqlx.DB, ele reflect.Value, name string) {
 			return
 		}
 		fields = (fnV.Call([]reflect.Value{reflect.ValueOf(db)})[0]).Interface().([]string)
-	case 0: // SqlsTableColumns(*sqlx.DB)
+	case 0: // SqlsTableColumns()
 		fields = (fnV.Call(nil)[0]).Interface().([]string)
 	default:
 		log.Print(msg)
@@ -106,7 +84,7 @@ func CreateTable(db *sqlx.DB, ele reflect.Value, name string) {
 }
 
 func (op *Operator) BindNamed(q string, m map[string]interface{}) (string, []interface{}) {
-	s, vl, err := op._GetDbLeader().BindNamed(q, m)
+	s, vl, err := cfg.GetSqlLeader().BindNamed(q, m)
 	if err != nil {
 		panic(err)
 	}

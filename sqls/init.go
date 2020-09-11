@@ -2,16 +2,16 @@ package sqls
 
 import (
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/suna/config"
-	"github.com/zzztttkkk/suna/internal"
 	"log"
-	"math/rand"
 	"strings"
-	"time"
+
+	"github.com/zzztttkkk/suna/config"
+	si "github.com/zzztttkkk/suna/internal"
+	ci "github.com/zzztttkkk/suna/sqls/internal"
 )
 
 var cfg *config.Suna
+var builder *ci.Builder
 
 func _DoSqlLogging(q string, args []interface{}) {
 	if !cfg.Sql.Logging {
@@ -35,54 +35,34 @@ func _DoSqlLogging(q string, args []interface{}) {
 }
 
 func init() {
-	internal.Dig.LazyInvoke(
+	si.Dig.LazyInvoke(
 		func(conf *config.Suna) {
 			cfg = conf
 			if cfg.GetSqlLeader() == nil {
 				log.Println("suna.sqls: init error")
 				return
 			}
+			builder = ci.NewBuilder(cfg.GetSqlLeader())
 		},
 	)
 }
 
-type _Dbs struct {
-	Leader    *sqlx.DB
-	Followers []*sqlx.DB
+func Select(columns ...string) *ci.SelectBuilder {
+	return builder.Select(columns...)
 }
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
+func Insert(into string) *ci.InsertBuilder {
+	return builder.Insert(into)
 }
 
-func (dbs *_Dbs) _RandomFollower() *sqlx.DB {
-	if len(dbs.Followers) < 1 {
-		return nil
-	}
-	return dbs.Followers[rand.Int()%len(dbs.Followers)]
+func Update(table string) *ci.UpdateBuilder {
+	return builder.Update(table)
 }
 
-var _DbGroups = map[string]*_Dbs{}
-
-func AddDBGroup(name, driverName, leader string, followers []string, maxLifeTime time.Duration, openConns int) {
-	if len(name) < 1 {
-		panic(fmt.Errorf("suna.sqls: empty name"))
-	}
-	if _, ok := _DbGroups[name]; ok {
-		panic(fmt.Errorf("suna.sqls: database group `%s` is exists\n", name))
-	}
-
-	dbs := &_Dbs{}
-	dbs.Leader = newSqlDB(driverName, leader, maxLifeTime, openConns)
-	for _, f := range followers {
-		dbs.Followers = append(dbs.Followers, newSqlDB(driverName, f, maxLifeTime, openConns))
-	}
-	_DbGroups[name] = dbs
+func Delete(what ...string) *ci.DeleteBuilder {
+	return builder.Delete(what...)
 }
 
-func newSqlDB(dn, url string, maxLifeTime time.Duration, openConns int) *sqlx.DB {
-	db := sqlx.MustConnect(dn, url)
-	db.SetConnMaxLifetime(maxLifeTime)
-	db.SetMaxOpenConns(openConns)
-	return db
+func IsPostgres() bool {
+	return builder.IsPostgres()
 }

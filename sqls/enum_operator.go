@@ -3,7 +3,6 @@ package sqls
 import (
 	"context"
 	"fmt"
-	"github.com/zzztttkkk/suna/utils"
 	"sync"
 	"time"
 )
@@ -38,25 +37,25 @@ func (op *EnumOperator) Init(ele interface{}, constructor func() EnumItem, after
 	op.cache = op.NewEnumCache(int64(expire/time.Second), constructor, afterScan)
 }
 
-func (op *EnumOperator) Create(ctx context.Context, kvs *utils.Kvs) int64 {
+func (op *EnumOperator) Create(ctx context.Context, name, descp string) int64 {
 	defer op.cache.doExpire()
-	kvs.Set("created", time.Now().Unix())
-	return op.ExecuteCreate(ctx, kvs)
+	builder := Insert(op.TableName()).
+		Columns("name,descp,created").
+		Values(name, descp, time.Now().Unix())
+	if IsPostgres() {
+		builder = builder.Returning("id")
+	}
+	return op.Insert(ctx, builder)
 }
 
 func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 	defer op.cache.doExpire()
 
-	kvs := utils.AcquireKvs()
-	defer kvs.Free()
-	kvs.Append("deleted", time.Now().Unix())
-	kvs.Append("name", fmt.Sprintf("Deleted<%s>", name))
-
-	return op.ExecuteUpdate(
-		ctx,
-		kvs,
-		NewWhere("name=? and deleted=0 and status>=0", name),
-	) > 0
+	builder := Update(op.TableName()).
+		Set("name", fmt.Sprintf("Deleted<%s>", name)).
+		Set("deleted", time.Now().Unix()).
+		Where(STR("name=? and deleted=0", name))
+	return op.Update(ctx, builder) > 0
 }
 
 func (op *EnumOperator) ExistsById(ctx context.Context, eid int64) bool {

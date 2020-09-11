@@ -90,7 +90,7 @@ type D struct {
 	X []*C
 }
 
-func TestNewObject(t *testing.T) {
+func TestNewObject(_ *testing.T) {
 	v := NewOutObjectType(reflect.ValueOf(D{}))
 	fmt.Println(v)
 	v = NewOutObjectType(reflect.ValueOf([]D{}))

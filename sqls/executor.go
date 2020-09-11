@@ -2,12 +2,17 @@ package sqls
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"reflect"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/auth"
-	"log"
+
+	ci "github.com/zzztttkkk/suna/sqls/internal"
 )
 
 type executor interface {
@@ -25,51 +30,9 @@ const (
 	txKey = ctxKeyT(iota + 1000)
 	userKey
 	justLeaderKey
-	dbKey
 )
 
-func UseDBGroup(ctx context.Context, name string) context.Context {
-	if len(name) < 1 {
-		panic(fmt.Errorf("suna.sqls: empty name"))
-	}
-	return context.WithValue(ctx, dbKey, name)
-}
-
-func GetLeaderDB(ctx context.Context) *sqlx.DB {
-	nameI := ctx.Value(dbKey)
-	if nameI == nil {
-		return cfg.GetSqlLeader()
-	}
-	var name string
-	var ok bool
-	if name, ok = nameI.(string); !ok {
-		panic(fmt.Errorf("suna.sqls: error db value"))
-	}
-	dbs, ok := _DbGroups[name]
-	if !ok {
-		panic(fmt.Errorf("suna.sqls: database group `%s` is not exists", name))
-	}
-	return dbs.Leader
-}
-
-func GetAnyFollowerDB(ctx context.Context) *sqlx.DB {
-	nameI := ctx.Value(dbKey)
-	if nameI == nil {
-		return cfg.GetAnySqlFollower()
-	}
-	var name string
-	var ok bool
-	if name, ok = nameI.(string); !ok {
-		panic(fmt.Errorf("suna.sqls: error db value"))
-	}
-	dbs, ok := _DbGroups[name]
-	if !ok {
-		panic(fmt.Errorf("suna.sqls: database group `%s` is not exists", name))
-	}
-	return dbs._RandomFollower()
-}
-
-func JustUseLeaderDB(ctx context.Context) context.Context {
+func UseLeaderDB(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justLeaderKey, true)
 }
 
@@ -84,7 +47,7 @@ func Tx(ctx context.Context) (context.Context, func()) {
 		panic(errors.New("suna.sqls: sub tx is invalid"))
 	}
 
-	tx := GetLeaderDB(ctx).MustBegin()
+	tx := cfg.GetSqlLeader().MustBegin()
 	return context.WithValue(ctx, txKey, tx), func() {
 		err := recover()
 		if err == nil {
@@ -104,7 +67,7 @@ func Tx(ctx context.Context) (context.Context, func()) {
 	}
 }
 
-func GetTxOperator(ctx context.Context) auth.User {
+func TxUser(ctx context.Context) auth.User {
 	u, ok := ctx.Value(userKey).(auth.User)
 	if ok {
 		return u
@@ -118,11 +81,91 @@ func Executor(ctx context.Context) executor {
 		return tx.(*sqlx.Tx)
 	}
 	if ctx.Value(justLeaderKey) != nil {
-		return GetLeaderDB(ctx)
+		return cfg.GetSqlLeader()
 	}
-	f := GetAnyFollowerDB(ctx)
+	f := cfg.GetAnySqlFollower()
 	if f == nil {
-		return GetLeaderDB(ctx)
+		return cfg.GetSqlLeader()
 	}
 	return f
+}
+
+func ExecuteCustomScan(ctx context.Context, scanner *Scanner, builder *ci.SelectBuilder) int {
+	query, args, err := builder.ToSql()
+	if err != nil {
+		panic(err)
+	}
+	_DoSqlLogging(query, args)
+	rows, err := Executor(ctx).QueryxContext(ctx, query, args...)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0
+		}
+		panic(err)
+	}
+	defer rows.Close()
+
+	return scanner.Scan(rows)
+}
+
+func ExecuteSelectBuilder(ctx context.Context, dist interface{}, builder *ci.SelectBuilder) bool {
+	q, a, e := builder.ToSql()
+	return ExecuteSelect(ctx, dist, q, a, e)
+}
+
+func ExecuteSelect(ctx context.Context, dist interface{}, query string, args []interface{}, err error) bool {
+	if err != nil {
+		panic(err)
+	}
+
+	dT := reflect.TypeOf(dist)
+	if dT.Kind() != reflect.Ptr {
+		panic(fmt.Errorf("suna.sqls: `%v` is not a pointer", dist))
+	}
+	dT = dT.Elem()
+
+	var queryFunc func(context.Context, interface{}, string, ...interface{}) error
+
+	switch dT.Kind() {
+	case reflect.Slice:
+		if dT.Elem().Kind() == reflect.Uint8 { // []byte
+			queryFunc = Executor(ctx).GetContext
+		} else {
+			queryFunc = Executor(ctx).SelectContext
+		}
+	default:
+		queryFunc = Executor(ctx).GetContext
+	}
+
+	_DoSqlLogging(query, args)
+	err = queryFunc(ctx, dist, query, args...)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false
+		}
+		panic(err)
+	}
+	return true
+}
+
+func ExecuteSql(ctx context.Context, builder ci.Sqlizer) sql.Result {
+	query, args, err := builder.ToSql()
+	if err != nil {
+		panic(err)
+	}
+	_DoSqlLogging(query, args)
+	r, e := Executor(ctx).ExecContext(ctx, query, args...)
+	if e != nil {
+		panic(e)
+	}
+	return r
+}
+
+func PrepareStmt(ctx context.Context, q string) *sqlx.Stmt {
+	_DoSqlLogging("stmt <"+q+">", nil)
+	stmt, err := Executor(ctx).PreparexContext(ctx, q)
+	if err != nil {
+		panic(err)
+	}
+	return stmt
 }

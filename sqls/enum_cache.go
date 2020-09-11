@@ -36,11 +36,9 @@ func (cache *_EnumCache) load(ctx context.Context) {
 	defer cache.rwm.Unlock()
 
 	cache.all = make([]EnumItem, 0, len(cache.all))
-	cache.op.ExecuteScan(
+
+	ExecuteCustomScan(
 		ctx,
-		cache.op.SelectBuilder(ctx, "*").From(cache.op.TableName()).
-			Where("status>=0 and deleted=0").
-			OrderBy("id"),
 		NewStructScanner(
 			func(dist *[]interface{}) {
 				ele := cache.constructor()
@@ -58,6 +56,10 @@ func (cache *_EnumCache) load(ctx context.Context) {
 				return nil
 			},
 		),
+		Select("*").
+			From(cache.op.TableName()).
+			Where("status>=0 and deleted=0").
+			OrderBy("id"),
 	)
 
 	for _, obj := range cache.all {

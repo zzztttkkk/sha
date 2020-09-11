@@ -22,7 +22,7 @@ func (op *MonthlyOperator) TableName() string {
 	y, m, _ := now.Date()
 	name := fmt.Sprintf("%s_%04d_%02d", op.Operator.TableName(), y, m)
 	if now.After(op.end) {
-		CreateTable(op._GetDbLeader(), op.ele, name)
+		CreateTable(cfg.GetSqlLeader(), op.ele, name)
 
 		var end = now
 		for {
@@ -40,5 +40,5 @@ func (op *MonthlyOperator) TableName() string {
 
 func (op *MonthlyOperator) Init(ele reflect.Value) {
 	op.ele = ele
-	CreateTable(op._GetDbLeader(), ele, op.TableName())
+	CreateTable(cfg.GetSqlLeader(), ele, op.TableName())
 }

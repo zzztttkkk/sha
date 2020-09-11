@@ -35,6 +35,7 @@ func (w *_CtxCompressionWriter) Write(p []byte) (int, error) {
 	return WriteTo(w.raw, p)
 }
 
+// revive:disable-next-line
 func NewCompressionWriter(ctx *fasthttp.RequestCtx) *_CtxCompressionWriter {
 	return &_CtxCompressionWriter{raw: ctx}
 }

@@ -46,7 +46,7 @@ func AesEncrypt(format string, args ...interface{}) (string, error) {
 	return hex.EncodeToString(ciphertext), nil
 }
 
-var AesDecryptError = errors.New("suna.secret: decrypt value error")
+var ErrAesDecrypt = errors.New("suna.secret: decrypt value error")
 
 func AesDecrypt(f string) (string, error) {
 	ciphertext, err := hex.DecodeString(f)
@@ -60,14 +60,14 @@ func AesDecrypt(f string) (string, error) {
 	}
 
 	if len(ciphertext) < aes.BlockSize || len(ciphertext)%aes.BlockSize != 0 {
-		return "", AesDecryptError
+		return "", ErrAesDecrypt
 	}
 
 	iv := ciphertext[:aes.BlockSize]
 	ciphertext = ciphertext[aes.BlockSize:]
 
 	if len(ciphertext) < aes.BlockSize || len(ciphertext)%aes.BlockSize != 0 {
-		return "", AesDecryptError
+		return "", ErrAesDecrypt
 	}
 
 	mode := cipher.NewCBCDecrypter(block, iv)

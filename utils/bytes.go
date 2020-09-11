@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"github.com/savsgio/gotils"
 	"strconv"
 	"sync"
 	"unicode/utf8"
+
+	"github.com/savsgio/gotils"
 )
 
 func Runes(s []byte, count int) []rune {

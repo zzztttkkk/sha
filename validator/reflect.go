@@ -11,6 +11,7 @@ import (
 
 	"github.com/zzztttkkk/suna/internal/reflectx"
 	"github.com/zzztttkkk/suna/jsonx"
+	"github.com/zzztttkkk/suna/router"
 )
 
 type _TagParser struct {
@@ -22,7 +23,7 @@ type _TagParser struct {
 
 func (p *_TagParser) OnNestedStruct(f *reflect.StructField) bool {
 	if !f.Anonymous {
-		panic(fmt.Errorf("suna.validator: nested-struct should be anonymous; %s.%s\n", p.name, f.Name))
+		panic(fmt.Errorf("suna.validator: nested-struct should be anonymous; %s.%s", p.name, f.Name))
 	}
 	return true
 }
@@ -303,6 +304,10 @@ func (p *_TagParser) OnDone() {
 var _RuleCache sync.Map
 
 func GetRules(v interface{}) *Rules { return getRules(reflect.TypeOf(v)) }
+
+func MakeDoc(v interface{}, description string) router.Documenter {
+	return GetRules(v).NewDoc(description)
+}
 
 func getRules(p reflect.Type) *Rules {
 	rs, ok := _RuleCache.Load(p)

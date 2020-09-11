@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestJsonGet(t *testing.T) {
+func TestJsonGet(_ *testing.T) {
 	data := `{"a": {"b.": [1, 2, 3, {"": "0.0", "c": null, "d": false}]}}`
 	c := MustParse(data)
 	fmt.Println(c.MustGet(`a.b\.`))
