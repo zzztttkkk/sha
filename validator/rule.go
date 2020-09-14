@@ -49,11 +49,11 @@ var typeNames = []string{
 }
 
 type _Rule struct {
-	form     string
-	field    string
-	t        int
+	form     string // form name
+	field    string // field name
+	t        int    // form type
 	required bool
-	info     string
+	info     string // print to message when form error
 
 	vrange bool // int value value range
 
@@ -105,9 +105,12 @@ func (rule *_Rule) String() string {
 		"required": rule.required,
 		"descp":    rule.info,
 	}
-
+	if len(rule.info) < 1 {
+		m["descp"] = "/"
+	}
 	if rule.vrange {
-		if rule.t == _Int64 {
+		switch rule.t {
+		case _Int64, _IntSlice:
 			if rule.minVF && rule.maxVF {
 				m["vrange"] = fmt.Sprintf("%d-%d", rule.minV, rule.maxV)
 			} else if rule.minVF {
@@ -117,7 +120,17 @@ func (rule *_Rule) String() string {
 			} else {
 				m["vrange"] = "/"
 			}
-		} else {
+		case _Uint64, _UintSlice:
+			if rule.minUVF && rule.maxUVF {
+				m["vrange"] = fmt.Sprintf("%d-%d", rule.minUV, rule.maxUV)
+			} else if rule.minUVF {
+				m["vrange"] = fmt.Sprintf("%d-", rule.minUV)
+			} else if rule.maxUVF {
+				m["vrange"] = fmt.Sprintf("-%d", rule.maxUV)
+			} else {
+				m["vrange"] = "/"
+			}
+		case _Float64, _FloatSlice:
 			if rule.minUVF && rule.maxUVF {
 				m["vrange"] = fmt.Sprintf("%d-%d", rule.minUV, rule.maxUV)
 			} else if rule.minUVF {
@@ -178,7 +191,7 @@ func (rule *_Rule) String() string {
 
 	if rule.fnName != "" {
 		m["function"] = fmt.Sprintf(
-			`<code class="function" descp="%s">%s</cpde>`,
+			`<code class="function" descp="%s">%s</code>`,
 			html.EscapeString(funcDescp[rule.fnName]),
 			html.EscapeString(rule.fnName),
 		)
@@ -221,6 +234,16 @@ type Rules struct {
 }
 
 func (rs *Rules) NewDoc(descp string) *Doc {
+	ele := reflect.New(rs.raw).Elem()
+	fnV := ele.MethodByName("Descprition")
+	if fnV.IsValid() {
+		txt := (fnV.Call(nil))[0].Interface().(string)
+		if len(descp) > 0 {
+			descp = fmt.Sprintf("%s\n%s", descp, txt)
+		} else {
+			descp = txt
+		}
+	}
 	return &Doc{
 		descp:  descp,
 		fields: rs.lst.String(),
@@ -233,5 +256,5 @@ type Doc struct {
 }
 
 func (d *Doc) Document() string {
-	return fmt.Sprintf(`### description\n%s\n### fields\n%s\n`, d.descp, d.fields)
+	return fmt.Sprintf("### description\n%s\n### fields\n%s\n", d.descp, d.fields)
 }

@@ -31,7 +31,7 @@ func (v *_Exit) wait() {
 	}()
 
 	signal.Notify(
-		Exit.c,
+		v.c,
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,

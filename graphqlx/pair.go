@@ -53,22 +53,26 @@ func (p *Pair) toField(name, descp string) *graphql.Field {
 	return field
 }
 
-func NewPairFromFunction(v interface{}) *Pair {
-	t := reflect.TypeOf(v)
-	if t.Kind() != reflect.Func {
-		panic(fmt.Errorf("suna.graphqlx: `%v` is not a function", v))
+func NewPairFromFunction(resolveFunc interface{}) *Pair {
+	t := reflect.TypeOf(resolveFunc)
+	if t.Kind() != reflect.Func || t.NumIn() != 3 || t.NumOut() != 2 {
+		panic(fmt.Errorf("suna.graphqlx: `%v` is not a resolve function", resolveFunc))
 	}
 
 	inT := t.In(1).Elem()
 	outT := t.Out(0).Elem()
-	fnV := reflect.ValueOf(v)
+	fnV := reflect.ValueOf(resolveFunc)
 
 	return NewPair(
 		reflect.New(inT).Elem().Interface(),
 		reflect.New(outT).Elem().Interface(),
 		func(ctx context.Context, in interface{}, info *graphql.ResolveInfo) (out interface{}, err error) {
 			rspV := fnV.Call(
-				[]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(in), reflect.ValueOf(info)},
+				[]reflect.Value{
+					reflect.ValueOf(ctx),
+					reflect.ValueOf(in),
+					reflect.ValueOf(info),
+				},
 			)
 			ev := rspV[1].Interface()
 			if ev != nil {

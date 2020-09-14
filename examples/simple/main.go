@@ -2,8 +2,10 @@ package main
 
 import (
 	"regexp"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna"
 	"github.com/zzztttkkk/suna/auth"
@@ -20,6 +22,14 @@ var RedisUrl = "redis://127.0.0.1:6379"
 var SqlUrl = ":memory:"
 var SqlDriver = "sqlite3"
 
+type User struct {
+	id int64
+}
+
+func (user *User) GetId() int64 {
+	return user.id
+}
+
 func main() {
 	conf := config.Default()
 	conf.Redis.Mode = "singleton"
@@ -35,6 +45,9 @@ func main() {
 			Config: &conf,
 			Authenticator: auth.AuthenticatorFunc(
 				func(ctx *fasthttp.RequestCtx) (auth.User, bool) {
+					if gotils.B2S(ctx.FormValue("token")) == "123456" {
+						return &User{id: time.Now().Unix()}, true
+					}
 					return nil, false
 				},
 			),
@@ -49,7 +62,6 @@ func main() {
 	root.Use(
 		middleware.NewAccessLogger(
 			"{userId} {remote} {method} {path} UserAgent:{reqHeader/User-Agent} {statusCode} {statusText} {cost}ms\n",
-			nil,
 			nil,
 		).AsMiddleware(),
 	)
@@ -82,10 +94,10 @@ func main() {
 		},
 		validator.MakeDoc(Form{}, "print hello."),
 	)
-	root.BindDocHandler("/doc", nil)
+	root.GET("/doc", root.DocHandler())
 
 	loader := utils.NewLoader()
 	loader.AddChild("/rbac", rbac.Loader())
 
-	loader.RunAsHttpServer(root, &conf)
+	loader.RunAsHttpServer(root, conf.Http.Address, conf.Http.TLS.Cert, conf.Http.TLS.Key)
 }

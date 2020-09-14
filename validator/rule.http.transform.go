@@ -1,39 +1,35 @@
 package validator
 
 import (
+	"reflect"
+	"strconv"
+
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/jsonx"
-	"reflect"
-	"strconv"
 )
 
 func (rule *_Rule) toBytes(v []byte) (val []byte, ok bool) {
 	if rule.lrange {
 		l := int64(len(v))
-
 		if rule.minLF && l < rule.minL {
 			return nil, false
 		}
-
 		if rule.maxLF && l > rule.maxL {
 			return nil, false
 		}
 	}
-
 	if rule.reg != nil {
 		if !rule.reg.Match(v) {
 			return nil, false
 		}
 	}
-
 	if rule.fn != nil {
 		v, ok = rule.fn(v)
 		if !ok {
 			return nil, false
 		}
 	}
-
 	return v, true
 }
 
@@ -42,7 +38,6 @@ func (rule *_Rule) toBool(v []byte) (r bool, ok bool) {
 	if !ok {
 		return false, false
 	}
-
 	_v, err := strconv.ParseBool(gotils.B2S(v))
 	if err != nil {
 		return false, false
@@ -55,12 +50,10 @@ func (rule *_Rule) toInt(v []byte) (num int64, ok bool) {
 	if !ok {
 		return 0, false
 	}
-
 	rv, err := strconv.ParseInt(gotils.B2S(v), 10, 64)
 	if err != nil {
 		return 0, false
 	}
-
 	if rule.vrange {
 		if rule.minVF && rv < rule.minV {
 			return 0, false
@@ -69,7 +62,6 @@ func (rule *_Rule) toInt(v []byte) (num int64, ok bool) {
 			return 0, false
 		}
 	}
-
 	return rv, true
 }
 
@@ -78,12 +70,10 @@ func (rule *_Rule) toUint(v []byte) (num uint64, ok bool) {
 	if !ok {
 		return 0, false
 	}
-
 	rv, err := strconv.ParseUint(gotils.B2S(v), 10, 64)
 	if err != nil {
 		return 0, false
 	}
-
 	if rule.vrange {
 		if rule.minUVF && rv < rule.minUV {
 			return 0, false
@@ -93,7 +83,6 @@ func (rule *_Rule) toUint(v []byte) (num uint64, ok bool) {
 			return 0, false
 		}
 	}
-
 	return rv, true
 }
 
@@ -102,12 +91,10 @@ func (rule *_Rule) toFloat(v []byte) (num float64, ok bool) {
 	if !ok {
 		return 0, false
 	}
-
 	rv, err := strconv.ParseFloat(gotils.B2S(v), 10)
 	if err != nil {
 		return 0, false
 	}
-
 	if rule.vrange {
 		if rule.minFVF && rv < rule.minFV {
 			return 0, false
@@ -117,7 +104,6 @@ func (rule *_Rule) toFloat(v []byte) (num float64, ok bool) {
 			return 0, false
 		}
 	}
-
 	return rv, true
 }
 
@@ -131,7 +117,6 @@ func (rule *_Rule) toJsonObj(v []byte) (map[string]interface{}, bool) {
 			return nil, false
 		}
 	}
-
 	m := map[string]interface{}{}
 	err := jsonx.Unmarshal(v, &m)
 	if err != nil {
@@ -150,7 +135,6 @@ func (rule *_Rule) toJsonAry(v []byte) ([]interface{}, bool) {
 			return nil, false
 		}
 	}
-
 	var s []interface{}
 	err := jsonx.Unmarshal(v, &s)
 	if err != nil {
@@ -164,7 +148,6 @@ func (rule *_Rule) checkSizeRange(v *reflect.Value) bool {
 		return true
 	}
 	_l := int64(v.Len())
-
 	if rule.minSF && _l < rule.minS {
 		return false
 	}
@@ -180,13 +163,11 @@ func mapMultiForm(ctx *fasthttp.RequestCtx, name string, fn func([]byte) bool) b
 			return false
 		}
 	}
-
 	for _, v := range ctx.PostArgs().PeekMulti(name) {
 		if !fn(v) {
 			return false
 		}
 	}
-
 	mf, _ := ctx.MultipartForm()
 	if mf != nil {
 		for _, v := range mf.Value[name] {

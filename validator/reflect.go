@@ -32,11 +32,8 @@ func (p *_TagParser) OnBegin(field *reflect.StructField) bool {
 	rule := &_Rule{field: field.Name, required: true}
 
 	if field.Type.Kind() == reflect.Struct {
-		if !field.Anonymous {
-			return false
-		}
-		subP := GetRules(field.Type)
-		p.all = append(p.all, subP.lst...)
+		subRules := getRules(field.Type)
+		p.all = append(p.all, subRules.lst...)
 		return false
 	}
 	if field.Type.Kind() == reflect.Ptr {

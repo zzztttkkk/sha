@@ -37,13 +37,12 @@ func (op *logOpT) Create(ctx context.Context, name string, info utils.M) int64 {
 		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 	}
 
-	builder := sqls.Insert(op.TableName()).
-		Columns("name,operator,info,created").
+	builder := sqls.Insert("name,operator,info,created").
 		Values(name, user.GetId(), jsonx.Object(info), time.Now().Unix())
 	if sqls.IsPostgres() {
 		builder = builder.Returning("id")
 	}
-	return op.Insert(ctx, builder)
+	return op.ExecInsert(ctx, builder)
 }
 
 func (op *logOpT) List(
@@ -55,14 +54,14 @@ func (op *logOpT) List(
 	limit int64,
 ) (lst []logT) {
 	conditions := sqls.AND()
-	conditions.Gte(begin > 0, "created", begin).
-		Lte(end > 0, "created", end).
-		Eq(len(names) > 0, "name", names).
-		Eq(len(uids) > 0, "operator", uids)
+	conditions.GteIf(begin > 0, "created", begin).
+		LteIf(end > 0, "created", end).
+		EqIf(len(names) > 0, "name", names).
+		EqIf(len(uids) > 0, "operator", uids)
 	if asc {
-		conditions.Gt(cursor > 0, "id", cursor)
+		conditions.GtIf(cursor > 0, "id", cursor)
 	} else {
-		conditions.Lt(cursor > 0, "id", cursor)
+		conditions.LtIf(cursor > 0, "id", cursor)
 	}
 
 	if limit < 1 {

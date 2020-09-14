@@ -2,7 +2,6 @@ package jsonx
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"github.com/savsgio/gotils"
 )
 
@@ -14,7 +13,7 @@ func (f Object) Value() (driver.Value, error) {
 	if len(f) == 0 {
 		return emptyJsonObjBytes, nil
 	}
-	v, err := json.Marshal(f)
+	v, err := Marshal(f)
 	if err != nil {
 		return nil, err
 	}

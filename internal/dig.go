@@ -14,7 +14,7 @@ type _Dig struct {
 	Invokes   []_DigInvoke
 }
 
-func newDig(opts ...dig.Option) *_Dig { return &_Dig{Container: dig.New(opts...)} }
+func NewDigContainer(opts ...dig.Option) *_Dig { return &_Dig{Container: dig.New(opts...)} }
 
 func (d *_Dig) Provide(constructor interface{}, opts ...dig.ProvideOption) {
 	err := d.Container.Provide(constructor, opts...)
@@ -35,4 +35,4 @@ func (d *_Dig) Invoke() {
 	}
 }
 
-var Dig = newDig()
+var Dig = NewDigContainer()

@@ -80,6 +80,7 @@ func CreateTable(db *sqlx.DB, ele reflect.Value, name string) {
 		name,
 		strings.Join(fields, ","),
 	)
+	_DoSqlLogging(q, nil)
 	db.MustExec(q)
 }
 

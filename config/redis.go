@@ -9,7 +9,7 @@ import (
 )
 
 // ErrRedisUnknownMode unknown redis mode error
-var ErrRedisUnknownMode = errors.New("suna.config: unknown redis mode,[singleton,ring]")
+var ErrRedisUnknownMode = errors.New("suna.config: unknown redis mode,[singleton,ring,cluster]")
 
 //revive:disable:cyclomatic
 func (t *Suna) _InitRedisClient() {

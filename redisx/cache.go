@@ -29,7 +29,7 @@ type RedCacheOption struct {
 	GetKey        func(ctx *fasthttp.RequestCtx) string // get identify form request, default `ctx.Path()`
 }
 
-const DisableRedCacheKey = "Suna-Disable-Redcache"
+const DisableRedCacheKey = "Suna-Redisx-Disable-Redcache"
 
 //revive:disable-next-line
 // Cache the entire response in Redis
@@ -104,7 +104,7 @@ func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHan
 		_, _ = c.sg.Do(
 			cacheKey,
 			func() (interface{}, error) {
-				c.loadItem(ctx, next, item)
+				c.loadItem(ctx, cacheKey, next, item)
 				return nil, nil
 			},
 		)
@@ -123,8 +123,8 @@ func (c *_RedCacheT) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHan
 	}
 }
 
-func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, handler fasthttp.RequestHandler, item *_ItemT) {
-	key := c.prefix + c.getKey(ctx)
+func (c *_RedCacheT) loadItem(ctx *fasthttp.RequestCtx, key string, handler fasthttp.RequestHandler, item *_ItemT) {
+	key = c.prefix + key
 
 	v, _ := redisc.Get(key).Bytes()
 	if len(v) > 0 {

@@ -2,14 +2,13 @@ package utils
 
 import (
 	"fmt"
-	"github.com/valyala/fasthttp"
-	"github.com/zzztttkkk/suna/config"
-	"github.com/zzztttkkk/suna/router"
-	"google.golang.org/grpc"
 	"log"
 	"net"
-	"reflect"
 	"strings"
+
+	"github.com/valyala/fasthttp"
+	"github.com/zzztttkkk/suna/router"
+	"google.golang.org/grpc"
 )
 
 type Loader struct {
@@ -17,7 +16,6 @@ type Loader struct {
 	children map[string]*Loader
 	name     string
 	path     string
-	doc      map[string]reflect.Type
 	httpFns  []func(router router.Router)
 	grpcFns  []func(server *grpc.Server)
 }
@@ -50,7 +48,7 @@ func (loader *Loader) Path() string {
 		l++
 		r--
 	}
-	loader.path = strings.Join(s, "/")
+	loader.path = strings.Join(s, "")
 	return loader.path
 }
 
@@ -83,10 +81,6 @@ func (loader *Loader) Grpc(fn func(server *grpc.Server)) {
 	loader.grpcFns = append(loader.grpcFns, fn)
 }
 
-func (loader *Loader) Doc(n string, p reflect.Type) {
-	loader.doc[n] = p
-}
-
 func (loader *Loader) bindHttp(router router.Router) {
 	for _, fn := range loader.httpFns {
 		fn(router)
@@ -105,7 +99,7 @@ func (loader *Loader) bindGrpc(server *grpc.Server) {
 	}
 }
 
-func (loader *Loader) RunAsHttpServer(root *router.Root, conf *config.Suna) {
+func (loader *Loader) RunAsHttpServer(root *router.Root, addr, certFile, keyFile string) {
 	loader.bindHttp(root)
 
 	glog := AcquireGroupLogger("Root")
@@ -123,10 +117,10 @@ func (loader *Loader) RunAsHttpServer(root *router.Root, conf *config.Suna) {
 	}
 
 	var err error
-	if len(conf.Http.TLS.Key) > 0 {
-		err = server.ListenAndServeTLS(conf.Http.Address, conf.Http.TLS.Cert, conf.Http.TLS.Key)
+	if len(certFile) > 0 && len(keyFile) > 0 {
+		err = server.ListenAndServeTLS(addr, certFile, keyFile)
 	} else {
-		err = server.ListenAndServe(conf.Http.Address)
+		err = server.ListenAndServe(addr)
 	}
 	log.Fatal(err)
 }

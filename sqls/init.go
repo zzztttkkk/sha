@@ -51,16 +51,16 @@ func Select(columns ...string) *ci.SelectBuilder {
 	return builder.Select(columns...)
 }
 
-func Insert(into string) *ci.InsertBuilder {
-	return builder.Insert(into)
+func Insert(columns ...string) *ci.InsertBuilder {
+	return builder.Insert().Columns(columns...)
 }
 
-func Update(table string) *ci.UpdateBuilder {
-	return builder.Update(table)
+func Update() *ci.UpdateBuilder {
+	return builder.Update()
 }
 
-func Delete(what ...string) *ci.DeleteBuilder {
-	return builder.Delete(what...)
+func Delete() *ci.DeleteBuilder {
+	return builder.Delete()
 }
 
 func IsPostgres() bool {

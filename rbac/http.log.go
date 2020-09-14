@@ -44,7 +44,7 @@ func init() {
 						)
 					},
 				),
-				validator.GetRules(Form{}).NewDoc(""),
+				validator.MakeDoc(Form{}, "list rbac operation logging"),
 			)
 		},
 	)

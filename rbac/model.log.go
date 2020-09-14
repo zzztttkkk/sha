@@ -20,7 +20,7 @@ func (logT) SqlsTableName() string {
 func (log logT) SqlsTableColumns(db *sqlx.DB) []string {
 	return log.Model.SqlsTableColumns(
 		db,
-		"name char(30) not null",
+		"name varchar(512) not null",
 		"operator bigint not null",
 		"info json",
 	)

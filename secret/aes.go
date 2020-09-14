@@ -1,31 +1,17 @@
 package secret
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
-	"sync"
 )
 
-var bufPool = sync.Pool{New: func() interface{} { return &bytes.Buffer{} }}
-
-func AesEncrypt(format string, args ...interface{}) (string, error) {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer func() {
-		buf.Reset()
-		bufPool.Put(buf)
-	}()
-
-	_, _ = fmt.Fprintf(buf, format, args...)
-
-	plain, _ := ioutil.ReadAll(buf)
+func AesEncrypt(data string) (string, error) {
+	plain := []byte(data)
 	for i := aes.BlockSize - len(plain)%aes.BlockSize; i > 0 && i != aes.BlockSize; i-- {
 		plain = append(plain, ' ')
 	}

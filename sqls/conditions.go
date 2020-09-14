@@ -28,7 +28,7 @@ type _OpConditions struct {
 	notILike ci.NotILike
 }
 
-func (oc *_OpConditions) Lt(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) LtIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -41,7 +41,7 @@ func (oc *_OpConditions) Lt(ok bool, key string, value interface{}) *_OpConditio
 	return oc
 }
 
-func (oc *_OpConditions) Gt(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) GtIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -54,7 +54,7 @@ func (oc *_OpConditions) Gt(ok bool, key string, value interface{}) *_OpConditio
 	return oc
 }
 
-func (oc *_OpConditions) Lte(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) LteIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -67,7 +67,7 @@ func (oc *_OpConditions) Lte(ok bool, key string, value interface{}) *_OpConditi
 	return oc
 }
 
-func (oc *_OpConditions) Gte(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) GteIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -80,7 +80,7 @@ func (oc *_OpConditions) Gte(ok bool, key string, value interface{}) *_OpConditi
 	return oc
 }
 
-func (oc *_OpConditions) Eq(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) EqIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -93,7 +93,7 @@ func (oc *_OpConditions) Eq(ok bool, key string, value interface{}) *_OpConditio
 	return oc
 }
 
-func (oc *_OpConditions) NotEq(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) NotEqIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -106,7 +106,7 @@ func (oc *_OpConditions) NotEq(ok bool, key string, value interface{}) *_OpCondi
 	return oc
 }
 
-func (oc *_OpConditions) Like(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) LikeIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -119,7 +119,7 @@ func (oc *_OpConditions) Like(ok bool, key string, value interface{}) *_OpCondit
 	return oc
 }
 
-func (oc *_OpConditions) NotLike(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) NotLikeIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -131,7 +131,7 @@ func (oc *_OpConditions) NotLike(ok bool, key string, value interface{}) *_OpCon
 	return oc
 }
 
-func (oc *_OpConditions) ILike(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) ILikeIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}
@@ -143,7 +143,7 @@ func (oc *_OpConditions) ILike(ok bool, key string, value interface{}) *_OpCondi
 	return oc
 }
 
-func (oc *_OpConditions) NotILike(ok bool, key string, value interface{}) *_OpConditions {
+func (oc *_OpConditions) NotILikeIf(ok bool, key string, value interface{}) *_OpConditions {
 	if !ok {
 		return oc
 	}

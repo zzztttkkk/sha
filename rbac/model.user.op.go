@@ -46,12 +46,12 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 
 	cond := sqls.STR("role=? and subject=?", roleId, subjectId)
 	var _id int64
-	OP.Select(ctx, &_id, sqls.Select("role").Where(cond))
+	OP.ExecSelect(ctx, &_id, sqls.Select("role").Where(cond))
 	if _id < 1 {
 		if mt == _Add {
 			return nil
 		}
-		OP.Insert(ctx, sqls.Insert("").Columns("subject, role").Values(subjectId, roleId))
+		OP.ExecInsert(ctx, sqls.Insert("subject, role").Values(subjectId, roleId))
 		return nil
 	}
 
@@ -59,7 +59,7 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 		return nil
 	}
 
-	OP.Delete(ctx, sqls.Delete("").Where(cond).Limit(1))
+	OP.ExecDelete(ctx, sqls.Delete().Where(cond).Limit(1))
 	return nil
 }
 
@@ -71,10 +71,10 @@ func (op *userOpT) getRoles(ctx context.Context, userId int64) []int64 {
 
 	OP := op.roles
 	lst := make([]int64, 0)
-	OP.Select(
+	OP.ExecSelect(
 		ctx,
 		&lst,
-		sqls.Select("role").Prefix("distinct").
+		sqls.Select("role").Distinct().
 			Where("subject=? and role>0 and status>=0 and deleted=0", userId).OrderBy("role"),
 	)
 	op.lru.Add(strconv.FormatInt(userId, 16), lst)

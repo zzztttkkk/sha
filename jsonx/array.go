@@ -2,7 +2,6 @@ package jsonx
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"github.com/savsgio/gotils"
 	"strconv"
 )
@@ -15,7 +14,7 @@ func (a Array) Value() (driver.Value, error) {
 	if len(a) == 0 {
 		return _EmptyJsonArrayBytes, nil
 	}
-	v, err := json.Marshal(a)
+	v, err := Marshal(a)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +31,7 @@ func (a *Array) Scan(src interface{}) error {
 	default:
 		return ErrJsonValue
 	}
-	return json.Unmarshal(bytes, a)
+	return Unmarshal(bytes, a)
 }
 
 func (a Array) get(key string) (interface{}, error) {

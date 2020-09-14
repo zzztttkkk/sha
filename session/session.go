@@ -2,6 +2,9 @@ package session
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-redis/redis/v7"
 	"github.com/rs/xid"
 	"github.com/savsgio/gotils"
@@ -10,8 +13,6 @@ import (
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/output"
-	"strings"
-	"time"
 )
 
 type Session string

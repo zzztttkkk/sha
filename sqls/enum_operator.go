@@ -3,7 +3,6 @@ package sqls
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -12,7 +11,7 @@ type EnumOperator struct {
 	cache *_EnumCache
 }
 
-func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) *_EnumCache {
+func (op *EnumOperator) newEnumCache(seconds int64, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) *_EnumCache {
 	cache := &_EnumCache{
 		im:          map[int64]EnumItem{},
 		nm:          map[string]EnumItem{},
@@ -21,7 +20,6 @@ func (op *EnumOperator) NewEnumCache(seconds int64, constructor func() EnumItem,
 		op:          &op.Operator,
 		constructor: constructor,
 		afterScan:   afterScan,
-		rwm:         sync.RWMutex{},
 	}
 	cache.load(context.Background())
 	return cache
@@ -34,28 +32,26 @@ func (op *EnumOperator) Init(ele interface{}, constructor func() EnumItem, after
 	if expire < 1 {
 		expire = time.Minute * 30
 	}
-	op.cache = op.NewEnumCache(int64(expire/time.Second), constructor, afterScan)
+	op.cache = op.newEnumCache(int64(expire/time.Second), constructor, afterScan)
 }
 
 func (op *EnumOperator) Create(ctx context.Context, name, descp string) int64 {
 	defer op.cache.doExpire()
-	builder := Insert(op.TableName()).
-		Columns("name,descp,created").
-		Values(name, descp, time.Now().Unix())
+	builder := Insert("name,descp,created").Values(name, descp, time.Now().Unix())
 	if IsPostgres() {
 		builder = builder.Returning("id")
 	}
-	return op.Insert(ctx, builder)
+	return op.ExecInsert(ctx, builder)
 }
 
 func (op *EnumOperator) Delete(ctx context.Context, name string) bool {
 	defer op.cache.doExpire()
 
-	builder := Update(op.TableName()).
+	builder := Update().
 		Set("name", fmt.Sprintf("Deleted<%s>", name)).
 		Set("deleted", time.Now().Unix()).
 		Where(STR("name=? and deleted=0", name))
-	return op.Update(ctx, builder) > 0
+	return op.ExecUpdate(ctx, builder) > 0
 }
 
 func (op *EnumOperator) ExistsById(ctx context.Context, eid int64) bool {

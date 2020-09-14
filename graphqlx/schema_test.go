@@ -24,31 +24,24 @@ func TestN(_ *testing.T) {
 		ID int64 `validator:"id:"`
 	}
 
-	s.AddQuery(
+	s.AddQueryFromFunction(
 		"product",
 		"just query one product by id",
-		NewPairFromFunction(
-			func(ctx context.Context, in *QueryOneProductForm, info *graphql.ResolveInfo) (*Product, error) {
-				return &Product{ID: in.ID}, nil
-			},
-		),
+		func(ctx context.Context, in *QueryOneProductForm, info *graphql.ResolveInfo) (*Product, error) {
+			return &Product{ID: in.ID}, nil
+		},
 	)
 	type CreateOneProductForm struct {
 		Name  string
 		Info  string
 		Price float64 `validator:"V<0-1000>"`
 	}
-	s.AddMutation(
+	s.AddMutationFromFunction(
 		"create",
 		"create a new product",
-		NewPair(
-			CreateOneProductForm{}, Product{},
-			func(ctx context.Context, in interface{}, info *graphql.ResolveInfo) (out interface{}, err error) {
-				q := in.(*CreateOneProductForm)
-				fmt.Println(q)
-				return &Product{ID: 17, Name: q.Name, Info: q.Info, Price: q.Price}, nil
-			},
-		),
+		func(ctx context.Context, in *CreateOneProductForm, info *graphql.ResolveInfo) (out *Product, err error) {
+			return &Product{ID: 17, Name: in.Name, Info: in.Info, Price: in.Price}, nil
+		},
 	)
 
 	// use custom scalar type C

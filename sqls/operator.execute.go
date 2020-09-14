@@ -2,6 +2,7 @@ package sqls
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	ci "github.com/zzztttkkk/suna/sqls/internal"
@@ -9,8 +10,7 @@ import (
 
 func (op *Operator) Exists(ctx context.Context, conditions ci.Sqlizer) bool {
 	var v = -1
-	q, a, e := Select("count(*)").From(op.TableName()).Where(conditions).ToSql()
-	ExecuteSelect(ctx, &v, q, a, e)
+	op.FetchOne(ctx, &v, conditions, "count(*)")
 	return v > 0
 }
 
@@ -27,14 +27,18 @@ func (op *Operator) FetchOne(ctx context.Context, dist interface{}, conditions c
 	return op.FetchMany(ctx, dist, conditions, 1, keys...)
 }
 
-func (op *Operator) Select(ctx context.Context, dist interface{}, builder *ci.SelectBuilder) bool {
+func (op *Operator) ExecSelect(ctx context.Context, dist interface{}, builder *ci.SelectBuilder) bool {
 	builder.FromIfEmpty(op.TableName())
 	return ExecuteSelectBuilder(ctx, dist, builder)
 }
 
-func (op *Operator) Update(ctx context.Context, builder *ci.UpdateBuilder) int64 {
-	builder.FromIfEmpty(op.TableName())
+var ErrEmptyCondition = errors.New("suna.sqls: execute sql without any conditionds")
 
+func (op *Operator) ExecUpdate(ctx context.Context, builder *ci.UpdateBuilder) int64 {
+	builder.TableIfEmpty(op.TableName())
+	if builder.WherePartsSize() < 1 {
+		panic(ErrEmptyCondition)
+	}
 	n, e := ExecuteSql(ctx, builder).RowsAffected()
 	if e != nil {
 		panic(e)
@@ -42,9 +46,11 @@ func (op *Operator) Update(ctx context.Context, builder *ci.UpdateBuilder) int64
 	return n
 }
 
-func (op *Operator) Delete(ctx context.Context, builder *ci.DeleteBuilder) int64 {
+func (op *Operator) ExecDelete(ctx context.Context, builder *ci.DeleteBuilder) int64 {
 	builder.FromIfEmpty(op.TableName())
-
+	if builder.WherePartsSize() < 1 {
+		panic(ErrEmptyCondition)
+	}
 	n, e := ExecuteSql(ctx, builder).RowsAffected()
 	if e != nil {
 		panic(e)
@@ -52,7 +58,7 @@ func (op *Operator) Delete(ctx context.Context, builder *ci.DeleteBuilder) int64
 	return n
 }
 
-func (op *Operator) Insert(ctx context.Context, builder *ci.InsertBuilder) int64 {
+func (op *Operator) ExecInsert(ctx context.Context, builder *ci.InsertBuilder) int64 {
 	builder.IntoIfEmpty(op.TableName())
 
 	if !IsPostgres() {

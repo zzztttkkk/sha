@@ -18,7 +18,6 @@ import (
 
 type AccessLogger struct {
 	namedFmt *utils.NamedFmt
-	logger   *log.Logger
 	opt      *AccessLoggingOption
 
 	_beginT bool
@@ -45,10 +44,15 @@ type AccessLogger struct {
 	_UserId bool
 }
 
+type Logger interface {
+	Print(v ...interface{})
+}
+
 type AccessLoggingOption struct {
 	TimeFmt         string
 	DurationUnit    time.Duration
 	AsGlobalRecover bool
+	Logger          Logger
 }
 
 //revive:disable:cyclomatic
@@ -87,7 +91,7 @@ type AccessLoggingOption struct {
 //		errStack: error stack if an internal server error occurred
 //
 //		userId: user id of the current request
-func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) *AccessLogger {
+func NewAccessLogger(fstr string, opt *AccessLoggingOption) *AccessLogger {
 	if opt == nil {
 		opt = &AccessLoggingOption{}
 	}
@@ -98,7 +102,6 @@ func NewAccessLogger(fstr string, logger *log.Logger, opt *AccessLoggingOption) 
 
 	rv := &AccessLogger{
 		namedFmt: utils.NewNamedFmt(fstr),
-		logger:   logger,
 		opt:      opt,
 	}
 
@@ -212,7 +215,7 @@ func (al *AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 				}
 				for k, vl := range mf.File {
 					buf.WriteString(k)
-					buf.WriteString("<file>=[")
+					buf.WriteString("<file>[")
 					for _, fh := range vl {
 						buf.WriteString(fh.Filename)
 						buf.WriteString(strconv.FormatInt(fh.Size, 10))
@@ -320,10 +323,10 @@ func (al *AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.Request
 			}
 
 			l := al.namedFmt.Render(m)
-			if al.logger == nil {
+			if al.opt.Logger == nil {
 				log.Print(l)
 			} else {
-				al.logger.Print(l)
+				al.opt.Logger.Print(l)
 			}
 
 			if v != nil && !al.opt.AsGlobalRecover {

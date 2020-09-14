@@ -1,10 +1,7 @@
-package toml
+package config
 
 import (
 	"fmt"
-	btoml "github.com/BurntSushi/toml"
-	"github.com/imdario/mergo"
-	"github.com/savsgio/gotils"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,14 +10,18 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/BurntSushi/toml"
+	"github.com/imdario/mergo"
+	"github.com/savsgio/gotils"
 )
 
 func FromBytes(conf interface{}, data []byte) error {
-	_, err := btoml.Decode(string(data), conf)
+	_, err := toml.Decode(string(data), conf)
 	return err
 }
 
-var envReg = regexp.MustCompile(`\$ENV{\s*\w+\s*}`)
+var envReg = regexp.MustCompile(`\$ENV{.*?}`)
 
 func doReplace(fp, name string, value *reflect.Value, path []string) {
 	key := strings.Join(path, ".") + "." + name

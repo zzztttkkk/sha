@@ -67,15 +67,15 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 	cond := sqls.STR("role=? and perm=?", roleId, permId)
 
 	var _id int64
-	OP.Select(ctx, &_id, sqls.Select("id").Where(cond))
+	OP.ExecSelect(ctx, &_id, sqls.Select("id").Where(cond))
 	if _id < 1 {
 		if mt == _Add {
 			return nil
 		}
 
-		OP.Insert(
+		OP.ExecInsert(
 			ctx,
-			sqls.Insert("").Columns("perm, role").Values(permId, roleId),
+			sqls.Insert("perm, role").Values(permId, roleId),
 		)
 		return nil
 	}
@@ -83,16 +83,16 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 	if mt == _Add {
 		return nil
 	}
-	OP.Delete(ctx, sqls.Delete().Where(cond).Limit(1))
+	OP.ExecDelete(ctx, sqls.Delete().Where(cond).Limit(1))
 	return nil
 }
 
 func (op *roleOpT) getAllPerms(ctx context.Context, role *Role) {
 	OP := op.perms
-	OP.Select(
+	OP.ExecSelect(
 		ctx,
 		&role.Permissions,
-		sqls.Select("perm").Prefix("distinct").Where("role=?", role.Id),
+		sqls.Select("perm").Distinct().Where("role=?", role.Id),
 	)
 }
 
@@ -122,14 +122,14 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 	cond := sqls.STR("role=? and based=?", roleId, basedRoleId)
 
 	var _id int64
-	OP.Select(ctx, &_id, sqls.Select("based").Where(cond))
+	OP.ExecSelect(ctx, &_id, sqls.Select("based").Where(cond))
 	if _id < 1 {
 		if mt == _Add {
 			return nil
 		}
-		OP.Insert(
+		OP.ExecInsert(
 			ctx,
-			sqls.Insert("").Columns("role,based").Values(roleId, basedRoleId),
+			sqls.Insert("role,based").Values(roleId, basedRoleId),
 		)
 		return nil
 	}
@@ -138,16 +138,16 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 		return nil
 	}
 
-	OP.Delete(ctx, sqls.Delete("").Where(cond).Limit(1))
+	OP.ExecDelete(ctx, sqls.Delete().Where(cond).Limit(1))
 	return nil
 }
 
 func (op *roleOpT) getAllBasedRoles(ctx context.Context, role *Role) {
 	OP := op.inherits
-	OP.Select(
+	OP.ExecSelect(
 		ctx,
 		&role.Based,
-		sqls.Select("based").Prefix("distinct").Where("role=?", role.Id),
+		sqls.Select("based").Distinct().Where("role=?", role.Id),
 	)
 }
 

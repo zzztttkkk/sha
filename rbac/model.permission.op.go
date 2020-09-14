@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/zzztttkkk/suna/sqls"
 	"github.com/zzztttkkk/suna/utils"
@@ -49,6 +50,6 @@ func EnsurePermission(name, descp string) string {
 	}
 	tcx, committer := sqls.Tx(context.Background())
 	defer committer()
-	_PermissionOperator.EnumOperator.Create(tcx, name, "created by `EnusrePermission`")
+	_PermissionOperator.EnumOperator.Create(tcx, name, fmt.Sprintf("%s; created by `EnusrePermission`", descp))
 	return name
 }

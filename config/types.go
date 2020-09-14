@@ -2,11 +2,11 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/go-redis/redis/v7"
-	"github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/suna/utils/toml"
 	"strings"
 	"time"
+
+	"github.com/go-redis/redis/v7"
+	"github.com/jmoiron/sqlx"
 )
 
 type Suna struct {
@@ -38,7 +38,7 @@ type Suna struct {
 		Header            string
 		Cookie            string
 		Prefix            string
-		Maxage            toml.Duration
+		Maxage            Duration
 		SkipVerifyInDebug bool `toml:"skip-verify-in-debug"`
 
 		Captcha struct {
@@ -66,9 +66,9 @@ type Suna struct {
 		Driver          string
 		Leader          string
 		Followers       []string
-		MaxOpen         int           `toml:"max-open"`
-		MaxLifetime     toml.Duration `toml:"max-lifetime"`
-		EnumCacheMaxage toml.Duration `toml:"enum-cache-maxage"`
+		MaxOpen         int      `toml:"max-open"`
+		MaxLifetime     Duration `toml:"max-lifetime"`
+		EnumCacheMaxage Duration `toml:"enum-cache-maxage"`
 		Logging         bool
 	}
 

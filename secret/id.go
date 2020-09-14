@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func DumpId(id int64, seconds int64) string {
+func DumpId(id int64,  seconds int64) string {
 	v := fmt.Sprintf("%x@%x:%s", id, time.Now().Unix()+seconds, gotils.B2S(RandBytes(8, nil)))
 	return base64.StdEncoding.EncodeToString(gotils.S2B(fmt.Sprintf("%s|%s", v, gotils.B2S(_Default.Calc(gotils.S2B(v))))))
 }
