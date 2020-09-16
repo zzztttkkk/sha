@@ -98,9 +98,9 @@ type Suna struct {
 	} `toml:"-"`
 }
 
-var defaultV = Suna{}
+func makeDefault() *Suna {
+	defaultV := &Suna{}
 
-func init() {
 	defaultV.Env = "debug"
 	defaultV.Http.Address = "127.0.0.1:8080"
 	defaultV.Secret.HashAlgorithm = "sha256-512"
@@ -120,9 +120,11 @@ func init() {
 	defaultV.Rbac.TablenamePrefix = "rbac_"
 	defaultV.Json.Unmarshal = json.Unmarshal
 	defaultV.Json.Marshal = json.Marshal
+
+	return defaultV
 }
 
-func Default() Suna { return defaultV }
+func Default() *Suna { return makeDefault() }
 
 func (t *Suna) Done() {
 	t.Sql.Driver = strings.ToLower(t.Sql.Driver)

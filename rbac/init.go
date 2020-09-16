@@ -2,11 +2,12 @@ package rbac
 
 import (
 	"context"
+	"log"
+
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/utils"
-	"log"
 )
 
 var tablePrefix = "rbac_"

@@ -12,6 +12,7 @@ import (
 
 var cfg *config.Suna
 var builder *ci.Builder
+var driver string
 
 func _DoSqlLogging(q string, args []interface{}) {
 	if !cfg.Sql.Logging {
@@ -37,6 +38,13 @@ func _DoSqlLogging(q string, args []interface{}) {
 func init() {
 	si.Dig.LazyInvoke(
 		func(conf *config.Suna) {
+			if len(conf.Sql.Driver) < 1 {
+				conf.Sql.Driver = driver
+			} else {
+				if conf.Sql.Driver != driver {
+					panic(fmt.Sprintf("suna.sqls: sql driver != %s", conf.Sql.Driver))
+				}
+			}
 			cfg = conf
 			if cfg.GetSqlLeader() == nil {
 				log.Println("suna.sqls: init error")

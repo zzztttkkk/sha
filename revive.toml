@@ -26,4 +26,3 @@ warningCode = 0
 [rule.range-val-in-closure]
 [rule.range-val-address]
 [rule.waitgroup-by-value]
-[rule.defer]

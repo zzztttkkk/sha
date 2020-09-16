@@ -1,5 +1,5 @@
 {
 	"scripts": {
-		"simple": "go run ./examples/simple"
+		"simple": "go run -tags postgres ./examples/simple"
 	}
 }

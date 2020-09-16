@@ -4,7 +4,6 @@ import (
 	"regexp"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna"
@@ -14,13 +13,13 @@ import (
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/rbac"
 	"github.com/zzztttkkk/suna/router"
+	"github.com/zzztttkkk/suna/session"
 	"github.com/zzztttkkk/suna/utils"
 	"github.com/zzztttkkk/suna/validator"
 )
 
 var RedisUrl = "redis://127.0.0.1:6379"
-var SqlUrl = ":memory:"
-var SqlDriver = "sqlite3"
+var SqlUrl = "postgres://postgres:123456@localhost/glass?sslmode=disable"
 
 type User struct {
 	id int64
@@ -35,14 +34,13 @@ func main() {
 	conf.Redis.Mode = "singleton"
 	conf.Redis.Nodes = append(conf.Redis.Nodes, RedisUrl)
 	conf.Sql.Leader = SqlUrl
-	conf.Sql.Driver = SqlDriver
 	conf.Sql.Logging = true
 
 	conf.Done()
 
 	suna.Init(
 		&suna.InitOption{
-			Config: &conf,
+			Config: conf,
 			Authenticator: auth.AuthenticatorFunc(
 				func(ctx *fasthttp.RequestCtx) (auth.User, bool) {
 					if gotils.B2S(ctx.FormValue("token")) == "123456" {
@@ -95,6 +93,18 @@ func main() {
 		validator.MakeDoc(Form{}, "print hello."),
 	)
 	root.GET("/doc", root.DocHandler())
+	root.GET(
+		"/captcha.png",
+		func(ctx *fasthttp.RequestCtx) {
+			session.New(ctx).CaptchaGenerateImage(ctx, gotils.B2S(ctx.FormValue("path")))
+		},
+	)
+	root.GET(
+		"/captcha.wav",
+		func(ctx *fasthttp.RequestCtx) {
+			session.New(ctx).CaptchaGenerateAudio(ctx, gotils.B2S(ctx.FormValue("path")))
+		},
+	)
 
 	loader := utils.NewLoader()
 	loader.AddChild("/rbac", rbac.Loader())

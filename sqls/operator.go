@@ -83,11 +83,3 @@ func CreateTable(db *sqlx.DB, ele reflect.Value, name string) {
 	_DoSqlLogging(q, nil)
 	db.MustExec(q)
 }
-
-func (op *Operator) BindNamed(q string, m map[string]interface{}) (string, []interface{}) {
-	s, vl, err := cfg.GetSqlLeader().BindNamed(q, m)
-	if err != nil {
-		panic(err)
-	}
-	return s, vl
-}

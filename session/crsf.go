@@ -13,14 +13,14 @@ var crsfKeyLength = 16
 var crsfMaxAge = int64(300)
 var crsfForm = ""
 
-func (sion Session) CrsfGenerate() string {
+func (sion Session) CrsfGenerate(path string) string {
 	key := gotils.B2S(secret.RandBytes(crsfKeyLength, nil))
-	sion.Set(internal.SessionCrsfValueKey, key)
-	sion.Set(internal.SessionCrsfUnixKey, time.Now().Unix())
+	sion.Set(internal.SessionCrsfValueKey+"."+path, key)
+	sion.Set(internal.SessionCrsfUnixKey+"."+path, time.Now().Unix())
 	return key
 }
 
-func (sion Session) CrsfVerify(ctx *fasthttp.RequestCtx) bool {
+func (sion Session) CrsfVerify(ctx *fasthttp.RequestCtx, path string) bool {
 	if skipVerify {
 		return true
 	}
@@ -31,11 +31,11 @@ func (sion Session) CrsfVerify(ctx *fasthttp.RequestCtx) bool {
 	}
 
 	var key string
-	if !sion.Get(internal.SessionCrsfValueKey, &key) || len(key) != crsfKeyLength {
+	if !sion.Get(internal.SessionCrsfValueKey+"."+path, &key) || len(key) != crsfKeyLength {
 		return false
 	}
 	var unix int64
-	if !sion.Get(internal.SessionCrsfUnixKey, &unix) || time.Now().Unix()-unix >= crsfMaxAge {
+	if !sion.Get(internal.SessionCrsfUnixKey+"."+path, &unix) || time.Now().Unix()-unix >= crsfMaxAge {
 		return false
 	}
 	return gotils.B2S(formV) == key

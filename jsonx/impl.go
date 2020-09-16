@@ -2,6 +2,7 @@ package jsonx
 
 import (
 	"encoding/json"
+
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
 )
@@ -15,6 +16,14 @@ func Unmarshal(data []byte, dist interface{}) error {
 
 func Marshal(val interface{}) ([]byte, error) {
 	return _MarshalImpl(val)
+}
+
+func MustMarshal(val interface{}) []byte {
+	b, e := _MarshalImpl(val)
+	if e != nil {
+		panic(e)
+	}
+	return b
 }
 
 func init() {

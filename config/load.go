@@ -102,14 +102,22 @@ func FromFile(conf interface{}, fp string) error {
 	return nil
 }
 
-func FromFiles(dist interface{}, defaultV interface{}, fps ...string) {
+func FromFiles(dist interface{}, defaultValuePtr interface{}, fps ...string) {
 	t := dist
 	if reflect.TypeOf(t).Kind() != reflect.Ptr {
 		panic(fmt.Errorf("suna.utils.toml: dist is not a pointer"))
 	}
+	if reflect.TypeOf(defaultValuePtr).Kind() != reflect.Ptr {
+		panic(fmt.Errorf("suna.utils.toml: default value is not a pointer"))
+	}
+
 	ct := reflect.TypeOf(dist).Elem()
 	if ct.Kind() != reflect.Struct {
 		panic(fmt.Errorf("suna.utils.toml: dist is not a struct pointer"))
+	}
+	dct := reflect.TypeOf(defaultValuePtr).Elem()
+	if dct != ct {
+		panic(fmt.Errorf("suna.utils.toml: default value type error"))
 	}
 
 	for _, fp := range fps {
@@ -127,8 +135,8 @@ func FromFiles(dist interface{}, defaultV interface{}, fps ...string) {
 		}
 	}
 
-	if defaultV != nil {
-		if err := mergo.Merge(t, defaultV); err != nil {
+	if defaultValuePtr != nil {
+		if err := mergo.Merge(t, reflect.ValueOf(defaultValuePtr).Elem().Interface()); err != nil {
 			panic(err)
 		}
 	}

@@ -1,13 +1,14 @@
 package session
 
 import (
+	"time"
+
 	"github.com/dchest/captcha"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/secret"
-	"time"
 )
 
 var bytesPool = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -39,10 +40,10 @@ func _initCaptcha() {
 	captchaAudioLang = cfg.Session.Captcha.AudioLanguage
 }
 
-func (sion Session) CaptchaGenerateImage(ctx *fasthttp.RequestCtx) {
+func (sion Session) CaptchaGenerateImage(ctx *fasthttp.RequestCtx, path string) {
 	digits := secret.RandBytes(captchaWordSize, bytesPool)
-	sion.Set(internal.SessionCaptchaIdKey, toString(digits))
-	sion.Set(internal.SessionCaptchaUnixKey, time.Now().Unix())
+	sion.Set(internal.SessionCaptchaIdKey+"."+path, toString(digits))
+	sion.Set(internal.SessionCaptchaUnixKey+"."+path, time.Now().Unix())
 
 	ctx.Response.Header.Set("Cache-control", "no-store")
 	ctx.Response.Header.Set("Content-type", "image/png")
@@ -55,10 +56,10 @@ func (sion Session) CaptchaGenerateImage(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (sion Session) CaptchaGenerateAudio(ctx *fasthttp.RequestCtx) {
+func (sion Session) CaptchaGenerateAudio(ctx *fasthttp.RequestCtx, path string) {
 	digits := secret.RandBytes(captchaWordSize, bytesPool)
-	sion.Set(internal.SessionCaptchaIdKey, toString(digits))
-	sion.Set(internal.SessionCaptchaUnixKey, time.Now().Unix())
+	sion.Set(internal.SessionCaptchaIdKey+"."+path, toString(digits))
+	sion.Set(internal.SessionCaptchaUnixKey+"."+path, time.Now().Unix())
 
 	ctx.Response.Header.Set("Cache-control", "no-store")
 	ctx.Response.Header.Set("Content-type", "audio/wav")
@@ -71,13 +72,16 @@ func (sion Session) CaptchaGenerateAudio(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (sion Session) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
+func (sion Session) CaptchaVerify(ctx *fasthttp.RequestCtx, path string) (ok bool) {
 	if skipVerify {
 		return true
 	}
 
+	unixKey := internal.SessionCaptchaUnixKey + "." + path
+	idKey := internal.SessionCaptchaIdKey + "." + path
+
 	defer func() {
-		sion.Del(internal.SessionCaptchaUnixKey, internal.SessionExistsKey) // del captcha anyway
+		sion.Del(unixKey, idKey) // del captcha anyway
 		if !ok {
 			output.Error(ctx, output.HttpErrors[fasthttp.StatusBadRequest])
 		}
@@ -90,12 +94,12 @@ func (sion Session) CaptchaVerify(ctx *fasthttp.RequestCtx) (ok bool) {
 	}
 
 	var code string
-	if !sion.Get(internal.SessionCaptchaIdKey, &code) {
+	if !sion.Get(idKey, &code) {
 		return
 	}
 
 	var unix int64
-	if !sion.Get(internal.SessionCaptchaUnixKey, &unix) || time.Now().Unix()-unix > captchaMaxage {
+	if !sion.Get(unixKey, &unix) || time.Now().Unix()-unix > captchaMaxage {
 		return
 	}
 

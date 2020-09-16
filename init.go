@@ -27,12 +27,6 @@ func doReservedKeysWarning() {
 		internal.RCtxSessionKey,
 		internal.RCtxUserKey,
 	)
-	log.Printf(
-		"suna: reserved suna.session.Session keys: `%s`, `%s`, `%s`\n",
-		internal.SessionExistsKey,
-		internal.SessionCaptchaIdKey,
-		internal.SessionCaptchaUnixKey,
-	)
 }
 
 func Init(opt *InitOption) {
