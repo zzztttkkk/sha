@@ -4,49 +4,34 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/savsgio/gotils"
 )
 
 type M map[string]interface{}
 
-var placeholderRegexp = regexp.MustCompile(`{.*?}`)
+var placeholderRegexp = regexp.MustCompile("\\${.*?}")
 
-//noinspection GoNilness
 func parseFs(fs string) (string, []string) {
-	var nl []string
+	var n []string
+	var f []string
 
-	var bodySs []string
-	bodySs = append(bodySs, placeholderRegexp.Split(fs, -1)...)
-
-	for i, s := range placeholderRegexp.FindAllString(fs, -1) {
-		prev := bodySs[i]
-		after := bodySs[i+1]
-
-		if strings.HasSuffix(prev, "{") {
-			prev = prev[:len(prev)-1]
-			bodySs[i] = prev
-		} else {
-			s = s[1:]
+	prev := 0
+	for _, v := range placeholderRegexp.FindAllSubmatchIndex(gotils.S2B(fs), -1) {
+		begin, end := v[0], v[1]
+		f = append(f, fs[prev:begin])
+		prev = end
+		txt := fs[begin+2 : end-1]
+		ind := strings.IndexByte(txt, ':')
+		if ind < 0 {
+			f = append(f, "%v")
+			n = append(n, txt)
+			continue
 		}
-
-		if strings.HasPrefix(after, "}") {
-			after = after[1:]
-			bodySs[i+1] = after
-		} else {
-			s = s[:len(s)-1]
-		}
-
-		ind := strings.Index(s, ":")
-		name := s
-		fv := "%+v"
-		if ind != -1 {
-			name = strings.TrimSpace(s[:ind])
-			fv = "%" + strings.TrimSpace(s[ind+1:])
-		}
-		nl = append(nl, name)
-		prev += fv
-		bodySs[i] = prev
+		f = append(f, "%"+txt[ind+1:])
+		n = append(n, txt[:ind])
 	}
-	return strings.Join(bodySs, ""), nl
+	return strings.Join(append(f, fs[prev:]), ""), n
 }
 
 type NamedFmt struct {

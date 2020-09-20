@@ -13,11 +13,7 @@ func (f Object) Value() (driver.Value, error) {
 	if len(f) == 0 {
 		return emptyJsonObjBytes, nil
 	}
-	v, err := Marshal(f)
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
+	return Marshal(f)
 }
 
 func (f *Object) Scan(src interface{}) error {

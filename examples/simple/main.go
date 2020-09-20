@@ -59,7 +59,7 @@ func main() {
 
 	root.Use(
 		middleware.NewAccessLogger(
-			"{userId} {remote} {method} {path} UserAgent:{reqHeader/User-Agent} {statusCode} {statusText} {cost}ms\n",
+			"${userId:06d} ${remote} ${method} ${path} UserAgent:${reqHeader/User-Agent} ${statusCode} ${statusText} ${cost:03d}ms\n",
 			nil,
 		).AsMiddleware(),
 	)

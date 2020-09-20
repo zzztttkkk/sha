@@ -3,12 +3,10 @@ package utils
 import (
 	"fmt"
 	"log"
-	"net"
 	"strings"
 
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/router"
-	"google.golang.org/grpc"
 )
 
 type Loader struct {
@@ -17,7 +15,6 @@ type Loader struct {
 	name     string
 	path     string
 	httpFns  []func(router router.Router)
-	grpcFns  []func(server *grpc.Server)
 }
 
 func NewLoader() *Loader {
@@ -77,25 +74,12 @@ func (loader *Loader) Http(fn func(router router.Router)) {
 	loader.httpFns = append(loader.httpFns, fn)
 }
 
-func (loader *Loader) Grpc(fn func(server *grpc.Server)) {
-	loader.grpcFns = append(loader.grpcFns, fn)
-}
-
 func (loader *Loader) bindHttp(router router.Router) {
 	for _, fn := range loader.httpFns {
 		fn(router)
 	}
 	for k, v := range loader.children {
 		v.bindHttp(router.SubGroup(k))
-	}
-}
-
-func (loader *Loader) bindGrpc(server *grpc.Server) {
-	for _, fn := range loader.grpcFns {
-		fn(server)
-	}
-	for _, v := range loader.children {
-		v.bindGrpc(server)
 	}
 }
 
@@ -123,14 +107,4 @@ func (loader *Loader) RunAsHttpServer(root *router.Root, addr, certFile, keyFile
 		err = server.ListenAndServe(addr)
 	}
 	log.Fatal(err)
-}
-
-func (loader *Loader) RunAsGrpcServer(server *grpc.Server, address string) {
-	loader.bindGrpc(server)
-
-	listener, err := net.Listen("tcp", address)
-	if err != nil {
-		panic(err)
-	}
-	log.Fatal(server.Serve(listener))
 }

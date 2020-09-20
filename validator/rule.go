@@ -95,7 +95,7 @@ type _Rule struct {
 	isSlice bool
 }
 
-var ruleFmt = utils.NewNamedFmt("|{name}|{type}|{required}|{lrange}|{vrange}|{srange}|{default}|{regexp}|{function}|{descp}|")
+var ruleFmt = utils.NewNamedFmt("|${name}|${type}|${required}|${lrange}|${vrange}|${srange}|${default}|${regexp}|${function}|${descp}|")
 
 //revive:disable:cyclomatic
 func (rule *_Rule) String() string {

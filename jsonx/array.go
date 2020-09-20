@@ -2,8 +2,9 @@ package jsonx
 
 import (
 	"database/sql/driver"
-	"github.com/savsgio/gotils"
 	"strconv"
+
+	"github.com/savsgio/gotils"
 )
 
 type Array []interface{}
@@ -14,11 +15,7 @@ func (a Array) Value() (driver.Value, error) {
 	if len(a) == 0 {
 		return _EmptyJsonArrayBytes, nil
 	}
-	v, err := Marshal(a)
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
+	return Marshal(a)
 }
 
 func (a *Array) Scan(src interface{}) error {

@@ -18,7 +18,6 @@ func (s *Scanner) Scan(rows *sqlx.Rows) int {
 		if s.beforeScan != nil {
 			s.beforeScan(&s.dist)
 		}
-
 		if s.isStruct {
 			if err := rows.StructScan(s.dist[0]); err != nil {
 				panic(err)
@@ -28,13 +27,11 @@ func (s *Scanner) Scan(rows *sqlx.Rows) int {
 				panic(err)
 			}
 		}
-
 		if s.afterScan != nil {
 			if err := s.afterScan(&s.dist); err != nil {
 				panic(err)
 			}
 		}
-
 		c++
 	}
 	return c
