@@ -92,7 +92,6 @@ func getFromInterface(key string, v interface{}) (interface{}, error) {
 
 type _JsonCollection interface {
 	get(string) (interface{}, error)
-	set(string, interface{}) error
 }
 
 func get(collection _JsonCollection, key string) (interface{}, error) {
@@ -118,58 +117,6 @@ func get(collection _JsonCollection, key string) (interface{}, error) {
 		}
 	}
 	return rv, nil
-}
-
-//revive:disable:cyclomatic
-func set(collection _JsonCollection, key string, val interface{}) error {
-	k := _Key{}
-	k.init(key)
-
-	var prevRv interface{}
-	var rv interface{} = collection
-	var err error
-	var _k *string
-	var prevKey string
-	var ok bool
-	for {
-		if _k != nil {
-			prevKey = *_k
-		}
-
-		_k, ok = k.next()
-		if !ok {
-			break
-		}
-		prevRv = rv
-		rv, err = getFromInterface(*_k, rv)
-		if err != nil {
-			continue
-		}
-	}
-
-	if k.cursor <= k.end {
-		return ErrJsonValue
-	}
-
-	switch _v := prevRv.(type) {
-	case map[string]interface{}:
-		_ = Object(_v).set(prevKey, val)
-	case Object:
-		_ = _v.set(prevKey, val)
-	case []interface{}:
-		err = Array(_v).set(prevKey, val)
-		if err != nil {
-			return err
-		}
-	case Array:
-		err = _v.set(prevKey, val)
-		if err != nil {
-			return err
-		}
-	default:
-		return ErrJsonValue
-	}
-	return nil
 }
 
 func getInt64(collection _JsonCollection, key string) (int64, error) {

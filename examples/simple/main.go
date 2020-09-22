@@ -13,7 +13,6 @@ import (
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/rbac"
 	"github.com/zzztttkkk/suna/router"
-	"github.com/zzztttkkk/suna/session"
 	"github.com/zzztttkkk/suna/utils"
 	"github.com/zzztttkkk/suna/validator"
 )
@@ -93,18 +92,6 @@ func main() {
 		validator.MakeDoc(Form{}, "print hello."),
 	)
 	root.GET("/doc", root.DocHandler())
-	root.GET(
-		"/captcha.png",
-		func(ctx *fasthttp.RequestCtx) {
-			session.New(ctx).CaptchaGenerateImage(ctx, gotils.B2S(ctx.FormValue("path")))
-		},
-	)
-	root.GET(
-		"/captcha.wav",
-		func(ctx *fasthttp.RequestCtx) {
-			session.New(ctx).CaptchaGenerateAudio(ctx, gotils.B2S(ctx.FormValue("path")))
-		},
-	)
 
 	loader := utils.NewLoader()
 	loader.AddChild("/rbac", rbac.Loader())

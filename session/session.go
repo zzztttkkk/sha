@@ -23,14 +23,13 @@ var sessionKeyPrefix string
 var sessionExpire time.Duration
 
 func _initSession() {
-	sessionInCookie = cfg.Session.Cookie
-	sessionInHeader = cfg.Session.Header
-	sessionKeyPrefix = cfg.Session.Prefix
+	sessionInCookie = cfg.Session.Cookiename
+	sessionInHeader = cfg.Session.HeaderName
+	sessionKeyPrefix = cfg.Session.RedisKeyPrefix
 	if !strings.HasSuffix(sessionKeyPrefix, ":") {
 		sessionKeyPrefix += ":"
 	}
 	sessionExpire = cfg.Session.Maxage.Duration
-	_initCaptcha()
 }
 
 func newSession(ctx *fasthttp.RequestCtx) Session {

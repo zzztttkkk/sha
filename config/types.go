@@ -35,26 +35,10 @@ type Suna struct {
 	}
 
 	Session struct {
-		Header            string
-		Cookie            string
-		Prefix            string
-		Maxage            Duration
-		SkipVerifyInDebug bool `toml:"skip-verify-in-debug"`
-
-		Captcha struct {
-			Maxage        int
-			Form          string
-			TokenSize     int `toml:"token-size"`
-			ImageWidth    int
-			ImageHeight   int
-			AudioLanguage string `toml:"audio-lang"`
-		}
-
-		Crsf struct {
-			Maxage    int
-			Form      string
-			TokenSize int `toml:"token-size"`
-		}
+		HeaderName     string   `toml:"header-name"`
+		Cookiename     string   `toml:"cookie-name"`
+		RedisKeyPrefix string   `toml:"redis-key-prefix"`
+		Maxage         Duration `toml:"maxage"`
 	}
 
 	Output struct {
@@ -107,16 +91,10 @@ func makeDefault() *Suna {
 	defaultV.Cache.Lru.ContentSize = 2000
 	defaultV.Cache.Lru.UserSize = 1000
 	defaultV.Output.ErrorMaxDepth = 20
-	defaultV.Session.Cookie = "sck"
-	defaultV.Session.Header = "Suna-Session"
+	defaultV.Session.Cookiename = "session"
+	defaultV.Session.HeaderName = "Session"
 	defaultV.Session.Maxage.Duration = time.Minute * 30
-	defaultV.Session.Prefix = "session"
-	defaultV.Session.Captcha.Form = "captcha"
-	defaultV.Session.Captcha.ImageHeight = 120
-	defaultV.Session.Captcha.ImageWidth = 300
-	defaultV.Session.Captcha.TokenSize = 6
-	defaultV.Session.Captcha.Maxage = 300
-	defaultV.Session.Captcha.AudioLanguage = "zh"
+	defaultV.Session.RedisKeyPrefix = "session:"
 	defaultV.Rbac.TablenamePrefix = "rbac_"
 	defaultV.Json.Unmarshal = json.Unmarshal
 	defaultV.Json.Marshal = json.Marshal

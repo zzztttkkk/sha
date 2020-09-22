@@ -43,19 +43,6 @@ func (a Array) get(key string) (interface{}, error) {
 	return a[i], nil
 }
 
-func (a Array) set(key string, val interface{}) error {
-	ind, err := strconv.ParseInt(key, 10, 64)
-	if err != nil {
-		return ErrJsonValue
-	}
-	i := int(ind)
-	if i < 0 || i >= len(a) {
-		return ErrJsonValue
-	}
-	a[i] = val
-	return nil
-}
-
 func ParseArray(v interface{}) (Array, error) {
 	var data []byte
 	switch rv := v.(type) {
@@ -85,88 +72,4 @@ func ParseArray(v interface{}) (Array, error) {
 	return m, nil
 }
 
-func (a Array) Len() int {
-	return len(a)
-}
-
-func (a Array) Get(key string) (interface{}, error) {
-	return get(a, key)
-}
-
-func (a Array) MustGet(key string) interface{} {
-	v, e := a.Get(key)
-	if e != nil {
-		panic(e)
-	}
-	return v
-}
-
-func (a Array) GetInt(key string) (int64, error) {
-	return getInt64(a, key)
-}
-
-func (a Array) MustGetInt(key string) int64 {
-	v, e := getInt64(a, key)
-	if e != nil {
-		panic(e)
-	}
-	return v
-}
-
-func (a Array) GetFloat(key string) (float64, error) {
-	return getFloat(a, key)
-}
-
-func (a Array) MustGetFloat(key string) float64 {
-	v, e := getFloat(a, key)
-	if e != nil {
-		panic(e)
-	}
-	return v
-}
-
-func (a Array) GetBool(key string) (bool, error) {
-	return getBool(a, key)
-}
-
-func (a Array) MustGetBool(key string) bool {
-	v, e := getBool(a, key)
-	if e != nil {
-		panic(e)
-	}
-	return v
-}
-
-func (a Array) GetString(key string) (string, error) {
-	return getString(a, key)
-}
-
-func (a Array) MustGetString(key string) string {
-	v, e := getString(a, key)
-	if e != nil {
-		panic(e)
-	}
-	return v
-}
-
-func (a Array) IsNull(key string) (bool, error) {
-	return isNull(a, key)
-}
-
-func (a Array) MustIsNull(key string) bool {
-	v, e := isNull(a, key)
-	if e != nil {
-		panic(e)
-	}
-	return v
-}
-
-func (a Array) Set(key string, val interface{}) error {
-	return set(a, key, val)
-}
-
-func (a Array) MustSet(key string, val interface{}) {
-	if err := a.Set(key, val); err != nil {
-		panic(err)
-	}
-}
+func (a Array) ToCollection() *Collection { return &Collection{raw: a} }

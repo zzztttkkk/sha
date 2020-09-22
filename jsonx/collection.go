@@ -150,13 +150,3 @@ func (c *Collection) MustIsNull(key string) bool {
 	}
 	return v
 }
-
-func (c *Collection) Set(key string, val interface{}) error {
-	return set(c.raw, key, val)
-}
-
-func (c *Collection) MustSet(key string, val interface{}) {
-	if err := c.Set(key, val); err != nil {
-		panic(err)
-	}
-}
