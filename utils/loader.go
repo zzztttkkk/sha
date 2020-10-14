@@ -86,7 +86,7 @@ func (loader *Loader) bindHttp(router router.Router) {
 func (loader *Loader) RunAsHttpServer(root *router.Root, addr, certFile, keyFile string) {
 	loader.bindHttp(root)
 
-	glog := AcquireGroupLogger("Root")
+	glog := AcquireGroupLogger("Router")
 	for method, paths := range root.List() {
 		for _, path := range paths {
 			glog.Println(fmt.Sprintf("%s: %s", method, path))

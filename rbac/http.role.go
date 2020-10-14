@@ -19,7 +19,7 @@ func init() {
 
 			router.POSTWithDoc(
 				"/role/create",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.role.create",
 					func(ctx *fasthttp.RequestCtx) {
 						form := Form{}
@@ -51,7 +51,7 @@ func init() {
 
 			router.POSTWithDoc(
 				"/role/delete",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.role.delete",
 					func(ctx *fasthttp.RequestCtx) {
 						form := Form{}
@@ -79,7 +79,7 @@ func init() {
 		func(R router.Router) {
 			R.GETWithDoc(
 				"/role/list",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.role.list",
 					func(ctx *fasthttp.RequestCtx) {
 						output.MsgOK(ctx, _RoleOperator.List(ctx))
@@ -108,7 +108,7 @@ func init() {
 
 			R.POSTWithDoc(
 				"/role/inherit/add",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.role.inherit.add",
 					func(ctx *fasthttp.RequestCtx) {
 						form := Form{}
@@ -129,7 +129,7 @@ func init() {
 
 			R.POSTWithDoc(
 				"/role/inherit/del",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.role.inherit.del",
 					func(ctx *fasthttp.RequestCtx) {
 						form := Form{}
@@ -150,7 +150,7 @@ func init() {
 
 			R.GETWithDoc(
 				"/role/inherit/list",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.role.inherit.list",
 					func(ctx *fasthttp.RequestCtx) {
 						form := _NameForm{}
@@ -184,7 +184,7 @@ func init() {
 
 			R.POSTWithDoc(
 				"/role/perm/add",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.role.add_perm",
 					func(ctx *fasthttp.RequestCtx) {
 						form := Form{}
@@ -205,7 +205,7 @@ func init() {
 
 			R.POSTWithDoc(
 				"/role/perm/del",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.role.del_perm",
 					func(ctx *fasthttp.RequestCtx) {
 						form := Form{}

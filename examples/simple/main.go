@@ -18,7 +18,7 @@ import (
 )
 
 var RedisUrl = "redis://127.0.0.1:6379"
-var SqlUrl = "postgres://postgres:123456@localhost/glass?sslmode=disable"
+var SqlUrl = "postgres://postgres:123456@localhost/suna_examples_simple?sslmode=disable"
 
 type User struct {
 	id int64

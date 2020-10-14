@@ -18,7 +18,7 @@ func init() {
 
 			router.POSTWithDoc(
 				"/user/role/add",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.user.add_role",
 					func(ctx *fasthttp.RequestCtx) {
 						form := UserRoleForm{}
@@ -39,7 +39,7 @@ func init() {
 
 			router.POSTWithDoc(
 				"/user/role/del",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.user.del_role",
 					func(ctx *fasthttp.RequestCtx) {
 						form := UserRoleForm{}
@@ -71,7 +71,7 @@ func init() {
 
 			router.GETWithDoc(
 				"/user/role/list",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.user.list_role",
 					func(ctx *fasthttp.RequestCtx) {
 						form := UidForm{}

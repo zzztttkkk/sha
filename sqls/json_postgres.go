@@ -15,9 +15,9 @@ import (
 
 func init() {
 	driver = "postgres"
-	JsonSet = json_set
-	JsonUpdate = json_update
-	JsonRemove = json_remove
+	_JsonSetImpl = json_set
+	_JsonUpdateImpl = json_update
+	_JsonRemoveImpl = json_remove
 }
 
 var (

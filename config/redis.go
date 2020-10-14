@@ -69,7 +69,6 @@ func (t *Suna) _InitRedisClient() {
 	}
 }
 
-// RedisClient get redis client
 func (t *Suna) RedisClient() redis.Cmdable {
 	if t.Internal.redisc == nil {
 		t._InitRedisClient()

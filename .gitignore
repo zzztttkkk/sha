@@ -22,3 +22,6 @@
 *.ini
 *.env
 *.db
+
+*.png
+*.jpeg

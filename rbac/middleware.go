@@ -11,7 +11,7 @@ import (
 
 var ErrPermissionDenied = output.NewError(fasthttp.StatusForbidden, -1, "permission denied")
 
-func NewPermissionCheckMiddleware(policy CheckPolicy, permissions []string) fasthttp.RequestHandler {
+func NewPermissionCheckMiddleware(policy CheckPolicy, permissions ...string) fasthttp.RequestHandler {
 	return NewPermissionCheckHandler(policy, permissions, router.Next)
 }
 

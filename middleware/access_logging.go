@@ -49,13 +49,13 @@ type Logger interface {
 }
 
 type AccessLoggingOption struct {
-	TimeFmt         string
+	TimeLayout      string
 	DurationUnit    time.Duration
 	AsGlobalRecover bool
 	Logger          Logger
 }
 
-//revive:disable:cyclomatic
+// revive:disable:cyclomatic
 // named formatter kwargs:
 //
 // 		begin: begin time of the current request;
@@ -68,29 +68,29 @@ type AccessLoggingOption struct {
 //
 // 		path: path of the current request
 //
-//		reqHeaders: all headers of the current request
+// 		reqHeaders: all headers of the current request
 //
-//		query: query of the current request
+// 		query: query of the current request
 //
-//		form: form body of the current request
+// 		form: form body of the current request
 //
-//		remote: remote ip of the current request
+// 		remote: remote ip of the current request
 //
-//		reqHeader/***: some header of the current request
+// 		reqHeader/***: some header of the current request
 //
-//		statusCode: status code of the current response
+// 		statusCode: status code of the current response
 //
-//		statusText: status text of the current response
+// 		statusText: status text of the current response
 //
-//		resHeaders: all headers of the current response
+// 		resHeaders: all headers of the current response
 //
-//		resBody: body of the current response
+// 		resBody: body of the current response
 //
-//		resHeader/***: some header of the current response
+// 		resHeader/***: some header of the current response
 //
-//		errStack: error stack if an internal server error occurred
+// 		errStack: error stack if an internal server error occurred
 //
-//		userId: user id of the current request
+// 		userId: user id of the current request
 func NewAccessLogger(fstr string, opt *AccessLoggingOption) *AccessLogger {
 	if opt == nil {
 		opt = &AccessLoggingOption{}
@@ -98,6 +98,10 @@ func NewAccessLogger(fstr string, opt *AccessLoggingOption) *AccessLogger {
 
 	if opt.DurationUnit == 0 {
 		opt.DurationUnit = time.Millisecond
+	}
+
+	if len(opt.TimeLayout) < 1 {
+		opt.TimeLayout = time.RFC3339
 	}
 
 	rv := &AccessLogger{
@@ -151,10 +155,6 @@ func NewAccessLogger(fstr string, opt *AccessLoggingOption) *AccessLogger {
 	if rv._costT {
 		rv._endT = true
 		rv._beginT = true
-	}
-
-	if len(opt.TimeFmt) < 1 {
-		opt.TimeFmt = "2006-01-02 15:04:05"
 	}
 	return rv
 }
@@ -306,11 +306,11 @@ func (al *AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.Request
 			}
 
 			if al._beginT {
-				m["begin"] = begin.Format(al.opt.TimeFmt)
+				m["begin"] = begin.Format(al.opt.TimeLayout)
 			}
 
 			if al._endT {
-				m["end"] = end.Format(al.opt.TimeFmt)
+				m["end"] = end.Format(al.opt.TimeLayout)
 			}
 
 			if al._UserId {

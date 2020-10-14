@@ -11,7 +11,7 @@ func init() {
 		func(router router.Router) {
 			router.GET(
 				"/status",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.status",
 					func(ctx *fasthttp.RequestCtx) {
 						g.RLock()

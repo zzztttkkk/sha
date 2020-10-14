@@ -31,7 +31,7 @@ type RedCacheOption struct {
 
 const DisableRedCacheKey = "Suna-Redisx-Disable-Redcache"
 
-//revive:disable-next-line
+// revive:disable-next-line
 // Cache the entire response in Redis
 func NewCache(opt *RedCacheOption) *_RedCacheT {
 	c := &_RedCacheT{

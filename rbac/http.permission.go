@@ -8,9 +8,8 @@ import (
 	"github.com/zzztttkkk/suna/validator"
 )
 
-func newPermChecker(perm string, next fasthttp.RequestHandler) fasthttp.RequestHandler {
-	perm = EnsurePermission(perm, "")
-	return NewPermissionCheckHandler(PolicyAll, []string{perm}, next)
+func newPAllPermChecker(perm string, next fasthttp.RequestHandler) fasthttp.RequestHandler {
+	return NewPermissionCheckHandler(PolicyAll, []string{EnsurePermission(perm, "")}, next)
 }
 
 // path: /permission/create
@@ -24,7 +23,7 @@ func init() {
 
 			router.POSTWithDoc(
 				"/permission/create",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.perm.create",
 					func(ctx *fasthttp.RequestCtx) {
 						form := Form{}
@@ -52,7 +51,7 @@ func init() {
 		func(router rpkg.Router) {
 			router.POSTWithDoc(
 				"/permission/delete",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.perm.delete",
 					func(ctx *fasthttp.RequestCtx) {
 						form := _NameForm{}
@@ -80,7 +79,7 @@ func init() {
 		func(router rpkg.Router) {
 			router.GETWithDoc(
 				"/permission/all",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.perm.read",
 					func(ctx *fasthttp.RequestCtx) {
 						output.MsgOK(ctx, _PermissionOperator.List(ctx))

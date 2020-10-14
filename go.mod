@@ -10,6 +10,7 @@ require (
 	github.com/go-redis/redis/v7 v7.4.0
 	github.com/go-redis/redis_rate/v8 v8.0.0
 	github.com/go-sql-driver/mysql v1.5.0
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/imdario/mergo v0.3.11
 	github.com/jmoiron/sqlx v1.2.0
@@ -20,5 +21,6 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/fasthttp v1.16.0
 	go.uber.org/dig v1.10.0
+	golang.org/x/image v0.0.0-20200927104501-e162460cd6b5
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 )

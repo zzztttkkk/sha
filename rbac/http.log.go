@@ -24,8 +24,8 @@ func init() {
 		func(router router.Router) {
 			router.GETWithDoc(
 				"/log/list",
-				newPermChecker(
-					EnsurePermission("rbac.log.read", ""),
+				newPAllPermChecker(
+					"rbac.log.read",
 					func(ctx *fasthttp.RequestCtx) {
 						form := Form{}
 						if !validator.Validate(ctx, &form) {

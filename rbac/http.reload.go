@@ -12,7 +12,7 @@ func init() {
 		func(R router.Router) {
 			R.GETWithDoc(
 				"/reload",
-				newPermChecker(
+				newPAllPermChecker(
 					"rbac.reload",
 					func(ctx *fasthttp.RequestCtx) {
 						Load(context.Background())
