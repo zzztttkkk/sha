@@ -10,7 +10,7 @@ func TestAcquireGroupLogger(t *testing.T) {
 	l.Println("asdasd")
 	l.Println("dfsdfsdf")
 
-	log.SetOutput(&DailyOutput{prefix: "C:/Users/ztk/Codes/go/src/github.com/zzztttkkk/suna/"})
+	log.SetOutput(&DailyOutput{prefix: "./"})
 
 	l.Free()
 }

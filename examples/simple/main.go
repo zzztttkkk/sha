@@ -13,7 +13,7 @@ import (
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/rbac"
 	"github.com/zzztttkkk/suna/router"
-	"github.com/zzztttkkk/suna/utils"
+	_ "github.com/zzztttkkk/suna/sqls/drivers/postgres"
 	"github.com/zzztttkkk/suna/validator"
 )
 
@@ -58,9 +58,16 @@ func main() {
 
 	root.Use(
 		middleware.NewAccessLogger(
-			"${userId:06d} ${remote} ${method} ${path} UserAgent:${reqHeader/User-Agent} ${statusCode} ${statusText} ${cost:03d}ms\n",
+			"${userId:06d} ${remote} ${method} ${path} "+
+				"UserAgent:${reqHeader/User-Agent} "+
+				"${statusCode} ${statusText} ${cost:03d}ms\n",
 			nil,
-		).AsMiddleware(),
+		),
+		middleware.NewRateLimiter(
+			10,
+			time.Second*1, 10,
+			func(ctx *fasthttp.RequestCtx) string { return ctx.RemoteAddr().String() },
+		),
 	)
 
 	var emptyRegexp = regexp.MustCompile(`\s+`)
@@ -93,7 +100,7 @@ func main() {
 	)
 	root.GET("/doc", root.DocHandler())
 
-	loader := utils.NewLoader()
+	loader := router.NewLoader()
 	loader.AddChild("/rbac", rbac.Loader())
 
 	loader.RunAsHttpServer(root, conf.Http.Address, conf.Http.TLS.Cert, conf.Http.TLS.Key)

@@ -27,8 +27,17 @@ type Option struct {
 
 var defaultFix = &Option{}
 
-func newImageWithString(str []rune, face *_Face, option *Option) image.Image {
-	fontsize := face.size
+func newImageWithString(str []rune, faces []*_Face, option *Option) image.Image {
+	fontsize := 0
+	if len(faces) == 1 {
+		fontsize = faces[0].size
+	} else {
+		for _, f := range faces {
+			if f.size > fontsize {
+				fontsize = f.size
+			}
+		}
+	}
 
 	var c color.Color
 	if option == nil {
@@ -108,6 +117,13 @@ func newImageWithString(str []rune, face *_Face, option *Option) image.Image {
 		dot.X += v.X
 		dot.Y += v.Y
 
+		var face *_Face
+		if len(faces) == 1 {
+			face = faces[0]
+		} else {
+			face = faces[rand.Int()%len(faces)]
+		}
+
 		dr, mask, maskp, advance, ok := face.Glyph(dot, r)
 		if !ok {
 			continue
@@ -121,10 +137,18 @@ func newImageWithString(str []rune, face *_Face, option *Option) image.Image {
 	return img
 }
 
-func RenderString(fontname, txt string, option *Option) image.Image {
+func RenderOneFont(fontname, txt string, option *Option) image.Image {
 	var rs = []rune(txt)
 	if option.Shuffle {
 		rand.Shuffle(len(rs), func(i, j int) { rs[i], rs[j] = rs[j], rs[i] })
 	}
-	return newImageWithString(rs, getFace(fontname), option)
+	return newImageWithString(rs, []*_Face{getFaceByName(fontname)}, option)
+}
+
+func RenderSomeFonts(count int, txt string, option *Option) image.Image {
+	var rs = []rune(txt)
+	if option.Shuffle {
+		rand.Shuffle(len(rs), func(i, j int) { rs[i], rs[j] = rs[j], rs[i] })
+	}
+	return newImageWithString(rs, getFaceByCount(count), option)
 }

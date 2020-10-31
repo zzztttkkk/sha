@@ -1,5 +1,6 @@
 {
 	"scripts": {
-		"simple": "go run -tags postgres ./examples/simple"
+		"simple": "go run ./examples/simple",
+		"revive": "revive -config ./revive.toml ."
 	}
 }

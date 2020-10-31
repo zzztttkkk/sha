@@ -15,7 +15,7 @@ func init() {
 			cfg = conf
 			redisc = conf.RedisClient()
 
-			_initSession()
+			initSession()
 		},
 	)
 }

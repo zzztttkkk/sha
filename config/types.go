@@ -10,8 +10,7 @@ import (
 )
 
 type Suna struct {
-	Env           string
-	TimeFormatter string `toml:"time-formatter"`
+	Env string
 
 	Http struct {
 		Address  string
@@ -20,6 +19,10 @@ type Suna struct {
 			Cert string
 			Key  string
 		}
+	}
+
+	Captcha struct {
+		Fonts []string `toml:"fonts"` // <fontName>:<fontPath>[:fontSize]  A:/fonts/a.ttf:16 B:/fonts/b.rrf
 	}
 
 	Secret struct {
@@ -36,7 +39,7 @@ type Suna struct {
 
 	Session struct {
 		HeaderName     string   `toml:"header-name"`
-		Cookiename     string   `toml:"cookie-name"`
+		CookieName     string   `toml:"cookie-name"`
 		RedisKeyPrefix string   `toml:"redis-key-prefix"`
 		Maxage         Duration `toml:"maxage"`
 	}
@@ -47,7 +50,6 @@ type Suna struct {
 	}
 
 	Sql struct {
-		Driver          string
 		Leader          string
 		Followers       []string
 		MaxOpen         int      `toml:"max-open"`
@@ -91,7 +93,7 @@ func makeDefault() *Suna {
 	defaultV.Cache.Lru.ContentSize = 2000
 	defaultV.Cache.Lru.UserSize = 1000
 	defaultV.Output.ErrorMaxDepth = 20
-	defaultV.Session.Cookiename = "session"
+	defaultV.Session.CookieName = "session"
 	defaultV.Session.HeaderName = "Session"
 	defaultV.Session.Maxage.Duration = time.Minute * 30
 	defaultV.Session.RedisKeyPrefix = "session:"
@@ -105,7 +107,6 @@ func makeDefault() *Suna {
 func Default() *Suna { return makeDefault() }
 
 func (t *Suna) Done() {
-	t.Sql.Driver = strings.ToLower(t.Sql.Driver)
 	t.Redis.Mode = strings.ToLower(t.Redis.Mode)
 
 	switch strings.ToLower(t.Env) {

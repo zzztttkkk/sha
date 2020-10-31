@@ -2,11 +2,10 @@ package captcha
 
 import (
 	"fmt"
-	"io/ioutil"
-	"sync"
-
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
+	"io/ioutil"
+	"math/rand"
 )
 
 type _Face struct {
@@ -15,22 +14,18 @@ type _Face struct {
 }
 
 type _FontCache struct {
-	sync.RWMutex
-
-	all map[string]*_Face
+	m map[string]*_Face
+	l []*_Face
 }
 
 var fontCache _FontCache
 
 func init() {
-	fontCache.all = map[string]*_Face{}
+	fontCache.m = map[string]*_Face{}
 }
 
 func RegisterFont(name, file string, options *truetype.Options) {
-	fontCache.Lock()
-	defer fontCache.Unlock()
-
-	if _, exists := fontCache.all[name]; exists {
+	if _, exists := fontCache.m[name]; exists {
 		panic(fmt.Errorf("suna.captcha: font name(`%s`) file(`%s`) is already exists", name, file))
 	}
 	f, err := ioutil.ReadFile(file)
@@ -48,11 +43,23 @@ func RegisterFont(name, file string, options *truetype.Options) {
 	} else {
 		face.size = int(options.Size)
 	}
-	fontCache.all[name] = face
+	fontCache.m[name] = face
+	fontCache.l = append(fontCache.l, face)
 }
 
-func getFace(name string) *_Face {
-	fontCache.RLock()
-	defer fontCache.RUnlock()
-	return fontCache.all[name]
+func getFaceByName(name string) *_Face {
+	if name == "*" {
+		return fontCache.l[rand.Int()%len(fontCache.l)]
+	}
+	return fontCache.m[name]
+}
+
+func getFaceByCount(i int) (l []*_Face) {
+	if i < 0 || i >= len(fontCache.l) {
+		return fontCache.l
+	}
+	for ; i > 0; i-- {
+		l = append(l, fontCache.l[rand.Int()%len(fontCache.l)])
+	}
+	return
 }

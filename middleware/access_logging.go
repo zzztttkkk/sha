@@ -12,7 +12,6 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/output"
-	"github.com/zzztttkkk/suna/router"
 	"github.com/zzztttkkk/suna/utils"
 )
 
@@ -271,73 +270,67 @@ func (al *AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func (al *AccessLogger) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
-	return func(ctx *fasthttp.RequestCtx) {
-		var m = utils.M{}
-		var begin time.Time
-		if al._beginT {
-			begin = time.Now()
+func (al *AccessLogger) Process(ctx *fasthttp.RequestCtx, next func()) {
+	var m = utils.M{}
+	var begin time.Time
+	if al._beginT {
+		begin = time.Now()
+	}
+
+	al.peekRequest(m, ctx)
+
+	defer func() {
+		var v interface{}
+		if al._ErrStack {
+			v = recover()
+			if v != nil {
+				m["errStack"] = output.ErrorStack(v, 1)
+				if al.opt.AsGlobalRecover {
+					output.Error(ctx, v)
+				}
+			}
 		}
 
-		al.peekRequest(m, ctx)
+		var end time.Time
+		if al._endT {
+			end = time.Now()
+		}
+		if al._costT {
+			m["cost"] = int64(end.Sub(begin) / al.opt.DurationUnit)
+		}
 
-		defer func() {
-			var v interface{}
-			if al._ErrStack {
-				v = recover()
-				if v != nil {
-					m["errStack"] = output.ErrorStack(v, 1)
-					if al.opt.AsGlobalRecover {
-						output.Error(ctx, v)
-					}
-				}
-			}
+		if v == nil || al.opt.AsGlobalRecover {
+			al.peekResponse(m, ctx)
+		}
 
-			var end time.Time
-			if al._endT {
-				end = time.Now()
-			}
-			if al._costT {
-				m["cost"] = int64(end.Sub(begin) / al.opt.DurationUnit)
-			}
+		if al._beginT {
+			m["begin"] = begin.Format(al.opt.TimeLayout)
+		}
 
-			if v == nil || al.opt.AsGlobalRecover {
-				al.peekResponse(m, ctx)
-			}
+		if al._endT {
+			m["end"] = end.Format(al.opt.TimeLayout)
+		}
 
-			if al._beginT {
-				m["begin"] = begin.Format(al.opt.TimeLayout)
-			}
-
-			if al._endT {
-				m["end"] = end.Format(al.opt.TimeLayout)
-			}
-
-			if al._UserId {
-				u, ok := auth.GetUser(ctx)
-				if ok {
-					m["userId"] = u.GetId()
-				} else {
-					m["userId"] = 0
-				}
-			}
-
-			l := al.namedFmt.Render(m)
-			if al.opt.Logger == nil {
-				log.Print(l)
+		if al._UserId {
+			u, ok := auth.GetUser(ctx)
+			if ok {
+				m["userId"] = u.GetId()
 			} else {
-				al.opt.Logger.Print(l)
+				m["userId"] = 0
 			}
+		}
 
-			if v != nil && !al.opt.AsGlobalRecover {
-				panic(v)
-			}
-		}()
+		l := al.namedFmt.Render(m)
+		if al.opt.Logger == nil {
+			log.Print(l)
+		} else {
+			al.opt.Logger.Print(l)
+		}
 
-		next(ctx)
-	}
-}
+		if v != nil && !al.opt.AsGlobalRecover {
+			panic(v)
+		}
+	}()
 
-func (al *AccessLogger) AsMiddleware() fasthttp.RequestHandler {
-	return al.AsHandler(router.Next)
+	next()
 }

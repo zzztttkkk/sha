@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"github.com/zzztttkkk/suna/router"
 	"log"
 
 	"github.com/zzztttkkk/suna/auth"
@@ -15,7 +16,7 @@ var lazier = utils.NewLazyExecutor()
 var initPriority = utils.NewPriority(1)
 var permTablePriority = initPriority.Incr()
 var rbacPriority = permTablePriority.Incr().Incr()
-var loader = utils.NewLoader()
+var loader = router.NewLoader()
 
 type modifyType int
 
@@ -35,7 +36,7 @@ func (v modifyType) String() string {
 	}
 }
 
-func Loader() *utils.Loader {
+func Loader() *router.Loader {
 	lazier.RegisterWithPriority(
 		func(kwargs utils.Kwargs) { Load(context.Background()) },
 		rbacPriority,

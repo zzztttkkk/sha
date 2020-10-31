@@ -1,5 +1,3 @@
-// +build postgres
-
 package sqls
 
 import (
@@ -7,40 +5,28 @@ import (
 	"fmt"
 	"strings"
 
-	_ "github.com/lib/pq"
 	"github.com/savsgio/gotils"
 	"github.com/zzztttkkk/suna/jsonx"
 	"github.com/zzztttkkk/suna/sqls/internal"
 )
 
-func init() {
-	driver = "postgres"
-	_JsonSetImpl = json_set
-	_JsonUpdateImpl = json_update
-	_JsonRemoveImpl = json_remove
-}
-
 var (
-	qs   = "'"
-	eqs  = "''"
-	qsb  = []byte(qs)
-	eqsb = []byte(eqs)
+	postgresQs   = "'"
+	postgresEqs  = "''"
+	postgresQsb  = []byte(postgresQs)
+	postgresEqsb = []byte(postgresEqs)
 
-	dqs   = "\""
-	edqs  = "\\\""
-	dqsb  = []byte(qs)
-	edqsb = []byte(eqs)
+	postgresDqs  = "\""
+	postgresEdqs = "\\\""
 )
 
-func escapeSingleQuote(s string) string { return strings.ReplaceAll(s, qs, eqs) }
+func escapeSingleQuote(s string) string { return strings.ReplaceAll(s, postgresQs, postgresEqs) }
 
-func escapeSingleQuoteBytes(s []byte) []byte { return bytes.ReplaceAll(s, qsb, eqsb) }
+func escapeSingleQuoteBytes(s []byte) []byte { return bytes.ReplaceAll(s, postgresQsb, postgresEqsb) }
 
-func escapeDoubleQuote(s string) string { return strings.ReplaceAll(s, dqs, edqs) }
+func escapeDoubleQuote(s string) string { return strings.ReplaceAll(s, postgresDqs, postgresEdqs) }
 
-func escapeDoubleQuoteBytes(s []byte) []byte { return bytes.ReplaceAll(s, dqsb, edqsb) }
-
-func json_set(column string, path string, v interface{}) internal.Sqlizer {
+func postgresJsonSet(column string, path string, v interface{}) internal.Sqlizer {
 	return RAW(
 		fmt.Sprintf(
 			"jsonb_set(%s::jsonb, '{\"%s\"}', '%s')",
@@ -51,7 +37,7 @@ func json_set(column string, path string, v interface{}) internal.Sqlizer {
 	)
 }
 
-func json_update(column string, m map[string]interface{}) internal.Sqlizer {
+func postgresJsonUpdate(column string, m map[string]interface{}) internal.Sqlizer {
 	return RAW(
 		fmt.Sprintf(
 			"%s::jsonb||'%s'::jsonb",
@@ -61,7 +47,7 @@ func json_update(column string, m map[string]interface{}) internal.Sqlizer {
 	)
 }
 
-func json_remove(column string, paths ...string) internal.Sqlizer {
+func postgresJsonRemove(column string, paths ...string) internal.Sqlizer {
 	buf := strings.Builder{}
 	buf.WriteString(column)
 	buf.WriteString("::jsonb")

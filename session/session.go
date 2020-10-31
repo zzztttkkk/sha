@@ -22,8 +22,8 @@ var sessionInHeader string
 var sessionKeyPrefix string
 var sessionExpire time.Duration
 
-func _initSession() {
-	sessionInCookie = cfg.Session.Cookiename
+func initSession() {
+	sessionInCookie = cfg.Session.CookieName
 	sessionInHeader = cfg.Session.HeaderName
 	sessionKeyPrefix = cfg.Session.RedisKeyPrefix
 	if !strings.HasSuffix(sessionKeyPrefix, ":") {

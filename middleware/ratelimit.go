@@ -5,56 +5,41 @@ import (
 	"github.com/valyala/fasthttp"
 	"time"
 
-	"github.com/zzztttkkk/suna/router"
-
 	"github.com/zzztttkkk/suna/output"
 )
 
 type RateLimiter struct {
-	raw   *redis_rate.Limiter
-	opt   *RateLimiterOption
-	limit *redis_rate.Limit
+	raw       *redis_rate.Limiter
+	limit     *redis_rate.Limit
+	keyGetter func(ctx *fasthttp.RequestCtx) string
 }
 
-type RateLimiterOption struct {
-	Rate   int
-	Period time.Duration
-	Burst  int
-	GetKey func(ctx *fasthttp.RequestCtx) string
-}
-
-func NewRateLimiter(opt *RateLimiterOption) *RateLimiter {
+func NewRateLimiter(rate int, period time.Duration, burst int, keyGetter func(ctx *fasthttp.RequestCtx) string) *RateLimiter {
 	return &RateLimiter{
 		raw: redis_rate.NewLimiter(redisc),
-		opt: opt,
 		limit: &redis_rate.Limit{
-			Rate:   opt.Rate,
-			Period: opt.Period,
-			Burst:  opt.Burst,
+			Rate:   rate,
+			Period: period,
+			Burst:  burst,
 		},
+		keyGetter: keyGetter,
 	}
 }
 
-func (rl *RateLimiter) AsHandler(next fasthttp.RequestHandler) fasthttp.RequestHandler {
-	return func(ctx *fasthttp.RequestCtx) {
-		key := rl.opt.GetKey(ctx)
-		if len(key) < 1 {
-			next(ctx)
-			return
-		}
-		res, err := rl.raw.Allow(key, rl.limit)
-		if err != nil {
-			output.Error(ctx, err)
-			return
-		}
-		if !res.Allowed {
-			output.Error(ctx, output.HttpErrors[fasthttp.StatusTooManyRequests])
-			return
-		}
-		next(ctx)
+func (rl *RateLimiter) Process(ctx *fasthttp.RequestCtx, next func()) {
+	key := rl.keyGetter(ctx)
+	if len(key) < 1 {
+		next()
+		return
 	}
-}
-
-func (rl *RateLimiter) AsMiddleware() fasthttp.RequestHandler {
-	return rl.AsHandler(router.Next)
+	res, err := rl.raw.Allow(key, rl.limit)
+	if err != nil {
+		output.Error(ctx, err)
+		return
+	}
+	if !res.Allowed {
+		output.Error(ctx, output.HttpErrors[fasthttp.StatusTooManyRequests])
+		return
+	}
+	next()
 }

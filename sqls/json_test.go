@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	"github.com/zzztttkkk/suna/jsonx"
+	_ "github.com/zzztttkkk/suna/sqls/drivers/mysql"
+	_ "github.com/zzztttkkk/suna/sqls/drivers/postgres"
 )
 
 func TestMysqlJson(t *testing.T) {
+	initMysqlJson()
 	fmt.Println(JsonSet("info", "$.x", 12))
 	fmt.Println(
 		JsonUpdate(
@@ -28,6 +31,7 @@ func TestMysqlJson(t *testing.T) {
 }
 
 func TestPostgresJson(t *testing.T) {
+	initPostgresJson()
 	fmt.Println(JsonSet("info", "x", 12))
 	fmt.Println(
 		JsonUpdate(
