@@ -3,5 +3,5 @@ package auth
 import "github.com/zzztttkkk/suna/internal"
 
 func init() {
-	internal.Dig.LazyInvoke(func(aor Authenticator) { authenticatorV = aor })
+	internal.Dig.Append(func(aor Authenticator) { authenticatorV = aor })
 }

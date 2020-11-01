@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	internal.Dig.LazyInvoke(
+	internal.Dig.Append(
 		func(conf *config.Suna) {
 			for _, f := range conf.Captcha.Fonts {
 				a := strings.Split(strings.TrimSpace(f), ":")

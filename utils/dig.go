@@ -23,7 +23,7 @@ func (d *_Dig) Provide(constructor interface{}, opts ...dig.ProvideOption) {
 	}
 }
 
-func (d *_Dig) LazyInvoke(function interface{}, opts ...dig.InvokeOption) {
+func (d *_Dig) Append(function interface{}, opts ...dig.InvokeOption) {
 	d.invokes = append(d.invokes, _DigInvoke{Func: function, Opts: opts})
 }
 

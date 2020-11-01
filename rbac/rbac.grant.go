@@ -2,7 +2,7 @@ package rbac
 
 import (
 	"context"
-
+	"errors"
 	"github.com/RoaringBitmap/roaring/roaring64"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/utils"
@@ -14,6 +14,8 @@ const (
 	PolicyAll = CheckPolicy(iota)
 	PolicyAny
 )
+
+var ErrUnknownRole = errors.New("suna.rbac: unknown role")
 
 func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
 	if len(roles) < 1 {
@@ -31,8 +33,7 @@ func getBitmap(roles utils.Int64Slice) *roaring64.Bitmap {
 	for _, rid := range roles {
 		m, ok := rolePermMap[rid]
 		if !ok {
-			// todo log
-			return nil
+			panic(ErrUnknownRole)
 		}
 		for p := range m {
 			set.Add(uint64(p))
@@ -65,7 +66,7 @@ func IsGranted(ctx context.Context, user auth.User, policy CheckPolicy, permissi
 		Perms = append(Perms, uint64(v.Id))
 	}
 
-	set := getBitmap(_UserOperator.getRoles(ctx, SubjectId))
+	set := getBitmap(UserOperator.getRoles(ctx, SubjectId))
 	if set == nil {
 		return false
 	}

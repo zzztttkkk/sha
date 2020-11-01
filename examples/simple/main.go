@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/zzztttkkk/suna/rbac"
 	"regexp"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
-	"github.com/zzztttkkk/suna/rbac"
 	"github.com/zzztttkkk/suna/router"
 	_ "github.com/zzztttkkk/suna/sqls/drivers/postgres"
 	"github.com/zzztttkkk/suna/validator"
@@ -43,7 +43,7 @@ func main() {
 			Authenticator: auth.AuthenticatorFunc(
 				func(ctx *fasthttp.RequestCtx) (auth.User, bool) {
 					if gotils.B2S(ctx.FormValue("token")) == "123456" {
-						return &User{id: time.Now().Unix()}, true
+						return &User{id: 1}, true
 					}
 					return nil, false
 				},

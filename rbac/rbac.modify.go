@@ -79,9 +79,9 @@ func RoleDelPerm(ctx context.Context, role, perm string) error {
 
 // user
 func UserAddRole(ctx context.Context, uid int64, role string) error {
-	return _UserOperator.changeRole(ctx, uid, role, _Add)
+	return UserOperator.changeRole(ctx, uid, role, _Add)
 }
 
 func UserDelRole(ctx context.Context, uid int64, role string) error {
-	return _UserOperator.changeRole(ctx, uid, role, _Del)
+	return UserOperator.changeRole(ctx, uid, role, _Del)
 }

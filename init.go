@@ -1,10 +1,13 @@
 package suna
 
 import (
+	"fmt"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/utils"
 	"log"
+	"strings"
 )
 
 type InitOption struct {
@@ -22,10 +25,39 @@ func doReservedKeysWarning() {
 	if disableReservedKeysWarning {
 		return
 	}
+
+	q := func(sl []string) []string {
+		return utils.SMap(
+			sl,
+			func(_ int, s string) string {
+				return fmt.Sprintf(`"%s"`, s)
+			},
+		)
+	}
+
 	log.Printf(
-		"suna: reserved fasthttp.RequestCtx.UserValue keys: `%s`, `%s`\n",
-		internal.RCtxSessionKey,
-		internal.RCtxUserKey,
+		"suna: reserved `fasthttp.RequestCtx.UserValue` keys: %s\n",
+		strings.Join(
+			q(
+				[]string{
+					internal.RCtxSessionKey,
+					internal.RCtxUserKey,
+					internal.RCtxRouterPathParam,
+				},
+			),
+			", ",
+		),
+	)
+	log.Printf(
+		"suna: reserved `suna.session.Session` keys: %s\n",
+		strings.Join(
+			q(
+				[]string{
+					internal.SessionExistsKey,
+				},
+			),
+			", ",
+		),
 	)
 }
 

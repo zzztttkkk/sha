@@ -18,11 +18,11 @@ type logOpT struct {
 var LogOperator = &logOpT{}
 
 func init() {
-	lazier.RegisterWithPriority(
-		func(kwargs utils.Kwargs) {
+	dig.Append(
+		func() _DigLogTableInited {
 			LogOperator.Init(logT{})
+			return _DigLogTableInited(0)
 		},
-		initPriority.Incr(),
 	)
 }
 

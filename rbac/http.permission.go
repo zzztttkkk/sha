@@ -12,80 +12,96 @@ func newPAllPermChecker(perm string, next fasthttp.RequestHandler) fasthttp.Requ
 	return NewPermissionCheckHandler(PolicyAll, []string{EnsurePermission(perm, "")}, next)
 }
 
-// path: /permission/create
+// post: /permissions
 func init() {
-	loader.Http(
-		func(router rpkg.Router) {
-			type Form struct {
-				Name  string `validate:"L<1-200>"`
-				Descp string `validate:"L<1-200>"`
-			}
+	dig.Append(
+		func(loader *rpkg.Loader) {
+			loader.Http(
+				func(router rpkg.Router) {
+					type Form struct {
+						Name  string `validate:"L<1-200>"`
+						Descp string `validate:"L<1-200>"`
+					}
 
-			router.POSTWithDoc(
-				"/permission/create",
-				newPAllPermChecker(
-					"rbac.perm.create",
-					func(ctx *fasthttp.RequestCtx) {
-						form := Form{}
-						if !validator.Validate(ctx, &form) {
-							return
-						}
+					router.POSTWithDoc(
+						"/permissions",
+						newPAllPermChecker(
+							"rbac.perm.create",
+							func(ctx *fasthttp.RequestCtx) {
+								form := Form{}
+								if !validator.Validate(ctx, &form) {
+									return
+								}
 
-						txc, committer := sqls.TxByUser(ctx)
-						defer committer()
+								txc, committer := sqls.TxByUser(ctx)
+								defer committer()
 
-						if err := NewPermission(txc, form.Name, form.Descp); err != nil {
-							output.Error(ctx, err)
-						}
-					},
-				),
-				validator.GetRules(Form{}).NewDoc(""),
+								if err := NewPermission(txc, form.Name, form.Descp); err != nil {
+									output.Error(ctx, err)
+								}
+							},
+						),
+						validator.GetRules(Form{}).NewDoc(""),
+					)
+				},
 			)
 		},
 	)
 }
 
-// path: /permission/delete
+// delete: /permissions/{pname}
 func init() {
-	loader.Http(
-		func(router rpkg.Router) {
-			router.POSTWithDoc(
-				"/permission/delete",
-				newPAllPermChecker(
-					"rbac.perm.delete",
-					func(ctx *fasthttp.RequestCtx) {
-						form := _NameForm{}
-						if !validator.Validate(ctx, &form) {
-							return
-						}
+	dig.Append(
+		func(loader *rpkg.Loader) {
+			loader.Http(
+				func(router rpkg.Router) {
+					type Form struct {
+						Name string `validator:"P<name>;L<1-200>"`
+					}
 
-						txc, committer := sqls.TxByUser(ctx)
-						defer committer()
+					router.DELETEWithDoc(
+						"/permissions/{name}",
+						newPAllPermChecker(
+							"rbac.perm.delete",
+							func(ctx *fasthttp.RequestCtx) {
+								form := Form{}
+								if !validator.Validate(ctx, form) {
+									return
+								}
 
-						if err := DelPermission(txc, form.Name); err != nil {
-							output.Error(ctx, err)
-						}
-					},
-				),
-				validator.GetRules(_NameForm{}).NewDoc(""),
+								txc, committer := sqls.TxByUser(ctx)
+								defer committer()
+
+								if err := DelPermission(txc, form.Name); err != nil {
+									output.Error(ctx, err)
+								}
+							},
+						),
+						validator.GetRules(Form{}).NewDoc(""),
+					)
+				},
 			)
 		},
 	)
 }
 
-// path: /permission/all
+// get: /permissions
 func init() {
-	loader.Http(
-		func(router rpkg.Router) {
-			router.GETWithDoc(
-				"/permission/all",
-				newPAllPermChecker(
-					"rbac.perm.read",
-					func(ctx *fasthttp.RequestCtx) {
-						output.MsgOK(ctx, _PermissionOperator.List(ctx))
-					},
-				),
-				rpkg.NewDoc(""),
+	dig.Append(
+		func(loader *rpkg.Loader) {
+			loader.Http(
+				func(router rpkg.Router) {
+					router.GETWithDoc(
+						"/permissions",
+						newPAllPermChecker(
+							"rbac.perm.read",
+							func(ctx *fasthttp.RequestCtx) {
+								output.MsgOK(ctx, _PermissionOperator.List(ctx))
+							},
+						),
+						rpkg.NewDoc("list all permissions"),
+					)
+				},
 			)
 		},
 	)

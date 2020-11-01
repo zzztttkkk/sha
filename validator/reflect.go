@@ -284,6 +284,8 @@ func (p *_TagParser) OnAttr(key, val string) {
 		default:
 			log.Printf("suna.validator: invalid size range option. %s.%s", p.name, p.current.field)
 		}
+	case "P", "path":
+		rule.path = val
 	case "I", "info":
 		rule.info = val
 	case "optional":

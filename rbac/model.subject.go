@@ -5,17 +5,17 @@ import (
 	"github.com/zzztttkkk/suna/sqls"
 )
 
-type userWithRoleT struct {
+type subjectWithRoleT struct {
 	sqls.Model
 	Subject int64 `json:"subject"`
 	Role    int64 `json:"role"`
 }
 
-func (userWithRoleT) SqlsTableName() string {
+func (subjectWithRoleT) SqlsTableName() string {
 	return tablePrefix + "subject_with_role"
 }
 
-func (ele userWithRoleT) SqlsTableColumns(db *sqlx.DB) []string {
+func (ele subjectWithRoleT) SqlsTableColumns(db *sqlx.DB) []string {
 	return ele.Model.SqlsTableColumns(
 		db,
 		"subject bigint not null",

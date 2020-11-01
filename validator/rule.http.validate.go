@@ -86,15 +86,7 @@ func Validate(ctx *fasthttp.RequestCtx, ptr interface{}) bool {
 	}
 
 	for _, rule := range rules.lst {
-		val := ctx.FormValue(rule.form)
-		if len(val) > 0 {
-			val = bytes.TrimSpace(val)
-		}
-
-		if len(val) == 0 && len(rule.defaultV) > 0 {
-			val = rule.defaultV
-		}
-
+		val := rule.peek(ctx)
 		if len(val) == 0 {
 			if rule.required {
 				output.Error(ctx, _NewFormNullError(rule.form))

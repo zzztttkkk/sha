@@ -9,11 +9,11 @@ import (
 )
 
 type _EnumCache struct {
-	im          map[int64]EnumItem
-	nm          map[string]EnumItem
-	all         []EnumItem
-	last        int64
-	expire      int64
+	idMap       map[int64]EnumItem
+	nameMap     map[string]EnumItem
+	temp        []EnumItem
+	lastChange  int64
+	expires     int64
 	op          *Operator
 	constructor func() EnumItem
 	afterScan   func(context.Context, interface{}) error
@@ -35,7 +35,7 @@ func (cache *_EnumCache) load(ctx context.Context) {
 	cache.rwm.Lock()
 	defer cache.rwm.Unlock()
 
-	cache.all = make([]EnumItem, 0, len(cache.all))
+	cache.temp = make([]EnumItem, 0, len(cache.temp))
 
 	ExecuteCustomScan(
 		ctx,
@@ -52,7 +52,7 @@ func (cache *_EnumCache) load(ctx context.Context) {
 						return e
 					}
 				}
-				cache.all = append(cache.all, v)
+				cache.temp = append(cache.temp, v)
 				return nil
 			},
 		),
@@ -62,17 +62,17 @@ func (cache *_EnumCache) load(ctx context.Context) {
 			OrderBy("id"),
 	)
 
-	for _, obj := range cache.all {
-		cache.nm[obj.GetName()] = obj
-		cache.im[obj.GetId()] = obj
+	for _, obj := range cache.temp {
+		cache.nameMap[obj.GetName()] = obj
+		cache.idMap[obj.GetId()] = obj
 	}
-	cache.last = time.Now().Unix()
+	cache.lastChange = time.Now().Unix()
 }
 
 func (cache *_EnumCache) refresh(ctx context.Context) {
 	cache.rwm.RLock()
 
-	if time.Now().Unix()-cache.last <= cache.expire {
+	if time.Now().Unix()-cache.lastChange <= cache.expires {
 		cache.rwm.RUnlock()
 		return
 	}
@@ -85,7 +85,7 @@ func (cache *_EnumCache) refresh(ctx context.Context) {
 func (cache *_EnumCache) doExpire() {
 	cache.rwm.Lock()
 	defer cache.rwm.Unlock()
-	cache.last = 0
+	cache.lastChange = 0
 }
 
 func (cache *_EnumCache) GetById(ctx context.Context, id int64) (EnumItem, bool) {
@@ -94,7 +94,7 @@ func (cache *_EnumCache) GetById(ctx context.Context, id int64) (EnumItem, bool)
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
 
-	v, ok := cache.im[id]
+	v, ok := cache.idMap[id]
 	return v, ok
 }
 
@@ -104,7 +104,7 @@ func (cache *_EnumCache) GetByName(ctx context.Context, name string) (EnumItem, 
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
 
-	v, ok := cache.nm[name]
+	v, ok := cache.nameMap[name]
 	return v, ok
 }
 
@@ -114,7 +114,7 @@ func (cache *_EnumCache) TraverseIdMap(ctx context.Context, visitor func(id int6
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
 
-	for k, v := range cache.im {
+	for k, v := range cache.idMap {
 		visitor(k, v)
 	}
 }
@@ -125,7 +125,7 @@ func (cache *_EnumCache) TraverseNameMap(ctx context.Context, visitor func(name 
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
 
-	for k, v := range cache.nm {
+	for k, v := range cache.nameMap {
 		visitor(k, v)
 	}
 }
@@ -136,5 +136,5 @@ func (cache *_EnumCache) All(ctx context.Context) []EnumItem {
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
 
-	return cache.all
+	return cache.temp
 }

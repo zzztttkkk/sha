@@ -7,7 +7,7 @@ import (
 	"github.com/zzztttkkk/suna/validator"
 )
 
-// path: /log/list
+// get: /logs
 func init() {
 	type Form struct {
 		Begin     int64    `validate:"optional"`
@@ -20,31 +20,35 @@ func init() {
 		Asc    bool  `validate:"D<true>;optional"`
 	}
 
-	loader.Http(
-		func(router router.Router) {
-			router.GETWithDoc(
-				"/log/list",
-				newPAllPermChecker(
-					"rbac.log.read",
-					func(ctx *fasthttp.RequestCtx) {
-						form := Form{}
-						if !validator.Validate(ctx, &form) {
-							return
-						}
+	dig.Append(
+		func(loader *router.Loader) {
+			loader.Http(
+				func(router router.Router) {
+					router.GETWithDoc(
+						"/logs",
+						newPAllPermChecker(
+							"rbac.log.read",
+							func(ctx *fasthttp.RequestCtx) {
+								form := Form{}
+								if !validator.Validate(ctx, &form) {
+									return
+								}
 
-						output.MsgOK(
-							ctx,
-							LogOperator.List(
-								ctx,
-								form.Begin, form.End,
-								form.Names, form.Operators,
-								form.Asc,
-								form.Cursor, form.Limit,
-							),
-						)
-					},
-				),
-				validator.MakeDoc(Form{}, "list rbac operation logging"),
+								output.MsgOK(
+									ctx,
+									LogOperator.List(
+										ctx,
+										form.Begin, form.End,
+										form.Names, form.Operators,
+										form.Asc,
+										form.Cursor, form.Limit,
+									),
+								)
+							},
+						),
+						validator.MakeDoc(Form{}, "list rbac operation logging"),
+					)
+				},
 			)
 		},
 	)

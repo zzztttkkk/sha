@@ -1,7 +1,9 @@
 package validator
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/valyala/fasthttp"
 	"html"
 	"reflect"
 	"regexp"
@@ -49,8 +51,9 @@ var typeNames = []string{
 }
 
 type _Rule struct {
-	form     string // form name
-	field    string // field name
+	form     string // request form name
+	field    string // struct field name
+	path     string // request uservalue name
 	t        int    // form type
 	required bool
 	info     string // print to message when form error
@@ -95,7 +98,9 @@ type _Rule struct {
 	isSlice bool
 }
 
-var ruleFmt = utils.NewNamedFmt("|${name}|${type}|${required}|${lrange}|${vrange}|${srange}|${default}|${regexp}|${function}|${descp}|")
+var ruleFmt = utils.NewNamedFmt(
+	"|${name}|${path}|${type}|${required}|${lrange}|${vrange}|${srange}|${default}|${regexp}|${function}|${descp}|",
+)
 
 //revive:disable:cyclomatic
 func (rule *_Rule) String() string {
@@ -104,6 +109,7 @@ func (rule *_Rule) String() string {
 		"type":     typeNames[rule.t],
 		"required": rule.required,
 		"descp":    rule.info,
+		"path":     rule.path,
 	}
 	if len(rule.info) < 1 {
 		m["descp"] = "/"
@@ -201,6 +207,26 @@ func (rule *_Rule) String() string {
 	return ruleFmt.Render(m)
 }
 
+func (rule *_Rule) peek(ctx *fasthttp.RequestCtx) []byte {
+	var val []byte
+	if len(rule.path) > 0 {
+		_v, ok := ctx.UserValue(rule.path).([]byte)
+		if ok {
+			val = _v
+		}
+	} else {
+		val = ctx.FormValue(rule.form)
+	}
+
+	if len(val) > 0 {
+		val = bytes.TrimSpace(val)
+	}
+	if len(val) == 0 && len(rule.defaultV) > 0 {
+		val = rule.defaultV
+	}
+	return val
+}
+
 type _RuleSliceT []*_Rule
 
 func (a _RuleSliceT) Len() int      { return len(a) }
@@ -218,8 +244,8 @@ func (a _RuleSliceT) Less(i, j int) bool {
 // markdown table
 func (a _RuleSliceT) String() string {
 	buf := strings.Builder{}
-	buf.WriteString("|name|type|required|length range|value range|size range|default|regexp|function|description|\n")
-	buf.WriteString("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n")
+	buf.WriteString("|name|path param|type|required|length range|value range|size range|default|regexp|function|description|\n")
+	buf.WriteString("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n")
 	for _, r := range a {
 		buf.WriteString(r.String())
 		buf.WriteByte('\n')

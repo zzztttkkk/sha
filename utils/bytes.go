@@ -85,3 +85,11 @@ func (bp *BytesPool) Put(v *[]byte) {
 	}
 	bp.poll.Put(v)
 }
+
+func SMap(sl []string, fn func(i int, s string) string) []string {
+	var vl []string
+	for i, s := range sl {
+		vl = append(vl, fn(i, s))
+	}
+	return vl
+}

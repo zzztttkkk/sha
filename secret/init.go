@@ -9,7 +9,7 @@ import (
 var _SecretKey []byte
 
 func init() {
-	internal.Dig.LazyInvoke(
+	internal.Dig.Append(
 		func(conf *config.Suna) {
 			_SecretKey = []byte(conf.Secret.Key)
 			hashMethod := conf.Secret.HashAlgorithm

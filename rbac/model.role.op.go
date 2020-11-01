@@ -22,8 +22,8 @@ var _RoleOperator = &roleOpT{
 }
 
 func init() {
-	lazier.RegisterWithPriority(
-		func(kwargs utils.Kwargs) {
+	dig.Provide(
+		func(_ _DigPermissionTableInited) _DigRoleTableInited {
 			_RoleOperator.perms.Init(roleWithPermT{})
 			_RoleOperator.inherits.Init(roleInheritanceT{})
 
@@ -37,8 +37,8 @@ func init() {
 					return nil
 				},
 			)
+			return _DigRoleTableInited(0)
 		},
-		permTablePriority.Incr(),
 	)
 }
 

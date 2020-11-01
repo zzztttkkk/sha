@@ -10,7 +10,7 @@ var cfg *config.Suna
 var redisc redis.Cmdable
 
 func init() {
-	internal.Dig.LazyInvoke(
+	internal.Dig.Append(
 		func(conf *config.Suna) {
 			cfg = conf
 			redisc = conf.RedisClient()

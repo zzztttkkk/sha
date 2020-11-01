@@ -7,18 +7,22 @@ import (
 )
 
 func init() {
-	loader.Http(
-		func(router router.Router) {
-			router.GET(
-				"/status",
-				newPAllPermChecker(
-					"rbac.status",
-					func(ctx *fasthttp.RequestCtx) {
-						g.RLock()
-						defer g.RUnlock()
-						output.MsgOK(ctx, output.M{"errors": errs})
-					},
-				),
+	dig.Append(
+		func(loader *router.Loader) {
+			loader.Http(
+				func(router router.Router) {
+					router.GET(
+						"/status",
+						newPAllPermChecker(
+							"rbac.status",
+							func(ctx *fasthttp.RequestCtx) {
+								g.RLock()
+								defer g.RUnlock()
+								output.MsgOK(ctx, output.M{"errors": errs})
+							},
+						),
+					)
+				},
 			)
 		},
 	)

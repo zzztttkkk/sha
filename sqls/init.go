@@ -31,7 +31,7 @@ func _DoSqlLogging(q string, args []interface{}) {
 	}
 
 	s := fmt.Sprintf(strings.Repeat("'%v',", len(args)), args...)
-	log.Printf("suna.sqls.log: `%s` with args `[%s]`\n", q, s)
+	log.Printf("suna.sqls.log: `%s` with args [%s]\n", q, s)
 }
 
 func initMysqlJson() {
@@ -47,7 +47,7 @@ func initPostgresJson() {
 }
 
 func init() {
-	SunaInternal.Dig.LazyInvoke(
+	SunaInternal.Dig.Append(
 		func(conf *config.Suna) {
 			cfg = conf
 			if cfg.GetSqlLeader() == nil {

@@ -11,26 +11,26 @@ import (
 	"github.com/zzztttkkk/suna/utils"
 )
 
-type userOpT struct {
+type _SubjectOpT struct {
 	roles *sqls.Operator
 	lru   *utils.Lru
 }
 
-var _UserOperator = &userOpT{
+var UserOperator = &_SubjectOpT{
 	roles: &sqls.Operator{},
 }
 
 func init() {
-	lazier.RegisterWithPriority(
-		func(kwargs utils.Kwargs) {
-			_UserOperator.roles.Init(userWithRoleT{})
-			_UserOperator.lru = utils.NewLru(cfg.Cache.Lru.UserSize)
+	dig.Provide(
+		func(_ _DigRoleTableInited) _DigUserTableInited {
+			UserOperator.roles.Init(subjectWithRoleT{})
+			UserOperator.lru = utils.NewLru(cfg.Cache.Lru.UserSize)
+			return _DigUserTableInited(0)
 		},
-		permTablePriority.Incr(),
 	)
 }
 
-func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName string, mt modifyType) error {
+func (op *_SubjectOpT) changeRole(ctx context.Context, subjectId int64, roleName string, mt modifyType) error {
 	OP := op.roles
 
 	roleId := _RoleOperator.GetIdByName(ctx, roleName)
@@ -63,7 +63,7 @@ func (op *userOpT) changeRole(ctx context.Context, subjectId int64, roleName str
 	return nil
 }
 
-func (op *userOpT) getRoles(ctx context.Context, userId int64) []int64 {
+func (op *_SubjectOpT) getRoles(ctx context.Context, userId int64) []int64 {
 	v, ok := op.lru.Get(strconv.FormatInt(userId, 16))
 	if ok {
 		return v.([]int64)

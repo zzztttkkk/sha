@@ -15,15 +15,15 @@ type permOpT struct {
 var _PermissionOperator = &permOpT{}
 
 func init() {
-	lazier.RegisterWithPriority(
-		func(kwargs utils.Kwargs) {
+	dig.Provide(
+		func() _DigPermissionTableInited {
 			_PermissionOperator.Init(
 				Permission{},
 				func() sqls.EnumItem { return &Permission{} },
 				nil,
 			)
+			return _DigPermissionTableInited(0)
 		},
-		permTablePriority,
 	)
 }
 

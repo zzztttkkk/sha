@@ -9,7 +9,7 @@ import (
 var _JsonPCallbackParams string
 
 func init() {
-	internal.Dig.LazyInvoke(
+	internal.Dig.Append(
 		func(conf *config.Suna) {
 			errors.MaxStackDepth = conf.Output.ErrorMaxDepth
 			if errors.MaxStackDepth < 1 {

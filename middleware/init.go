@@ -9,7 +9,7 @@ import (
 var redisc redis.Cmdable
 
 func init() {
-	internal.Dig.LazyInvoke(
+	internal.Dig.Append(
 		func(conf *config.Suna) {
 			redisc = conf.RedisClient()
 		},

@@ -13,10 +13,10 @@ type EnumOperator struct {
 
 func (op *EnumOperator) newEnumCache(seconds int64, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) *_EnumCache {
 	cache := &_EnumCache{
-		im:          map[int64]EnumItem{},
-		nm:          map[string]EnumItem{},
-		last:        0,
-		expire:      seconds,
+		idMap:       map[int64]EnumItem{},
+		nameMap:     map[string]EnumItem{},
+		lastChange:  0,
+		expires:     seconds,
 		op:          &op.Operator,
 		constructor: constructor,
 		afterScan:   afterScan,

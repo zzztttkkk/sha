@@ -280,14 +280,13 @@ func (al *AccessLogger) Process(ctx *fasthttp.RequestCtx, next func()) {
 	al.peekRequest(m, ctx)
 
 	defer func() {
-		var v interface{}
-		if al._ErrStack {
-			v = recover()
-			if v != nil {
+		v := recover()
+		if v != nil {
+			if al._ErrStack {
 				m["errStack"] = output.ErrorStack(v, 1)
-				if al.opt.AsGlobalRecover {
-					output.Error(ctx, v)
-				}
+			}
+			if al.opt.AsGlobalRecover {
+				output.Error(ctx, v)
 			}
 		}
 

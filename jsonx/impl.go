@@ -27,7 +27,7 @@ func MustMarshal(val interface{}) []byte {
 }
 
 func init() {
-	internal.Dig.LazyInvoke(
+	internal.Dig.Append(
 		func(cfg *config.Suna) {
 			_UnmarshalImpl = cfg.Json.Unmarshal
 			_MarshalImpl = cfg.Json.Marshal

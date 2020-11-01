@@ -6,19 +6,23 @@ import (
 	"github.com/zzztttkkk/suna/router"
 )
 
-// path: /reload
+// get: /reload
 func init() {
-	loader.Http(
-		func(R router.Router) {
-			R.GETWithDoc(
-				"/reload",
-				newPAllPermChecker(
-					"rbac.reload",
-					func(ctx *fasthttp.RequestCtx) {
-						Load(context.Background())
-					},
-				),
-				router.NewDoc(""),
+	dig.Append(
+		func(loader *router.Loader) {
+			loader.Http(
+				func(R router.Router) {
+					R.GETWithDoc(
+						"/reload",
+						newPAllPermChecker(
+							"rbac.reload",
+							func(ctx *fasthttp.RequestCtx) {
+								Load(context.Background())
+							},
+						),
+						router.NewDoc(""),
+					)
+				},
 			)
 		},
 	)
