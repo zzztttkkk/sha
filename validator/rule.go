@@ -3,6 +3,7 @@ package validator
 import (
 	"bytes"
 	"fmt"
+	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"html"
 	"reflect"
@@ -210,9 +211,9 @@ func (rule *_Rule) String() string {
 func (rule *_Rule) peek(ctx *fasthttp.RequestCtx) []byte {
 	var val []byte
 	if len(rule.path) > 0 {
-		_v, ok := ctx.UserValue(rule.path).([]byte)
+		_v, ok := ctx.UserValue(rule.path).(string)
 		if ok {
-			val = _v
+			val = gotils.S2B(_v)
 		}
 	} else {
 		val = ctx.FormValue(rule.form)
