@@ -31,7 +31,7 @@ func init() {
 								txc, committer := sqls.TxByUser(ctx)
 								defer committer()
 
-								if err := UserAddRole(txc, form.Sid, form.RoleName); err != nil {
+								if err := SubjectAddRole(txc, form.Sid, form.RoleName); err != nil {
 									output.Error(ctx, err)
 								}
 							},
@@ -57,7 +57,7 @@ func init() {
 								txc, committer := sqls.TxByUser(ctx)
 								defer committer()
 
-								if err := UserDelRole(txc, form.Sid, form.RoleName); err != nil {
+								if err := SubjectDelRole(txc, form.Sid, form.RoleName); err != nil {
 									output.Error(ctx, err)
 								}
 							},
@@ -89,7 +89,7 @@ func init() {
 								if !validator.Validate(ctx, &form) {
 									return
 								}
-								output.MsgOK(ctx, UserOperator.getRoles(ctx, form.Uid))
+								output.MsgOK(ctx, SubjectOperator.getRoles(ctx, form.Uid))
 							},
 						),
 						validator.GetRules(UidForm{}).NewDoc(""),

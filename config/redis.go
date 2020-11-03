@@ -13,13 +13,13 @@ var ErrRedisUnknownMode = errors.New("suna.config: unknown redis mode,[singleton
 
 //revive:disable:cyclomatic
 func (t *Suna) _InitRedisClient() {
-	if t.Internal.redisc != nil {
+	if t.internal.redisc != nil {
 		return
 	}
 
 	defer func() {
-		if t.Internal.redisc != nil {
-			if err := t.Internal.redisc.Ping().Err(); err != nil {
+		if t.internal.redisc != nil {
+			if err := t.internal.redisc.Ping().Err(); err != nil {
 				panic(err)
 			}
 		}
@@ -40,7 +40,7 @@ func (t *Suna) _InitRedisClient() {
 
 	switch strings.ToLower(t.Redis.Mode) {
 	case "singleton":
-		t.Internal.redisc = redis.NewClient(opts[0])
+		t.internal.redisc = redis.NewClient(opts[0])
 		return
 	case "ring":
 		addrs := map[string]string{}
@@ -49,14 +49,14 @@ func (t *Suna) _InitRedisClient() {
 			addrs[fmt.Sprintf("node.%d", ind)] = opt.Addr
 			pwds[fmt.Sprintf("node.%d", ind)] = opt.Password
 		}
-		t.Internal.redisc = redis.NewRing(&redis.RingOptions{Addrs: addrs, Passwords: pwds})
+		t.internal.redisc = redis.NewRing(&redis.RingOptions{Addrs: addrs, Passwords: pwds})
 		return
 	case "cluster":
 		var addrs []string
 		for _, opt := range opts {
 			addrs = append(addrs, opt.Addr)
 		}
-		t.Internal.redisc = redis.NewClusterClient(
+		t.internal.redisc = redis.NewClusterClient(
 			&redis.ClusterOptions{
 				Addrs:    addrs,
 				Username: opts[0].Username,
@@ -70,8 +70,8 @@ func (t *Suna) _InitRedisClient() {
 }
 
 func (t *Suna) RedisClient() redis.Cmdable {
-	if t.Internal.redisc == nil {
+	if t.internal.redisc == nil {
 		t._InitRedisClient()
 	}
-	return t.Internal.redisc
+	return t.internal.redisc
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/output"
@@ -16,15 +17,15 @@ type _SubjectOpT struct {
 	lru   *utils.Lru
 }
 
-var UserOperator = &_SubjectOpT{
+var SubjectOperator = &_SubjectOpT{
 	roles: &sqls.Operator{},
 }
 
 func init() {
 	dig.Provide(
 		func(_ _DigRoleTableInited) _DigUserTableInited {
-			UserOperator.roles.Init(subjectWithRoleT{})
-			UserOperator.lru = utils.NewLru(cfg.Cache.Lru.UserSize)
+			SubjectOperator.roles.Init(subjectWithRoleT{})
+			SubjectOperator.lru = utils.NewLru(cfg.Cache.Lru.UserSize)
 			return _DigUserTableInited(0)
 		},
 	)
@@ -48,10 +49,10 @@ func (op *_SubjectOpT) changeRole(ctx context.Context, subjectId int64, roleName
 	var _id int64
 	OP.ExecSelect(ctx, &_id, sqls.Select("role").Where(cond))
 	if _id < 1 {
-		if mt == _Add {
+		if mt == _Del {
 			return nil
 		}
-		OP.ExecInsert(ctx, sqls.Insert("subject, role").Values(subjectId, roleId))
+		OP.ExecInsert(ctx, sqls.Insert("subject, role, created").Values(subjectId, roleId, time.Now().Unix()))
 		return nil
 	}
 
@@ -70,7 +71,7 @@ func (op *_SubjectOpT) getRoles(ctx context.Context, userId int64) []int64 {
 	}
 
 	OP := op.roles
-	lst := make([]int64, 0)
+	lst := make([]int64, 0, 10)
 	OP.ExecSelect(
 		ctx,
 		&lst,
@@ -79,4 +80,28 @@ func (op *_SubjectOpT) getRoles(ctx context.Context, userId int64) []int64 {
 	)
 	op.lru.Add(strconv.FormatInt(userId, 16), lst)
 	return lst
+}
+
+func (op *_SubjectOpT) hasRole(ctx context.Context, userId int64, roleName string) bool {
+	roles := op.getRoles(ctx, userId)
+	tRid := _RoleOperator.GetIdByName(ctx, roleName)
+	if tRid < 0 {
+		return false
+	}
+
+	for _, rid := range roles {
+		if rid == tRid {
+			return true
+		}
+	}
+
+	g.RLock()
+	defer g.RUnlock()
+	for _, rid := range roles {
+		m := roleInheritMap[rid]
+		if len(m) > 0 && m[tRid] {
+			return true
+		}
+	}
+	return false
 }

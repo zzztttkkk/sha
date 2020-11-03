@@ -61,13 +61,14 @@ func (op *Operator) ExecDelete(ctx context.Context, builder *ci.DeleteBuilder) i
 func (op *Operator) ExecInsert(ctx context.Context, builder *ci.InsertBuilder) int64 {
 	builder.IntoIfEmpty(op.TableName())
 
-	if !IsPostgres() {
+	if !isPostgres {
 		n, e := ExecuteSql(ctx, builder).LastInsertId()
 		if e != nil {
 			panic(e)
 		}
 		return n
 	}
+
 	var lid int64
 	query, args, err := builder.ToSql()
 	ExecuteSelect(ctx, &lid, query, args, err)

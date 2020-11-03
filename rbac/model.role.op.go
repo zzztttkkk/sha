@@ -67,9 +67,9 @@ func (op *roleOpT) changePerm(ctx context.Context, roleName, permName string, mt
 	cond := sqls.STR("role=? and perm=?", roleId, permId)
 
 	var _id int64
-	OP.ExecSelect(ctx, &_id, sqls.Select("id").Where(cond))
-	if _id < 1 {
-		if mt == _Add {
+	OP.ExecSelect(ctx, &_id, sqls.Select("perm").Where(cond))
+	if _id < 1 { // not exists
+		if mt == _Del {
 			return nil
 		}
 
@@ -92,7 +92,7 @@ func (op *roleOpT) getAllPerms(ctx context.Context, role *Role) {
 	OP.ExecSelect(
 		ctx,
 		&role.Permissions,
-		sqls.Select("perm").Distinct().Where("role=?", role.Id),
+		sqls.Select("perm").Distinct().Where("role=?", role.Id).OrderBy("perm"),
 	)
 }
 
@@ -123,8 +123,8 @@ func (op *roleOpT) changeInherits(ctx context.Context, roleName, basedRoleName s
 
 	var _id int64
 	OP.ExecSelect(ctx, &_id, sqls.Select("based").Where(cond))
-	if _id < 1 {
-		if mt == _Add {
+	if _id < 1 { // not exists
+		if mt == _Del {
 			return nil
 		}
 		OP.ExecInsert(

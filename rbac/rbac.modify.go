@@ -40,11 +40,11 @@ func DelRole(ctx context.Context, name string) error {
 	return nil
 }
 
-func RoleAddBased(ctx context.Context, a, based string) error {
+func RoleInheritFrom(ctx context.Context, a, based string) error {
 	return _RoleOperator.changeInherits(ctx, a, based, _Add)
 }
 
-func RoleDelBased(ctx context.Context, a, based string) error {
+func RoleUninheritFrom(ctx context.Context, a, based string) error {
 	return _RoleOperator.changeInherits(ctx, a, based, _Del)
 }
 
@@ -78,10 +78,10 @@ func RoleDelPerm(ctx context.Context, role, perm string) error {
 }
 
 // user
-func UserAddRole(ctx context.Context, uid int64, role string) error {
-	return UserOperator.changeRole(ctx, uid, role, _Add)
+func SubjectAddRole(ctx context.Context, uid int64, role string) error {
+	return SubjectOperator.changeRole(ctx, uid, role, _Add)
 }
 
-func UserDelRole(ctx context.Context, uid int64, role string) error {
-	return UserOperator.changeRole(ctx, uid, role, _Del)
+func SubjectDelRole(ctx context.Context, uid int64, role string) error {
+	return SubjectOperator.changeRole(ctx, uid, role, _Del)
 }

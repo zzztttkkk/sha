@@ -5,17 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
-	"reflect"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/auth"
+	"log"
+	"reflect"
 
 	ci "github.com/zzztttkkk/suna/sqls/internal"
 )
 
-type executor interface {
+type SqlExecutor interface {
 	sqlx.ExecerContext
 	sqlx.QueryerContext
 	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
@@ -32,7 +31,7 @@ const (
 	justLeaderKey
 )
 
-func UseLeaderDB(ctx context.Context) context.Context {
+func UseLeader(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justLeaderKey, true)
 }
 
@@ -75,7 +74,7 @@ func TxUser(ctx context.Context) auth.User {
 	return nil
 }
 
-func Executor(ctx context.Context) executor {
+func Executor(ctx context.Context) SqlExecutor {
 	tx := ctx.Value(txKey)
 	if tx != nil {
 		return tx.(*sqlx.Tx)
@@ -88,6 +87,10 @@ func Executor(ctx context.Context) executor {
 		return cfg.GetSqlLeader()
 	}
 	return f
+}
+
+func inTx(ctx context.Context) bool {
+	return ctx.Value(txKey) != nil
 }
 
 func ExecuteCustomScan(ctx context.Context, scanner *Scanner, builder *ci.SelectBuilder) int {
@@ -117,7 +120,6 @@ func ExecuteSelect(ctx context.Context, dist interface{}, query string, args []i
 	if err != nil {
 		panic(err)
 	}
-
 	dT := reflect.TypeOf(dist)
 	if dT.Kind() != reflect.Ptr {
 		panic(fmt.Errorf("suna.sqls: `%v` is not a pointer", dist))

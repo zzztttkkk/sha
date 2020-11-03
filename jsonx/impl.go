@@ -2,35 +2,30 @@ package jsonx
 
 import (
 	"encoding/json"
-
-	"github.com/zzztttkkk/suna/config"
-	"github.com/zzztttkkk/suna/internal"
+	"io"
 )
 
-var _UnmarshalImpl = json.Unmarshal
-var _MarshalImpl = json.Marshal
-
-func Unmarshal(data []byte, dist interface{}) error {
-	return _UnmarshalImpl(data, dist)
+type EncodeOption struct {
+	EscapeHTML bool
+	Prefix     string
+	Ident      string
 }
 
-func Marshal(val interface{}) ([]byte, error) {
-	return _MarshalImpl(val)
+var Unmarshal = json.Unmarshal
+var Marshal = json.Marshal
+var EncodeTo = func(v interface{}, w io.Writer, option *EncodeOption) error {
+	encoder := json.NewEncoder(w)
+	if option != nil {
+		encoder.SetEscapeHTML(option.EscapeHTML)
+		encoder.SetIndent(option.Prefix, option.Ident)
+	}
+	return encoder.Encode(v)
 }
 
-func MustMarshal(val interface{}) []byte {
-	b, e := _MarshalImpl(val)
+func MustMarshal(v interface{}) []byte {
+	b, e := Marshal(v)
 	if e != nil {
 		panic(e)
 	}
 	return b
-}
-
-func init() {
-	internal.Dig.Append(
-		func(cfg *config.Suna) {
-			_UnmarshalImpl = cfg.Json.Unmarshal
-			_MarshalImpl = cfg.Json.Marshal
-		},
-	)
 }

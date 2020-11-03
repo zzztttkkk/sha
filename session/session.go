@@ -29,7 +29,7 @@ func initSession() {
 	if !strings.HasSuffix(sessionKeyPrefix, ":") {
 		sessionKeyPrefix += ":"
 	}
-	sessionExpire = cfg.Session.Maxage.Duration
+	sessionExpire = cfg.Session.MaxAge.Duration
 }
 
 func newSession(ctx *fasthttp.RequestCtx) Session {

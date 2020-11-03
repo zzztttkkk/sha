@@ -13,7 +13,7 @@ func (Model) SqlsTableColumns(db *sqlx.DB, lines ...string) []string {
 	var s []string
 	idLine := ""
 	switch db.DriverName() {
-	case "postgres":
+	case "postgres", "pgx":
 		idLine = "id serial8 primary key"
 	case "sqlite3":
 		idLine = "id integer primary key"

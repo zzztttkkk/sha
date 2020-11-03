@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/RoaringBitmap/roaring v0.5.1
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fasthttp/websocket v1.4.3-beta.2
 	github.com/go-errors/errors v1.1.1
 	github.com/go-redis/redis/v7 v7.4.0
@@ -23,4 +24,5 @@ require (
 	go.uber.org/dig v1.10.0
 	golang.org/x/image v0.0.0-20200927104501-e162460cd6b5
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/text v0.3.3 // indirect
 )

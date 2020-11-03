@@ -2,12 +2,10 @@ package output
 
 import (
 	"bytes"
+	"github.com/zzztttkkk/suna/jsonx"
 	"log"
 
 	"github.com/go-errors/errors"
-	"github.com/savsgio/gotils"
-	"github.com/zzztttkkk/suna/jsonx"
-
 	"github.com/valyala/fasthttp"
 )
 
@@ -26,39 +24,24 @@ var (
 	internalServerErrorMsg   = []byte(`{"errno":500,"errmsg":"internal server error","data":""}`)
 	_JsonpLeft               = []byte(`(`)
 	_JsonpRight              = []byte(`)`)
+	_MethodGet               = []byte("GET")
 )
 
 func Json(ctx *fasthttp.RequestCtx, data interface{}) {
-	writer := _CtxCompressionWriter{raw: ctx}
-	b, e := jsonx.Marshal(data)
-	if e != nil {
-		Error(ctx, e)
-		return
-	}
-
 	var cb []byte
-	if len(_JsonPCallbackParams) > 0 && gotils.B2S(ctx.Method()) == fasthttp.MethodGet {
+	if len(_JsonPCallbackParams) > 0 && bytes.Equal(ctx.Method(), _MethodGet) {
 		cb = ctx.FormValue(_JsonPCallbackParams)
 	}
 	if len(cb) < 1 {
-		_, e = writer.Write(b)
-		if e != nil {
-			log.Printf("suna.output: %s\r\n", e.Error())
-		}
+		_ = jsonx.EncodeTo(data, ctx, nil)
 		return
 	}
 
 	ctx.Response.Header.SetContentTypeBytes(strApplicationJavascript)
-	buf := bytes.Buffer{}
-	buf.Write(cb)
-	buf.Write(_JsonpLeft)
-	buf.Write(b)
-	buf.Write(_JsonpRight)
-
-	_, e = writer.Write(buf.Bytes())
-	if e != nil {
-		log.Printf("suna.output: %s\r\n", e.Error())
-	}
+	_, _ = ctx.Write(cb)
+	_, _ = ctx.Write(_JsonpLeft)
+	_ = jsonx.EncodeTo(data, ctx, nil)
+	_, _ = ctx.Write(_JsonpRight)
 }
 
 func Msg(ctx *fasthttp.RequestCtx, code int, data interface{}) {

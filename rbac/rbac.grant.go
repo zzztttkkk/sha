@@ -66,7 +66,7 @@ func IsGranted(ctx context.Context, user auth.User, policy CheckPolicy, permissi
 		Perms = append(Perms, uint64(v.Id))
 	}
 
-	set := getBitmap(UserOperator.getRoles(ctx, SubjectId))
+	set := getBitmap(SubjectOperator.getRoles(ctx, SubjectId))
 	if set == nil {
 		return false
 	}
@@ -89,4 +89,16 @@ func IsGranted(ctx context.Context, user auth.User, policy CheckPolicy, permissi
 	default:
 		return false
 	}
+}
+
+func SubjectHasRole(ctx context.Context, uid int64, roleName string) bool {
+	return SubjectOperator.hasRole(ctx, uid, roleName)
+}
+
+func Permissions(ctx context.Context) []*Permission {
+	return _PermissionOperator.List(ctx)
+}
+
+func Roles(ctx context.Context) []*Role {
+	return _RoleOperator.List(ctx)
 }

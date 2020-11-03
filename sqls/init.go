@@ -12,6 +12,7 @@ import (
 
 var cfg *config.Suna
 var builder *SqlsInternal.Builder
+var isPostgres bool
 
 func _DoSqlLogging(q string, args []interface{}) {
 	if !cfg.Sql.Logging {
@@ -58,6 +59,7 @@ func init() {
 
 			if builder.IsPostgres() {
 				initPostgresJson()
+				isPostgres = true
 			} else {
 				initMysqlJson()
 			}

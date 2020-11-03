@@ -28,7 +28,7 @@ func (op *EnumOperator) newEnumCache(seconds int64, constructor func() EnumItem,
 func (op *EnumOperator) Init(ele interface{}, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) {
 	op.Operator.Init(ele)
 
-	expire := cfg.Sql.EnumCacheMaxage.Duration
+	expire := cfg.Sql.EnumCacheMaxAge.Duration
 	if expire < 1 {
 		expire = time.Minute * 30
 	}
@@ -38,7 +38,7 @@ func (op *EnumOperator) Init(ele interface{}, constructor func() EnumItem, after
 func (op *EnumOperator) Create(ctx context.Context, name, descp string) int64 {
 	defer op.cache.doExpire()
 	builder := Insert("name,descp,created").Values(name, descp, time.Now().Unix())
-	if IsPostgres() {
+	if isPostgres {
 		builder = builder.Returning("id")
 	}
 	return op.ExecInsert(ctx, builder)

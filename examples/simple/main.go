@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"github.com/zzztttkkk/suna/rbac"
 	"regexp"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna"
@@ -13,12 +16,12 @@ import (
 	"github.com/zzztttkkk/suna/middleware"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/router"
-	_ "github.com/zzztttkkk/suna/sqls/drivers/postgres"
 	"github.com/zzztttkkk/suna/validator"
 )
 
 var RedisUrl = "redis://127.0.0.1:6379"
 var SqlUrl = "postgres://postgres:123456@localhost/suna_examples_simple?sslmode=disable"
+var MysqlUrl = "root:123456@/suna_examples_simple"
 
 type User struct {
 	id int64
@@ -28,10 +31,34 @@ func (user *User) GetId() int64 {
 	return user.id
 }
 
+func grantRootToUser1() {
+	ctx := &fasthttp.RequestCtx{}
+	request := fasthttp.AcquireRequest()
+	request.SetRequestURI("/?token=123456")
+	ctx.Init(request, nil, nil)
+
+	if rbac.SubjectHasRole(context.Background(), 1, "root") {
+		return
+	}
+
+	//txCtx, committer := sqls.TxByUser(ctx)
+	//defer committer()
+	txCtx := ctx
+
+	_ = rbac.NewRole(txCtx, "root", "root")
+
+	for _, perm := range rbac.Permissions(txCtx) {
+		_ = rbac.RoleAddPerm(txCtx, "root", perm.Name)
+	}
+
+	_ = rbac.SubjectAddRole(txCtx, 1, "root")
+}
+
 func main() {
 	conf := config.Default()
 	conf.Redis.Mode = "singleton"
 	conf.Redis.Nodes = append(conf.Redis.Nodes, RedisUrl)
+	conf.Sql.Driver = "postgres"
 	conf.Sql.Leader = SqlUrl
 	conf.Sql.Logging = true
 
@@ -55,6 +82,8 @@ func main() {
 	root.PanicHandler = output.RecoverAndLogging
 	root.NotFound = output.NotFound
 	root.MethodNotAllowed = output.MethodNotAllowed
+	root.RequestTimeout = time.Second * 2
+	root.CompressionOptions.Enable = true
 
 	root.Use(
 		middleware.NewAccessLogger(
@@ -102,6 +131,8 @@ func main() {
 
 	loader := router.NewLoader()
 	loader.AddChild("/rbac", rbac.Loader())
+
+	grantRootToUser1()
 
 	loader.RunAsHttpServer(root, conf.Http.Address, conf.Http.TLS.Cert, conf.Http.TLS.Key)
 }

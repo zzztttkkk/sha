@@ -1,14 +1,13 @@
 package config
 
 import (
-	"database/sql"
 	"github.com/jmoiron/sqlx"
 	"math/rand"
 	"time"
 )
 
-func newSqlDB(url string, maxLifeTime time.Duration, openConns int) *sqlx.DB {
-	db := sqlx.MustConnect(sql.Drivers()[0], url)
+func (t *Suna) newSqlDB(url string, maxLifeTime time.Duration, openConns int) *sqlx.DB {
+	db := sqlx.MustConnect(t.Sql.Driver, url)
 	db.SetConnMaxLifetime(maxLifeTime)
 	db.SetMaxOpenConns(openConns)
 	return db
@@ -16,20 +15,20 @@ func newSqlDB(url string, maxLifeTime time.Duration, openConns int) *sqlx.DB {
 
 // GetSqlLeader get sql leader
 func (t *Suna) GetSqlLeader() *sqlx.DB {
-	if t.Internal.sqlLeader != nil {
-		return t.Internal.sqlLeader
+	if t.internal.sqlLeader == nil {
+		t.internal.sqlLeader = t.newSqlDB(t.Sql.Leader, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen)
 	}
-
-	t.Internal.sqlLeader = newSqlDB(t.Sql.Leader, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen)
-	return t.Internal.sqlLeader
+	return t.internal.sqlLeader
 }
 
 func (t *Suna) GetAnySqlFollower() *sqlx.DB {
-	if len(t.Internal.sqlFollowers) > 0 {
-		return t.randomFollower()
-	}
-	for _, url := range t.Sql.Followers {
-		t.Internal.sqlFollowers = append(t.Internal.sqlFollowers, newSqlDB(url, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen))
+	if len(t.internal.sqlFollowers) < 1 {
+		for _, url := range t.Sql.Followers {
+			t.internal.sqlFollowers = append(
+				t.internal.sqlFollowers,
+				t.newSqlDB(url, t.Sql.MaxLifetime.Duration, t.Sql.MaxOpen),
+			)
+		}
 	}
 	return t.randomFollower()
 }
@@ -39,8 +38,8 @@ func init() {
 }
 
 func (t *Suna) randomFollower() *sqlx.DB {
-	if len(t.Internal.sqlFollowers) > 0 {
-		return t.Internal.sqlFollowers[rand.Int()%len(t.Internal.sqlFollowers)]
+	if len(t.internal.sqlFollowers) > 0 {
+		return t.internal.sqlFollowers[rand.Int()%len(t.internal.sqlFollowers)]
 	}
-	return nil
+	return t.GetSqlLeader()
 }

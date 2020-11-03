@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 
@@ -41,20 +40,22 @@ type Suna struct {
 		HeaderName     string   `toml:"header-name"`
 		CookieName     string   `toml:"cookie-name"`
 		RedisKeyPrefix string   `toml:"redis-key-prefix"`
-		Maxage         Duration `toml:"maxage"`
+		MaxAge         Duration `toml:"max-age"`
 	}
 
 	Output struct {
 		ErrorMaxDepth     int    `toml:"error-max-depth"`
 		JsonPCallbackForm string `toml:"jsonp-callback-form"`
+		Compress          bool   `toml:"compress"`
 	}
 
 	Sql struct {
+		Driver          string
 		Leader          string
 		Followers       []string
 		MaxOpen         int      `toml:"max-open"`
 		MaxLifetime     Duration `toml:"max-lifetime"`
-		EnumCacheMaxage Duration `toml:"enum-cache-maxage"`
+		EnumCacheMaxAge Duration `toml:"enum-cache-maxage"`
 		Logging         bool
 	}
 
@@ -67,12 +68,7 @@ type Suna struct {
 		Nodes []string
 	}
 
-	Json struct {
-		Marshal   func(v interface{}) ([]byte, error)
-		Unmarshal func([]byte, interface{}) error
-	} `toml:"-"`
-
-	Internal struct {
+	internal struct {
 		isDebug   bool
 		isRelease bool
 		isTest    bool
@@ -95,11 +91,9 @@ func makeDefault() *Suna {
 	defaultV.Output.ErrorMaxDepth = 20
 	defaultV.Session.CookieName = "session"
 	defaultV.Session.HeaderName = "Session"
-	defaultV.Session.Maxage.Duration = time.Minute * 30
+	defaultV.Session.MaxAge.Duration = time.Minute * 30
 	defaultV.Session.RedisKeyPrefix = "session:"
 	defaultV.Rbac.TablenamePrefix = "rbac_"
-	defaultV.Json.Unmarshal = json.Unmarshal
-	defaultV.Json.Marshal = json.Marshal
 
 	return defaultV
 }
@@ -111,20 +105,20 @@ func (t *Suna) Done() {
 
 	switch strings.ToLower(t.Env) {
 	case "debug":
-		t.Internal.isDebug = true
+		t.internal.isDebug = true
 	case "release":
-		t.Internal.isRelease = true
+		t.internal.isRelease = true
 	case "test":
-		t.Internal.isTest = true
+		t.internal.isTest = true
 	default:
-		t.Internal.isDebug = true
+		t.internal.isDebug = true
 	}
 
 	t._InitRedisClient()
 }
 
-func (t *Suna) IsDebug() bool { return t.Internal.isDebug }
+func (t *Suna) IsDebug() bool { return t.internal.isDebug }
 
-func (t *Suna) IsRelease() bool { return t.Internal.isRelease }
+func (t *Suna) IsRelease() bool { return t.internal.isRelease }
 
-func (t *Suna) IsTest() bool { return t.Internal.isTest }
+func (t *Suna) IsTest() bool { return t.internal.isTest }

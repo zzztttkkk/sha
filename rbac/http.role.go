@@ -128,7 +128,7 @@ func init() {
 								txc, committer := sqls.TxByUser(ctx)
 								defer committer()
 
-								if err := RoleAddBased(txc, form.RoleName, form.Name); err != nil {
+								if err := RoleInheritFrom(txc, form.RoleName, form.Name); err != nil {
 									output.Error(ctx, err)
 								}
 							},
@@ -154,7 +154,7 @@ func init() {
 								txc, committer := sqls.TxByUser(ctx)
 								defer committer()
 
-								if err := RoleDelBased(txc, form.RoleName, form.BasedName); err != nil {
+								if err := RoleUninheritFrom(txc, form.RoleName, form.BasedName); err != nil {
 									output.Error(ctx, err)
 								}
 							},

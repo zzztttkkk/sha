@@ -15,6 +15,7 @@ var roleIdMap map[int64]*Role
 var errs []string
 var rolePermMap map[int64]map[int64]bool
 var rolePermCache = utils.NewLru(200)
+var roleInheritMap map[int64]map[int64]bool
 
 func Load(ctx context.Context) {
 	g.Lock()
@@ -25,6 +26,7 @@ func Load(ctx context.Context) {
 	permNameMap = map[string]*Permission{}
 	roleIdMap = map[int64]*Role{}
 	rolePermMap = map[int64]map[int64]bool{}
+	roleInheritMap = map[int64]map[int64]bool{}
 	rolePermCache.Clear()
 
 	for _, p := range _PermissionOperator.List(ctx) {
@@ -54,11 +56,19 @@ func buildRolePermMap() {
 func makeOneRole(role *Role) map[int64]bool {
 	pm := map[int64]bool{}
 	err := false
-
-	_makeOneRole(role, map[int64]bool{}, pm, &err)
+	fpm := map[int64]bool{}
+	_makeOneRole(role, fpm, pm, &err)
 
 	if err {
 		return nil
+	}
+	for k, _ := range fpm {
+		_m := roleInheritMap[role.Id]
+		if _m == nil {
+			_m = map[int64]bool{}
+			roleInheritMap[k] = _m
+		}
+		_m[k] = true
 	}
 	return pm
 }
