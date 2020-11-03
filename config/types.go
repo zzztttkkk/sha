@@ -12,9 +12,17 @@ type Suna struct {
 	Env string
 
 	Http struct {
-		Address  string
-		Hostname string
-		TLS      struct {
+		Address          string
+		Hostname         string
+		Concurrency      int
+		DisableKeepalive bool
+		ReadBufferSize   int
+		WriteBufferSize  int
+		ReadTimeout      Duration
+		WriteTimeout     Duration
+		IdleTimeout      Duration
+
+		TLS struct {
 			Cert string
 			Key  string
 		}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"github.com/zzztttkkk/suna/rbac"
 	"regexp"
 	"time"
@@ -31,29 +30,6 @@ func (user *User) GetId() int64 {
 	return user.id
 }
 
-func grantRootToUser1() {
-	ctx := &fasthttp.RequestCtx{}
-	request := fasthttp.AcquireRequest()
-	request.SetRequestURI("/?token=123456")
-	ctx.Init(request, nil, nil)
-
-	if rbac.SubjectHasRole(context.Background(), 1, "root") {
-		return
-	}
-
-	//txCtx, committer := sqls.TxByUser(ctx)
-	//defer committer()
-	txCtx := ctx
-
-	_ = rbac.NewRole(txCtx, "root", "root")
-
-	for _, perm := range rbac.Permissions(txCtx) {
-		_ = rbac.RoleAddPerm(txCtx, "root", perm.Name)
-	}
-
-	_ = rbac.SubjectAddRole(txCtx, 1, "root")
-}
-
 func main() {
 	conf := config.Default()
 	conf.Redis.Mode = "singleton"
@@ -79,22 +55,19 @@ func main() {
 	)
 
 	root := router.New(nil)
-	root.PanicHandler = output.RecoverAndLogging
 	root.NotFound = output.NotFound
 	root.MethodNotAllowed = output.MethodNotAllowed
-	root.RequestTimeout = time.Second * 2
 	root.CompressionOptions.Enable = true
 
 	root.Use(
-		middleware.NewAccessLogger(
-			"${userId:06d} ${remote} ${method} ${path} "+
-				"UserAgent:${reqHeader/User-Agent} "+
-				"${statusCode} ${statusText} ${cost:03d}ms\n",
-			nil,
+		middleware.NewTimeoutAndAccessLoggingMiddleware(
+			"${UserId:06d} ${Remote} ${Method} ${Path} "+
+				"${StatusCode} ${StatusText} IsTimeout:${IsTimeout} ${TimeSpent:03d}ms\nErrorStack:\n${ErrStack}\n",
+			time.Second, 0, "", output.Recover,
 		),
 		middleware.NewRateLimiter(
 			10,
-			time.Second*1, 10,
+			time.Second, 10,
 			func(ctx *fasthttp.RequestCtx) string { return ctx.RemoteAddr().String() },
 		),
 	)
@@ -131,8 +104,6 @@ func main() {
 
 	loader := router.NewLoader()
 	loader.AddChild("/rbac", rbac.Loader())
-
-	grantRootToUser1()
 
 	loader.RunAsHttpServer(root, conf.Http.Address, conf.Http.TLS.Cert, conf.Http.TLS.Key)
 }

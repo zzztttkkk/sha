@@ -96,6 +96,7 @@ func init() {
 						newPAllPermChecker(
 							"rbac.perm.read",
 							func(ctx *fasthttp.RequestCtx) {
+								panic(12312)
 								output.MsgOK(ctx, _PermissionOperator.List(ctx))
 							},
 						),

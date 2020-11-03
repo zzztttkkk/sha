@@ -2,22 +2,19 @@ package middleware
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/utils"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
-type AccessLogger struct {
+type _AccessLogger struct {
 	namedFmt *utils.NamedFmt
-	opt      *AccessLoggingOption
 
 	_beginT bool
 	_endT   bool
@@ -40,18 +37,9 @@ type AccessLogger struct {
 	_ReqHeader []string
 	_ResHeader []string
 
+	_IsTimeout bool
+
 	_UserId bool
-}
-
-type Logger interface {
-	Print(v ...interface{})
-}
-
-type AccessLoggingOption struct {
-	TimeLayout      string
-	DurationUnit    time.Duration
-	AsGlobalRecover bool
-	Logger          Logger
 }
 
 // revive:disable:cyclomatic
@@ -90,70 +78,54 @@ type AccessLoggingOption struct {
 // 		errStack: error stack if an internal server error occurred
 //
 // 		userId: user id of the current request
-func NewAccessLogger(fstr string, opt *AccessLoggingOption) *AccessLogger {
-	if opt == nil {
-		opt = &AccessLoggingOption{}
-	}
-
-	if opt.DurationUnit == 0 {
-		opt.DurationUnit = time.Millisecond
-	}
-
-	if len(opt.TimeLayout) < 1 {
-		opt.TimeLayout = time.RFC3339
-	}
-
-	rv := &AccessLogger{
+func _NewAccessLogger(fstr string) *_AccessLogger {
+	rv := &_AccessLogger{
 		namedFmt: utils.NewNamedFmt(fstr),
-		opt:      opt,
 	}
 
 	for _, name := range rv.namedFmt.Names {
 		switch name {
-		case "begin":
+		case "Begin":
 			rv._beginT = true
-		case "end":
+		case "End":
 			rv._endT = true
-		case "cost":
+		case "TimeSpent":
 			rv._costT = true
-		case "method":
+		case "Method":
 			rv._ReqMethod = true
-		case "path":
+		case "Path":
 			rv._ReqPath = true
-		case "reqHeaders":
+		case "ReqHeaders":
 			rv._ReqHeaders = true
-		case "query":
+		case "Query":
 			rv._ReqQuery = true
-		case "form":
+		case "Form":
 			rv._ReqForm = true
-		case "remote":
+		case "Remote":
 			rv._ReqRemote = true
-		case "statusCode":
+		case "StatusCode":
 			rv._ResStatusCode = true
-		case "statusText":
+		case "StatusText":
 			rv._ResStatusText = true
-		case "resHeaders":
+		case "ResHeaders":
 			rv._ResHeaders = true
-		case "resBody":
+		case "ResBody":
 			rv._ResBody = true
-		case "errStack":
+		case "ErrStack":
 			rv._ErrStack = true
-		case "userId":
+		case "UserId":
 			rv._UserId = true
+		case "IsTimeout":
+			rv._IsTimeout = true
 		default:
-			if strings.HasPrefix(name, "reqHeader/") {
+			if strings.HasPrefix(name, "ReqHeader/") {
 				rv._ReqHeader = append(rv._ReqHeader, name[10:])
-			} else if strings.HasPrefix(name, "resHeader/") {
+			} else if strings.HasPrefix(name, "ResHeader/") {
 				rv._ResHeader = append(rv._ResHeader, name[10:])
 			} else {
 				panic(fmt.Errorf("suna.middleware.access_logging: unknown name `%s`", name))
 			}
 		}
-	}
-
-	if rv._costT {
-		rv._endT = true
-		rv._beginT = true
 	}
 	return rv
 }
@@ -163,7 +135,7 @@ type _Header interface {
 	VisitAll(f func(key, value []byte))
 }
 
-func (al *AccessLogger) peekAllHeader(header _Header) string {
+func (logger *_AccessLogger) peekAllHeader(header _Header) string {
 	buf := strings.Builder{}
 	header.VisitAll(
 		func(key, value []byte) {
@@ -176,32 +148,45 @@ func (al *AccessLogger) peekAllHeader(header _Header) string {
 	return buf.String()
 }
 
-func (al *AccessLogger) peekSomeHeader(key string, hkeys []string, header _Header, m utils.M) {
+func (logger *_AccessLogger) peekSomeHeader(key string, hkeys []string, header _Header, m utils.M) {
 	for _, hk := range hkeys {
 		m[key+hk] = gotils.B2S(header.Peek(hk))
 	}
 }
 
-func (al *AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
-	if al._ReqMethod {
-		m["method"] = gotils.B2S(ctx.Method())
+func (logger *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
+	if logger._beginT {
+		m["Begin"] = ctx.Time().Format(time.RFC1123Z)
 	}
 
-	if al._ReqPath {
-		m["path"] = gotils.B2S(ctx.Request.URI().Path())
+	if logger._ReqMethod {
+		m["Method"] = gotils.B2S(ctx.Method())
 	}
 
-	if al._ReqRemote {
-		m["remote"] = ctx.RemoteIP().String()
+	if logger._ReqPath {
+		m["Path"] = gotils.B2S(ctx.Request.URI().Path())
 	}
 
-	if al._ReqQuery {
-		m["query"] = ctx.QueryArgs().String()
+	if logger._ReqRemote {
+		m["Remote"] = ctx.RemoteIP().String()
 	}
 
-	if al._ReqForm {
+	if logger._ReqQuery {
+		m["Query"] = ctx.QueryArgs().String()
+	}
+
+	if logger._UserId {
+		u, ok := auth.GetUser(ctx)
+		if ok {
+			m["UserId"] = u.GetId()
+		} else {
+			m["UserId"] = 0
+		}
+	}
+
+	if logger._ReqForm {
 		if ctx.PostArgs().Len() > 1 {
-			m["form"] = ctx.PostArgs().String()
+			m["Form"] = ctx.PostArgs().String()
 		} else {
 			mf, e := ctx.MultipartForm()
 			if e == nil {
@@ -222,23 +207,23 @@ func (al *AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 					}
 					buf.WriteString("]")
 				}
-				m["form"] = buf.String()
+				m["Form"] = buf.String()
 			} else {
-				m["form"] = ""
+				m["Form"] = ""
 			}
 		}
 	}
 
-	if al._ReqHeaders {
-		m["reqHeaders"] = al.peekAllHeader(&ctx.Request.Header)
+	if logger._ReqHeaders {
+		m["ReqHeaders"] = logger.peekAllHeader(&ctx.Request.Header)
 	}
 
-	if len(al._ReqHeader) > 0 {
-		al.peekSomeHeader("reqHeader/", al._ReqHeader, &ctx.Request.Header, m)
+	if len(logger._ReqHeader) > 0 {
+		logger.peekSomeHeader("ReqHeader/", logger._ReqHeader, &ctx.Request.Header, m)
 	}
 }
 
-func (al *AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
+func (logger *_AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
 	switch gotils.B2S(ctx.Response.Header.Peek("Content-Encoding")) {
 	case "deflate":
 		d, _ := ctx.Response.BodyInflate()
@@ -251,85 +236,37 @@ func (al *AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
 	}
 }
 
-func (al *AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
-	if al._ResStatusCode {
-		m["statusCode"] = ctx.Response.StatusCode()
+func (logger *_AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
+	if logger._ResStatusCode {
+		m["StatusCode"] = ctx.Response.StatusCode()
 	}
-	if al._ResStatusText {
-		m["statusText"] = http.StatusText(ctx.Response.StatusCode())
+	if logger._ResStatusText {
+		m["StatusText"] = http.StatusText(ctx.Response.StatusCode())
 	}
-	if al._ResBody {
-		m["resBody"] = al.peekResBody(ctx)
+	if logger._ResBody {
+		m["ResBody"] = logger.peekResBody(ctx)
 	}
-	if al._ResHeaders {
-		m["resHeaders"] = al.peekAllHeader(&ctx.Response.Header)
+	if logger._ResHeaders {
+		m["ResHeaders"] = logger.peekAllHeader(&ctx.Response.Header)
 	}
 
-	if len(al._ResHeader) > 0 {
-		al.peekSomeHeader("resHeader/", al._ResHeader, &ctx.Response.Header, m)
+	if len(logger._ResHeader) > 0 {
+		logger.peekSomeHeader("ResHeader/", logger._ResHeader, &ctx.Response.Header, m)
+	}
+
+	end := time.Now()
+
+	if logger._endT {
+		m["End"] = end.Format(time.RFC1123Z)
+	}
+
+	if logger._costT {
+		m["TimeSpent"] = end.Sub(ctx.Time()).Milliseconds()
 	}
 }
 
-func (al *AccessLogger) Process(ctx *fasthttp.RequestCtx, next func()) {
-	var m = utils.M{}
-	var begin time.Time
-	if al._beginT {
-		begin = time.Now()
+func (logger *_AccessLogger) peekError(ctx *fasthttp.RequestCtx, m utils.M, v interface{}) {
+	if logger._ErrStack {
+		m["ErrStack"] = output.ErrorStack(v, 1)
 	}
-
-	al.peekRequest(m, ctx)
-
-	defer func() {
-		v := recover()
-		if v != nil {
-			if al._ErrStack {
-				m["errStack"] = output.ErrorStack(v, 1)
-			}
-			if al.opt.AsGlobalRecover {
-				output.Error(ctx, v)
-			}
-		}
-
-		var end time.Time
-		if al._endT {
-			end = time.Now()
-		}
-		if al._costT {
-			m["cost"] = int64(end.Sub(begin) / al.opt.DurationUnit)
-		}
-
-		if v == nil || al.opt.AsGlobalRecover {
-			al.peekResponse(m, ctx)
-		}
-
-		if al._beginT {
-			m["begin"] = begin.Format(al.opt.TimeLayout)
-		}
-
-		if al._endT {
-			m["end"] = end.Format(al.opt.TimeLayout)
-		}
-
-		if al._UserId {
-			u, ok := auth.GetUser(ctx)
-			if ok {
-				m["userId"] = u.GetId()
-			} else {
-				m["userId"] = 0
-			}
-		}
-
-		l := al.namedFmt.Render(m)
-		if al.opt.Logger == nil {
-			log.Print(l)
-		} else {
-			al.opt.Logger.Print(l)
-		}
-
-		if v != nil && !al.opt.AsGlobalRecover {
-			panic(v)
-		}
-	}()
-
-	next()
 }

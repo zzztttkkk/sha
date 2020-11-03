@@ -48,30 +48,27 @@ func Tx(ctx context.Context) (context.Context, func()) {
 
 	tx := cfg.GetSqlLeader().MustBegin()
 	return context.WithValue(ctx, txKey, tx), func() {
-		err := recover()
-		if err == nil {
-			ce := tx.Commit()
-			if ce != nil {
-				log.Printf("suna.sqls: commit error, %s\r\n", ce.Error())
-				panic(ce)
+		recv := recover()
+		if recv == nil {
+			commitErr := tx.Commit()
+			if commitErr != nil {
+				log.Printf("suna.sqls: commit error, %s\r\n", commitErr.Error())
+				panic(commitErr)
 			}
 			return
 		}
-		re := tx.Rollback()
-		if re != nil {
-			log.Printf("suna.sqls: rollback error, %s\r\n", re.Error())
-			panic(re)
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			log.Printf("suna.sqls: rollback error: %s\r\n", rollbackErr.Error())
+			panic(recv)
 		}
-		panic(err)
+		panic(recv)
 	}
 }
 
-func TxUser(ctx context.Context) auth.User {
-	u, ok := ctx.Value(userKey).(auth.User)
-	if ok {
-		return u
-	}
-	return nil
+func CurrentUser(ctx context.Context) auth.User {
+	u, _ := ctx.Value(userKey).(auth.User)
+	return u
 }
 
 func Executor(ctx context.Context) SqlExecutor {

@@ -2,13 +2,13 @@ package rbac
 
 import (
 	"context"
-	"github.com/zzztttkkk/suna/router"
-	"github.com/zzztttkkk/suna/utils"
-	"log"
-
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/config"
 	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/router"
+	"github.com/zzztttkkk/suna/utils"
+	"log"
+	"sync"
 )
 
 type _DigLogTableInited int
@@ -38,11 +38,18 @@ func (v modifyType) String() string {
 	}
 }
 
+var once sync.Once
+var loader *router.Loader
+
 func Loader() *router.Loader {
-	loader := router.NewLoader()
-	dig.Provide(func() *router.Loader { return loader }, )
-	dig.Append(func(_ _DigUserTableInited) { Load(context.Background()) }, )
-	dig.Invoke()
+	once.Do(
+		func() {
+			loader = router.NewLoader()
+			dig.Provide(func() *router.Loader { return loader }, )
+			dig.Append(func(_ _DigUserTableInited) { Load(context.Background()) }, )
+			dig.Invoke()
+		},
+	)
 	return loader
 }
 

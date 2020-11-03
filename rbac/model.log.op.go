@@ -32,7 +32,7 @@ func (op *logOpT) Create(ctx context.Context, name string, info utils.M) int64 {
 		panic(v)
 	}
 
-	user := sqls.TxUser(ctx)
+	user := sqls.CurrentUser(ctx)
 	if user == nil {
 		panic(output.HttpErrors[fasthttp.StatusUnauthorized])
 	}
