@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"github.com/zzztttkkk/suna/jsonx"
-	_ "github.com/zzztttkkk/suna/sqls/drivers/mysql"
-	_ "github.com/zzztttkkk/suna/sqls/drivers/postgres"
 )
 
 func TestMysqlJson(t *testing.T) {
