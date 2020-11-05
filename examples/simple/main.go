@@ -2,7 +2,9 @@ package main
 
 import (
 	"github.com/zzztttkkk/suna/rbac"
+	"github.com/zzztttkkk/suna/sqls"
 	"regexp"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -30,6 +32,38 @@ func (user *User) GetId() int64 {
 	return user.id
 }
 
+var authenticator = auth.AuthenticatorFunc(
+	func(ctx *fasthttp.RequestCtx) (auth.User, bool) {
+		if gotils.B2S(ctx.FormValue("token")) == "123456" {
+			return &User{id: 1}, true
+		}
+		return nil, false
+	},
+)
+
+func grantRbacPermsToUser1() {
+	ctx := &fasthttp.RequestCtx{}
+	req := fasthttp.AcquireRequest()
+	req.SetRequestURI("/?token=123456")
+	ctx.Init(req, nil, nil)
+
+	txCtx, committer := sqls.TxByUser(ctx)
+	defer committer()
+
+	if rbac.SubjectHasRole(txCtx, 1, "root") {
+		return
+	}
+
+	_ = rbac.NewRole(txCtx, "root", "root")
+	for _, perm := range rbac.Permissions(txCtx) {
+		if !strings.HasPrefix(perm.Name, "rbac.") {
+			continue
+		}
+		_ = rbac.RoleAddPerm(txCtx, "root", perm.Name)
+	}
+	_ = rbac.SubjectAddRole(txCtx, 1, "root")
+}
+
 func main() {
 	conf := config.Default()
 	conf.Redis.Mode = "singleton"
@@ -40,19 +74,7 @@ func main() {
 
 	conf.Done()
 
-	suna.Init(
-		&suna.InitOption{
-			Config: conf,
-			Authenticator: auth.AuthenticatorFunc(
-				func(ctx *fasthttp.RequestCtx) (auth.User, bool) {
-					if gotils.B2S(ctx.FormValue("token")) == "123456" {
-						return &User{id: 1}, true
-					}
-					return nil, false
-				},
-			),
-		},
-	)
+	suna.Init(&suna.InitOption{Config: conf, Authenticator: authenticator})
 
 	root := router.New(nil)
 	root.NotFound = output.NotFound
@@ -104,6 +126,11 @@ func main() {
 
 	loader := router.NewLoader()
 	loader.AddChild("/rbac", rbac.Loader())
+
+	go func() {
+		time.Sleep(time.Second)
+		grantRbacPermsToUser1()
+	}()
 
 	loader.RunAsHttpServer(root, conf.Http.Address, conf.Http.TLS.Cert, conf.Http.TLS.Key)
 }

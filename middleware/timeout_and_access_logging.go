@@ -19,7 +19,11 @@ func NewTimeoutAndAccessLoggingMiddleware(
 		panic("suna.tal: empty format string")
 	}
 
-	logger := _NewAccessLogger(fstring)
+	if panicHandler == nil {
+		panic("suna.tal: nil panicHandler")
+	}
+
+	logger := NewAccessLogger(fstring, nil)
 
 	if timeoutDu > 0 {
 		if timeoutCode < 1 {
@@ -75,7 +79,7 @@ func NewTimeoutAndAccessLoggingMiddleware(
 	return router.MiddlewareFunc(
 		func(ctx *fasthttp.RequestCtx, next func()) {
 			m := utils.M{}
-			if logger._IsTimeout {
+			if logger.isTimeout {
 				m["IsTimeout"] = false
 			}
 

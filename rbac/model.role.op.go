@@ -30,11 +30,12 @@ func init() {
 			_RoleOperator.EnumOperator.Init(
 				Role{},
 				func() sqls.EnumItem { return &Role{} },
-				func(ctx context.Context, i interface{}) error {
-					role := i.(*Role)
-					_RoleOperator.getAllPerms(ctx, role)
-					_RoleOperator.getAllBasedRoles(ctx, role)
-					return nil
+				func(ctx context.Context, items []sqls.EnumItem) {
+					for _, item := range items {
+						role := item.(*Role)
+						_RoleOperator.getAllPerms(ctx, role)
+						_RoleOperator.getAllBasedRoles(ctx, role)
+					}
 				},
 			)
 			return _DigRoleTableInited(0)

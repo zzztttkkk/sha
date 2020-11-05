@@ -7,6 +7,7 @@ import (
 	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/output"
 	"github.com/zzztttkkk/suna/utils"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,112 +17,98 @@ import (
 type _AccessLogger struct {
 	namedFmt *utils.NamedFmt
 
-	_beginT bool
-	_endT   bool
-	_costT  bool
+	beginTime bool
+	endTime   bool
+	spentTime bool
 
-	_ReqMethod  bool
-	_ReqPath    bool
-	_ReqHeaders bool
-	_ReqQuery   bool
-	_ReqForm    bool
-	_ReqRemote  bool
+	reqMethod  bool
+	reqPath    bool
+	reqHeaders bool
+	reqQuery   bool
+	reqForm    bool
+	reqRemote  bool
 
-	_ResStatusCode bool
-	_ResStatusText bool
-	_ResHeaders    bool
-	_ResBody       bool
+	resStatusCode bool
+	resStatusText bool
+	resHeaders    bool
+	resBody       bool
 
-	_ErrStack bool
+	errStack bool
 
-	_ReqHeader []string
-	_ResHeader []string
+	reqHeader []string
+	resHeader []string
 
-	_IsTimeout bool
+	isTimeout bool
 
-	_UserId bool
+	userId bool
+
+	panicHandler func(ctx *fasthttp.RequestCtx, v interface{})
 }
 
-// revive:disable:cyclomatic
 // named formatter kwargs:
-//
-// 		begin: begin time of the current request;
-//
-// 		end: end time of the current request;
-//
-// 		cost: time spent processing current request
-//
-// 		method: method of the current request
-//
-// 		path: path of the current request
-//
-// 		reqHeaders: all headers of the current request
-//
-// 		query: query of the current request
-//
-// 		form: form body of the current request
-//
-// 		remote: remote ip of the current request
-//
-// 		reqHeader/***: some header of the current request
-//
-// 		statusCode: status code of the current response
-//
-// 		statusText: status text of the current response
-//
-// 		resHeaders: all headers of the current response
-//
-// 		resBody: body of the current response
-//
-// 		resHeader/***: some header of the current response
-//
-// 		errStack: error stack if an internal server error occurred
-//
-// 		userId: user id of the current request
-func _NewAccessLogger(fstr string) *_AccessLogger {
+// 		Begin: begin time of the current request;
+// 		End: end time of the current request;
+// 		TimeSpent: time spent processing current request
+// 		Method: method of the current request
+// 		Path: path of the current request
+// 		ReqHeaders: all headers of the current request
+// 		Query: query of the current request
+// 		Form: form body of the current request
+// 		Remote: remote ip of the current request
+// 		ReqHeader/***: some header of the current request
+// 		StatusCode: status code of the current response
+// 		StatusText: status text of the current response
+// 		ResHeaders: all headers of the current response
+// 		ResBody: body of the current response
+// 		ResHeader/***: some header of the current response
+// 		ErrStack: error stack if an internal server error occurred
+// 		UserId: user id of the current request
+//		IsTimeout: the request processing timeout
+func NewAccessLogger(fstr string, panicHandler func(ctx *fasthttp.RequestCtx, v interface{})) *_AccessLogger {
 	rv := &_AccessLogger{
-		namedFmt: utils.NewNamedFmt(fstr),
+		namedFmt:     utils.NewNamedFmt(fstr),
+		panicHandler: panicHandler,
 	}
 
 	for _, name := range rv.namedFmt.Names {
 		switch name {
 		case "Begin":
-			rv._beginT = true
+			rv.beginTime = true
 		case "End":
-			rv._endT = true
+			rv.endTime = true
 		case "TimeSpent":
-			rv._costT = true
+			rv.spentTime = true
 		case "Method":
-			rv._ReqMethod = true
+			rv.reqMethod = true
 		case "Path":
-			rv._ReqPath = true
+			rv.reqPath = true
 		case "ReqHeaders":
-			rv._ReqHeaders = true
+			rv.reqHeaders = true
 		case "Query":
-			rv._ReqQuery = true
+			rv.reqQuery = true
 		case "Form":
-			rv._ReqForm = true
+			rv.reqForm = true
 		case "Remote":
-			rv._ReqRemote = true
+			rv.reqRemote = true
 		case "StatusCode":
-			rv._ResStatusCode = true
+			rv.resStatusCode = true
 		case "StatusText":
-			rv._ResStatusText = true
+			rv.resStatusText = true
 		case "ResHeaders":
-			rv._ResHeaders = true
+			rv.resHeaders = true
 		case "ResBody":
-			rv._ResBody = true
+			rv.resBody = true
 		case "ErrStack":
-			rv._ErrStack = true
+			rv.errStack = true
 		case "UserId":
-			rv._UserId = true
+			rv.userId = true
 		case "IsTimeout":
-			rv._IsTimeout = true
+			rv.isTimeout = true
 		default:
 			if strings.HasPrefix(name, "ReqHeader/") {
-				rv._ReqHeader = append(rv._ReqHeader, name[10:])
+				rv.reqHeader = append(rv.reqHeader, name[10:])
 			} else if strings.HasPrefix(name, "ResHeader/") {
-				rv._ResHeader = append(rv._ResHeader, name[10:])
+				rv.resHeader = append(rv.resHeader, name[10:])
 			} else {
 				panic(fmt.Errorf("suna.middleware.access_logging: unknown name `%s`", name))
 			}
@@ -155,27 +142,27 @@ func (logger *_AccessLogger) peekSomeHeader(key string, hkeys []string, header _
 }
 
 func (logger *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
-	if logger._beginT {
+	if logger.beginTime {
 		m["Begin"] = ctx.Time().Format(time.RFC1123Z)
 	}
 
-	if logger._ReqMethod {
+	if logger.reqMethod {
 		m["Method"] = gotils.B2S(ctx.Method())
 	}
 
-	if logger._ReqPath {
+	if logger.reqPath {
 		m["Path"] = gotils.B2S(ctx.Request.URI().Path())
 	}
 
-	if logger._ReqRemote {
+	if logger.reqRemote {
 		m["Remote"] = ctx.RemoteIP().String()
 	}
 
-	if logger._ReqQuery {
+	if logger.reqQuery {
 		m["Query"] = ctx.QueryArgs().String()
 	}
 
-	if logger._UserId {
+	if logger.userId {
 		u, ok := auth.GetUser(ctx)
 		if ok {
 			m["UserId"] = u.GetId()
@@ -184,7 +171,7 @@ func (logger *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	if logger._ReqForm {
+	if logger.reqForm {
 		if ctx.PostArgs().Len() > 1 {
 			m["Form"] = ctx.PostArgs().String()
 		} else {
@@ -214,12 +201,12 @@ func (logger *_AccessLogger) peekRequest(m utils.M, ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	if logger._ReqHeaders {
+	if logger.reqHeaders {
 		m["ReqHeaders"] = logger.peekAllHeader(&ctx.Request.Header)
 	}
 
-	if len(logger._ReqHeader) > 0 {
-		logger.peekSomeHeader("ReqHeader/", logger._ReqHeader, &ctx.Request.Header, m)
+	if len(logger.reqHeader) > 0 {
+		logger.peekSomeHeader("ReqHeader/", logger.reqHeader, &ctx.Request.Header, m)
 	}
 }
 
@@ -237,36 +224,57 @@ func (logger *_AccessLogger) peekResBody(ctx *fasthttp.RequestCtx) string {
 }
 
 func (logger *_AccessLogger) peekResponse(m utils.M, ctx *fasthttp.RequestCtx) {
-	if logger._ResStatusCode {
+	if logger.resStatusCode {
 		m["StatusCode"] = ctx.Response.StatusCode()
 	}
-	if logger._ResStatusText {
+	if logger.resStatusText {
 		m["StatusText"] = http.StatusText(ctx.Response.StatusCode())
 	}
-	if logger._ResBody {
+	if logger.resBody {
 		m["ResBody"] = logger.peekResBody(ctx)
 	}
-	if logger._ResHeaders {
+	if logger.resHeaders {
 		m["ResHeaders"] = logger.peekAllHeader(&ctx.Response.Header)
 	}
 
-	if len(logger._ResHeader) > 0 {
-		logger.peekSomeHeader("ResHeader/", logger._ResHeader, &ctx.Response.Header, m)
+	if len(logger.resHeader) > 0 {
+		logger.peekSomeHeader("ResHeader/", logger.resHeader, &ctx.Response.Header, m)
 	}
 
 	end := time.Now()
 
-	if logger._endT {
+	if logger.endTime {
 		m["End"] = end.Format(time.RFC1123Z)
 	}
 
-	if logger._costT {
+	if logger.spentTime {
 		m["TimeSpent"] = end.Sub(ctx.Time()).Milliseconds()
 	}
 }
 
 func (logger *_AccessLogger) peekError(ctx *fasthttp.RequestCtx, m utils.M, v interface{}) {
-	if logger._ErrStack {
+	if logger.errStack {
 		m["ErrStack"] = output.ErrorStack(v, 1)
 	}
+}
+
+func (logger *_AccessLogger) Process(ctx *fasthttp.RequestCtx, next func()) {
+	m := utils.M{}
+	logger.peekRequest(m, ctx)
+
+	defer func() { log.Print(logger.namedFmt.Render(m)) }()
+
+	defer func() {
+		if logger.errStack {
+			if v := recover(); v != nil {
+				logger.peekError(ctx, m, v)
+				if logger.panicHandler != nil {
+					logger.panicHandler(ctx, v)
+				}
+			}
+		}
+		logger.peekResponse(m, ctx)
+	}()
+
+	next()
 }

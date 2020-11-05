@@ -4,56 +4,35 @@ import (
 	"context"
 	"sync"
 	"time"
-
-	"golang.org/x/sync/singleflight"
 )
 
 type _EnumCache struct {
 	idMap       map[int64]EnumItem
 	nameMap     map[string]EnumItem
-	temp        []EnumItem
+	temps       []EnumItem
 	lastChange  int64
 	expires     int64
 	op          *Operator
 	constructor func() EnumItem
-	afterScan   func(context.Context, interface{}) error
+	afterLoad   func(ctx context.Context, items []EnumItem)
 	rwm         sync.RWMutex
-	sg          singleflight.Group
-}
-
-func (cache *_EnumCache) doLoad(ctx context.Context) {
-	_, _, _ = cache.sg.Do(
-		"load",
-		func() (interface{}, error) {
-			cache.load(ctx)
-			return nil, nil
-		},
-	)
 }
 
 func (cache *_EnumCache) load(ctx context.Context) {
 	cache.rwm.Lock()
 	defer cache.rwm.Unlock()
 
-	cache.temp = make([]EnumItem, 0, len(cache.temp))
+	var temp interface{}
 
 	ExecuteCustomScan(
 		ctx,
 		NewStructScanner(
-			func(dist *[]interface{}) {
-				ele := cache.constructor()
-				(*dist)[0] = ele
+			&temp,
+			func() {
+				temp = cache.constructor()
 			},
-			func(dist *[]interface{}) error {
-				v := (*dist)[0].(EnumItem)
-				if cache.afterScan != nil {
-					e := cache.afterScan(ctx, v)
-					if e != nil {
-						return e
-					}
-				}
-				cache.temp = append(cache.temp, v)
-				return nil
+			func() {
+				cache.temps = append(cache.temps, temp.(EnumItem))
 			},
 		),
 		Select("*").
@@ -62,24 +41,26 @@ func (cache *_EnumCache) load(ctx context.Context) {
 			OrderBy("id"),
 	)
 
-	for _, obj := range cache.temp {
+	for _, obj := range cache.temps {
 		cache.nameMap[obj.GetName()] = obj
 		cache.idMap[obj.GetId()] = obj
 	}
 	cache.lastChange = time.Now().Unix()
+
+	if cache.afterLoad != nil {
+		cache.afterLoad(ctx, cache.temps)
+	}
 }
 
 func (cache *_EnumCache) refresh(ctx context.Context) {
 	cache.rwm.RLock()
-
 	if time.Now().Unix()-cache.lastChange <= cache.expires {
 		cache.rwm.RUnlock()
 		return
 	}
-
 	cache.rwm.RUnlock()
 
-	cache.doLoad(ctx)
+	cache.load(ctx)
 }
 
 func (cache *_EnumCache) doExpire() {
@@ -136,5 +117,5 @@ func (cache *_EnumCache) All(ctx context.Context) []EnumItem {
 	cache.rwm.RLock()
 	defer cache.rwm.RUnlock()
 
-	return cache.temp
+	return cache.temps
 }

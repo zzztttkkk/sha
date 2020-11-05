@@ -86,11 +86,7 @@ func Executor(ctx context.Context) SqlExecutor {
 	return f
 }
 
-func inTx(ctx context.Context) bool {
-	return ctx.Value(txKey) != nil
-}
-
-func ExecuteCustomScan(ctx context.Context, scanner *Scanner, builder *ci.SelectBuilder) int {
+func ExecuteCustomScan(ctx context.Context, scanner Scanner, builder *ci.SelectBuilder) int {
 	query, args, err := builder.ToSql()
 	if err != nil {
 		panic(err)

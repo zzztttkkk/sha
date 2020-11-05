@@ -11,7 +11,11 @@ type EnumOperator struct {
 	cache *_EnumCache
 }
 
-func (op *EnumOperator) newEnumCache(seconds int64, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) *_EnumCache {
+func (op *EnumOperator) newEnumCache(
+	seconds int64,
+	constructor func() EnumItem,
+	afterLoad func(ctx context.Context, items []EnumItem),
+) *_EnumCache {
 	cache := &_EnumCache{
 		idMap:       map[int64]EnumItem{},
 		nameMap:     map[string]EnumItem{},
@@ -19,20 +23,24 @@ func (op *EnumOperator) newEnumCache(seconds int64, constructor func() EnumItem,
 		expires:     seconds,
 		op:          &op.Operator,
 		constructor: constructor,
-		afterScan:   afterScan,
+		afterLoad:   afterLoad,
 	}
 	cache.load(context.Background())
 	return cache
 }
 
-func (op *EnumOperator) Init(ele interface{}, constructor func() EnumItem, afterScan func(context.Context, interface{}) error) {
+func (op *EnumOperator) Init(
+	ele interface{},
+	constructor func() EnumItem,
+	afterLoad func(ctx context.Context, items []EnumItem),
+) {
 	op.Operator.Init(ele)
 
 	expire := cfg.Sql.EnumCacheMaxAge.Duration
 	if expire < 1 {
 		expire = time.Minute * 30
 	}
-	op.cache = op.newEnumCache(int64(expire/time.Second), constructor, afterScan)
+	op.cache = op.newEnumCache(int64(expire/time.Second), constructor, afterLoad)
 }
 
 func (op *EnumOperator) Create(ctx context.Context, name, descp string) int64 {

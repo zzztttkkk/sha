@@ -1,55 +1,73 @@
 package sqls
 
-import "github.com/jmoiron/sqlx"
+import (
+	"github.com/jmoiron/sqlx"
+)
 
-type BeforeScan func(dist *[]interface{})
-type AfterScan func(dist *[]interface{}) error
-
-type Scanner struct {
-	beforeScan BeforeScan
-	dist       []interface{}
-	afterScan  AfterScan
-	isStruct   bool
+type Scanner interface {
+	Scan(rows *sqlx.Rows) int
 }
 
-func (s *Scanner) Scan(rows *sqlx.Rows) int {
+type ColumnScanner struct {
+	temp   []interface{}
+	before func()
+	after  func()
+}
+
+// scan row to `temps []interface{}`
+func NewColumnsScanner(temp []interface{}, before func(), after func()) *ColumnScanner {
+	return &ColumnScanner{
+		temp:   temp,
+		before: before,
+		after:  after,
+	}
+}
+
+func (s *ColumnScanner) Scan(rows *sqlx.Rows) int {
 	c := 0
 	for rows.Next() {
-		if s.beforeScan != nil {
-			s.beforeScan(&s.dist)
+		if s.before != nil {
+			s.before()
 		}
-		if s.isStruct {
-			if err := rows.StructScan(s.dist[0]); err != nil {
-				panic(err)
-			}
-		} else {
-			if err := rows.Scan(s.dist...); err != nil {
-				panic(err)
-			}
+		if err := rows.Scan(s.temp...); err != nil {
+			panic(err)
 		}
-		if s.afterScan != nil {
-			if err := s.afterScan(&s.dist); err != nil {
-				panic(err)
-			}
+		if s.after != nil {
+			s.after()
 		}
 		c++
 	}
 	return c
 }
 
-func NewScanner(dist []interface{}, before BeforeScan, after AfterScan) *Scanner {
-	return &Scanner{
-		beforeScan: before,
-		afterScan:  after,
-		dist:       dist,
+type StructScanner struct {
+	tempPtr *interface{}
+	before  func()
+	after   func()
+}
+
+func NewStructScanner(tempPtr *interface{}, before func(), after func()) *StructScanner {
+	return &StructScanner{
+		tempPtr: tempPtr,
+		before:  before,
+		after:   after,
 	}
 }
 
-func NewStructScanner(before BeforeScan, after AfterScan) *Scanner {
-	return &Scanner{
-		beforeScan: before,
-		afterScan:  after,
-		dist:       make([]interface{}, 1, 1),
-		isStruct:   true,
+func (s *StructScanner) Scan(rows *sqlx.Rows) int {
+	c := 0
+	for rows.Next() {
+		if s.before != nil {
+			s.before()
+		}
+
+		if err := rows.StructScan(*s.tempPtr); err != nil {
+			panic(err)
+		}
+		if s.after != nil {
+			s.after()
+		}
+		c++
 	}
+	return c
 }
