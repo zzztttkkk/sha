@@ -1,6 +1,0 @@
-{
-	"scripts": {
-		"simple": "go run ./examples/simple",
-		"revive": "revive -config ./revive.toml ."
-	}
-}
