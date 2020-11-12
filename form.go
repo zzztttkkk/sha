@@ -3,7 +3,6 @@ package suna
 import (
 	"bytes"
 	"github.com/zzztttkkk/suna/internal"
-	"io"
 )
 
 type UrlencodedForm struct {
@@ -80,26 +79,19 @@ func inplaceUnquote(src []byte) []byte {
 	return src[:end]
 }
 
-var bufPool = internal.NewBufferPoll(1024)
-
 const upperhex = "0123456789ABCDEF"
 
-func quoteArgsToBuf(v []byte, w io.Writer) error {
-	buf := bufPool.Get()
-	defer bufPool.Put(buf)
-
+func quoteArgsToBuf(v []byte, buf *[]byte) {
 	for _, b := range v {
 		switch {
 		case b == ' ':
-			buf.Data = append(buf.Data, '+')
+			*buf = append(*buf, '+')
 		case quotedArgShouldEscapeTable[int(b)] != 0:
-			buf.Data = append(buf.Data, '%', upperhex[b>>4], upperhex[b&0xf])
+			*buf = append(*buf, '%', upperhex[b>>4], upperhex[b&0xf])
 		default:
-			buf.Data = append(buf.Data, b)
+			*buf = append(*buf, b)
 		}
 	}
-	_, e := w.Write(buf.Data)
-	return e
 }
 
 func (form *UrlencodedForm) onItem(k []byte, v []byte) {

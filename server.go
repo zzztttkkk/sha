@@ -2,46 +2,82 @@ package suna
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"time"
 )
 
-type HttpProtocol struct {
-	MaxFirstLintSize int
-	MaxHeadersSize   int
-	MaxBodySize      int
-	ReadTimeout      time.Duration
-	WriteTimeout     time.Duration
+type Logger interface {
+	Print(v ...interface{})
+	Printf(f string, v ...interface{})
+	Println(v ...interface{})
 }
 
 type Server struct {
-	HttpProtocol      HttpProtocol
-	Host              string
-	Port              int
-	BaseCtx           context.Context
-	Handler           RequestHandler
-	OnConnectionError func(conn net.Conn, err error)
+	Host      string
+	Port      int
+	TlsConfig *tls.Config
+
+	Logger Logger
+
+	BaseCtx context.Context
+
+	Handler RequestHandler
+
+	http1xProtocol Protocol
+	http2Protocol  Protocol
 }
 
-type _Key int
+type _CtxVKey int
 
 const (
-	CtxServerKey = iota
+	CtxServerKey = _CtxVKey(iota)
 	CtxConnKey
 )
 
-func (s *Server) Run() {
+func (s Server) doListen() net.Listener {
 	listener, err := net.Listen("tcp4", fmt.Sprintf("%s:%d", s.Host, s.Port))
 	if err != nil {
 		panic(err)
 	}
+	return listener
+}
+func strSliceContains(ss []string, s string) bool {
+	for _, v := range ss {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
 
+func (s Server) enableTls(l net.Listener, certFile, keyFile string) net.Listener {
+	if s.TlsConfig == nil {
+		s.TlsConfig = &tls.Config{}
+	}
+
+	if !strSliceContains(s.TlsConfig.NextProtos, "http/1.1") {
+		s.TlsConfig.NextProtos = append(s.TlsConfig.NextProtos, "http/1.1")
+	}
+	configHasCert := len(s.TlsConfig.Certificates) > 0 || s.TlsConfig.GetCertificate != nil
+	if !configHasCert || certFile != "" || keyFile != "" {
+		var err error
+		s.TlsConfig.Certificates = make([]tls.Certificate, 1)
+		s.TlsConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return l
+}
+
+func (s Server) doAccept(l net.Listener) {
 	var tempDelay time.Duration
 	ctx := context.WithValue(s.BaseCtx, CtxServerKey, s)
 
 	for {
-		conn, err := listener.Accept()
+		conn, err := l.Accept()
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
@@ -61,73 +97,52 @@ func (s *Server) Run() {
 	}
 }
 
-var ConnReadBufferSize = 128 // min mem required for each conn
+func (s *Server) ListenAndServe() {
+	s.doAccept(s.doListen())
+}
 
-func (s *Server) onParseErr(conn net.Conn, e error) {
-	if s.OnConnectionError != nil {
-		s.OnConnectionError(conn, e)
-		return
-	}
+func (s *Server) ListenAndServeTLS(certFile, keyFile string) {
+	s.doAccept(s.enableTls(s.doListen(), certFile, keyFile))
+}
 
-	var msg []byte
-	switch e {
-	case ErrRequestHeaderFieldsTooLarge:
-		msg = []byte("HTTP/1.0 431 Request Header Fields Too Large\r\n\r\n")
-	case ErrPayloadTooLarge:
-		msg = []byte("HTTP/1.0 413 Payload Too Large\r\n\r\n")
-	case ErrBadConnection:
-		msg = []byte("HTTP/1.0 503 Service Unavailable\r\n\r\n")
-	case ErrUrlTooLong:
-		msg = []byte("HTTP/1.0 414 URI Too Long\r\n\r\n")
+func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
+	tlsConn, ok := conn.(*tls.Conn)
+	if !ok {
+		return nil, "", nil
 	}
-	_, _ = conn.Write(msg)
+	err := tlsConn.Handshake()
+	if err != nil {
+		return nil, "", err
+	}
+	return tlsConn, tlsConn.ConnectionState().NegotiatedProtocol, nil
 }
 
 func (s *Server) serve(ctx context.Context, conn net.Conn) {
-	rctx := AcquireRequestCtx()
-	defer func() {
-		ReleaseRequestCtx(rctx)
-		conn.Close()
-	}()
-
-	buf := make([]byte, ConnReadBufferSize)
-
-	rctx.conn = conn
-	rctx.connTime = time.Now()
+	var protocolName string
+	var tlsConn *tls.Conn
 	var err error
-	var n int
+	var protocol Protocol
 
-	rctx.ctxFun = func() context.Context { return ctx }
+	tlsConn, protocolName, err = s.tslHandshake(conn)
+	if err != nil { // tls handshake error
+		_ = conn.Close()
+		return
+	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			{
-				return
-			}
-		default:
-			offset := 0
-			n, err = conn.Read(buf)
-			if err != nil {
-				return
-			}
-
-			for offset != n {
-				offset, err = rctx.feedReqData(buf, offset, n, &s.HttpProtocol)
-				if err != nil {
-					s.onParseErr(conn, err)
-					return
-				}
-			}
-
-			if rctx.status == 2 && rctx.bodyRemain < 1 {
-				if rctx.Context == nil {
-					rctx.initRequest()
-				}
-				s.Handler.Handle(rctx)
-				rctx.prepareForNext()
-			}
-			continue
+	if tlsConn == nil { // http1.x
+		protocol = s.http1xProtocol
+	} else {
+		switch protocolName {
+		case "", "http/1.0", "http/1.1":
+			protocol = s.http1xProtocol
+		case "http/2.0":
+			protocol = s.http2Protocol
 		}
 	}
+
+	if protocol == nil {
+		_ = conn.Close()
+		return
+	}
+	protocol.Serve(ctx, s, conn)
 }

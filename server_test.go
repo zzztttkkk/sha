@@ -8,12 +8,14 @@ import (
 
 func TestServer_Run(t *testing.T) {
 	s := Server{
-		HttpProtocol: HttpProtocol{
+		http1xProtocol: &Http1xProtocol{
 			MaxFirstLintSize: 2048,
 			MaxHeadersSize:   4096,
 			MaxBodySize:      4096 * 1024,
 			ReadTimeout:      0,
 			WriteTimeout:     0,
+			Version:          []byte("HTTP/1.1"),
+			ReadBufferSize:   128,
 		},
 		Host:    "127.0.0.1",
 		Port:    8080,
@@ -22,13 +24,10 @@ func TestServer_Run(t *testing.T) {
 
 	s.Handler = RequestHandlerFunc(
 		func(ctx *RequestCtx) {
-			ctx.UseResponseBuffer(false)
 			fmt.Println(&ctx.Request.Header)
-			_, _ = ctx.Write(
-				[]byte("HTTP/1.1 200 OK\r\nContent-Length: 7\r\nServer: suna\r\nConnection: keep-alive\r\n\r\nSpring!"),
-			)
+			_, _ = ctx.WriteString("Hello World")
 		},
 	)
 
-	s.Run()
+	s.ListenAndServe()
 }

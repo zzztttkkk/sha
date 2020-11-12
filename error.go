@@ -34,7 +34,21 @@ func (err *_StdError) Header() *Header {
 	return &err.header
 }
 
-var StdHttpErrors map[int]HttpError
+var StdHttpErrors = map[int]HttpError{}
+
+func newStdError(msg string) HttpError {
+	return &_StdError{
+		status:  http.StatusInternalServerError,
+		message: []byte(msg),
+	}
+}
+
+var (
+	ErrBadConnection               HttpError
+	ErrRequestUrlTooLong           HttpError
+	ErrRequestHeaderFieldsTooLarge HttpError
+	ErrRequestEntityTooLarge       HttpError
+)
 
 func init() {
 	for i := 400; i < 600; i++ {
@@ -47,4 +61,9 @@ func init() {
 			message: []byte(txt),
 		}
 	}
+
+	ErrBadConnection = StdHttpErrors[http.StatusBadRequest]
+	ErrRequestUrlTooLong = StdHttpErrors[http.StatusRequestURITooLong]
+	ErrRequestHeaderFieldsTooLarge = StdHttpErrors[http.StatusRequestHeaderFieldsTooLarge]
+	ErrRequestEntityTooLarge = StdHttpErrors[http.StatusRequestEntityTooLarge]
 }

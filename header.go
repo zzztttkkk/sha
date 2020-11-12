@@ -17,7 +17,6 @@ const (
 
 type Header struct {
 	internal.Kvs
-	cl       int64
 	ct       contentType
 	boundary []byte
 }
@@ -57,24 +56,23 @@ func (header *Header) ContentLength() int {
 }
 
 func (header *Header) SetContentLength(v int64) {
-	header.cl = v
 	header.Kvs.Set(contentLengthKey, internal.B(strconv.FormatInt(v, 10)))
 }
 
 var (
-	contentTypeJsonBytes      = []byte("application/json")
-	contentTypeFormBytes      = []byte("application/x-www-form-urlencoded")
-	contentTypeMultiPartBytes = []byte("multipart/form-data")
+	MIMEJson      = []byte("application/json")
+	MIMEForm      = []byte("application/x-www-form-urlencoded")
+	MIMEMultiPart = []byte("multipart/form-data")
 )
 
 func (header *Header) SetContentType(v []byte) {
 	header.Kvs.Set(contentTypeKey, v)
 	v = inplaceLowercase(v)
-	if bytes.HasPrefix(v, contentTypeFormBytes) {
+	if bytes.HasPrefix(v, MIMEForm) {
 		header.ct = contentTypeUrlencoded
-	} else if bytes.HasPrefix(v, contentTypeMultiPartBytes) {
+	} else if bytes.HasPrefix(v, MIMEMultiPart) {
 		header.ct = contentTypeMultiPart
-	} else if bytes.HasPrefix(v, contentTypeJsonBytes) {
+	} else if bytes.HasPrefix(v, MIMEJson) {
 		header.ct = contentTypeJson
 	} else {
 		header.ct = contentTypeRaw
