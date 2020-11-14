@@ -22,7 +22,7 @@ type Server struct {
 	BaseCtx                context.Context
 	Handler                RequestHandler
 	MaxConnectionKeepAlive time.Duration
-	protocol               Http1xProtocol
+	Http1xProtocol         Http1xProtocol
 }
 
 type _CtxVKey int
@@ -32,7 +32,7 @@ const (
 	CtxConnKey
 )
 
-func (s Server) doListen() net.Listener {
+func (s *Server) doListen() net.Listener {
 	listener, err := net.Listen("tcp4", fmt.Sprintf("%s:%d", s.Host, s.Port))
 	if err != nil {
 		panic(err)
@@ -48,7 +48,7 @@ func strSliceContains(ss []string, s string) bool {
 	return false
 }
 
-func (s Server) enableTls(l net.Listener, certFile, keyFile string) net.Listener {
+func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listener {
 	if s.TlsConfig == nil {
 		s.TlsConfig = &tls.Config{}
 	}
@@ -68,9 +68,11 @@ func (s Server) enableTls(l net.Listener, certFile, keyFile string) net.Listener
 	return l
 }
 
-func (s Server) doAccept(l net.Listener) {
-	if !s.protocol.inited {
-		protocol := &s.protocol
+func (s *Server) doAccept(l net.Listener) {
+	s.Http1xProtocol.server = s
+
+	if !s.Http1xProtocol.inited {
+		protocol := &s.Http1xProtocol
 		protocol.MaxFirstLintSize = 2048
 		protocol.MaxHeadersSize = 4096
 		protocol.MaxBodySize = 4096 * 1024
@@ -114,11 +116,11 @@ func (s *Server) ListenAndServeTLS(certFile, keyFile string) {
 }
 
 func (s *Server) SetUpHttp1xProtocol(fn func(protocol *Http1xProtocol)) {
-	if s.protocol.inited {
-		panic("protocol initialized")
+	if s.Http1xProtocol.inited {
+		panic("Http1xProtocol initialized")
 	}
-	fn(&s.protocol)
-	s.protocol.inited = true
+	fn(&s.Http1xProtocol)
+	s.Http1xProtocol.inited = true
 }
 
 func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
@@ -146,16 +148,16 @@ func (s *Server) serve(connCtx context.Context, conn net.Conn) {
 	}
 
 	if tlsConn == nil {
-		protocol = &s.protocol
+		protocol = &s.Http1xProtocol
 	} else {
 		switch protocolName {
 		case "", "http/1.0", "http/1.1":
-			protocol = &s.protocol
+			protocol = &s.Http1xProtocol
 		}
 	}
 	if protocol == nil {
 		_ = conn.Close()
 		return
 	}
-	protocol.Serve(connCtx, s, conn)
+	protocol.Serve(connCtx, conn, nil)
 }

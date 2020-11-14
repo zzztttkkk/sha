@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/zzztttkkk/suna/internal"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -26,6 +27,14 @@ type Response struct {
 	headerWritten bool
 }
 
+func (res *Response) SetStatusCode(v int) {
+	res.statusCode = v
+}
+
+func (res *Response) ResetBodyBuffer() {
+	res.buf = res.buf[:0]
+}
+
 func (res *Response) Reset() {
 	res.statusCode = 0
 	res.Header.Reset()
@@ -42,6 +51,9 @@ type RequestCtx struct {
 
 	makeRequestCtx func() context.Context
 
+	// cors
+	registeredMethods []byte
+
 	// time
 	connTime time.Time
 	reqTime  time.Time
@@ -49,6 +61,7 @@ type RequestCtx struct {
 	// writer
 	noBuffer bool
 	conn     net.Conn
+	connCtx  context.Context
 
 	// request parse
 	status       int
@@ -61,9 +74,11 @@ type RequestCtx struct {
 	kvSep        bool   // `:`
 	bodyRemain   int
 	bodySize     int
+
+	hijacked bool
 }
 
-// unsafe
+// unsafe, may cause unknown error
 func (ctx *RequestCtx) UseResponseBuffer(v bool) {
 	ctx.noBuffer = !v
 }
@@ -75,16 +90,30 @@ func (ctx *RequestCtx) RemoteAddr() net.Addr {
 var connectionHeader = []byte("Connection")
 var upgradeHeader = []byte("Upgrade")
 
-func (ctx *RequestCtx) UpgradeTo() []byte {
+// Upgrade return false, if not an upgrade request
+func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
 	v, ok := ctx.Request.Header.Get(connectionHeader)
 	if !ok {
-		return nil
+		return nil, false
 	}
 	if string(v) != string(upgradeHeader) {
-		return nil
+		return nil, false
 	}
 	v, ok = ctx.Request.Header.Get(upgradeHeader)
-	return v
+	if !ok || len(v) < 1 {
+		return nil, false
+	}
+	v = inplaceLowercase(v)
+	protocol := ctx.protocol.SubProtocols[internal.S(v)]
+	if protocol == nil {
+		ctx.WriteError(StdHttpErrors[http.StatusNotFound])
+		return nil, false
+	}
+
+	if !protocol.Handshake(ctx) {
+		return protocol, false
+	}
+	return protocol, true
 }
 
 func (ctx *RequestCtx) reset() {

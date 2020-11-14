@@ -45,7 +45,7 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 
 var ErrNilContentLength = newStdError("suna: nil content length")
 var ErrUnknownSResponseStatusCode = newStdError("suna: unknown response status code")
-var ErrRewriteUnbufferedResponse = newStdError("suna: call `WriteError` on a `RequestCtx` that has sent the header")
+var ErrRewriteUnbufferedResponse = newStdError("suna: call `WriteError` on simple `RequestCtx` that has sent the header")
 
 func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res := &ctx.Response
@@ -81,7 +81,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 			buf.Data = append(buf.Data, k...)
 			buf.Data = append(buf.Data, headersep...)
 			buf.Data = append(buf.Data)
-			quoteArgsToBuf(v, &(buf.Data))
+			quoteHeaderValueToBuf(v, &(buf.Data))
 			buf.Data = append(buf.Data, newline...)
 			return true
 		},

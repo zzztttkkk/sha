@@ -6,20 +6,20 @@ import (
 	"sync"
 )
 
-type _KvItem struct {
+type KvItem struct {
 	invalid bool
-	key     []byte
-	val     []byte
+	Key     []byte
+	Val     []byte
 }
 
-func (item *_KvItem) makeInvalid() {
+func (item *KvItem) makeInvalid() {
 	item.invalid = true
-	item.key = item.key[:0]
-	item.val = item.val[:0]
+	item.Key = item.Key[:0]
+	item.Val = item.Val[:0]
 }
 
 type Kvs struct {
-	lst          []_KvItem
+	lst          []KvItem
 	invalidItems []int
 }
 
@@ -54,9 +54,9 @@ func ReleaseKvs(kvs *Kvs) {
 	kvsPool.Put(kvs)
 }
 
-func (kvs *Kvs) Append(k, v []byte) {
+func (kvs *Kvs) Append(k, v []byte) *KvItem {
 	invItemSize := len(kvs.invalidItems)
-	var item *_KvItem
+	var item *KvItem
 	if invItemSize > 0 {
 		ind := kvs.invalidItems[invItemSize-1]
 		kvs.invalidItems = kvs.invalidItems[:invItemSize-1]
@@ -64,16 +64,17 @@ func (kvs *Kvs) Append(k, v []byte) {
 		item = &(kvs.lst[ind])
 		item.invalid = false
 	} else {
-		kvs.lst = append(kvs.lst, _KvItem{})
+		kvs.lst = append(kvs.lst, KvItem{})
 		item = &(kvs.lst[len(kvs.lst)-1])
 	}
-	item.key = append(item.key, k...)
-	item.val = append(item.val, v...)
+	item.Key = append(item.Key, k...)
+	item.Val = append(item.Val, v...)
+	return item
 }
 
-func (kvs *Kvs) Set(k, v []byte) {
+func (kvs *Kvs) Set(k, v []byte) *KvItem {
 	kvs.Del(k)
-	kvs.Append(k, v)
+	return kvs.Append(k, v)
 }
 
 func (kvs *Kvs) Del(k []byte) {
@@ -82,7 +83,7 @@ func (kvs *Kvs) Del(k []byte) {
 		if item.invalid {
 			continue
 		}
-		if bytes.Equal(item.key, k) {
+		if bytes.Equal(item.Key, k) {
 			item.makeInvalid()
 			kvs.invalidItems = append(kvs.invalidItems, i)
 		}
@@ -95,8 +96,8 @@ func (kvs *Kvs) Get(k []byte) ([]byte, bool) {
 		if item.invalid {
 			continue
 		}
-		if bytes.Equal(item.key, k) {
-			return item.val, true
+		if bytes.Equal(item.Key, k) {
+			return item.Val, true
 		}
 	}
 	return nil, false
@@ -110,8 +111,8 @@ func (kvs *Kvs) GetAll(k []byte) [][]byte {
 		if item.invalid {
 			continue
 		}
-		if bytes.Equal(item.key, k) {
-			rv = append(rv, item.val[:])
+		if bytes.Equal(item.Key, k) {
+			rv = append(rv, item.Val[:])
 		}
 	}
 	return rv
@@ -125,8 +126,8 @@ func (kvs *Kvs) GetAllRef(k []byte) []*[]byte {
 		if item.invalid {
 			continue
 		}
-		if bytes.Equal(item.key, k) {
-			rv = append(rv, &item.val)
+		if bytes.Equal(item.Key, k) {
+			rv = append(rv, &item.Val)
 		}
 	}
 	return rv
@@ -138,7 +139,7 @@ func (kvs *Kvs) EachKey(visitor func(k []byte) bool) {
 		if item.invalid {
 			continue
 		}
-		if !visitor(item.key) {
+		if !visitor(item.Key) {
 			break
 		}
 	}
@@ -150,7 +151,7 @@ func (kvs *Kvs) EachValue(visitor func(v []byte) bool) {
 		if item.invalid {
 			continue
 		}
-		if !visitor(item.val) {
+		if !visitor(item.Val) {
 			break
 		}
 	}
@@ -162,13 +163,16 @@ func (kvs *Kvs) EachItem(visitor func(k, v []byte) bool) {
 		if item.invalid {
 			continue
 		}
-		if !visitor(item.key, item.val) {
+		if !visitor(item.Key, item.Val) {
 			break
 		}
 	}
 }
 
 func (kvs *Kvs) Reset() {
+	if len(kvs.invalidItems) == len(kvs.lst) {
+		return
+	}
 	for i := 0; i < len(kvs.lst); i++ {
 		item := &(kvs.lst[i])
 		if item.invalid {

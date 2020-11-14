@@ -16,18 +16,17 @@ type Http1xProtocol struct {
 	OnParseError     func(conn net.Conn, err HttpError) bool
 	OnWriteError     func(conn net.Conn, err error) bool
 	ReadBufferSize   int
+	SubProtocols     map[string]Protocol
 
+	server *Server
 	inited bool
 }
 
-func (protocol *Http1xProtocol) Upgrade(
-	connCtx context.Context,
-	conn net.Conn, ctx *RequestCtx, name []byte,
-) Protocol {
-	return nil
+func (protocol *Http1xProtocol) Handshake(ctx *RequestCtx) bool {
+	return false
 }
 
-func (protocol *Http1xProtocol) Serve(ctx context.Context, s *Server, conn net.Conn) {
+func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Request) {
 	var err error
 	var herr HttpError
 	var n int
@@ -72,25 +71,22 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, s *Server, conn net.C
 					rctx.initRequest()
 				}
 
-				upgrade := rctx.UpgradeTo()
-				if len(upgrade) > 0 {
-					// handshake
-					nProtocol := s.protocol.Upgrade(ctx, conn, rctx, upgrade)
-					if nProtocol == nil {
-						return
-					} else {
-						nProtocol.Serve(ctx, s, conn)
-						return
+				subProtocol, ok := rctx.Upgrade()
+				if subProtocol == nil { // not an upgrade request
+					protocol.server.Handler.Handle(rctx)
+				} else {
+					_ = rctx.sendHttp1xResponseBuffer() // send upgrade response
+					if ok {
+						subProtocol.Serve(ctx, conn, &rctx.Request)
 					}
+					return
 				}
-
-				s.Handler.Handle(rctx)
 				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
 					stop = protocol.OnWriteError(conn, err)
 				}
 				rctx.reset()
 			}
-			continue
 		}
+		continue
 	}
 }

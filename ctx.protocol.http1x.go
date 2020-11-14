@@ -89,12 +89,13 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 
 			switch v {
 			case '\r':
+				continue
 			case ' ':
 				ctx.fStatus += 1
 			default:
 				switch ctx.fStatus {
 				case 0:
-					ctx.Request.Method = append(ctx.Request.Method, v)
+					ctx.Request.Method = append(ctx.Request.Method, toUpperTable[v])
 				case 1:
 					ctx.Request.rawPath = append(ctx.Request.rawPath, v)
 				case 2:
@@ -103,10 +104,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 					return 4, ErrBadConnection
 				}
 			}
-
-			if v != '\r' {
-				ctx.buf = append(ctx.buf, v)
-			}
+			ctx.buf = append(ctx.buf, v)
 		}
 	case 1: // parse header line
 		for offset < end {
@@ -121,7 +119,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			}
 
 			if v == '\n' {
-				if len(ctx.cHKey) < 1 { // all header data read done
+				if len(ctx.cHKey) < 1 { // allM header data read done
 					ctx.status++
 					return offset, nil
 				}
@@ -150,9 +148,9 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 						ctx.cHKeyDoUpper = true
 					}
 				}
-			} else {
-				ctx.buf = append(ctx.buf, v)
+				continue
 			}
+			ctx.buf = append(ctx.buf, v)
 		}
 	case 2:
 		if ctx.Context == nil {

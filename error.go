@@ -51,7 +51,7 @@ var (
 )
 
 func init() {
-	for i := 400; i < 600; i++ {
+	for i := 100; i < 600; i++ {
 		txt := http.StatusText(i)
 		if len(txt) < 1 {
 			continue
