@@ -15,18 +15,14 @@ type Logger interface {
 }
 
 type Server struct {
-	Host      string
-	Port      int
-	TlsConfig *tls.Config
-
-	Logger Logger
-
-	BaseCtx context.Context
-
-	Handler RequestHandler
-
-	http1xProtocol Protocol
-	http2Protocol  Protocol
+	Host                   string
+	Port                   int
+	TlsConfig              *tls.Config
+	Logger                 Logger
+	BaseCtx                context.Context
+	Handler                RequestHandler
+	MaxConnectionKeepAlive time.Duration
+	protocol               Http1xProtocol
 }
 
 type _CtxVKey int
@@ -73,6 +69,16 @@ func (s Server) enableTls(l net.Listener, certFile, keyFile string) net.Listener
 }
 
 func (s Server) doAccept(l net.Listener) {
+	if !s.protocol.inited {
+		protocol := &s.protocol
+		protocol.MaxFirstLintSize = 2048
+		protocol.MaxHeadersSize = 4096
+		protocol.MaxBodySize = 4096 * 1024
+		protocol.ReadTimeout = 0
+		protocol.WriteTimeout = 0
+		protocol.Version = []byte("HTTP/1.1")
+		protocol.ReadBufferSize = 128
+	}
 	var tempDelay time.Duration
 	ctx := context.WithValue(s.BaseCtx, CtxServerKey, s)
 
@@ -92,7 +98,9 @@ func (s Server) doAccept(l net.Listener) {
 				continue
 			}
 		}
-
+		if s.MaxConnectionKeepAlive > 0 {
+			_ = conn.SetDeadline(time.Now().Add(s.MaxConnectionKeepAlive))
+		}
 		go s.serve(context.WithValue(ctx, CtxConnKey, conn), conn)
 	}
 }
@@ -103,6 +111,14 @@ func (s *Server) ListenAndServe() {
 
 func (s *Server) ListenAndServeTLS(certFile, keyFile string) {
 	s.doAccept(s.enableTls(s.doListen(), certFile, keyFile))
+}
+
+func (s *Server) SetUpHttp1xProtocol(fn func(protocol *Http1xProtocol)) {
+	if s.protocol.inited {
+		panic("protocol initialized")
+	}
+	fn(&s.protocol)
+	s.protocol.inited = true
 }
 
 func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
@@ -117,7 +133,7 @@ func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
 	return tlsConn, tlsConn.ConnectionState().NegotiatedProtocol, nil
 }
 
-func (s *Server) serve(ctx context.Context, conn net.Conn) {
+func (s *Server) serve(connCtx context.Context, conn net.Conn) {
 	var protocolName string
 	var tlsConn *tls.Conn
 	var err error
@@ -129,20 +145,17 @@ func (s *Server) serve(ctx context.Context, conn net.Conn) {
 		return
 	}
 
-	if tlsConn == nil { // http1.x
-		protocol = s.http1xProtocol
+	if tlsConn == nil {
+		protocol = &s.protocol
 	} else {
 		switch protocolName {
 		case "", "http/1.0", "http/1.1":
-			protocol = s.http1xProtocol
-		case "http/2.0":
-			protocol = s.http2Protocol
+			protocol = &s.protocol
 		}
 	}
-
 	if protocol == nil {
 		_ = conn.Close()
 		return
 	}
-	protocol.Serve(ctx, s, conn)
+	protocol.Serve(connCtx, s, conn)
 }

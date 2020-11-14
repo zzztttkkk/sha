@@ -16,6 +16,15 @@ type Http1xProtocol struct {
 	OnParseError     func(conn net.Conn, err HttpError) bool
 	OnWriteError     func(conn net.Conn, err error) bool
 	ReadBufferSize   int
+
+	inited bool
+}
+
+func (protocol *Http1xProtocol) Upgrade(
+	connCtx context.Context,
+	conn net.Conn, ctx *RequestCtx, name []byte,
+) Protocol {
+	return nil
 }
 
 func (protocol *Http1xProtocol) Serve(ctx context.Context, s *Server, conn net.Conn) {
@@ -62,6 +71,19 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, s *Server, conn net.C
 				if rctx.Context == nil {
 					rctx.initRequest()
 				}
+
+				upgrade := rctx.UpgradeTo()
+				if len(upgrade) > 0 {
+					// handshake
+					nProtocol := s.protocol.Upgrade(ctx, conn, rctx, upgrade)
+					if nProtocol == nil {
+						return
+					} else {
+						nProtocol.Serve(ctx, s, conn)
+						return
+					}
+				}
+
 				s.Handler.Handle(rctx)
 				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
 					stop = protocol.OnWriteError(conn, err)

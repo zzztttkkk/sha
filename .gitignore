@@ -2,3 +2,5 @@
 /.vs
 /.vscode
 *.exe
+/router
+/sqls

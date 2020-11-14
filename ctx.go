@@ -68,6 +68,21 @@ func (ctx *RequestCtx) RemoteAddr() net.Addr {
 	return ctx.conn.RemoteAddr()
 }
 
+var connectionHeader = []byte("Connection")
+var upgradeHeader = []byte("Upgrade")
+
+func (ctx *RequestCtx) UpgradeTo() []byte {
+	v, ok := ctx.Request.Header.Get(connectionHeader)
+	if !ok {
+		return nil
+	}
+	if string(v) != string(upgradeHeader) {
+		return nil
+	}
+	v, ok = ctx.Request.Header.Get(upgradeHeader)
+	return v
+}
+
 func (ctx *RequestCtx) reset() {
 	ctx.Context = nil
 
