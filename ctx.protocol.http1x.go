@@ -8,12 +8,20 @@ import (
 var httpVersion = []byte("http/")
 
 func (ctx *RequestCtx) initRequest() {
+	req := &ctx.Request
+
 	ctx.Context = ctx.makeRequestCtx()
 	ctx.reqTime = time.Now()
-	ctx.bodySize = ctx.Request.Header.ContentLength()
+	ctx.bodySize = req.Header.ContentLength()
 	ctx.bodyRemain = ctx.bodySize
 
-	ctx.Request.URI.init(ctx.Request.rawPath, true)
+	ind := bytes.IndexByte(req.rawPath, '?')
+	if ind > 0 {
+		req.Path = inplaceUnquote(req.rawPath[:ind])
+		req.Query.ParseBytes(req.rawPath[ind+1:])
+	} else {
+		req.Path = inplaceUnquote(req.rawPath)
+	}
 }
 
 var spaceMap []byte

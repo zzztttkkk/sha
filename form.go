@@ -97,3 +97,16 @@ func quoteArgsToBuf(v []byte, buf *[]byte) {
 func (form *UrlencodedForm) onItem(k []byte, v []byte) {
 	form.Append(inplaceUnquote(k), inplaceUnquote(v))
 }
+
+func quotePathTpBuf(v []byte, buf *[]byte) {
+	for _, b := range v {
+		switch {
+		case b == ' ':
+			*buf = append(*buf, '+')
+		case quotedPathShouldEscapeTable[int(b)] != 0:
+			*buf = append(*buf, '%', upperhex[b>>4], upperhex[b&0xf])
+		default:
+			*buf = append(*buf, b)
+		}
+	}
+}

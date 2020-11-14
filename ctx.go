@@ -2,15 +2,19 @@ package suna
 
 import (
 	"context"
+	"github.com/zzztttkkk/suna/internal"
 	"net"
 	"sync"
 	"time"
 )
 
 type Request struct {
-	URI     URI
-	Header  Header
-	Method  []byte
+	Header Header
+	Method []byte
+	Path   []byte
+	Query  UrlencodedForm
+	Params internal.Kvs
+
 	rawPath []byte
 	version []byte
 }
@@ -90,14 +94,9 @@ func (ctx *RequestCtx) reset() {
 	ctx.Request.version = ctx.Request.version[:0]
 	ctx.Request.rawPath = ctx.Request.rawPath[:0]
 	ctx.Request.Method = ctx.Request.Method[:0]
-	ctx.Request.URI.Scheme = ctx.Request.URI.Scheme[:0]
-	ctx.Request.URI.User = ctx.Request.URI.User[:0]
-	ctx.Request.URI.Password = ctx.Request.URI.Password[:0]
-	ctx.Request.URI.Host = ctx.Request.URI.Host[:0]
-	ctx.Request.URI.Port = 0
-	ctx.Request.URI.Path = ctx.Request.URI.Path[:0]
-	ctx.Request.URI.Query.Reset()
-	ctx.Request.URI.Fragment = ctx.Request.URI.Fragment[:0]
+	ctx.Request.Path = ctx.Request.Path[0:]
+	ctx.Request.Query.Reset()
+	ctx.Request.Params.Reset()
 
 	ctx.noBuffer = false
 	ctx.Response.Reset()

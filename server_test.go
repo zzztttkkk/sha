@@ -15,7 +15,7 @@ func TestServer_Run(t *testing.T) {
 
 	s.Handler = RequestHandlerFunc(
 		func(ctx *RequestCtx) {
-			fmt.Println(&ctx.Request.Header)
+			fmt.Println(string(ctx.Request.Path), &ctx.Request.Query)
 			_, _ = ctx.WriteString("Hello World")
 		},
 	)
