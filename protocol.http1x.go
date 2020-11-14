@@ -78,8 +78,8 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 					_ = rctx.sendHttp1xResponseBuffer() // send upgrade response
 					if ok {
 						subProtocol.Serve(ctx, conn, &rctx.Request)
+						return
 					}
-					return
 				}
 				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
 					stop = protocol.OnWriteError(conn, err)
