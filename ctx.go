@@ -3,7 +3,6 @@ package suna
 import (
 	"context"
 	"github.com/zzztttkkk/suna/internal"
-	"io"
 	"net"
 	"net/http"
 	"sync"
@@ -22,10 +21,12 @@ type Request struct {
 }
 
 type Response struct {
-	statusCode    int
-	Header        Header
-	buf           []byte
-	compressW     io.Writer
+	statusCode   int
+	Header       Header
+	buf          []byte
+	compressW    WriteFlusher
+	compressFunc func(response *Response) WriteFlusher
+
 	headerWritten bool
 }
 
@@ -42,14 +43,19 @@ func (res *Response) SetStatusCode(v int) {
 }
 
 func (res *Response) ResetBodyBuffer() {
+	if res.compressW != nil {
+		_ = res.compressW.Flush()
+		res.compressW = res.compressFunc(res)
+	}
 	res.buf = res.buf[:0]
 }
 
 func (res *Response) Reset() {
 	res.statusCode = 0
 	res.Header.Reset()
-	res.buf = res.buf[:0]
 	res.headerWritten = false
+
+	res.ResetBodyBuffer()
 }
 
 type RequestCtx struct {
@@ -61,9 +67,6 @@ type RequestCtx struct {
 
 	makeRequestCtx func() context.Context
 
-	// cors
-	registeredMethods []byte
-
 	// time
 	connTime time.Time
 	reqTime  time.Time
@@ -71,8 +74,6 @@ type RequestCtx struct {
 	// writer
 	conn    net.Conn
 	connCtx context.Context
-	// compress
-	compressW io.WriteCloser
 
 	// parse
 	status       int
@@ -122,18 +123,18 @@ func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
 
 func (ctx *RequestCtx) reset() {
 	ctx.Context = nil
-	ctx.compressW = nil
 
 	ctx.Request.Header.Reset()
-	ctx.Request.version = ctx.Request.version[:0]
-	ctx.Request.rawPath = ctx.Request.rawPath[:0]
 	ctx.Request.Method = ctx.Request.Method[:0]
 	ctx.Request.Path = ctx.Request.Path[0:]
 	ctx.Request.Query.Reset()
 	ctx.Request.Params.Reset()
+	ctx.Request.rawPath = ctx.Request.rawPath[:0]
+	ctx.Request.version = ctx.Request.version[:0]
 
 	ctx.Response.Reset()
 	ctx.Response.compressW = nil
+	ctx.Response.compressFunc = nil
 
 	ctx.status = 0
 	ctx.fStatus = 0
@@ -165,6 +166,11 @@ func ReleaseRequestCtx(ctx *RequestCtx) {
 	if cap(ctx.Response.buf) > MaxRequestCtxPooledBufferSize {
 		ctx.Response.buf = nil
 	}
+
+	ctx.makeRequestCtx = nil
+	ctx.conn = nil
+	ctx.connCtx = nil
+
 	ctxPool.Put(ctx)
 }
 

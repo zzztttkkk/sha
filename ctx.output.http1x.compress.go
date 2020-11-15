@@ -14,72 +14,44 @@ var (
 	headerCompressValueSep = []byte(", ")
 	gzipStr                = []byte("gzip")
 	deflateStr             = []byte("deflate")
-	brotliStr              = []byte("brotli")
+	brotliStr              = []byte("br")
 
 	CompressLevelGzip    = gzip.DefaultCompression
 	CompressLevelDeflate = flate.DefaultCompression
 	CompressLevelBrotli  = brotli.DefaultCompression
 )
 
+type WriteFlusher interface {
+	io.Writer
+	Flush() error
+}
+
 type _BytesWriter struct {
-	ptr *[]byte
+	res *Response
 }
 
 func (w *_BytesWriter) Write(p []byte) (int, error) {
-	*w.ptr = append(*w.ptr, p...)
+	if w.res == nil {
+		return 0, nil
+	}
+	w.res.buf = append(w.res.buf, p...)
 	return len(p), nil
 }
 
-func (ctx *RequestCtx) CompressGzip() {
-	var cW io.WriteCloser
-	var err error
-	cW, err = gzip.NewWriterLevel(&_BytesWriter{ptr: &ctx.Response.buf}, CompressLevelGzip)
-	if err != nil {
-		panic(err)
-	}
-
-	ctx.Response.Header.Set(headerContentEncoding, gzipStr)
-	ctx.compressW = cW
-	ctx.Response.compressW = cW
-}
-
-func (ctx *RequestCtx) CompressDeflate() {
-	var cW io.WriteCloser
-	var err error
-	cW, err = flate.NewWriter(&_BytesWriter{ptr: &ctx.Response.buf}, CompressLevelDeflate)
-	if err != nil {
-		panic(err)
-	}
-	ctx.Response.Header.Set(headerContentEncoding, deflateStr)
-	ctx.compressW = cW
-	ctx.Response.compressW = cW
-}
-
-func (ctx *RequestCtx) CompressBrotli() {
-	var cW io.WriteCloser
-	cW = brotli.NewWriterLevel(&_BytesWriter{ptr: &ctx.Response.buf}, CompressLevelBrotli)
-	ctx.Response.Header.Set(headerContentEncoding, brotliStr)
-	ctx.compressW = cW
-	ctx.Response.compressW = cW
-}
-
 func (ctx *RequestCtx) AutoCompress() {
-	headerVal, ok := ctx.Request.Header.Get(headerAcceptEncoding)
-	if !ok || len(headerVal) < 1 {
-		return
-	}
-
-	for _, v := range bytes.Split(headerVal, headerCompressValueSep) {
-		switch string(v) {
-		case "gzip":
-			ctx.CompressGzip()
-			return
-		case "deflate":
-			ctx.CompressDeflate()
-			return
-		case "br":
-			ctx.CompressBrotli()
-			return
+	for _, headerVal := range ctx.Request.Header.GetAllRef(headerAcceptEncoding) {
+		for _, v := range bytes.Split(*headerVal, headerCompressValueSep) {
+			switch string(v) {
+			case "gzip":
+				ctx.CompressGzip()
+				return
+			case "deflate":
+				ctx.CompressDeflate()
+				return
+			case "br":
+				ctx.CompressBrotli()
+				return
+			}
 		}
 	}
 }

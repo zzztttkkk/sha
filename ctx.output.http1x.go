@@ -23,11 +23,12 @@ var newline = []byte("\r\n")
 var headerKVSep = []byte(": ")
 
 func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
-	if ctx.compressW != nil {
-		_ = ctx.compressW.Close()
+	res := &ctx.Response
+	if res.compressW != nil {
+		_ = res.compressW.Flush()
+		res.compressW = nil
 	}
 
-	res := &ctx.Response
 	res.Header.SetContentLength(int64(len(res.buf)))
 	if !res.headerWritten {
 		err := ctx.writeHttp1xHeader()
