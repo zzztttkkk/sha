@@ -1,10 +1,9 @@
 package suna
 
 import (
+	"github.com/zzztttkkk/suna/internal"
 	"net/http"
 	"strconv"
-
-	"github.com/zzztttkkk/suna/internal"
 )
 
 var responseHeaderBufferPool = internal.NewBufferPoll(4096)
@@ -21,12 +20,13 @@ func init() {
 }
 
 var newline = []byte("\r\n")
-var headersep = []byte(": ")
+var headerKVSep = []byte(": ")
 
 func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
-	if ctx.noBuffer {
-		return nil
+	if ctx.compressW != nil {
+		_ = ctx.compressW.Close()
 	}
+
 	res := &ctx.Response
 	res.Header.SetContentLength(int64(len(res.buf)))
 	if !res.headerWritten {
@@ -45,7 +45,6 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 
 var ErrNilContentLength = newStdError("suna: nil content length")
 var ErrUnknownSResponseStatusCode = newStdError("suna: unknown response status code")
-var ErrRewriteUnbufferedResponse = newStdError("suna: call `WriteError` on simple `RequestCtx` that has sent the header")
 
 func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res := &ctx.Response
@@ -79,7 +78,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 	ctx.Response.Header.EachItem(
 		func(k, v []byte) bool {
 			buf.Data = append(buf.Data, k...)
-			buf.Data = append(buf.Data, headersep...)
+			buf.Data = append(buf.Data, headerKVSep...)
 			buf.Data = append(buf.Data)
 			quoteHeaderValueToBuf(v, &(buf.Data))
 			buf.Data = append(buf.Data, newline...)
@@ -93,18 +92,10 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 
 func (ctx *RequestCtx) Write(p []byte) (int, error) {
 	res := &ctx.Response
-
-	if ctx.noBuffer {
-		if !res.headerWritten {
-			err := ctx.writeHttp1xHeader()
-			if err != nil {
-				return 0, err
-			}
-		}
-		return ctx.conn.Write(p)
+	if res.compressW != nil {
+		return res.compressW.Write(p)
 	}
-	res.buf = append(res.buf, p...)
-	return len(p), nil
+	return res.Write(p)
 }
 
 func (ctx *RequestCtx) WriteString(s string) (int, error) {
@@ -123,16 +114,6 @@ func (ctx *RequestCtx) WriteError(err HttpError) {
 				return true
 			},
 		)
-	}
-
-	if ctx.noBuffer {
-		if res.headerWritten {
-			panic(ErrRewriteUnbufferedResponse)
-		}
-		msg := err.Message()
-		res.Header.SetContentLength(int64(len(msg)))
-		_, _ = ctx.Write(msg)
-		return
 	}
 	res.buf = append(res.buf, err.Message()...)
 }

@@ -56,7 +56,7 @@ func inplaceTrimSpace(v []byte) []byte {
 
 func (ctx *RequestCtx) onRequestHeaderLine() {
 	key := inplaceTrimSpace(ctx.cHKey)
-	val := inplaceTrimSpace(ctx.buf)
+	val := inplaceTrimSpace(ctx.parseBuf)
 	ctx.Request.Header.Append(key, val)
 }
 
@@ -77,7 +77,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			}
 			if v == '\n' {
 				ctx.status++
-				ctx.buf = ctx.buf[:0]
+				ctx.parseBuf = ctx.parseBuf[:0]
 				if len(ctx.Request.rawPath) < 1 || ctx.Request.rawPath[0] != '/' { // empty path
 					return 2, ErrBadConnection
 				}
@@ -104,7 +104,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 					return 4, ErrBadConnection
 				}
 			}
-			ctx.buf = append(ctx.buf, v)
+			ctx.parseBuf = append(ctx.parseBuf, v)
 		}
 	case 1: // parse header line
 		for offset < end {
@@ -125,7 +125,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				}
 				ctx.onRequestHeaderLine()
 				ctx.cHKey = ctx.cHKey[:0]
-				ctx.buf = ctx.buf[:0]
+				ctx.parseBuf = ctx.parseBuf[:0]
 				return offset, nil
 			}
 
@@ -150,7 +150,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				}
 				continue
 			}
-			ctx.buf = append(ctx.buf, v)
+			ctx.parseBuf = append(ctx.parseBuf, v)
 		}
 	case 2:
 		if ctx.Context == nil {
@@ -164,7 +164,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 		if size > ctx.bodyRemain {
 			return 7, ErrBadConnection
 		}
-		ctx.buf = append(ctx.buf, data[offset:end]...)
+		ctx.parseBuf = append(ctx.parseBuf, data[offset:end]...)
 		ctx.bodyRemain -= size
 		return end, nil
 	}

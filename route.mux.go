@@ -354,14 +354,12 @@ func (mux *_Mux) findTree1(method string) *_RouteNode {
 var locationHeader = []byte("Location")
 
 func doAutoRectAddSlash(ctx *RequestCtx) {
-	ctx.noBuffer = false
 	ctx.WriteError(StdHttpErrors[http.StatusMovedPermanently])
 	item := ctx.Response.Header.Set(locationHeader, ctx.Request.Path)
 	item.Val = append(item.Val, '/')
 }
 
 func doAutoRectDelSlash(ctx *RequestCtx) {
-	ctx.noBuffer = false
 	ctx.WriteError(StdHttpErrors[http.StatusMovedPermanently])
 	path := ctx.Request.Path
 	ctx.Response.Header.Set(locationHeader, path[:len(path)-1])

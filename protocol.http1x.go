@@ -51,6 +51,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 			{
 				return
 			}
+			//goland:noinspection GoNilness
 		default:
 			offset := 0
 			n, err = conn.Read(buf)
@@ -71,18 +72,19 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 					rctx.initRequest()
 				}
 
-				subProtocol, ok := rctx.Upgrade()
-				if subProtocol == nil { // not an upgrade request
-					protocol.server.Handler.Handle(rctx)
-				} else {
-					_ = rctx.sendHttp1xResponseBuffer() // send upgrade response
-					if ok {
-						subProtocol.Serve(ctx, conn, &rctx.Request)
-						return
+				subProtocol, upgradeOk := rctx.Upgrade()
+				if subProtocol == nil { // upgrade failed
+					if rctx.Response.statusCode == 0 {
+						protocol.server.Handler.Handle(rctx)
 					}
 				}
 				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
 					stop = protocol.OnWriteError(conn, err)
+				}
+				if upgradeOk {
+					//goland:noinspection GoNilness
+					subProtocol.Serve(ctx, conn, &rctx.Request)
+					return
 				}
 				rctx.reset()
 			}

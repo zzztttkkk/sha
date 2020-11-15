@@ -3,6 +3,7 @@ package suna
 import (
 	"context"
 	"github.com/zzztttkkk/suna/internal"
+	"io"
 	"net"
 	"net/http"
 	"sync"
@@ -24,7 +25,16 @@ type Response struct {
 	statusCode    int
 	Header        Header
 	buf           []byte
+	compressW     io.Writer
 	headerWritten bool
+}
+
+func (res *Response) Write(p []byte) (int, error) {
+	if res.compressW != nil {
+		return res.compressW.Write(p)
+	}
+	res.buf = append(res.buf, p...)
+	return len(p), nil
 }
 
 func (res *Response) SetStatusCode(v int) {
@@ -59,28 +69,22 @@ type RequestCtx struct {
 	reqTime  time.Time
 
 	// writer
-	noBuffer bool
-	conn     net.Conn
-	connCtx  context.Context
+	conn    net.Conn
+	connCtx context.Context
+	// compress
+	compressW io.WriteCloser
 
-	// request parse
+	// parse
 	status       int
 	fStatus      int // first line status
 	fLSize       int // first line size
 	hSize        int // header lines size
-	buf          []byte
+	parseBuf     []byte
 	cHKey        []byte // current header key
 	cHKeyDoUpper bool   // prev byte is '-' or first byte
 	kvSep        bool   // `:`
 	bodyRemain   int
 	bodySize     int
-
-	hijacked bool
-}
-
-// unsafe, may cause unknown error
-func (ctx *RequestCtx) UseResponseBuffer(v bool) {
-	ctx.noBuffer = !v
 }
 
 func (ctx *RequestCtx) RemoteAddr() net.Addr {
@@ -118,6 +122,7 @@ func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
 
 func (ctx *RequestCtx) reset() {
 	ctx.Context = nil
+	ctx.compressW = nil
 
 	ctx.Request.Header.Reset()
 	ctx.Request.version = ctx.Request.version[:0]
@@ -127,14 +132,14 @@ func (ctx *RequestCtx) reset() {
 	ctx.Request.Query.Reset()
 	ctx.Request.Params.Reset()
 
-	ctx.noBuffer = false
 	ctx.Response.Reset()
+	ctx.Response.compressW = nil
 
 	ctx.status = 0
 	ctx.fStatus = 0
 	ctx.fLSize = 0
 	ctx.hSize = 0
-	ctx.buf = ctx.buf[:0]
+	ctx.parseBuf = ctx.parseBuf[:0]
 	ctx.cHKey = ctx.cHKey[:0]
 	ctx.cHKeyDoUpper = false
 	ctx.kvSep = false
@@ -153,8 +158,8 @@ var MaxRequestCtxPooledBufferSize = 1024 * 4
 func ReleaseRequestCtx(ctx *RequestCtx) {
 	ctx.reset()
 	// request body buffer
-	if cap(ctx.buf) > MaxRequestCtxPooledBufferSize {
-		ctx.buf = nil
+	if cap(ctx.parseBuf) > MaxRequestCtxPooledBufferSize {
+		ctx.parseBuf = nil
 	}
 	// response body buffer
 	if cap(ctx.Response.buf) > MaxRequestCtxPooledBufferSize {
