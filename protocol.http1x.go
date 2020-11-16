@@ -86,7 +86,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 					subProtocol.Serve(ctx, conn, &rctx.Request)
 					return
 				}
-				rctx.reset()
+				rctx.Reset()
 			}
 		}
 		continue

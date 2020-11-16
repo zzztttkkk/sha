@@ -39,7 +39,9 @@ func (s *Server) doListen() net.Listener {
 	}
 	return listener
 }
-func strSliceContains(ss []string, s string) bool {
+
+//goland:noinspection GoSnakeCaseUsage  disable ide suggestion
+func _0011111_strSliceContains(ss []string, s string) bool {
 	for _, v := range ss {
 		if v == s {
 			return true
@@ -53,7 +55,7 @@ func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listene
 		s.TlsConfig = &tls.Config{}
 	}
 
-	if !strSliceContains(s.TlsConfig.NextProtos, "http/1.1") {
+	if !_0011111_strSliceContains(s.TlsConfig.NextProtos, "http/1.1") {
 		s.TlsConfig.NextProtos = append(s.TlsConfig.NextProtos, "http/1.1")
 	}
 	configHasCert := len(s.TlsConfig.Certificates) > 0 || s.TlsConfig.GetCertificate != nil

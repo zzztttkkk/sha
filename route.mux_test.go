@@ -19,7 +19,7 @@ func Test_Mux_AddHandler(t *testing.T) {
 	m.AutoOptions = true
 	m.AutoRedirect = true
 
-	//m.AddHandler("GET", "/file:*", h)
+	//m.AddHandler("GET", "/current:*", h)
 	m.AddHandler("GET", "/", makeTestHandler(0))
 	//m.AddHandler("GET", "/fi", makeTestHandler(1))
 	m.AddHandler("GET", "/s/filename:*", makeTestHandler(2))

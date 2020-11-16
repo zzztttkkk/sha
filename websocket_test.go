@@ -16,7 +16,7 @@ func Test_WebSock(t *testing.T) {
 
 	s.Handler = RequestHandlerFunc(
 		func(ctx *RequestCtx) {
-			fmt.Println(string(ctx.Request.Path), &ctx.Request.Query)
+			fmt.Println(string(ctx.Request.Path), &ctx.Request.query)
 			_, _ = ctx.WriteString("Hello World")
 		},
 	)

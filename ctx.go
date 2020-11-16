@@ -13,11 +13,36 @@ type Request struct {
 	Header Header
 	Method []byte
 	Path   []byte
-	Query  UrlencodedForm
 	Params internal.Kvs
 
-	rawPath []byte
-	version []byte
+	query Form
+	body  Form
+	files FormFiles
+	mp    _MultiPartParser
+
+	queryStatus   int // >2: `?` index; 1: parsed; 0 empty
+	bodyStatus    int // 0: unparsed; 1: unsupported content type; 2: parsed
+	rawPath       []byte
+	version       []byte
+	bodyBufferPtr *[]byte
+}
+
+func (req *Request) Reset() {
+	req.Header.Reset()
+	req.Method = req.Method[:0]
+	req.Path = req.Path[:0]
+	req.Params.Reset()
+
+	req.query.Reset()
+	req.body.Reset()
+	req.files = nil
+	req.files = nil
+	req.mp.reset()
+	req.queryStatus = 0
+	req.bodyStatus = 0
+	req.rawPath = req.rawPath[:0]
+	req.version = req.version[:0]
+	req.bodyBufferPtr = nil
 }
 
 type Response struct {
@@ -50,6 +75,7 @@ func (res *Response) ResetBodyBuffer() {
 	res.buf = res.buf[:0]
 }
 
+//Reset after executing `Response.Reset`, we still need to keep the compression
 func (res *Response) Reset() {
 	res.statusCode = 0
 	res.Header.Reset()
@@ -80,7 +106,7 @@ type RequestCtx struct {
 	fStatus      int // first line status
 	fLSize       int // first line size
 	hSize        int // header lines size
-	parseBuf     []byte
+	buf          []byte
 	cHKey        []byte // current header key
 	cHKeyDoUpper bool   // prev byte is '-' or first byte
 	kvSep        bool   // `:`
@@ -121,16 +147,10 @@ func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
 	return protocol, true
 }
 
-func (ctx *RequestCtx) reset() {
+func (ctx *RequestCtx) Reset() {
 	ctx.Context = nil
 
-	ctx.Request.Header.Reset()
-	ctx.Request.Method = ctx.Request.Method[:0]
-	ctx.Request.Path = ctx.Request.Path[0:]
-	ctx.Request.Query.Reset()
-	ctx.Request.Params.Reset()
-	ctx.Request.rawPath = ctx.Request.rawPath[:0]
-	ctx.Request.version = ctx.Request.version[:0]
+	ctx.Request.Reset()
 
 	ctx.Response.Reset()
 	ctx.Response.compressW = nil
@@ -140,7 +160,7 @@ func (ctx *RequestCtx) reset() {
 	ctx.fStatus = 0
 	ctx.fLSize = 0
 	ctx.hSize = 0
-	ctx.parseBuf = ctx.parseBuf[:0]
+	ctx.buf = ctx.buf[:0]
 	ctx.cHKey = ctx.cHKey[:0]
 	ctx.cHKeyDoUpper = false
 	ctx.kvSep = false
@@ -157,10 +177,10 @@ func AcquireRequestCtx() *RequestCtx {
 var MaxRequestCtxPooledBufferSize = 1024 * 4
 
 func ReleaseRequestCtx(ctx *RequestCtx) {
-	ctx.reset()
+	ctx.Reset()
 	// request body buffer
-	if cap(ctx.parseBuf) > MaxRequestCtxPooledBufferSize {
-		ctx.parseBuf = nil
+	if cap(ctx.buf) > MaxRequestCtxPooledBufferSize {
+		ctx.buf = nil
 	}
 	// response body buffer
 	if cap(ctx.Response.buf) > MaxRequestCtxPooledBufferSize {

@@ -18,10 +18,13 @@ func (ctx *RequestCtx) initRequest() {
 	ind := bytes.IndexByte(req.rawPath, '?')
 	if ind > 0 {
 		req.Path = inplaceUnquote(req.rawPath[:ind])
-		req.Query.ParseBytes(req.rawPath[ind+1:])
+		req.queryStatus = ind + 2
 	} else {
 		req.Path = inplaceUnquote(req.rawPath)
 	}
+
+	// todo may request body should be uncompress
+	req.bodyBufferPtr = &ctx.buf
 }
 
 var spaceMap []byte
@@ -41,12 +44,12 @@ func init() {
 func inplaceTrimSpace(v []byte) []byte {
 	var left = 0
 	var right = len(v) - 1
-	for ; left < right; left++ {
+	for ; left <= right; left++ {
 		if spaceMap[v[left]] != 1 {
 			break
 		}
 	}
-	for ; right > left; right-- {
+	for ; right >= left; right-- {
 		if spaceMap[v[right]] != 1 {
 			break
 		}
@@ -56,7 +59,7 @@ func inplaceTrimSpace(v []byte) []byte {
 
 func (ctx *RequestCtx) onRequestHeaderLine() {
 	key := inplaceTrimSpace(ctx.cHKey)
-	val := inplaceTrimSpace(ctx.parseBuf)
+	val := inplaceTrimSpace(ctx.buf)
 	ctx.Request.Header.Append(key, val)
 }
 
@@ -77,7 +80,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			}
 			if v == '\n' {
 				ctx.status++
-				ctx.parseBuf = ctx.parseBuf[:0]
+				ctx.buf = ctx.buf[:0]
 				if len(ctx.Request.rawPath) < 1 || ctx.Request.rawPath[0] != '/' { // empty path
 					return 2, ErrBadConnection
 				}
@@ -104,7 +107,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 					return 4, ErrBadConnection
 				}
 			}
-			ctx.parseBuf = append(ctx.parseBuf, v)
+			ctx.buf = append(ctx.buf, v)
 		}
 	case 1: // parse header line
 		for offset < end {
@@ -125,7 +128,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				}
 				ctx.onRequestHeaderLine()
 				ctx.cHKey = ctx.cHKey[:0]
-				ctx.parseBuf = ctx.parseBuf[:0]
+				ctx.buf = ctx.buf[:0]
 				return offset, nil
 			}
 
@@ -150,7 +153,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				}
 				continue
 			}
-			ctx.parseBuf = append(ctx.parseBuf, v)
+			ctx.buf = append(ctx.buf, v)
 		}
 	case 2:
 		if ctx.Context == nil {
@@ -164,7 +167,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 		if size > ctx.bodyRemain {
 			return 7, ErrBadConnection
 		}
-		ctx.parseBuf = append(ctx.parseBuf, data[offset:end]...)
+		ctx.buf = append(ctx.buf, data[offset:end]...)
 		ctx.bodyRemain -= size
 		return end, nil
 	}

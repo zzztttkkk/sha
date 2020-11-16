@@ -75,10 +75,6 @@ func quoteHeaderValueToBuf(v []byte, buf *[]byte) {
 	}
 }
 
-func (form *UrlencodedForm) onItem(k []byte, v []byte) {
-	form.Append(inplaceUnquote(k), inplaceUnquote(v))
-}
-
 func quotePathToBuf(v []byte, buf *[]byte) {
 	for _, b := range v {
 		switch {

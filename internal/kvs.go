@@ -21,6 +21,11 @@ func (item *KvItem) makeInvalid() {
 type Kvs struct {
 	lst          []KvItem
 	invalidItems []int
+	size         int
+}
+
+func (kvs *Kvs) Size() int {
+	return kvs.size
 }
 
 func (kvs *Kvs) String() string {
@@ -69,6 +74,7 @@ func (kvs *Kvs) Append(k, v []byte) *KvItem {
 	}
 	item.Key = append(item.Key, k...)
 	item.Val = append(item.Val, v...)
+	kvs.size++
 	return item
 }
 
@@ -86,6 +92,7 @@ func (kvs *Kvs) Del(k []byte) {
 		if bytes.Equal(item.Key, k) {
 			item.makeInvalid()
 			kvs.invalidItems = append(kvs.invalidItems, i)
+			kvs.size--
 		}
 	}
 }
@@ -112,7 +119,7 @@ func (kvs *Kvs) GetAll(k []byte) [][]byte {
 			continue
 		}
 		if bytes.Equal(item.Key, k) {
-			rv = append(rv, item.Val[:])
+			rv = append(rv, item.Val)
 		}
 	}
 	return rv
@@ -180,5 +187,6 @@ func (kvs *Kvs) Reset() {
 		}
 		item.makeInvalid()
 		kvs.invalidItems = append(kvs.invalidItems, i)
+		kvs.size = 0
 	}
 }

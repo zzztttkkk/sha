@@ -2,7 +2,6 @@ package suna
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -17,7 +16,7 @@ func TestServer_Run(t *testing.T) {
 	s.Handler = RequestHandlerFunc(
 		func(ctx *RequestCtx) {
 			ctx.AutoCompress()
-			fmt.Println(string(ctx.Request.Path), &ctx.Request.Query)
+			ctx.Response.Header.SetContentType(MIMEText)
 			_, _ = ctx.WriteString(strings.Repeat("Hello World", 100))
 		},
 	)

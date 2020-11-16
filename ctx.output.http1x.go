@@ -51,7 +51,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res := &ctx.Response
 	res.headerWritten = true
 
-	_, exists := res.Header.Get(contentLengthKey)
+	_, exists := res.Header.Get(headerContentLength)
 	if !exists {
 		return ErrNilContentLength
 	}
