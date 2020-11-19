@@ -38,7 +38,18 @@ func (w *_BytesWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+var disableCompress = false
+
+// DisableCompress keep raw response body when debugging
+func DisableCompress() {
+	disableCompress = true
+}
+
 func (ctx *RequestCtx) AutoCompress() {
+	if disableCompress {
+		return
+	}
+
 	for _, headerVal := range ctx.Request.Header.GetAllRef(headerAcceptEncoding) {
 		for _, v := range bytes.Split(*headerVal, headerCompressValueSep) {
 			switch string(v) {

@@ -2,7 +2,7 @@ package c
 
 import (
 	"github.com/zzztttkkk/suna"
-	"simple/services/h"
+	"simple/h"
 )
 
 var Branch = suna.NewBranch()

@@ -5,6 +5,7 @@ import (
 	"github.com/zzztttkkk/suna/internal"
 	"io"
 	"os"
+	"sync"
 )
 
 type Form struct {
@@ -47,6 +48,10 @@ type FormFile struct {
 
 	buf    []byte
 	cursor int
+}
+
+func (file *FormFile) Size() int {
+	return len(file.buf)
 }
 
 func (file *FormFile) Seek(offset int64, whence int) (int64, error) {
@@ -119,24 +124,30 @@ func (req *Request) parseQuery() {
 	req.queryStatus = 1
 }
 
-func (req *Request) QueryValue(name []byte) ([]byte, bool) {
-	if req.queryStatus > 2 {
-		req.parseQuery()
-	}
-	if req.queryStatus != 1 {
-		return nil, false
-	}
-	return req.query.Get(name)
-}
-
-func (req *Request) QueryValues(name []byte) [][]byte {
+func (req *Request) Query() *Form {
 	if req.queryStatus > 2 {
 		req.parseQuery()
 	}
 	if req.queryStatus != 1 {
 		return nil
 	}
-	return req.query.GetAll(name)
+	return &req.query
+}
+
+func (req *Request) QueryValue(name []byte) ([]byte, bool) {
+	query := req.Query()
+	if query != nil {
+		return query.Get(name)
+	}
+	return nil, false
+}
+
+func (req *Request) QueryValues(name []byte) [][]byte {
+	query := req.Query()
+	if query != nil {
+		return query.GetAll(name)
+	}
+	return nil
 }
 
 type _MultiPartParser struct {
@@ -162,6 +173,20 @@ func (p *_MultiPartParser) reset() {
 	p.form = nil
 }
 
+var multiPartParserPool = sync.Pool{New: func() interface{} { return &_MultiPartParser{} }}
+
+func acquireMultiPartParser(request *Request) *_MultiPartParser {
+	v := multiPartParserPool.Get().(*_MultiPartParser)
+	v.files = &request.files
+	v.form = &request.body
+	return v
+}
+
+func releaseMultiPartParser(p *_MultiPartParser) {
+	p.reset()
+	multiPartParserPool.Put(p)
+}
+
 func (p *_MultiPartParser) setBoundary(boundary []byte) {
 	p.begin = append(p.begin, '-', '-')
 	p.begin = append(p.begin, boundary...)
@@ -185,7 +210,7 @@ func (p *_MultiPartParser) appendLine() {
 }
 
 var headerContentDisposition = []byte("Content-Disposition")
-var formdataStr = []byte("form-data;")
+var formdataStr = []byte("formName-data;")
 var headerValueAttrsSep = []byte(";")
 var nameStr = []byte("name=")
 var filenameStr = []byte("filename=")
@@ -203,7 +228,7 @@ func (p *_MultiPartParser) onFieldOk() bool {
 	var filename []byte
 
 	for _, v := range bytes.Split(disposition[11:], headerValueAttrsSep) {
-		v = inplaceTrimSpace(v)
+		v = internal.InplaceTrimAsciiSpace(v)
 
 		if bytes.HasPrefix(v, nameStr) {
 			name = inplaceUnquote(v[6 : len(v)-1])
@@ -229,17 +254,17 @@ func (p *_MultiPartParser) onFieldOk() bool {
 
 func (req *Request) parseMultiPart(boundary []byte) bool {
 	buf := *req.bodyBufferPtr
-	parser := &req.mp
+	parser := acquireMultiPartParser(req)
+	defer releaseMultiPartParser(parser)
+
 	parser.setBoundary(boundary)
-	parser.form = &req.body
-	parser.files = &req.files
 
 	begin := false
 	for _, b := range buf {
 		if b == '\n' {
 			parser.line = append(parser.line, b)
 			if parser.inHeader { // is header line
-				parser.line = inplaceTrimSpace(parser.line)
+				parser.line = internal.InplaceTrimAsciiSpace(parser.line)
 				if len(parser.line) == 0 {
 					parser.inHeader = false
 				} else {
@@ -280,7 +305,7 @@ func (req *Request) parseMultiPart(boundary []byte) bool {
 
 var boundaryBytes = []byte("boundary=")
 
-func (req *Request) ParseBodyBuf() {
+func (req *Request) parseBodyBuf() {
 	if req.bodyBufferPtr == nil {
 		req.bodyStatus = 1
 		return
@@ -318,44 +343,40 @@ func (req *Request) ParseBodyBuf() {
 	req.bodyStatus = 1
 }
 
-func (req *Request) BodyValue(name []byte) ([]byte, bool) {
+func (req *Request) Form() *Form {
 	if req.bodyStatus == 0 {
-		req.ParseBodyBuf()
+		req.parseBodyBuf()
 	}
 	if req.bodyStatus != 2 {
+		return nil
+	}
+	return &req.body
+}
+
+func (req *Request) FormValue(name []byte) ([]byte, bool) {
+	form := req.Form()
+	if form == nil {
 		return nil, false
 	}
-	return req.body.Get(name)
+	return form.Get(name)
 }
 
-func (req *Request) BodyValues(name []byte) [][]byte {
+func (req *Request) FormValues(name []byte) [][]byte {
+	form := req.Form()
+	if form == nil {
+		return nil
+	}
+	return form.GetAll(name)
+}
+
+func (req *Request) Files() FormFiles {
 	if req.bodyStatus == 0 {
-		req.ParseBodyBuf()
+		req.parseBodyBuf()
 	}
 	if req.bodyStatus != 2 {
 		return nil
 	}
-	return req.body.GetAll(name)
-}
-
-func (req *Request) File(name []byte) *FormFile {
-	if req.bodyStatus == 0 {
-		req.ParseBodyBuf()
-	}
-	if req.bodyStatus != 2 {
-		return nil
-	}
-	return req.files.Get(name)
-}
-
-func (req *Request) Files(name []byte) []*FormFile {
-	if req.bodyStatus == 0 {
-		req.ParseBodyBuf()
-	}
-	if req.bodyStatus != 2 {
-		return nil
-	}
-	return req.files.GetAll(name)
+	return req.files
 }
 
 func (ctx *RequestCtx) FormValue(name []byte) ([]byte, bool) {
@@ -363,12 +384,19 @@ func (ctx *RequestCtx) FormValue(name []byte) ([]byte, bool) {
 	if ok {
 		return v, true
 	}
-	return ctx.Request.BodyValue(name)
+	return ctx.Request.FormValue(name)
 }
 
 func (ctx *RequestCtx) FormValues(name []byte) [][]byte {
-	var rv [][]byte
-	rv = ctx.Request.QueryValues(name)
-	rv = append(rv, ctx.Request.BodyValues(name)...)
-	return rv
+	v := ctx.Request.QueryValues(name)
+	v = append(v, ctx.Request.FormValues(name)...)
+	return v
+}
+
+func (ctx *RequestCtx) File(name []byte) *FormFile {
+	return ctx.Request.Files().Get(name)
+}
+
+func (ctx *RequestCtx) Files(name []byte) []*FormFile {
+	return ctx.Request.Files().GetAll(name)
 }

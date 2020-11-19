@@ -2,6 +2,8 @@ package suna
 
 import (
 	"fmt"
+	"github.com/zzztttkkk/suna/validator"
+	"reflect"
 	"strings"
 )
 
@@ -23,6 +25,16 @@ func (branch *_RouteBranch) AddHandler(method, path string, handler RequestHandl
 		branch.allHandlers[method] = m
 	}
 	m[path] = handler
+}
+
+func (branch *_RouteBranch) AddHandlerWithForm(method, path string, handler RequestHandler, form interface{}) {
+	branch.AddHandler(
+		method, path,
+		&_FormRequestHandler{
+			RequestHandler: handler,
+			Documenter:     validator.GetRules(reflect.TypeOf(form)),
+		},
+	)
 }
 
 func (branch *_RouteBranch) AddBranch(prefix string, router Router) {

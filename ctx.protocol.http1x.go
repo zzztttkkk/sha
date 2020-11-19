@@ -2,6 +2,7 @@ package suna
 
 import (
 	"bytes"
+	"github.com/zzztttkkk/suna/internal"
 	"time"
 )
 
@@ -27,39 +28,9 @@ func (ctx *RequestCtx) initRequest() {
 	req.bodyBufferPtr = &ctx.buf
 }
 
-var spaceMap []byte
-
-func init() {
-	spaceMap = make([]byte, 256)
-	for i := 0; i < 256; i++ {
-		switch i {
-		case '\t', '\n', '\v', '\f', '\r', ' ':
-			spaceMap[i] = 1
-		default:
-			spaceMap[i] = 0
-		}
-	}
-}
-
-func inplaceTrimSpace(v []byte) []byte {
-	var left = 0
-	var right = len(v) - 1
-	for ; left <= right; left++ {
-		if spaceMap[v[left]] != 1 {
-			break
-		}
-	}
-	for ; right >= left; right-- {
-		if spaceMap[v[right]] != 1 {
-			break
-		}
-	}
-	return v[left : right+1]
-}
-
 func (ctx *RequestCtx) onRequestHeaderLine() {
-	key := inplaceTrimSpace(ctx.cHKey)
-	val := inplaceTrimSpace(ctx.buf)
+	key := internal.InplaceTrimAsciiSpace(ctx.cHKey)
+	val := internal.InplaceTrimAsciiSpace(ctx.buf)
 	ctx.Request.Header.Append(key, val)
 }
 
@@ -84,9 +55,12 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				if len(ctx.Request.rawPath) < 1 || ctx.Request.rawPath[0] != '/' { // empty path
 					return 2, ErrBadConnection
 				}
-				if !bytes.HasPrefix(inplaceLowercase(ctx.Request.version), httpVersion) { // http version
+
+				version := inplaceLowercase(ctx.Request.version)
+				if !bytes.HasPrefix(version, httpVersion) { // http version
 					return 3, ErrBadConnection
 				}
+				ctx.Request.version = version[5:]
 				return offset, nil
 			}
 

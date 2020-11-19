@@ -92,11 +92,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 }
 
 func (ctx *RequestCtx) Write(p []byte) (int, error) {
-	res := &ctx.Response
-	if res.compressW != nil {
-		return res.compressW.Write(p)
-	}
-	return res.Write(p)
+	return ctx.Response.Write(p)
 }
 
 func (ctx *RequestCtx) WriteString(s string) (int, error) {

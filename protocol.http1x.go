@@ -26,9 +26,24 @@ func (protocol *Http1xProtocol) Handshake(ctx *RequestCtx) bool {
 	return false
 }
 
+var closeStr = []byte("close")
+var keepAliveStr = []byte("keep-alive")
+
+func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
+	if string(ctx.Request.version) < "1.1" {
+		return false
+	}
+	connVal, _ := ctx.Request.Header.Get(headerConnection)
+	if string(connVal) == "close" {
+		return false
+	}
+	connVal, _ = ctx.Response.Header.Get(headerConnection)
+	return string(connVal) != "close"
+}
+
 func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Request) {
 	var err error
-	var herr HttpError
+	var httpError HttpError
 	var n int
 	var stop bool
 
@@ -60,9 +75,9 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 			}
 
 			for offset != n {
-				offset, herr = rctx.feedHttp1xReqData(buf, offset, n)
+				offset, httpError = rctx.feedHttp1xReqData(buf, offset, n)
 				if err != nil {
-					stop = protocol.OnParseError(conn, herr)
+					stop = protocol.OnParseError(conn, httpError)
 					break
 				}
 			}
@@ -72,21 +87,34 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 					rctx.initRequest()
 				}
 
+				keepalive := true
 				subProtocol, upgradeOk := rctx.Upgrade()
 				if subProtocol == nil { // upgrade failed
 					if rctx.Response.statusCode == 0 {
 						protocol.server.Handler.Handle(rctx)
 					}
+					keepalive = protocol.keepalive(rctx)
+					if keepalive {
+						rctx.Response.Header.Set(headerConnection, keepAliveStr)
+					} else {
+						rctx.Response.Header.Set(headerConnection, closeStr)
+					}
 				}
+
 				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
 					stop = protocol.OnWriteError(conn, err)
 				}
+
 				if upgradeOk {
 					//goland:noinspection GoNilness
 					subProtocol.Serve(ctx, conn, &rctx.Request)
 					return
 				}
 				rctx.Reset()
+
+				if !keepalive {
+					return
+				}
 			}
 		}
 		continue

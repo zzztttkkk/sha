@@ -47,13 +47,6 @@ func (header *Header) SetContentLength(v int64) {
 	header.Kvs.Set(headerContentLength, internal.B(strconv.FormatInt(v, 10)))
 }
 
-var (
-	MIMEJson      = []byte("application/json")
-	MIMEForm      = []byte("application/x-www-form-urlencoded")
-	MIMEMultiPart = []byte("multipart/form-data")
-	MIMEText      = []byte("text/plain")
-)
-
 func (header *Header) SetContentType(v []byte) {
 	header.Kvs.Set(headerContentType, v)
 }

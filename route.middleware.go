@@ -1,5 +1,7 @@
 package suna
 
+import "fmt"
+
 type Middleware interface {
 	Process(ctx *RequestCtx, next func())
 }
@@ -36,20 +38,15 @@ func (org *_MiddlewareOrg) expand() {
 	org.freezen = true
 }
 
-func (org *_MiddlewareOrg) wrap(handler RequestHandler) RequestHandler {
-	org.expand()
-	if len(org.allM) < 1 {
-		return handler
-	}
+func handlerWithMiddleware(handler RequestHandler, middleware ...Middleware) RequestHandler {
 	return RequestHandlerFunc(
 		func(ctx *RequestCtx) {
-			var cursor = -1
 			var next func()
-			var size = len(org.allM)
+			cursor := -1
 			next = func() {
 				cursor++
-				if cursor < size {
-					org.allM[cursor].Process(ctx, next)
+				if cursor < len(middleware) {
+					middleware[cursor].Process(ctx, next)
 				} else {
 					handler.Handle(ctx)
 				}
@@ -57,4 +54,13 @@ func (org *_MiddlewareOrg) wrap(handler RequestHandler) RequestHandler {
 			next()
 		},
 	)
+}
+
+func (org *_MiddlewareOrg) wrap(handler RequestHandler) RequestHandler {
+	org.expand()
+	if len(org.allM) < 1 {
+		return handler
+	}
+	fmt.Println(len(org.allM))
+	return handlerWithMiddleware(handler, org.allM...)
 }

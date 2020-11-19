@@ -12,7 +12,7 @@ const quoteHeaderValueEscapeTable = "\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x0
 
 func inplaceUnquote(src []byte) []byte {
 	if bytes.IndexByte(src, '%') < 0 && bytes.IndexByte(src, '+') < 0 {
-		// fast path: src doesn't contain encoded chars
+		// fast path: src doesn'cls contain encoded chars
 		return src
 	}
 	cursor := 0

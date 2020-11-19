@@ -18,7 +18,6 @@ type Request struct {
 	query Form
 	body  Form
 	files FormFiles
-	mp    _MultiPartParser
 
 	queryStatus   int // >2: `?` index; 1: parsed; 0 empty
 	bodyStatus    int // 0: unparsed; 1: unsupported content type; 2: parsed
@@ -37,7 +36,6 @@ func (req *Request) Reset() {
 	req.body.Reset()
 	req.files = nil
 	req.files = nil
-	req.mp.reset()
 	req.queryStatus = 0
 	req.bodyStatus = 0
 	req.rawPath = req.rawPath[:0]
@@ -112,18 +110,19 @@ type RequestCtx struct {
 	kvSep        bool   // `:`
 	bodyRemain   int
 	bodySize     int
+	reset        bool
 }
 
 func (ctx *RequestCtx) RemoteAddr() net.Addr {
 	return ctx.conn.RemoteAddr()
 }
 
-var connectionHeader = []byte("Connection")
+var headerConnection = []byte("Connection")
 var upgradeHeader = []byte("Upgrade")
 
 // Upgrade return false, if not an upgrade request
 func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
-	v, ok := ctx.Request.Header.Get(connectionHeader)
+	v, ok := ctx.Request.Header.Get(headerConnection)
 	if !ok {
 		return nil, false
 	}
@@ -148,6 +147,10 @@ func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
 }
 
 func (ctx *RequestCtx) Reset() {
+	if ctx.reset {
+		return
+	}
+
 	ctx.Context = nil
 
 	ctx.Request.Reset()
@@ -166,12 +169,16 @@ func (ctx *RequestCtx) Reset() {
 	ctx.kvSep = false
 	ctx.bodySize = -1
 	ctx.bodyRemain = -1
+
+	ctx.reset = true
 }
 
 var ctxPool = sync.Pool{New: func() interface{} { return &RequestCtx{} }}
 
 func AcquireRequestCtx() *RequestCtx {
-	return ctxPool.Get().(*RequestCtx)
+	v := ctxPool.Get().(*RequestCtx)
+	v.reset = false
+	return v
 }
 
 var MaxRequestCtxPooledBufferSize = 1024 * 4

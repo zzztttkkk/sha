@@ -50,3 +50,32 @@ func NewBufferPoll(maxSize int) *_BufferPool {
 		maxSize: maxSize,
 	}
 }
+
+var spaceMap []byte
+
+func init() {
+	spaceMap = make([]byte, 128)
+	for i := 0; i < 128; i++ {
+		if i <= 32 || i == 127 {
+			spaceMap[i] = 1
+		} else {
+			spaceMap[i] = 0
+		}
+	}
+}
+
+func InplaceTrimAsciiSpace(v []byte) []byte {
+	var left = 0
+	var right = len(v) - 1
+	for ; left <= right; left++ {
+		if spaceMap[v[left]] != 1 {
+			break
+		}
+	}
+	for ; right >= left; right-- {
+		if spaceMap[v[right]] != 1 {
+			break
+		}
+	}
+	return v[left : right+1]
+}

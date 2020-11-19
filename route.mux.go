@@ -3,7 +3,10 @@ package suna
 import (
 	"fmt"
 	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/suna/validator"
 	"net/http"
+	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -193,6 +196,8 @@ type _Mux struct {
 	AutoRedirect bool
 	cors         *CorsOptions
 	docs         map[string]map[string]string
+
+	PanicHandler func(ctx *RequestCtx, v interface{})
 }
 
 var _ Router = &_Mux{}
@@ -203,6 +208,7 @@ func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 		m:      map[string]*_RouteNode{},
 		trees:  make([]*_RouteNode, 9),
 		cors:   corsOptions,
+		docs:   map[string]map[string]string{},
 	}
 	for i := 0; i < 9; i++ {
 		mux.trees[i] = &_RouteNode{}
@@ -247,14 +253,16 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 		mux.doAutoOptions(method, path)
 	}
 
-	dh, ok := handler.(DocedRequestHandler)
+	path = "/" + path
+	dh, ok := handler.(Documenter)
 	if ok {
-		dm := mux.docs[method]
+		dm := mux.docs[path]
 		if dm == nil {
 			dm = map[string]string{}
-			mux.docs[method] = dm
+			mux.docs[path] = dm
 		}
-		dm[path] = dh.Document()
+
+		dm[method] = dh.Document()
 	}
 }
 
@@ -405,7 +413,43 @@ func (mux *_Mux) AddHandler(method, path string, handler RequestHandler) {
 	mux.doAddHandler1(method, path, handler, true)
 }
 
+type _FormRequestHandler struct {
+	RequestHandler
+	Documenter
+}
+
+func (mux *_Mux) AddHandlerWithForm(method, path string, handler RequestHandler, form interface{}) {
+	mux.AddHandler(
+		method, path,
+		&_FormRequestHandler{
+			RequestHandler: handler,
+			Documenter:     validator.GetRules(reflect.TypeOf(form)),
+		},
+	)
+}
+
 func (mux *_Mux) Handle(ctx *RequestCtx) {
+	defer func() {
+		v := recover()
+		if v == nil {
+			return
+		}
+
+		ctx.Response.ResetBodyBuffer()
+
+		if mux.PanicHandler != nil {
+			mux.PanicHandler(ctx, v)
+			return
+		}
+
+		switch rv := v.(type) {
+		case HttpError:
+			ctx.WriteError(rv)
+		default:
+			ctx.WriteError(StdHttpErrors[http.StatusInternalServerError])
+		}
+	}()
+
 	req := &ctx.Request
 	tree := mux.findTree1(internal.S(req.Method))
 	if tree == nil {
@@ -444,4 +488,63 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 		return
 	}
 	n.handler.Handle(ctx)
+}
+
+type _AutoDocForm struct {
+	Prefix string `validator:"optional"`
+}
+
+func (_AutoDocForm) Description() string {
+	return ""
+}
+
+func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
+	var handler = func(ctx *RequestCtx) {
+		ctx.AutoCompress()
+
+		form := _AutoDocForm{}
+		err := ctx.Validate(&form)
+		if err != nil {
+			ctx.WriteError(err)
+			return
+		}
+
+		fmt.Println(11, form.Prefix)
+		var m = map[string]map[string]string{}
+		for k, v := range mux.docs {
+			if strings.HasPrefix(k, form.Prefix) {
+				m[k] = v
+			}
+		}
+
+		var paths []string
+		for k := range m {
+			paths = append(paths, k)
+		}
+		sort.Strings(paths)
+
+		buf := strings.Builder{}
+		for _, path := range paths {
+			buf.WriteString(fmt.Sprintf("## path: %s\n\n", path))
+			mmap := m[path]
+			var methods []string
+			for method := range mmap {
+				methods = append(methods, method)
+			}
+			sort.Strings(methods)
+			for _, method := range methods {
+				buf.WriteString(fmt.Sprintf("### method: %s\n\n", method))
+				buf.WriteString(mmap[method])
+				buf.WriteString("\n")
+			}
+		}
+		ctx.Response.Header.SetContentType(MIMEMarkdown)
+		_, _ = ctx.WriteString(buf.String())
+	}
+
+	mux.AddHandlerWithForm(
+		method, path,
+		handlerWithMiddleware(RequestHandlerFunc(handler), middleware...),
+		_AutoDocForm{},
+	)
 }

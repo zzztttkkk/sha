@@ -19,13 +19,11 @@ func (item *KvItem) makeInvalid() {
 }
 
 type Kvs struct {
-	lst          []KvItem
-	invalidItems []int
-	size         int
+	lst []KvItem
 }
 
 func (kvs *Kvs) Size() int {
-	return kvs.size
+	return len(kvs.lst)
 }
 
 func (kvs *Kvs) String() string {
@@ -60,21 +58,18 @@ func ReleaseKvs(kvs *Kvs) {
 }
 
 func (kvs *Kvs) Append(k, v []byte) *KvItem {
-	invItemSize := len(kvs.invalidItems)
 	var item *KvItem
-	if invItemSize > 0 {
-		ind := kvs.invalidItems[invItemSize-1]
-		kvs.invalidItems = kvs.invalidItems[:invItemSize-1]
 
-		item = &(kvs.lst[ind])
-		item.invalid = false
+	s := len(kvs.lst)
+	if cap(kvs.lst) > s {
+		kvs.lst = kvs.lst[:s+1]
 	} else {
 		kvs.lst = append(kvs.lst, KvItem{})
-		item = &(kvs.lst[len(kvs.lst)-1])
 	}
+	item = &(kvs.lst[len(kvs.lst)-1])
+	item.invalid = false
 	item.Key = append(item.Key, k...)
 	item.Val = append(item.Val, v...)
-	kvs.size++
 	return item
 }
 
@@ -91,8 +86,6 @@ func (kvs *Kvs) Del(k []byte) {
 		}
 		if bytes.Equal(item.Key, k) {
 			item.makeInvalid()
-			kvs.invalidItems = append(kvs.invalidItems, i)
-			kvs.size--
 		}
 	}
 }
@@ -177,16 +170,12 @@ func (kvs *Kvs) EachItem(visitor func(k, v []byte) bool) {
 }
 
 func (kvs *Kvs) Reset() {
-	if len(kvs.invalidItems) == len(kvs.lst) {
-		return
-	}
 	for i := 0; i < len(kvs.lst); i++ {
 		item := &(kvs.lst[i])
 		if item.invalid {
 			continue
 		}
 		item.makeInvalid()
-		kvs.invalidItems = append(kvs.invalidItems, i)
-		kvs.size = 0
 	}
+	kvs.lst = kvs.lst[:0]
 }
