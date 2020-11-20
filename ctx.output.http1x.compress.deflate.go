@@ -7,11 +7,11 @@ import (
 
 type _DeflateW struct {
 	*flate.Writer
-	_BytesWriter
+	_ResponseBufWrapper
 }
 
 func (defW *_DeflateW) setPtr(ptr *Response) {
-	defW._BytesWriter.res = ptr
+	defW._ResponseBufWrapper.res = ptr
 }
 
 func (defW *_DeflateW) Write(p []byte) (int, error) {
@@ -22,7 +22,7 @@ func (defW *_DeflateW) Flush() error {
 	err := defW.Writer.Flush()
 	defW.setPtr(nil)
 	deflatePool.Put(defW)
-	defW.Writer.Reset(&defW._BytesWriter)
+	defW.Writer.Reset(&defW._ResponseBufWrapper)
 	return err
 }
 
@@ -30,7 +30,7 @@ var deflatePool = sync.Pool{
 	New: func() interface{} {
 		brw := &_DeflateW{}
 		var err error
-		brw.Writer, err = flate.NewWriter(&brw._BytesWriter, CompressLevelDeflate)
+		brw.Writer, err = flate.NewWriter(&brw._ResponseBufWrapper, CompressLevelDeflate)
 		if err != nil {
 			panic(err)
 		}

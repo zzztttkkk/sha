@@ -7,11 +7,11 @@ import (
 
 type _GzipW struct {
 	*gzip.Writer
-	_BytesWriter
+	_ResponseBufWrapper
 }
 
 func (gW *_GzipW) setPtr(ptr *Response) {
-	gW._BytesWriter.res = ptr
+	gW._ResponseBufWrapper.res = ptr
 }
 
 func (gW *_GzipW) Write(p []byte) (int, error) {
@@ -22,7 +22,7 @@ func (gW *_GzipW) Flush() error {
 	err := gW.Writer.Flush()
 	gW.setPtr(nil)
 	gzipWPool.Put(gW)
-	gW.Writer.Reset(&gW._BytesWriter)
+	gW.Writer.Reset(&gW._ResponseBufWrapper)
 	return err
 }
 
@@ -30,7 +30,7 @@ var gzipWPool = sync.Pool{
 	New: func() interface{} {
 		gw := &_GzipW{}
 		var err error
-		gw.Writer, err = gzip.NewWriterLevel(&gw._BytesWriter, CompressLevelGzip)
+		gw.Writer, err = gzip.NewWriterLevel(&gw._ResponseBufWrapper, CompressLevelGzip)
 		if err != nil {
 			panic(err)
 		}
@@ -41,7 +41,7 @@ var gzipWPool = sync.Pool{
 func acquireGzipW(res *Response) WriteFlusher {
 	v := gzipWPool.Get().(*_GzipW)
 	v.setPtr(res)
-	v.Writer.Reset(&v._BytesWriter)
+	v.Writer.Reset(&v._ResponseBufWrapper)
 	return v
 }
 

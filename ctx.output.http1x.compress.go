@@ -26,11 +26,11 @@ type WriteFlusher interface {
 	Flush() error
 }
 
-type _BytesWriter struct {
+type _ResponseBufWrapper struct {
 	res *Response
 }
 
-func (w *_BytesWriter) Write(p []byte) (int, error) {
+func (w *_ResponseBufWrapper) Write(p []byte) (int, error) {
 	if w.res == nil {
 		return 0, nil
 	}

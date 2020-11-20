@@ -5,32 +5,40 @@ import (
 	"sync"
 )
 
-var brPool = sync.Pool{New: func() interface{} { return nil }}
+type _CompressBrotli struct {
+	*brotli.Writer
+	_ResponseBufWrapper
+}
+
+func (brw *_CompressBrotli) setPtr(ptr *Response) {
+	brw._ResponseBufWrapper.res = ptr
+}
+
+func (brw *_CompressBrotli) Write(p []byte) (int, error) {
+	return brw.Writer.Write(p)
+}
+
+func (brw *_CompressBrotli) Flush() error {
+	err := brw.Writer.Flush()
+	brw.setPtr(nil)
+	brPool.Put(brw)
+	brw.Writer.Reset(&brw._ResponseBufWrapper)
+	return err
+}
+
+var brPool = sync.Pool{
+	New: func() interface{} {
+		brw := &_CompressBrotli{}
+		brw.Writer = brotli.NewWriterLevel(&brw._ResponseBufWrapper, CompressLevelBrotli)
+		return brw
+	},
+}
 
 func acquireBrW(res *Response) WriteFlusher {
-	v := brPool.Get().(*_CompressBr)
-	if v == nil {
-		v = &_CompressBr{}
-		v.Writer = brotli.NewWriterLevel(res, CompressLevelBrotli)
-		return v
-	}
-	v.Writer.Reset(res)
+	v := brPool.Get().(*_CompressBrotli)
+	v.setPtr(res)
+	v.Writer.Reset(&v._ResponseBufWrapper)
 	return v
-}
-
-type _CompressBr struct {
-	*brotli.Writer
-}
-
-func (v *_CompressBr) Write(p []byte) (int, error) {
-	return v.Writer.Write(p)
-}
-
-func (v *_CompressBr) Flush() error {
-	err := v.Writer.Flush()
-	v.Writer.Reset(nil)
-	brPool.Put(v)
-	return err
 }
 
 func (ctx *RequestCtx) CompressBrotli() {
