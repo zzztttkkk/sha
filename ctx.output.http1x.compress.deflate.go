@@ -46,6 +46,6 @@ func acquireDeflateW(res *Response) WriteFlusher {
 
 func (ctx *RequestCtx) CompressDeflate() {
 	ctx.Response.Header.Set(headerContentEncoding, deflateStr)
-	ctx.Response.compressW = acquireDeflateW(&ctx.Response)
-	ctx.Response.compressFunc = acquireDeflateW
+	ctx.Response.compressWriter = acquireDeflateW(&ctx.Response)
+	ctx.Response.newCompressWriter = acquireDeflateW
 }

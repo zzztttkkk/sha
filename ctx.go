@@ -44,18 +44,18 @@ func (req *Request) Reset() {
 }
 
 type Response struct {
-	statusCode   int
-	Header       Header
-	buf          []byte
-	compressW    WriteFlusher
-	compressFunc func(response *Response) WriteFlusher
+	statusCode        int
+	Header            Header
+	buf               []byte
+	compressWriter    WriteFlusher
+	newCompressWriter func(response *Response) WriteFlusher
 
 	headerWritten bool
 }
 
 func (res *Response) Write(p []byte) (int, error) {
-	if res.compressW != nil {
-		return res.compressW.Write(p)
+	if res.compressWriter != nil {
+		return res.compressWriter.Write(p)
 	}
 	res.buf = append(res.buf, p...)
 	return len(p), nil
@@ -66,9 +66,9 @@ func (res *Response) SetStatusCode(v int) {
 }
 
 func (res *Response) ResetBodyBuffer() {
-	if res.compressW != nil {
-		_ = res.compressW.Flush()
-		res.compressW = res.compressFunc(res)
+	if res.compressWriter != nil {
+		_ = res.compressWriter.Flush()
+		res.compressWriter = res.newCompressWriter(res)
 	}
 	res.buf = res.buf[:0]
 }
@@ -136,7 +136,7 @@ func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
 	v = inplaceLowercase(v)
 	protocol := ctx.protocol.SubProtocols[internal.S(v)]
 	if protocol == nil {
-		ctx.WriteError(StdHttpErrors[http.StatusNotFound])
+		ctx.WriteStatus(http.StatusNotFound)
 		return nil, false
 	}
 
@@ -156,8 +156,8 @@ func (ctx *RequestCtx) Reset() {
 	ctx.Request.Reset()
 
 	ctx.Response.Reset()
-	ctx.Response.compressW = nil
-	ctx.Response.compressFunc = nil
+	ctx.Response.compressWriter = nil
+	ctx.Response.newCompressWriter = nil
 
 	ctx.status = 0
 	ctx.fStatus = 0

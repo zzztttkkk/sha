@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/suna/internal"
 	"html"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -46,13 +45,12 @@ var typeNames = []string{
 }
 
 type Rule struct {
-	FieldIndex     []int
-	FormName       []byte
-	PathParamsName []byte
-	Type           _RuleType
+	fieldIndex     []int
+	formName       []byte
+	pathParamsName []byte
+	rtype          _RuleType
 
-	IsRequired bool
-	ErrMessage string // print to message when FormName error
+	isRequired bool
 
 	fVR   bool // int value range flag
 	minIV *int64
@@ -62,7 +60,7 @@ type Rule struct {
 	minDV *float64
 	maxDV *float64
 
-	IsSlice bool
+	isSlice bool
 	fSSR    bool // slice size range flag
 	minSSV  *int
 	maxSSV  *int
@@ -72,7 +70,7 @@ type Rule struct {
 	minLV        *int
 	maxLV        *int
 
-	Default *[]byte
+	defaultValPtr *[]byte
 
 	reg     *regexp.Regexp
 	regName string
@@ -95,13 +93,13 @@ var ruleFmt = internal.NewNamedFmt(
 // markdown table row
 func (rule *Rule) String() string {
 	m := internal.M{
-		"type":     typeNames[rule.Type],
-		"required": fmt.Sprintf("%v", rule.IsRequired),
+		"type":     typeNames[rule.rtype],
+		"required": fmt.Sprintf("%v", rule.isRequired),
 	}
 
-	m["name"] = string(rule.FormName)
-	if len(rule.PathParamsName) > 0 {
-		m["name"] = fmt.Sprintf("PathParam: %s", rule.PathParamsName)
+	m["name"] = string(rule.formName)
+	if len(rule.pathParamsName) > 0 {
+		m["name"] = fmt.Sprintf("PathParam: %s", rule.pathParamsName)
 	}
 	if rule.fSSR {
 		m["type"] = fmt.Sprintf("%s; multi values", m["type"])
@@ -136,7 +134,7 @@ func (rule *Rule) String() string {
 	}
 
 	if rule.fVR {
-		switch rule.Type {
+		switch rule.rtype {
 		case Int64, IntSlice:
 			if rule.minIV != nil && rule.maxIV != nil {
 				m["vrange"] = fmt.Sprintf("%d-%d", *rule.minIV, *rule.maxIV)
@@ -182,8 +180,8 @@ func (rule *Rule) String() string {
 		m["regexp"] = "/"
 	}
 
-	if rule.Default != nil && len(*rule.Default) > 0 {
-		m["default"] = html.EscapeString(string(*rule.Default))
+	if rule.defaultValPtr != nil && len(*rule.defaultValPtr) > 0 {
+		m["default"] = html.EscapeString(string(*rule.defaultValPtr))
 	} else {
 		m["default"] = "/"
 	}
@@ -201,7 +199,7 @@ func (rule *Rule) String() string {
 	return ruleFmt.Render(m)
 }
 
-func (rule *Rule) ToBytes(v []byte) ([]byte, bool) {
+func (rule *Rule) toBytes(v []byte) ([]byte, bool) {
 	if !rule.notTrimSpace {
 		v = bytes.TrimSpace(v)
 	}
@@ -232,17 +230,17 @@ func (rule *Rule) ToBytes(v []byte) ([]byte, bool) {
 	return v, true
 }
 
-func (rule *Rule) ToString(v []byte) (string, bool) {
-	v, ok := rule.ToBytes(v)
+func (rule *Rule) toString(v []byte) (string, bool) {
+	v, ok := rule.toBytes(v)
 	if !ok {
 		return "", false
 	}
 	return internal.S(v), true
 }
 
-func (rule *Rule) ToInt(v []byte) (int64, bool) {
+func (rule *Rule) toInt(v []byte) (int64, bool) {
 	var ok bool
-	v, ok = rule.ToBytes(v)
+	v, ok = rule.toBytes(v)
 	if !ok {
 		return 0, false
 	}
@@ -263,9 +261,9 @@ func (rule *Rule) ToInt(v []byte) (int64, bool) {
 	return i, true
 }
 
-func (rule *Rule) ToUint(v []byte) (uint64, bool) {
+func (rule *Rule) toUint(v []byte) (uint64, bool) {
 	var ok bool
-	v, ok = rule.ToBytes(v)
+	v, ok = rule.toBytes(v)
 	if !ok {
 		return 0, false
 	}
@@ -286,9 +284,9 @@ func (rule *Rule) ToUint(v []byte) (uint64, bool) {
 	return i, true
 }
 
-func (rule *Rule) ToFloat(v []byte) (float64, bool) {
+func (rule *Rule) toFloat(v []byte) (float64, bool) {
 	var ok bool
-	v, ok = rule.ToBytes(v)
+	v, ok = rule.toBytes(v)
 	if !ok {
 		return 0, false
 	}
@@ -311,9 +309,9 @@ func (rule *Rule) ToFloat(v []byte) (float64, bool) {
 
 var ParseBool func(v []byte) (bool, error)
 
-func (rule *Rule) ToBool(v []byte) (bool, bool) {
+func (rule *Rule) toBool(v []byte) (bool, bool) {
 	var ok bool
-	v, ok = rule.ToBytes(v)
+	v, ok = rule.toBytes(v)
 	if !ok {
 		return false, false
 	}
@@ -329,25 +327,6 @@ func (rule *Rule) ToBool(v []byte) (bool, bool) {
 		return false, false
 	}
 	return b, true
-}
-
-func (rule *Rule) ValidateSliceValue(v *reflect.Value) bool {
-	if !rule.fSSR {
-		return true
-	}
-
-	if v.IsNil() {
-		return false
-	}
-
-	s := v.Len()
-	if rule.minSSV != nil && s < *rule.minSSV {
-		return false
-	}
-	if rule.maxSSV != nil && s > *rule.maxSSV {
-		return false
-	}
-	return true
 }
 
 type Rules []*Rule

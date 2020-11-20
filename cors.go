@@ -30,7 +30,7 @@ var (
 func (options *CorsOptions) init() {
 	if options.MaxAge > 0 {
 		options.headerKvs = append(options.headerKvs, headerAccessControlMaxAge)
-		options.headerKvs = append(options.headerKvs, []byte(strconv.FormatInt(int64(options.MaxAge), 10)))
+		options.headerKvs = append(options.headerKvs, []byte(strconv.FormatInt(options.MaxAge, 10)))
 	}
 	if len(options.AllowMethods) > 0 {
 		options.headerKvs = append(options.headerKvs, headerAccessControlAllowMethods)
@@ -49,9 +49,7 @@ func (options *CorsOptions) init() {
 		options.headerKvs = append(options.headerKvs, []byte(options.ExposeHeaders))
 	}
 	if options.OnForbidden == nil {
-		options.OnForbidden = func(ctx *RequestCtx) {
-			ctx.WriteError(StdHttpErrors[http.StatusForbidden])
-		}
+		options.OnForbidden = func(ctx *RequestCtx) { ctx.WriteStatus(http.StatusForbidden) }
 	}
 }
 

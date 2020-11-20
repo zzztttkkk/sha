@@ -8,62 +8,43 @@ import (
 type HttpError interface {
 	Error() string
 	StatusCode() int
-	Message() []byte
+}
+
+type HttpResponseError interface {
+	HttpError
 	Header() *Header
+	Body() []byte
 }
 
-type _StdError struct {
-	status  int
-	message []byte
-	header  Header
+type StatusError int
+
+func (err StatusError) Error() string {
+	return fmt.Sprintf("%s", http.StatusText(int(err)))
 }
 
-func (err *_StdError) Error() string {
-	return fmt.Sprintf("%d %s", err.status, err.message)
+func (err StatusError) StatusCode() int {
+	return int(err)
 }
 
-func (err *_StdError) StatusCode() int {
-	return err.status
+func (err StatusError) Header() *Header {
+	return nil
 }
 
-func (err *_StdError) Message() []byte {
-	return err.message
-}
-
-func (err *_StdError) Header() *Header {
-	return &err.header
-}
-
-var StdHttpErrors = map[int]HttpError{}
-
-func newStdError(msg string) HttpError {
-	return &_StdError{
-		status:  http.StatusInternalServerError,
-		message: []byte(msg),
+func (err StatusError) Body() []byte {
+	i := int(err)
+	if i < 0 || i > 599 {
+		panic(ErrUnknownResponseStatusCode)
 	}
+	ret := statusTextMap[i]
+	if len(ret) < 1 {
+		panic(ErrUnknownResponseStatusCode)
+	}
+	return ret
 }
 
 var (
-	ErrBadConnection               HttpError
-	ErrRequestUrlTooLong           HttpError
-	ErrRequestHeaderFieldsTooLarge HttpError
-	ErrRequestEntityTooLarge       HttpError
+	ErrBadConnection               = StatusError(http.StatusBadRequest)
+	ErrRequestUrlTooLong           = StatusError(http.StatusRequestURITooLong)
+	ErrRequestHeaderFieldsTooLarge = StatusError(http.StatusRequestHeaderFieldsTooLarge)
+	ErrRequestEntityTooLarge       = StatusError(http.StatusRequestEntityTooLarge)
 )
-
-func init() {
-	for i := 100; i < 600; i++ {
-		txt := http.StatusText(i)
-		if len(txt) < 1 {
-			continue
-		}
-		StdHttpErrors[i] = &_StdError{
-			status:  i,
-			message: []byte(txt),
-		}
-	}
-
-	ErrBadConnection = StdHttpErrors[http.StatusBadRequest]
-	ErrRequestUrlTooLong = StdHttpErrors[http.StatusRequestURITooLong]
-	ErrRequestHeaderFieldsTooLarge = StdHttpErrors[http.StatusRequestHeaderFieldsTooLarge]
-	ErrRequestEntityTooLarge = StdHttpErrors[http.StatusRequestEntityTooLarge]
-}

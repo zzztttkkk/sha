@@ -343,7 +343,7 @@ func (req *Request) parseBodyBuf() {
 	req.bodyStatus = 1
 }
 
-func (req *Request) Form() *Form {
+func (req *Request) BodyForm() *Form {
 	if req.bodyStatus == 0 {
 		req.parseBodyBuf()
 	}
@@ -353,16 +353,16 @@ func (req *Request) Form() *Form {
 	return &req.body
 }
 
-func (req *Request) FormValue(name []byte) ([]byte, bool) {
-	form := req.Form()
+func (req *Request) BodyFormValue(name []byte) ([]byte, bool) {
+	form := req.BodyForm()
 	if form == nil {
 		return nil, false
 	}
 	return form.Get(name)
 }
 
-func (req *Request) FormValues(name []byte) [][]byte {
-	form := req.Form()
+func (req *Request) BodyFormValues(name []byte) [][]byte {
+	form := req.BodyForm()
 	if form == nil {
 		return nil
 	}
@@ -379,18 +379,23 @@ func (req *Request) Files() FormFiles {
 	return req.files
 }
 
+// ctx
 func (ctx *RequestCtx) FormValue(name []byte) ([]byte, bool) {
 	v, ok := ctx.Request.QueryValue(name)
 	if ok {
 		return v, true
 	}
-	return ctx.Request.FormValue(name)
+	return ctx.Request.BodyFormValue(name)
 }
 
 func (ctx *RequestCtx) FormValues(name []byte) [][]byte {
 	v := ctx.Request.QueryValues(name)
-	v = append(v, ctx.Request.FormValues(name)...)
+	v = append(v, ctx.Request.BodyFormValues(name)...)
 	return v
+}
+
+func (ctx *RequestCtx) PathParam(name []byte) ([]byte, bool) {
+	return ctx.Request.Params.Get(name)
 }
 
 func (ctx *RequestCtx) File(name []byte) *FormFile {

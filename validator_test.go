@@ -15,9 +15,10 @@ func TestRequestCtx_Validate(t *testing.T) {
 	mux := NewMux("", nil)
 
 	type Form struct {
-		Name    string  `validator:"L<3-20>"`
-		Numbers []int64 `validator:"V<0-9>;S<5>"`
+		Name string  `validator:"L<3-20>"`
+		Nums []int64 `validator:"V<0-9>;S<5>"`
 	}
+
 	mux.AddHandlerWithForm(
 		"get",
 		"/",

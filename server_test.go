@@ -18,7 +18,7 @@ func TestServer_Run(t *testing.T) {
 		func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 			ctx.Response.Header.SetContentType(MIMEText)
-			fmt.Printf("Query:\n%sForm: \n%s\n", ctx.Request.Query(), ctx.Request.Form())
+			fmt.Printf("Query:\n%sForm: \n%s\n", ctx.Request.Query(), ctx.Request.BodyForm())
 			fmt.Println(len(ctx.FormValues([]byte("a"))))
 			_, _ = ctx.WriteString(strings.Repeat("Hello World", 100))
 		},

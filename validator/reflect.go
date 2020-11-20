@@ -32,52 +32,52 @@ func (p *_TagParser) OnBegin(f *reflect.StructField, index []int) bool {
 	p.field = f
 
 	if f.Type.Kind() == reflect.Struct {
-		p.rules = append(p.rules, *GetRules(f.Type)...)
+		p.rules = append(p.rules, GetRules(f.Type)...)
 		return false
 	}
 	if f.Type.Kind() == reflect.Ptr {
-		log.Println("suna.validator: field is IsRequired by default, do not use pointer")
+		log.Println("suna.validator: field is isRequired by default, do not use pointer")
 		return false
 	}
 
 	p.current = &Rule{}
 	rule := p.current
 
-	rule.FieldIndex = append(p.current.FieldIndex, index...)
-	rule.IsRequired = true
+	rule.fieldIndex = append(p.current.fieldIndex, index...)
+	rule.isRequired = true
 
 	ele := reflect.New(f.Type).Elem()
 	switch ele.Interface().(type) {
 	case int64:
-		rule.Type = Int64
+		rule.rtype = Int64
 	case uint64:
-		rule.Type = Uint64
+		rule.rtype = Uint64
 	case float64:
-		rule.Type = Float64
+		rule.rtype = Float64
 	case bool:
-		rule.Type = Bool
+		rule.rtype = Bool
 	case string:
-		rule.Type = String
+		rule.rtype = String
 	case []byte:
-		rule.Type = Bytes
+		rule.rtype = Bytes
 	case [][]byte:
-		rule.Type = BytesSlice
-		rule.IsSlice = true
+		rule.rtype = BytesSlice
+		rule.isSlice = true
 	case []string:
-		rule.Type = StringSlice
-		rule.IsSlice = true
+		rule.rtype = StringSlice
+		rule.isSlice = true
 	case []int64:
-		rule.Type = IntSlice
-		rule.IsSlice = true
+		rule.rtype = IntSlice
+		rule.isSlice = true
 	case []uint64:
-		rule.Type = UintSlice
-		rule.IsSlice = true
+		rule.rtype = UintSlice
+		rule.isSlice = true
 	case []bool:
-		rule.Type = BoolSlice
-		rule.IsSlice = true
+		rule.rtype = BoolSlice
+		rule.isSlice = true
 	case []float64:
-		rule.Type = FloatSlice
-		rule.IsSlice = true
+		rule.rtype = FloatSlice
+		rule.isSlice = true
 	default:
 		log.Printf("suna.validator: number is non-64bit value or unsupported type, `%s.%s`", p.name, f.Name)
 		p.current = nil
@@ -88,7 +88,7 @@ func (p *_TagParser) OnBegin(f *reflect.StructField, index []int) bool {
 }
 
 func (p *_TagParser) OnName(name string) {
-	p.current.FormName = []byte(name)
+	p.current.formName = []byte(name)
 }
 
 func (p *_TagParser) OnAttr(key, val string) {
@@ -129,7 +129,7 @@ func (p *_TagParser) OnAttr(key, val string) {
 	case "V", "value":
 		rule.fVR = true
 		var err bool
-		switch rule.Type {
+		switch rule.rtype {
 		case Int64, IntSlice:
 			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 			if minVF {
@@ -173,9 +173,13 @@ func (p *_TagParser) OnAttr(key, val string) {
 			)
 		}
 	case "D", "default":
+		if rule.isSlice {
+			log.Println(fmt.Sprintf("suna.validator: ignore default value on a slice field, `%s.%s`", p.name, p.field.Name))
+		}
+
 		v := new([]byte)
 		*v = append(*v, []byte(val)...)
-		rule.Default = v
+		rule.defaultValPtr = v
 	case "S", "size":
 		rule.fSSR = true
 		minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
@@ -196,25 +200,31 @@ func (p *_TagParser) OnAttr(key, val string) {
 			)
 		}
 	case "P", "params":
-		rule.PathParamsName = []byte(val)
-	case "E", "errmsg":
-		rule.ErrMessage = val
+		rule.pathParamsName = []byte(val)
 	case "optional":
-		rule.IsRequired = false
+		rule.isRequired = false
 	case "NTSC", "nottrimspacechar":
 		rule.notTrimSpace = true
 	}
 }
 
 func (p *_TagParser) OnDone() {
-	if !p.current.fLR { // field can not be empty by default
-		p.current.fLR = true
-		p.current.minLV = new(int)
-		*p.current.minLV = 1
-	}
-	p.rules = append(p.rules, p.current)
+	rule := p.current
 	p.current = nil
 	p.field = nil
+
+	if !rule.fLR { // field can not be empty by default
+		rule.fLR = true
+		rule.minLV = new(int)
+		*rule.minLV = 1
+	}
+
+	if rule.isSlice && !rule.fSSR {
+		rule.fSSR = true
+		rule.minSSV = new(int)
+		*rule.minSSV = 1
+	}
+	p.rules = append(p.rules, rule)
 }
 
 // all validate type should be prepared before use
@@ -225,10 +235,10 @@ type _FormDescriptor interface {
 	Description() string
 }
 
-func GetRules(t reflect.Type) *Rules {
+func GetRules(t reflect.Type) Rules {
 	v, ok := cacheMap[t]
 	if ok {
-		return &v
+		return v
 	}
 
 	parser := _TagParser{name: fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())}
@@ -241,5 +251,5 @@ func GetRules(t reflect.Type) *Rules {
 	if ok {
 		descriptionMap[fmt.Sprintf("%p", parser.rules)] = fdor.Description()
 	}
-	return &parser.rules
+	return parser.rules
 }

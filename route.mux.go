@@ -187,7 +187,6 @@ type _Mux struct {
 	_MiddlewareOrg
 	prefix string
 	m      map[string]*_RouteNode
-	trees  []*_RouteNode
 
 	optionsMap map[string]*_RouteNode
 
@@ -206,14 +205,9 @@ func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 	mux := &_Mux{
 		prefix: prefix,
 		m:      map[string]*_RouteNode{},
-		trees:  make([]*_RouteNode, 9),
 		cors:   corsOptions,
 		docs:   map[string]map[string]string{},
 	}
-	for i := 0; i < 9; i++ {
-		mux.trees[i] = &_RouteNode{}
-	}
-
 	if mux.cors != nil {
 		if mux.cors.CheckOrigin == nil {
 			panic("suna.router: nil `CorsOptions`.`CheckOrigin`")
@@ -241,7 +235,7 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 	path = path[1:]
 
 	var newNode *_RouteNode
-	tree := mux.findTree(method)
+	tree := mux.getOrNewTree(method)
 	tree.addHandler(strings.Split(path, "/"), handler, path, false, "", &newNode)
 	tree.freezeParams()
 
@@ -273,7 +267,7 @@ func (mux *_Mux) doAutoOptions(method, path string) {
 
 	var newNode = mux.optionsMap[path]
 	if newNode == nil {
-		mux.findTree1("OPTIONS").addHandler(
+		mux.getOrNewTree("OPTIONS").addHandler(
 			strings.Split(path, "/"),
 			nil,
 			path,
@@ -304,71 +298,25 @@ func (mux *_Mux) AddBranch(prefix string, router Router) {
 	v.sinking()
 }
 
-func (mux *_Mux) findTree(method string) *_RouteNode {
-	switch method {
-	case "GET":
-		return mux.trees[0]
-	case "HEAD":
-		return mux.trees[1]
-	case "POST":
-		return mux.trees[2]
-	case "PUT":
-		return mux.trees[3]
-	case "DELETE":
-		return mux.trees[4]
-	case "CONNECT":
-		return mux.trees[5]
-	case "OPTIONS":
-		return mux.trees[6]
-	case "TRACE":
-		return mux.trees[7]
-	case "PATCH":
-		return mux.trees[8]
-	default:
-		n, ok := mux.m[method]
-		if !ok {
-			n = &_RouteNode{}
-			mux.m[method] = n
-		}
-		return n
+func (mux *_Mux) getOrNewTree(method string) *_RouteNode {
+	n, ok := mux.m[method]
+	if !ok {
+		n = &_RouteNode{}
+		mux.m[method] = n
 	}
-}
-
-func (mux *_Mux) findTree1(method string) *_RouteNode {
-	switch method {
-	case "GET":
-		return mux.trees[0]
-	case "HEAD":
-		return mux.trees[1]
-	case "POST":
-		return mux.trees[2]
-	case "PUT":
-		return mux.trees[3]
-	case "DELETE":
-		return mux.trees[4]
-	case "CONNECT":
-		return mux.trees[5]
-	case "OPTIONS":
-		return mux.trees[6]
-	case "TRACE":
-		return mux.trees[7]
-	case "PATCH":
-		return mux.trees[8]
-	default:
-		return mux.m[method]
-	}
+	return n
 }
 
 var locationHeader = []byte("Location")
 
 func doAutoRectAddSlash(ctx *RequestCtx) {
-	ctx.WriteError(StdHttpErrors[http.StatusMovedPermanently])
+	ctx.WriteStatus(http.StatusMovedPermanently)
 	item := ctx.Response.Header.Set(locationHeader, ctx.Request.Path)
 	item.Val = append(item.Val, '/')
 }
 
 func doAutoRectDelSlash(ctx *RequestCtx) {
-	ctx.WriteError(StdHttpErrors[http.StatusMovedPermanently])
+	ctx.WriteStatus(http.StatusMovedPermanently)
 	path := ctx.Request.Path
 	ctx.Response.Header.Set(locationHeader, path[:len(path)-1])
 }
@@ -446,14 +394,14 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 		case HttpError:
 			ctx.WriteError(rv)
 		default:
-			ctx.WriteError(StdHttpErrors[http.StatusInternalServerError])
+			ctx.WriteStatus(http.StatusInternalServerError)
 		}
 	}()
 
 	req := &ctx.Request
-	tree := mux.findTree1(internal.S(req.Method))
+	tree := mux.m[internal.S(req.Method)]
 	if tree == nil {
-		ctx.WriteError(StdHttpErrors[http.StatusMethodNotAllowed])
+		ctx.WriteStatus(http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -462,12 +410,12 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 
 	i, n := tree.find(path[1:], &req.Params, &paramsC)
 	if n == nil || n.handler == nil {
-		ctx.WriteError(StdHttpErrors[http.StatusNotFound])
+		ctx.WriteStatus(http.StatusNotFound)
 		return
 	}
 
 	if len(n.params) > 0 && paramsC != len(n.params) {
-		ctx.WriteError(StdHttpErrors[http.StatusNotFound])
+		ctx.WriteStatus(http.StatusNotFound)
 		return
 	}
 
@@ -478,38 +426,33 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 			if n != nil {
 				n.handler.Handle(ctx)
 			} else {
-				ctx.WriteError(StdHttpErrors[http.StatusNotFound])
+				ctx.WriteStatus(http.StatusNotFound)
 			}
 			return
 		}
 		req.Params.Append(n.wildcardName, path[i+2:])
 	} else if i < len(path)-2 {
-		ctx.WriteError(StdHttpErrors[http.StatusNotFound])
+		ctx.WriteStatus(http.StatusNotFound)
 		return
 	}
 	n.handler.Handle(ctx)
 }
 
-type _AutoDocForm struct {
-	Prefix string `validator:"optional"`
-}
-
-func (_AutoDocForm) Description() string {
-	return ""
-}
-
 func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
+	type Form struct {
+		Prefix string `validator:"optional"`
+	}
+
 	var handler = func(ctx *RequestCtx) {
 		ctx.AutoCompress()
 
-		form := _AutoDocForm{}
+		form := Form{}
 		err := ctx.Validate(&form)
 		if err != nil {
 			ctx.WriteError(err)
 			return
 		}
 
-		fmt.Println(11, form.Prefix)
 		var m = map[string]map[string]string{}
 		for k, v := range mux.docs {
 			if strings.HasPrefix(k, form.Prefix) {
@@ -545,6 +488,6 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 	mux.AddHandlerWithForm(
 		method, path,
 		handlerWithMiddleware(RequestHandlerFunc(handler), middleware...),
-		_AutoDocForm{},
+		Form{},
 	)
 }

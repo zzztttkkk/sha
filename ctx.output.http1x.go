@@ -1,13 +1,14 @@
 package suna
 
 import (
+	"fmt"
 	"github.com/zzztttkkk/suna/internal"
 	"net/http"
 	"strconv"
 )
 
 var responseHeaderBufferPool = internal.NewBufferPoll(4096)
-var statusTextMap = map[int][]byte{}
+var statusTextMap = make([][]byte, 600)
 
 func init() {
 	for i := 0; i < 600; i++ {
@@ -24,9 +25,9 @@ var headerKVSep = []byte(": ")
 
 func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 	res := &ctx.Response
-	if res.compressW != nil {
-		_ = res.compressW.Flush()
-		res.compressW = nil
+	if res.compressWriter != nil {
+		_ = res.compressWriter.Flush()
+		res.compressWriter = nil
 	}
 
 	res.Header.SetContentLength(int64(len(res.buf)))
@@ -44,8 +45,8 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 	return err
 }
 
-var ErrNilContentLength = newStdError("suna: nil content length")
-var ErrUnknownSResponseStatusCode = newStdError("suna: unknown response status code")
+var ErrNilContentLength = fmt.Errorf("suna: nil content length")
+var ErrUnknownResponseStatusCode = fmt.Errorf("suna: ")
 
 func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res := &ctx.Response
@@ -60,9 +61,12 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 		res.statusCode = 200
 	}
 
+	if res.statusCode < 0 || res.statusCode >= 599 {
+		return ErrUnknownResponseStatusCode
+	}
 	statusTxt := statusTextMap[res.statusCode]
 	if len(statusTxt) < 1 {
-		return ErrUnknownSResponseStatusCode
+		return ErrUnknownResponseStatusCode
 	}
 
 	buf := responseHeaderBufferPool.Get()
@@ -99,18 +103,30 @@ func (ctx *RequestCtx) WriteString(s string) (int, error) {
 	return ctx.Write(internal.B(s))
 }
 
-func (ctx *RequestCtx) WriteError(err HttpError) {
+func (ctx *RequestCtx) WriteError(err error) {
 	res := &ctx.Response
-	res.Reset()
+	res.ResetBodyBuffer()
 
-	res.statusCode = err.StatusCode()
-	if header := err.Header(); header != nil {
-		header.EachItem(
-			func(k, v []byte) bool {
-				res.Header.Append(k, v)
-				return true
-			},
-		)
+	switch rv := err.(type) {
+	case HttpResponseError:
+		res.statusCode = rv.StatusCode()
+		header := rv.Header()
+		if header != nil {
+			header.EachItem(
+				func(k, v []byte) bool {
+					res.Header.Append(k, v)
+					return true
+				},
+			)
+		}
+		_, _ = res.Write(rv.Body())
+	case HttpError:
+		res.statusCode = rv.StatusCode()
+	default:
+		res.statusCode = http.StatusInternalServerError
 	}
-	res.buf = append(res.buf, err.Message()...)
+}
+
+func (ctx *RequestCtx) WriteStatus(status int) {
+	ctx.WriteError(StatusError(status))
 }

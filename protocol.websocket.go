@@ -32,19 +32,19 @@ var hashPool = sync.Pool{New: func() interface{} { return &_WebsocketHash{Hash: 
 func (protocol *WebsocketProtocol) Handshake(ctx *RequestCtx) bool {
 	secret, ok := ctx.Request.Header.Get(headerWebSocketSecretKey)
 	if !ok || len(secret) < 1 {
-		ctx.WriteError(StdHttpErrors[http.StatusBadRequest])
+		ctx.WriteStatus(http.StatusBadRequest)
 		return false
 	}
 	version, ok := ctx.Request.Header.Get(headerWebSocketVersion)
 	if !ok || len(version) != 2 || version[0] != '1' || version[1] != '3' {
-		ctx.WriteError(StdHttpErrors[http.StatusBadRequest])
+		ctx.WriteStatus(http.StatusBadRequest)
 		return false
 	}
 
 	if protocol.PreCheck != nil {
 		if !protocol.PreCheck(ctx) {
 			if ctx.Response.statusCode == 0 {
-				ctx.WriteError(StdHttpErrors[http.StatusBadRequest])
+				ctx.WriteStatus(http.StatusBadRequest)
 			}
 			return false
 		}
@@ -55,7 +55,7 @@ func (protocol *WebsocketProtocol) Handshake(ctx *RequestCtx) bool {
 	_, _ = h.Write(protocolSecret)
 	base64.StdEncoding.Encode(h.data, h.Sum(nil))
 
-	ctx.WriteError(StdHttpErrors[http.StatusSwitchingProtocols])
+	ctx.WriteStatus(http.StatusSwitchingProtocols)
 	ctx.Response.Header.Set(upgradeHeader, websocketStr)
 	ctx.Response.Header.Set(headerWebSocketAccept, h.data)
 	return true

@@ -47,6 +47,6 @@ func acquireGzipW(res *Response) WriteFlusher {
 
 func (ctx *RequestCtx) CompressGzip() {
 	ctx.Response.Header.Set(headerContentEncoding, gzipStr)
-	ctx.Response.compressW = acquireGzipW(&ctx.Response)
-	ctx.Response.compressFunc = acquireGzipW
+	ctx.Response.compressWriter = acquireGzipW(&ctx.Response)
+	ctx.Response.newCompressWriter = acquireGzipW
 }
