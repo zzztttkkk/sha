@@ -2,6 +2,7 @@ package suna
 
 import (
 	"context"
+	"io"
 	"net"
 	"time"
 )
@@ -11,18 +12,18 @@ type Http1xProtocol struct {
 	MaxFirstLintSize int
 	MaxHeadersSize   int
 	MaxBodySize      int
-	ReadTimeout      time.Duration
+	IdleTimeout      time.Duration
 	WriteTimeout     time.Duration
-	OnParseError     func(conn net.Conn, err HttpError) bool
-	OnWriteError     func(conn net.Conn, err error) bool
-	ReadBufferSize   int
-	SubProtocols     map[string]Protocol
+
+	OnParseError   func(conn net.Conn, err HttpError) bool // close connection if return true
+	OnWriteError   func(conn net.Conn, err error) bool     // close connection if return true
+	ReadBufferSize int
+	SubProtocols   map[string]Protocol
 
 	server *Server
-	inited bool
 }
 
-func (protocol *Http1xProtocol) Handshake(ctx *RequestCtx) bool {
+func (protocol *Http1xProtocol) Handshake(_ *RequestCtx) bool {
 	return false
 }
 
@@ -41,17 +42,15 @@ func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 	return string(connVal) != "close"
 }
 
+var ZeroTime time.Time
+
 func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Request) {
 	var err error
-	var httpError HttpError
 	var n int
 	var stop bool
 
 	rctx := AcquireRequestCtx()
-	defer func() {
-		ReleaseRequestCtx(rctx)
-		_ = conn.Close()
-	}()
+	defer ReleaseRequestCtx(rctx)
 
 	rctx.conn = conn
 	rctx.connTime = time.Now()
@@ -68,17 +67,34 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 			}
 			//goland:noinspection GoNilness
 		default:
+			if protocol.IdleTimeout > 0 {
+				conn.SetReadDeadline(time.Now().Add(protocol.IdleTimeout))
+			}
+
 			offset := 0
 			n, err = conn.Read(buf)
 			if err != nil {
+				if err == io.EOF {
+					time.Sleep(time.Millisecond * 20)
+					continue
+				}
 				return
 			}
 
+			if protocol.IdleTimeout > 0 {
+				conn.SetReadDeadline(ZeroTime)
+			}
+
 			for offset != n {
-				offset, httpError = rctx.feedHttp1xReqData(buf, offset, n)
+				offset, err = rctx.feedHttp1xReqData(buf, offset, n)
 				if err != nil {
-					stop = protocol.OnParseError(conn, httpError)
-					break
+					if protocol.OnParseError != nil {
+						if protocol.OnParseError(conn, err.(HttpError)) {
+							return
+						}
+					} else {
+						return
+					}
 				}
 			}
 
@@ -101,8 +117,22 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 					}
 				}
 
+				if protocol.WriteTimeout > 0 {
+					_ = conn.SetWriteDeadline(time.Now().Add(protocol.WriteTimeout))
+				}
+
 				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
-					stop = protocol.OnWriteError(conn, err)
+					if protocol.OnWriteError != nil {
+						if protocol.OnWriteError(conn, err) {
+							return
+						}
+					} else {
+						return
+					}
+				}
+
+				if protocol.WriteTimeout > 0 {
+					_ = conn.SetWriteDeadline(ZeroTime)
 				}
 
 				if upgradeOk {
@@ -110,11 +140,8 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 					subProtocol.Serve(ctx, conn, &rctx.Request)
 					return
 				}
-				rctx.Reset()
 
-				if !keepalive {
-					return
-				}
+				rctx.Reset()
 			}
 		}
 		continue

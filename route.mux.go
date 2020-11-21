@@ -6,6 +6,7 @@ import (
 	"github.com/zzztttkkk/suna/validator"
 	"net/http"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -376,6 +377,8 @@ func (mux *_Mux) AddHandlerWithForm(method, path string, handler RequestHandler,
 	)
 }
 
+var stackBufPool = internal.NewBufferPoll(4096)
+
 func (mux *_Mux) Handle(ctx *RequestCtx) {
 	defer func() {
 		v := recover()
@@ -390,11 +393,29 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 			return
 		}
 
+		logStack := true
+
 		switch rv := v.(type) {
 		case HttpError:
+			if rv.StatusCode() < 500 {
+				logStack = false
+			}
 			ctx.WriteError(rv)
 		default:
 			ctx.WriteStatus(http.StatusInternalServerError)
+		}
+
+		if logStack {
+			buf := stackBufPool.Get()
+			defer stackBufPool.Put(buf)
+
+			if cap(buf.Data) < 4096 {
+				buf.Data = make([]byte, 4096)
+			} else {
+				buf.Data = buf.Data[:4096]
+			}
+			size := runtime.Stack(buf.Data, false)
+			logger.Println(internal.S(buf.Data[:size]))
 		}
 	}()
 

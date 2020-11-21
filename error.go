@@ -19,7 +19,7 @@ type HttpResponseError interface {
 type StatusError int
 
 func (err StatusError) Error() string {
-	return fmt.Sprintf("%s", http.StatusText(int(err)))
+	return fmt.Sprintf("%d %s", err, http.StatusText(int(err)))
 }
 
 func (err StatusError) StatusCode() int {

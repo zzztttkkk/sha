@@ -205,6 +205,8 @@ func (p *_TagParser) OnAttr(key, val string) {
 		rule.isRequired = false
 	case "NTSC", "nottrimspacechar":
 		rule.notTrimSpace = true
+	case "description":
+		rule.description = val
 	}
 }
 
@@ -229,11 +231,6 @@ func (p *_TagParser) OnDone() {
 
 // all validate type should be prepared before use
 var cacheMap = map[reflect.Type]Rules{}
-var descriptionMap = map[string]string{}
-
-type _FormDescriptor interface {
-	Description() string
-}
 
 func GetRules(t reflect.Type) Rules {
 	v, ok := cacheMap[t]
@@ -245,11 +242,5 @@ func GetRules(t reflect.Type) Rules {
 	typereflect.Tags(t, "validator", &parser)
 
 	cacheMap[t] = parser.rules
-
-	ele := reflect.New(t).Elem()
-	fdor, ok := ele.Interface().(_FormDescriptor)
-	if ok {
-		descriptionMap[fmt.Sprintf("%p", parser.rules)] = fdor.Description()
-	}
 	return parser.rules
 }

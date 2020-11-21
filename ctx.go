@@ -110,7 +110,6 @@ type RequestCtx struct {
 	kvSep        bool   // `:`
 	bodyRemain   int
 	bodySize     int
-	reset        bool
 }
 
 func (ctx *RequestCtx) RemoteAddr() net.Addr {
@@ -147,7 +146,7 @@ func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
 }
 
 func (ctx *RequestCtx) Reset() {
-	if ctx.reset {
+	if ctx.Context == nil {
 		return
 	}
 
@@ -169,15 +168,12 @@ func (ctx *RequestCtx) Reset() {
 	ctx.kvSep = false
 	ctx.bodySize = -1
 	ctx.bodyRemain = -1
-
-	ctx.reset = true
 }
 
 var ctxPool = sync.Pool{New: func() interface{} { return &RequestCtx{} }}
 
 func AcquireRequestCtx() *RequestCtx {
 	v := ctxPool.Get().(*RequestCtx)
-	v.reset = false
 	return v
 }
 

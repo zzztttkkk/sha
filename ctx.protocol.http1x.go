@@ -44,21 +44,21 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			offset++
 			ctx.fLSize++
 			if ctx.fLSize > ctx.protocol.MaxFirstLintSize {
-				return 1, ErrRequestUrlTooLong
+				return 10001, ErrRequestUrlTooLong
 			}
 			if v > 126 || v < 10 {
-				return 45, ErrBadConnection
+				return 10002, ErrBadConnection
 			}
 			if v == '\n' {
 				ctx.status++
 				ctx.buf = ctx.buf[:0]
 				if len(ctx.Request.rawPath) < 1 || ctx.Request.rawPath[0] != '/' { // empty path
-					return 2, ErrBadConnection
+					return 10003, ErrBadConnection
 				}
 
 				version := inplaceLowercase(ctx.Request.version)
 				if !bytes.HasPrefix(version, httpVersion) { // http version
-					return 3, ErrBadConnection
+					return 10004, ErrBadConnection
 				}
 				ctx.Request.version = version[5:]
 				return offset, nil
@@ -78,7 +78,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				case 2:
 					ctx.Request.version = append(ctx.Request.version, v)
 				default:
-					return 4, ErrBadConnection
+					return 10005, ErrBadConnection
 				}
 			}
 			ctx.buf = append(ctx.buf, v)
@@ -89,10 +89,10 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			offset++
 			ctx.hSize++
 			if ctx.hSize > ctx.protocol.MaxHeadersSize {
-				return 5, ErrRequestHeaderFieldsTooLarge
+				return 10006, ErrRequestHeaderFieldsTooLarge
 			}
 			if v > 126 || v < 10 {
-				return 45, ErrBadConnection
+				return 10007, ErrBadConnection
 			}
 
 			if v == '\n' {
@@ -133,13 +133,13 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 		if ctx.Context == nil {
 			ctx.initRequest()
 			if ctx.bodySize > ctx.protocol.MaxBodySize {
-				return 6, ErrRequestEntityTooLarge
+				return 10008, ErrRequestEntityTooLarge
 			}
 		}
 
 		size := end - offset
 		if size > ctx.bodyRemain {
-			return 7, ErrBadConnection
+			return 10009, ErrBadConnection
 		}
 		ctx.buf = append(ctx.buf, data[offset:end]...)
 		ctx.bodyRemain -= size

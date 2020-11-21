@@ -50,7 +50,8 @@ type Rule struct {
 	pathParamsName []byte
 	rtype          _RuleType
 
-	isRequired bool
+	isRequired  bool
+	description string
 
 	fVR   bool // int value range flag
 	minIV *int64
@@ -79,15 +80,15 @@ type Rule struct {
 	fnName string
 }
 
-var MarkdownTableHeader = "\n|name|type|required|length range|value range|size range|default|regexp|function|\n"
+var MarkdownTableHeader = "\n|name|type|required|length range|value range|size range|default|regexp|function|description|\n"
 
 func init() {
-	MarkdownTableHeader += strings.Repeat("|:---:", 9)
+	MarkdownTableHeader += strings.Repeat("|:---:", 10)
 	MarkdownTableHeader += "|\n"
 }
 
 var ruleFmt = internal.NewNamedFmt(
-	"|${name}|${type}|${required}|${lrange}|${vrange}|${srange}|${default}|${regexp}|${function}|",
+	"|${name}|${type}|${required}|${lrange}|${vrange}|${srange}|${default}|${regexp}|${function}|${description}|",
 )
 
 // markdown table row
@@ -95,6 +96,12 @@ func (rule *Rule) String() string {
 	m := internal.M{
 		"type":     typeNames[rule.rtype],
 		"required": fmt.Sprintf("%v", rule.isRequired),
+	}
+
+	if len(rule.description) > 0 {
+		m["description"] = rule.description
+	} else {
+		m["description"] = "/"
 	}
 
 	m["name"] = string(rule.formName)
@@ -333,13 +340,6 @@ type Rules []*Rule
 
 func (rules Rules) String() string {
 	buf := strings.Builder{}
-
-	descp := descriptionMap[fmt.Sprintf("%p", rules)]
-	if len(descp) > 0 {
-		buf.WriteString(
-			fmt.Sprintf("#### description\n\n%s\n\n", descp),
-		)
-	}
 
 	buf.WriteString("#### fields\n\n")
 	buf.WriteString(MarkdownTableHeader)

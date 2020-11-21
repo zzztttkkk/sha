@@ -8,17 +8,7 @@ import (
 )
 
 var responseHeaderBufferPool = internal.NewBufferPoll(4096)
-var statusTextMap = make([][]byte, 600)
 
-func init() {
-	for i := 0; i < 600; i++ {
-		txt := http.StatusText(i)
-		if len(txt) < 1 {
-			continue
-		}
-		statusTextMap[i] = []byte(txt)
-	}
-}
 
 var newline = []byte("\r\n")
 var headerKVSep = []byte(": ")

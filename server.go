@@ -4,25 +4,20 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"time"
 )
-
-type Logger interface {
-	Print(v ...interface{})
-	Printf(f string, v ...interface{})
-	Println(v ...interface{})
-}
 
 type Server struct {
 	Host                   string
 	Port                   int
 	TlsConfig              *tls.Config
-	Logger                 Logger
 	BaseCtx                context.Context
 	Handler                RequestHandler
 	MaxConnectionKeepAlive time.Duration
 	Http1xProtocol         Http1xProtocol
+	isTls                  bool
 }
 
 type _CtxVKey int
@@ -31,6 +26,29 @@ const (
 	CtxServerKey = _CtxVKey(iota)
 	CtxConnKey
 )
+
+func Default() *Server {
+	server := &Server{
+		Host:    "127.0.0.1",
+		Port:    8080,
+		BaseCtx: context.Background(),
+		Handler: RequestHandlerFunc(
+			func(ctx *RequestCtx) {
+				_, _ = ctx.WriteString("Hello world!")
+			},
+		),
+		MaxConnectionKeepAlive: time.Minute * 3,
+	}
+
+	server.Http1xProtocol.Version = []byte("HTTP/1.1")
+	server.Http1xProtocol.MaxFirstLintSize = 1024 * 4
+	server.Http1xProtocol.MaxHeadersSize = 1024 * 8
+	server.Http1xProtocol.MaxBodySize = 1024 * 1024 * 10
+	server.Http1xProtocol.WriteTimeout = time.Second * 30
+	server.Http1xProtocol.IdleTimeout = time.Second * 30
+	server.Http1xProtocol.ReadBufferSize = 512
+	return server
+}
 
 func (s *Server) doListen() net.Listener {
 	listener, err := net.Listen("tcp4", fmt.Sprintf("%s:%d", s.Host, s.Port))
@@ -67,28 +85,19 @@ func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listene
 			panic(err)
 		}
 	}
-	return l
+	return tls.NewListener(l, s.TlsConfig)
 }
 
 func (s *Server) doAccept(l net.Listener) {
 	s.Http1xProtocol.server = s
 
-	if !s.Http1xProtocol.inited {
-		protocol := &s.Http1xProtocol
-		protocol.MaxFirstLintSize = 2048
-		protocol.MaxHeadersSize = 4096
-		protocol.MaxBodySize = 4096 * 1024
-		protocol.ReadTimeout = 0
-		protocol.WriteTimeout = 0
-		protocol.Version = []byte("HTTP/1.1")
-		protocol.ReadBufferSize = 128
-	}
 	var tempDelay time.Duration
 	ctx := context.WithValue(s.BaseCtx, CtxServerKey, s)
 
 	for {
 		conn, err := l.Accept()
 		if err != nil {
+			logger.Printf("suna.server: bad connection: %s\n", err.Error())
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond
@@ -99,8 +108,8 @@ func (s *Server) doAccept(l net.Listener) {
 					tempDelay = max
 				}
 				time.Sleep(tempDelay)
-				continue
 			}
+			continue
 		}
 		if s.MaxConnectionKeepAlive > 0 {
 			_ = conn.SetDeadline(time.Now().Add(s.MaxConnectionKeepAlive))
@@ -114,15 +123,8 @@ func (s *Server) ListenAndServe() {
 }
 
 func (s *Server) ListenAndServeTLS(certFile, keyFile string) {
+	s.isTls = true
 	s.doAccept(s.enableTls(s.doListen(), certFile, keyFile))
-}
-
-func (s *Server) SetUpHttp1xProtocol(fn func(protocol *Http1xProtocol)) {
-	if s.Http1xProtocol.inited {
-		panic("Http1xProtocol initialized")
-	}
-	fn(&s.Http1xProtocol)
-	s.Http1xProtocol.inited = true
 }
 
 func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
@@ -138,28 +140,40 @@ func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
 }
 
 func (s *Server) serve(connCtx context.Context, conn net.Conn) {
-	var protocolName string
+	defer func() {
+		conn.Close()
+		fmt.Printf("CONN CLOSE: %p\n", conn)
+	}()
+	fmt.Printf("CONN OPEN: %p\n", conn)
+
+	var subProtocolName string
 	var tlsConn *tls.Conn
 	var err error
 	var protocol Protocol
 
-	tlsConn, protocolName, err = s.tslHandshake(conn)
+	tlsConn, subProtocolName, err = s.tslHandshake(conn)
 	if err != nil { // tls handshake error
-		_ = conn.Close()
+		if re, ok := err.(tls.RecordHeaderError); ok && re.Conn != nil {
+			_, _ = io.WriteString(
+				re.Conn,
+				"HTTP/1.0 400 Bad Request\r\n\r\nClient sent an HTTP request to an HTTPS server.\n",
+			)
+		}
 		return
 	}
 
 	if tlsConn == nil {
 		protocol = &s.Http1xProtocol
 	} else {
-		switch protocolName {
+		conn = tlsConn
+		switch subProtocolName {
 		case "", "http/1.0", "http/1.1":
 			protocol = &s.Http1xProtocol
 		}
 	}
 	if protocol == nil {
-		_ = conn.Close()
 		return
 	}
+
 	protocol.Serve(connCtx, conn, nil)
 }

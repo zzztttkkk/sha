@@ -4,6 +4,7 @@ type Documenter interface {
 	Document() string
 }
 
+// request handler with document
 type DocedRequestHandler interface {
 	Documenter
 	RequestHandler
