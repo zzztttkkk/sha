@@ -7,7 +7,7 @@ import (
 type OnNestStructRet int
 
 const (
-	None = OnNestStructRet(iota)
+	GoOn = OnNestStructRet(iota)
 	Skip
 	GoDown
 )
@@ -33,7 +33,7 @@ func Map(t reflect.Type, visitor Visitor, index []int) {
 			nIndex := copyAppend(index, i)
 
 			switch visitor.OnNestStruct(&field, nIndex) {
-			case None:
+			case GoOn:
 				visitor.OnField(&field, copyAppend(index, i))
 			case GoDown:
 				Map(field.Type, visitor, nIndex)

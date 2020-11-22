@@ -26,15 +26,23 @@ type _TagParser struct {
 
 var timeType = reflect.TypeOf(time.Time{})
 
+func isExposed(v string) bool {
+	return v[0] >= 'A' && v[0] <= 'Z'
+}
+
 func (p *_TagParser) OnNestedStruct(f *reflect.StructField, index []int) typereflect.OnNestStructRet {
+	if !isExposed(f.Name) {
+		return typereflect.Skip
+	}
+
 	if !f.Anonymous {
 		if f.Type == timeType {
-			return typereflect.None
+			return typereflect.GoOn
 		}
 
 		ele := reflect.New(f.Type).Interface()
 		if _, ok := ele.(sql.Scanner); ok {
-			return typereflect.None
+			return typereflect.GoOn
 		}
 		return typereflect.Skip
 	}
@@ -42,6 +50,10 @@ func (p *_TagParser) OnNestedStruct(f *reflect.StructField, index []int) typeref
 }
 
 func (p *_TagParser) OnBegin(f *reflect.StructField, index []int) bool {
+	if !isExposed(f.Name) {
+		return false
+	}
+
 	p.field = f
 	if f.Type.Kind() == reflect.Ptr {
 		internal.L.Printf("suna.sqlx: skip pointer field\n")

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 type _ExcScanner struct {
@@ -83,6 +84,20 @@ func scanOneStruct(t reflect.Type, structPtr interface{}, r scanner) error {
 	return nil
 }
 
+var isScannerMap sync.Map
+
+func isScanner(t reflect.Type) bool {
+	v, ok := isScannerMap.Load(t)
+	if ok {
+		return v.(bool)
+	}
+
+	ele := reflect.New(t).Interface()
+	_, ok = ele.(sql.Scanner)
+	isScannerMap.Store(t, ok)
+	return ok
+}
+
 func (sc _ExcScanner) Rows(ctx context.Context, sqler Sqler, dist interface{}) error {
 	s, a, err := sqler.Sql()
 	if err != nil {
@@ -113,17 +128,16 @@ func (sc _ExcScanner) Rows(ctx context.Context, sqler Sqler, dist interface{}) e
 		ret = et.Elem()
 	}
 
-	isStruct := false
-	// time.Time will be converted by sql driver
+	isNotScannerStruct := false
 	if et.Kind() == reflect.Struct {
-		isStruct = et != timeType
+		isNotScannerStruct = et != timeType && !isScanner(et)
 	} else if ret != nil && ret.Kind() == reflect.Struct {
-		isStruct = ret != timeType
+		isNotScannerStruct = ret != timeType && !isScanner(ret)
 	}
 
 	lv := reflect.ValueOf(dist).Elem()
 
-	if !isStruct {
+	if !isNotScannerStruct {
 		if et.Kind() != reflect.Ptr { // []int
 			for rows.Next() {
 				ele := reflect.New(et) // *int
