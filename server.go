@@ -140,11 +140,7 @@ func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
 }
 
 func (s *Server) serve(connCtx context.Context, conn net.Conn) {
-	defer func() {
-		conn.Close()
-		fmt.Printf("CONN CLOSE: %p\n", conn)
-	}()
-	fmt.Printf("CONN OPEN: %p\n", conn)
+	defer conn.Close()
 
 	var subProtocolName string
 	var tlsConn *tls.Conn

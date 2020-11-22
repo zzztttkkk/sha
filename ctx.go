@@ -44,8 +44,9 @@ func (req *Request) Reset() {
 }
 
 type Response struct {
-	statusCode        int
-	Header            Header
+	statusCode int
+	Header     Header
+
 	buf               []byte
 	compressWriter    WriteFlusher
 	newCompressWriter func(response *Response) WriteFlusher

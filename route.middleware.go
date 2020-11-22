@@ -1,7 +1,5 @@
 package suna
 
-import "fmt"
-
 type Middleware interface {
 	Process(ctx *RequestCtx, next func())
 }
@@ -39,6 +37,9 @@ func (org *_MiddlewareOrg) expand() {
 }
 
 func handlerWithMiddleware(handler RequestHandler, middleware ...Middleware) RequestHandler {
+	if len(middleware) < 1 {
+		return handler
+	}
 	return RequestHandlerFunc(
 		func(ctx *RequestCtx) {
 			var next func()
@@ -61,6 +62,5 @@ func (org *_MiddlewareOrg) wrap(handler RequestHandler) RequestHandler {
 	if len(org.allM) < 1 {
 		return handler
 	}
-	fmt.Println(len(org.allM))
 	return handlerWithMiddleware(handler, org.allM...)
 }

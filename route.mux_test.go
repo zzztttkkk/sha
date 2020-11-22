@@ -1,7 +1,6 @@
 package suna
 
 import (
-	"context"
 	"fmt"
 	"testing"
 )
@@ -31,11 +30,7 @@ func Test_Mux_AddHandler(t *testing.T) {
 	m.AddHandler("POST", "/g/:f/jjj", makeTestHandler(8))
 	m.AddHandler("GET", "/fi/", makeTestHandler(1))
 
-	s := Server{
-		Host:    "127.0.0.1",
-		Port:    8080,
-		BaseCtx: context.Background(),
-	}
+	s := Default()
 
 	s.Handler = m
 

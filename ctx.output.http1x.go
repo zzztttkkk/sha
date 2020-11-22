@@ -9,7 +9,6 @@ import (
 
 var responseHeaderBufferPool = internal.NewBufferPoll(4096)
 
-
 var newline = []byte("\r\n")
 var headerKVSep = []byte(": ")
 
@@ -51,9 +50,6 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 		res.statusCode = 200
 	}
 
-	if res.statusCode < 0 || res.statusCode >= 599 {
-		return ErrUnknownResponseStatusCode
-	}
 	statusTxt := statusTextMap[res.statusCode]
 	if len(statusTxt) < 1 {
 		return ErrUnknownResponseStatusCode
@@ -70,7 +66,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 	buf.Data = append(buf.Data, statusTxt...)
 	buf.Data = append(buf.Data, '\r', '\n')
 
-	ctx.Response.Header.EachItem(
+	res.Header.EachItem(
 		func(k, v []byte) bool {
 			buf.Data = append(buf.Data, k...)
 			buf.Data = append(buf.Data, headerKVSep...)

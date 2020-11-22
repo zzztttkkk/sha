@@ -2,7 +2,7 @@ package suna
 
 import "net/http"
 
-var statusTextMap = make([][]byte, 600)
+var statusTextMap = map[int][]byte{}
 
 const (
 	StatusContinue           = 100 // RFC 7231, 6.2.1

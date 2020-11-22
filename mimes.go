@@ -6,4 +6,5 @@ var (
 	MIMEMultiPart = []byte("multipart/form-data")
 	MIMEText      = []byte("text/plain")
 	MIMEMarkdown  = []byte("text/markdown")
+	MIMEHtml      = []byte("text/html")
 )

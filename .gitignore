@@ -4,3 +4,4 @@
 *.exe
 /router
 /sqls
+*.pem

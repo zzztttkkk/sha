@@ -45,24 +45,35 @@ func DisableCompress() {
 	disableCompress = true
 }
 
+// br > deflate > gzip
 func (ctx *RequestCtx) AutoCompress() {
 	if disableCompress {
 		return
 	}
 
+	acceptGzip := false
+	acceptDeflate := false
+
 	for _, headerVal := range ctx.Request.Header.GetAllRef(headerAcceptEncoding) {
 		for _, v := range bytes.Split(*headerVal, headerCompressValueSep) {
 			switch string(v) {
 			case "gzip":
-				ctx.CompressGzip()
-				return
+				acceptGzip = true
 			case "deflate":
-				ctx.CompressDeflate()
-				return
+				acceptDeflate = true
 			case "br":
 				ctx.CompressBrotli()
 				return
 			}
 		}
+	}
+
+	if acceptDeflate {
+		ctx.CompressDeflate()
+		return
+	}
+
+	if acceptGzip {
+		ctx.CompressGzip()
 	}
 }

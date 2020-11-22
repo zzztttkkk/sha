@@ -1,16 +1,11 @@
 package suna
 
 import (
-	"context"
 	"testing"
 )
 
 func TestRequestCtx_Validate(t *testing.T) {
-	s := Server{
-		Host:    "127.0.0.1",
-		Port:    8080,
-		BaseCtx: context.Background(),
-	}
+	s := Default()
 
 	mux := NewMux("", nil)
 

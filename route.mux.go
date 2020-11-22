@@ -5,8 +5,8 @@ import (
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/validator"
 	"net/http"
+	pathlib "path"
 	"reflect"
-	"runtime"
 	"sort"
 	"strings"
 )
@@ -377,8 +377,6 @@ func (mux *_Mux) AddHandlerWithForm(method, path string, handler RequestHandler,
 	)
 }
 
-var stackBufPool = internal.NewBufferPoll(4096)
-
 func (mux *_Mux) Handle(ctx *RequestCtx) {
 	defer func() {
 		v := recover()
@@ -406,16 +404,7 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 		}
 
 		if logStack {
-			buf := stackBufPool.Get()
-			defer stackBufPool.Put(buf)
-
-			if cap(buf.Data) < 4096 {
-				buf.Data = make([]byte, 4096)
-			} else {
-				buf.Data = buf.Data[:4096]
-			}
-			size := runtime.Stack(buf.Data, false)
-			logger.Println(internal.S(buf.Data[:size]))
+			logger.Print(internal.Stacks(v, 2, 20))
 		}
 	}()
 
@@ -510,5 +499,25 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 		method, path,
 		handlerWithMiddleware(RequestHandlerFunc(handler), middleware...),
 		Form{},
+	)
+}
+
+func (mux *_Mux) StaticFile(method, path string, fs http.FileSystem, index bool, middleware ...Middleware) {
+	if !strings.HasSuffix(path, "/filename:*") {
+		panic(fmt.Errorf("suna.router: bad static path"))
+	}
+
+	mux.AddHandler(
+		method,
+		path,
+		handlerWithMiddleware(
+			RequestHandlerFunc(
+				func(ctx *RequestCtx) {
+					filename, _ := ctx.PathParam(internal.B("filename"))
+					serveFile(ctx, fs, pathlib.Clean(internal.S(filename)), index)
+				},
+			),
+			middleware...,
+		),
 	)
 }

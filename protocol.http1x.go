@@ -43,6 +43,7 @@ func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 }
 
 var ZeroTime time.Time
+var MaxIdleSleepTime = time.Millisecond * 100
 
 func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Request) {
 	var err error
@@ -59,6 +60,9 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 
 	buf := make([]byte, protocol.ReadBufferSize)
 
+	sleepDu := time.Millisecond * 10
+	resetIdleTimeout := true
+
 	for !stop {
 		select {
 		case <-ctx.Done():
@@ -67,7 +71,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 			}
 			//goland:noinspection GoNilness
 		default:
-			if protocol.IdleTimeout > 0 {
+			if protocol.IdleTimeout > 0 && resetIdleTimeout {
 				conn.SetReadDeadline(time.Now().Add(protocol.IdleTimeout))
 			}
 
@@ -75,7 +79,12 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 			n, err = conn.Read(buf)
 			if err != nil {
 				if err == io.EOF {
-					time.Sleep(time.Millisecond * 20)
+					time.Sleep(sleepDu)
+					sleepDu = time.Duration(int64(float64(sleepDu) * 1.5))
+					resetIdleTimeout = false
+					if sleepDu > MaxIdleSleepTime {
+						sleepDu = MaxIdleSleepTime
+					}
 					continue
 				}
 				return
@@ -83,6 +92,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 
 			if protocol.IdleTimeout > 0 {
 				conn.SetReadDeadline(ZeroTime)
+				resetIdleTimeout = true
 			}
 
 			for offset != n {
