@@ -33,12 +33,20 @@ const (
 )
 
 type FormError struct {
-	FormName string `json:"form_name"`
+	FormName string
 	Type     _FormErrorType
 }
 
+var CustomFormError func(fe *FormError) string
+
+func init() {
+	CustomFormError = func(fe *FormError) string {
+		return fmt.Sprintf("FormError: %s; field `%s`", fe.Type, fe.FormName)
+	}
+}
+
 func (e *FormError) Error() string {
-	return fmt.Sprintf("FormError: %s %s", e.Type, e.FormName)
+	return CustomFormError(e)
 }
 
 func (e *FormError) StatusCode() int {

@@ -4,9 +4,17 @@ import (
 	"reflect"
 )
 
+type OnNestStructRet int
+
+const (
+	None = OnNestStructRet(iota)
+	Skip
+	GoDown
+)
+
 type Visitor interface {
 	// return true, if need go down
-	OnNestStruct(field *reflect.StructField, index []int) bool
+	OnNestStruct(field *reflect.StructField, index []int) OnNestStructRet
 	OnField(field *reflect.StructField, index []int)
 }
 
@@ -23,7 +31,11 @@ func Map(t reflect.Type, visitor Visitor, index []int) {
 		field := t.Field(i)
 		if field.Type.Kind() == reflect.Struct {
 			nIndex := copyAppend(index, i)
-			if visitor.OnNestStruct(&field, nIndex) {
+
+			switch visitor.OnNestStruct(&field, nIndex) {
+			case None:
+				visitor.OnField(&field, copyAppend(index, i))
+			case GoDown:
 				Map(field.Type, visitor, nIndex)
 			}
 			continue

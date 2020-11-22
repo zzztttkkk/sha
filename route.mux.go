@@ -404,7 +404,7 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 		}
 
 		if logStack {
-			logger.Print(internal.Stacks(v, 2, 20))
+			internal.L.Print(internal.Stacks(v, 2, 20))
 		}
 	}()
 
@@ -502,7 +502,7 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 	)
 }
 
-func (mux *_Mux) StaticFile(method, path string, fs http.FileSystem, index bool, middleware ...Middleware) {
+func (mux *_Mux) HandleStaticFile(method, path string, fs http.FileSystem, index bool, middleware ...Middleware) {
 	if !strings.HasSuffix(path, "/filename:*") {
 		panic(fmt.Errorf("suna.router: bad static path"))
 	}

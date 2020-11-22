@@ -108,6 +108,7 @@ func (ctx *RequestCtx) WriteError(err error) {
 		_, _ = res.Write(rv.Body())
 	case HttpError:
 		res.statusCode = rv.StatusCode()
+		res.Write(internal.B(rv.Error()))
 	default:
 		res.statusCode = http.StatusInternalServerError
 	}

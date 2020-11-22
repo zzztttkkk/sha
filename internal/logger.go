@@ -1,4 +1,4 @@
-package suna
+package internal
 
 import (
 	"log"
@@ -11,12 +11,8 @@ type Logger interface {
 	Println(v ...interface{})
 }
 
-var logger Logger
+var L Logger
 
 func init() {
-	logger = log.New(os.Stdout, "", log.LstdFlags)
-}
-
-func SetLogger(l Logger) {
-	logger = l
+	L = log.New(os.Stdout, "", log.LstdFlags)
 }

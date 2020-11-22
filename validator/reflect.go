@@ -15,7 +15,7 @@ type _TagParser struct {
 	name    string
 }
 
-func (p *_TagParser) OnNestedStruct(f *reflect.StructField, index []int) bool {
+func (p *_TagParser) OnNestedStruct(f *reflect.StructField, index []int) typereflect.OnNestStructRet {
 	if !f.Anonymous {
 		log.Println(
 			fmt.Sprintf(
@@ -23,9 +23,9 @@ func (p *_TagParser) OnNestedStruct(f *reflect.StructField, index []int) bool {
 				p.name, f.Name,
 			),
 		)
-		return false
+		return typereflect.Skip
 	}
-	return true
+	return typereflect.GoDown
 }
 
 func (p *_TagParser) OnBegin(f *reflect.StructField, index []int) bool {
