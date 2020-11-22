@@ -1,4 +1,4 @@
-// go.stdlib: http/
+// copied from `go.stdlib: http/fs.go`
 
 package suna
 
