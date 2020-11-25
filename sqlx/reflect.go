@@ -1,115 +1,44 @@
 package sqlx
 
 import (
-	"database/sql"
-	"fmt"
-	"github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/internal/typereflect"
+	"github.com/jmoiron/sqlx/reflectx"
 	"reflect"
-	"time"
+	"strings"
 )
 
-type Field struct {
-	Name  string
-	Index []int
-	IsPtr bool
+type _StructInfo struct {
+	groups map[string]map[string]struct{}
 }
 
-type Fields []*Field
+var reflectMapper = reflectx.NewMapper("db")
+var infoCache = map[reflect.Type]*_StructInfo{}
 
-type _TagParser struct {
-	current *Field
-	field   *reflect.StructField
-	fields  Fields
-	name    string
-}
-
-var timeType = reflect.TypeOf(time.Time{})
-
-func isExposed(v string) bool {
-	return v[0] >= 'A' && v[0] <= 'Z'
-}
-
-func (p *_TagParser) OnNestedStruct(f *reflect.StructField, index []int) typereflect.OnNestStructRet {
-	if !isExposed(f.Name) {
-		return typereflect.Skip
+func getStructInfo(t reflect.Type) *_StructInfo {
+	ret, ok := infoCache[t]
+	if ok {
+		return ret
 	}
 
-	if !f.Anonymous {
-		if f.Type == timeType {
-			return typereflect.GoOn
+	ret = &_StructInfo{}
+	ret.groups = map[string]map[string]struct{}{}
+	ret.groups["*"] = map[string]struct{}{}
+
+	fmap := reflectMapper.TypeMap(t)
+	for _, f := range fmap.Index {
+		ret.groups["*"][f.Name] = struct{}{}
+		for k, v := range f.Options {
+			switch k {
+			case "G", "g", "group":
+				for _, n := range strings.Split(v, "|") {
+					m := ret.groups[n]
+					if m == nil {
+						m = map[string]struct{}{}
+						ret.groups[n] = m
+					}
+					m[f.Name] = struct{}{}
+				}
+			}
 		}
-
-		ele := reflect.New(f.Type).Interface()
-		if _, ok := ele.(sql.Scanner); ok {
-			return typereflect.GoOn
-		}
-		return typereflect.Skip
 	}
-	return typereflect.GoDown
-}
-
-func (p *_TagParser) OnBegin(f *reflect.StructField, index []int) bool {
-	if !isExposed(f.Name) {
-		return false
-	}
-
-	p.field = f
-	if f.Type.Kind() == reflect.Ptr {
-		internal.L.Printf("suna.sqlx: skip pointer field\n")
-		return false
-	}
-
-	p.current = &Field{}
-	rule := p.current
-	rule.Index = append(rule.Index, index...)
-
-	if f.Type.Kind() == reflect.Struct {
-		if f.Type == timeType {
-			return true
-		}
-
-		ele := reflect.New(f.Type).Interface()
-		if _, ok := ele.(sql.Scanner); ok {
-			return true
-		}
-
-		p.fields = append(p.fields, GetFields(f.Type)...)
-		return false
-	}
-
-	return true
-}
-
-func (p *_TagParser) OnName(name string) {
-	p.current.Name = name
-}
-
-func (p *_TagParser) OnAttr(key, val string) {
-	switch key {
-
-	}
-}
-
-func (p *_TagParser) OnDone() {
-	field := p.current
-	p.fields = append(p.fields, field)
-
-	p.current = nil
-	p.field = nil
-}
-
-var m = map[reflect.Type]Fields{}
-
-func GetFields(t reflect.Type) Fields {
-	fs := m[t]
-	if fs != nil {
-		return fs
-	}
-
-	p := _TagParser{}
-	p.name = fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
-	typereflect.Tags(t, "sqlx", &p)
-	m[t] = p.fields
-	return p.fields
+	return ret
 }

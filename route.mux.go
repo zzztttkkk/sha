@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/validator"
+	"log"
 	"net/http"
 	pathlib "path"
 	"reflect"
@@ -404,7 +405,7 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 		}
 
 		if logStack {
-			internal.L.Print(internal.Stacks(v, 2, 20))
+			log.Print(internal.Stacks(v, 2, 20))
 		}
 	}()
 
@@ -450,7 +451,7 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 
 func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 	type Form struct {
-		Prefix string `validator:"optional"`
+		Prefix string `validator:",optional"`
 	}
 
 	var handler = func(ctx *RequestCtx) {

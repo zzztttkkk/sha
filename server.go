@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
 	"io"
+	"log"
 	"net"
 	"time"
 )
@@ -98,7 +98,7 @@ func (s *Server) doAccept(l net.Listener) {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			internal.L.Printf("suna.server: bad connection: %s\n", err.Error())
+			log.Printf("suna.server: bad connection: %s\n", err.Error())
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond

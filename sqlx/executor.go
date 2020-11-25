@@ -2,100 +2,91 @@ package sqlx
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"fmt"
-	"github.com/zzztttkkk/suna/internal"
+	x "github.com/jmoiron/sqlx"
 	"math/rand"
 	"time"
 )
 
+var wdb *x.DB
+var rdbs []*x.DB
+
 type Executor interface {
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
-	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
+	x.ExecerContext
+	x.QueryerContext
+	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	PreparexContext(ctx context.Context, query string) (*x.Stmt, error)
+	DriverName() string
+	BindNamed(query string, arg interface{}) (string, []interface{}, error)
 }
 
-var wdb *sql.DB
-var rdbs []*sql.DB
-var driver string
-
 type _Key int
+
+const (
+	txKey = _Key(iota + 1000)
+	justLeaderKey
+)
+
+func WriteableDB(ctx context.Context) context.Context {
+	return context.WithValue(ctx, justLeaderKey, true)
+}
+
+// starts a transaction, return a sub context and a commit function
+func Tx(ctx context.Context) (nctx context.Context, committer func()) {
+	_tx := ctx.Value(txKey)
+	if _tx != nil {
+		panic(errors.New("suna.sqlx: sub tx is invalid"))
+	}
+
+	tx := wdb.MustBegin()
+	return context.WithValue(ctx, txKey, tx), func() {
+		recv := recover()
+		if recv == nil {
+			commitErr := tx.Commit()
+			if commitErr != nil {
+				panic(commitErr)
+			}
+			return
+		}
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			panic(rollbackErr)
+		}
+		panic(recv)
+	}
+}
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-const (
-	dbKey = _Key(iota)
-	txKey
-	justWKey
-	driverKey
-)
+var PickReadonlyDB = func(dbs []*x.DB) *x.DB { return dbs[rand.Int()%len(dbs)] }
 
-func UseWriteableDB(ctx context.Context) context.Context {
-	v := getExecutor(ctx)
-	if v != nil {
-		panic(fmt.Errorf("suna.sqlx: Executor is not nil"))
+func Exe(ctx context.Context) W {
+	tx := ctx.Value(txKey)
+	if tx != nil {
+		return W{tx.(*x.Tx)}
 	}
-	return context.WithValue(ctx, justWKey, 1)
-}
-
-func getExecutor(ctx context.Context) interface{} {
-	var v interface{}
-	v = ctx.Value(txKey)
-	if v != nil {
-		return v
-	}
-	v = ctx.Value(dbKey)
-	if v != nil {
-		return v
-	}
-	return nil
-}
-
-func ExcScanner(ctx context.Context) *_ExcScanner {
-	v := getExecutor(ctx)
-	if v != nil {
-		return &_ExcScanner{executor: v.(Executor)}
-	}
-	if ctx.Value(justWKey) != nil {
-		return &_ExcScanner{executor: wdb}
+	if ctx.Value(justLeaderKey) != nil {
+		return W{wdb}
 	}
 	if len(rdbs) < 1 {
-		return &_ExcScanner{executor: wdb}
+		return W{wdb}
 	}
-	return &_ExcScanner{executor: rdbs[rand.Int()%len(rdbs)]}
+	return W{PickReadonlyDB(rdbs)}
 }
 
-func Tx(ctx context.Context, opts *sql.TxOptions) (context.Context, func()) {
-	v := ctx.Value(txKey)
-	if v != nil {
-		panic(errors.New("suna.sqlx: sub tx is invalid"))
+func db(ctx context.Context) *x.DB {
+	tx := ctx.Value(txKey)
+	if tx != nil {
+		return wdb
 	}
-
-	tx, err := wdb.BeginTx(ctx, opts)
-	if err != nil {
-		panic(err)
+	if ctx.Value(justLeaderKey) != nil {
+		return wdb
 	}
-	return context.WithValue(
-			context.WithValue(ctx, driverKey, wdb.Driver()), txKey, tx,
-		), func() {
-			recv := recover()
-			if recv == nil {
-				commitErr := tx.Commit()
-				if commitErr != nil {
-					internal.L.Printf("suna.sqlx: commit error, %s\r\n", commitErr.Error())
-					panic(commitErr)
-				}
-				return
-			}
-			rollbackErr := tx.Rollback()
-			if rollbackErr != nil {
-				internal.L.Printf("suna.sqlx: rollback error: %s\r\n", rollbackErr.Error())
-				panic(recv)
-			}
-			panic(recv)
-		}
+	if len(rdbs) < 1 {
+		return wdb
+	}
+	return PickReadonlyDB(rdbs)
 }

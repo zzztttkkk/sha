@@ -2,51 +2,36 @@ package validator
 
 import (
 	"fmt"
+	"github.com/jmoiron/sqlx/reflectx"
 	"github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/internal/typereflect"
 	"log"
 	"reflect"
+	"strings"
 )
 
-type _TagParser struct {
-	current *Rule
-	field   *reflect.StructField
-	rules   Rules
-	name    string
+// all validate type should be prepared before use
+var cacheMap = map[reflect.Type]Rules{}
+var reflectMapper = reflectx.NewMapper("validator")
+
+type Defaulter interface {
+	Default(fieldName string) interface{}
 }
 
-func (p *_TagParser) OnNestedStruct(f *reflect.StructField, index []int) typereflect.OnNestStructRet {
-	if !f.Anonymous {
-		log.Println(
-			fmt.Sprintf(
-				"suna.validator: skip nested-struct `%s.%s`, because it is not anonymous",
-				p.name, f.Name,
-			),
-		)
-		return typereflect.Skip
+func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string2 string) interface{}) *Rule {
+	rule := &Rule{
+		fieldIndex: f.Index,
+		formName:   []byte(f.Name),
+		isRequired: true,
 	}
-	return typereflect.GoDown
-}
-
-func (p *_TagParser) OnBegin(f *reflect.StructField, index []int) bool {
-	p.field = f
-
-	if f.Type.Kind() == reflect.Struct {
-		p.rules = append(p.rules, GetRules(f.Type)...)
-		return false
-	}
-	if f.Type.Kind() == reflect.Ptr {
-		log.Println("suna.validator: field is isRequired by default, do not use pointer")
-		return false
+	if len(rule.formName) < 1 {
+		rule.formName = []byte(strings.ToLower(f.Field.Name))
 	}
 
-	p.current = &Rule{}
-	rule := p.current
+	if defaultF != nil {
+		rule.defaultVal = defaultF(f.Field.Name)
+	}
 
-	rule.fieldIndex = append(p.current.fieldIndex, index...)
-	rule.isRequired = true
-
-	ele := reflect.New(f.Type).Elem()
+	ele := reflect.New(f.Field.Type).Elem()
 	switch ele.Interface().(type) {
 	case int64:
 		rule.rtype = Int64
@@ -79,158 +64,124 @@ func (p *_TagParser) OnBegin(f *reflect.StructField, index []int) bool {
 		rule.rtype = FloatSlice
 		rule.isSlice = true
 	default:
-		log.Printf("suna.validator: number is non-64bit value or unsupported type, `%s.%s`", p.name, f.Name)
-		p.current = nil
-		return false
+		log.Printf(
+			"suna.validator: number is non-64bit value or unsupported type, `%s:%s.%s`\n",
+			t.PkgPath(), t.Name(), f.Name,
+		)
+		return nil
 	}
 
-	return true
-}
-
-func (p *_TagParser) OnName(name string) {
-	p.current.formName = []byte(name)
-}
-
-func (p *_TagParser) OnAttr(key, val string) {
-	rule := p.current
-
-	switch key {
-	case "R", "regexp":
-		rule.reg = regexpMap[val]
-		rule.regName = val
-		if rule.reg == nil {
-			panic(fmt.Errorf("suna.validator: unregistered regexp `%s`", val))
-		}
-	case "F", "filter":
-		rule.fn = bytesFilterMap[val]
-		rule.fnName = val
-		if rule.fn == nil {
-			panic(fmt.Errorf("suna.validator: unregistered bytes filter `%s`", val))
-		}
-	case "L", "length":
-		rule.fLR = true
-		minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
-		if minVF {
-			rule.minLV = new(int)
-			*rule.minLV = int(minV)
-		}
-		if maxVF {
-			rule.maxLV = new(int)
-			*rule.maxLV = int(maxV)
-		}
-		if rule.minLV == nil && rule.maxLV == nil {
-			panic(
-				fmt.Errorf(
-					"suna.validator: bad field length range value, field: `%s.%s`, tag: `%s`",
-					p.name, p.field.Name, val,
-				),
-			)
-		}
-	case "V", "value":
-		rule.fVR = true
-		var err bool
-		switch rule.rtype {
-		case Int64, IntSlice:
+	for key, val := range f.Options {
+		switch key {
+		case "P", "p", "params":
+			rule.pathParamsName = []byte(val)
+		case "optional":
+			rule.isRequired = false
+		case "NTSC", "nottrimspacechar":
+			rule.notTrimSpace = true
+		case "description":
+			rule.description = val
+		case "R", "r", "regexp":
+			rule.reg = regexpMap[val]
+			rule.regName = val
+			if rule.reg == nil {
+				panic(fmt.Errorf("suna.validator: unregistered regexp `%s`", val))
+			}
+		case "F", "f", "filter":
+			rule.fn = bytesFilterMap[val]
+			rule.fnName = val
+			if rule.fn == nil {
+				panic(fmt.Errorf("suna.validator: unregistered bytes filter `%s`", val))
+			}
+		case "L", "l", "length":
+			rule.fLR = true
 			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 			if minVF {
-				rule.minIV = new(int64)
-				*rule.minIV = minV
+				rule.minLV = new(int)
+				*rule.minLV = int(minV)
 			}
 			if maxVF {
-				rule.maxIV = new(int64)
-				*rule.maxIV = maxV
+				rule.maxLV = new(int)
+				*rule.maxLV = int(maxV)
 			}
-			err = rule.minIV == nil && rule.maxIV == nil
-		case Uint64, UintSlice:
-			minV, maxV, minVF, maxVF := internal.ParseUintRange(val)
+			if rule.minLV == nil && rule.maxLV == nil {
+				panic(
+					fmt.Errorf(
+						"suna.validator: bad length range value, field: `%s:%s.%s`, tag value: `%s`",
+						t.PkgPath(), t.Name(), f.Field.Name, val,
+					),
+				)
+			}
+		case "V", "v", "value":
+			rule.fVR = true
+			var err bool
+			switch rule.rtype {
+			case Int64, IntSlice:
+				minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
+				if minVF {
+					rule.minIV = new(int64)
+					*rule.minIV = minV
+				}
+				if maxVF {
+					rule.maxIV = new(int64)
+					*rule.maxIV = maxV
+				}
+				err = rule.minIV == nil && rule.maxIV == nil
+			case Uint64, UintSlice:
+				minV, maxV, minVF, maxVF := internal.ParseUintRange(val)
+				if minVF {
+					rule.minUV = new(uint64)
+					*rule.minUV = minV
+				}
+				if maxVF {
+					rule.maxUV = new(uint64)
+					*rule.maxUV = maxV
+				}
+				err = rule.minUV == nil && rule.maxUV == nil
+			case Float64, FloatSlice:
+				minV, maxV, minVF, maxVF := internal.ParseFloatRange(val)
+				if minVF {
+					rule.minDV = new(float64)
+					*rule.minDV = minV
+				}
+				if maxVF {
+					rule.maxDV = new(float64)
+					*rule.maxDV = maxV
+				}
+				err = rule.minDV == nil && rule.maxDV == nil
+			}
+			if err {
+				panic(
+					fmt.Errorf(
+						"suna.validator: bad value range value, field: `%s:%s.%s`, tag value: `%s`",
+						t.PkgPath(), t.Name(), f.Field.Name, val,
+					),
+				)
+			}
+		case "S", "s", "size":
+			rule.fSSR = true
+			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 			if minVF {
-				rule.minUV = new(uint64)
-				*rule.minUV = minV
+				rule.minSSV = new(int)
+				*rule.minSSV = int(minV)
 			}
 			if maxVF {
-				rule.maxUV = new(uint64)
-				*rule.maxUV = maxV
+				rule.maxSSV = new(int)
+				*rule.maxSSV = int(maxV)
 			}
-			err = rule.minUV == nil && rule.maxUV == nil
-		case Float64, FloatSlice:
-			minV, maxV, minVF, maxVF := internal.ParseFloatRange(val)
-			if minVF {
-				rule.minDV = new(float64)
-				*rule.minDV = minV
+			if rule.minSSV == nil && rule.maxSSV == nil {
+				panic(
+					fmt.Errorf(
+						"suna.validator: bad slice size range value, field: `%s:%s.%s`, tag value: `%s`",
+						t.PkgPath(), t.Name(), f.Field.Name, val,
+					),
+				)
 			}
-			if maxVF {
-				rule.maxDV = new(float64)
-				*rule.maxDV = maxV
-			}
-			err = rule.minDV == nil && rule.maxDV == nil
 		}
-		if err {
-			panic(
-				fmt.Errorf(
-					"suna.validator: bad value range value, field: `%s.%s`, tag: `%s`",
-					p.name, p.field.Name, val,
-				),
-			)
-		}
-	case "D", "default":
-		if rule.isSlice {
-			log.Println(fmt.Sprintf("suna.validator: ignore default value on a slice field, `%s.%s`", p.name, p.field.Name))
-		}
-
-		v := new([]byte)
-		*v = append(*v, []byte(val)...)
-		rule.defaultValPtr = v
-	case "S", "size":
-		rule.fSSR = true
-		minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
-		if minVF {
-			rule.minSSV = new(int)
-			*rule.minSSV = int(minV)
-		}
-		if maxVF {
-			rule.maxSSV = new(int)
-			*rule.maxSSV = int(maxV)
-		}
-		if rule.minSSV == nil && rule.maxSSV == nil {
-			panic(
-				fmt.Errorf(
-					"suna.validator: bad slice size range value, field: `%s.%s`, tag: `%s`",
-					p.name, p.field.Name, val,
-				),
-			)
-		}
-	case "P", "params":
-		rule.pathParamsName = []byte(val)
-	case "optional":
-		rule.isRequired = false
-	case "NTSC", "nottrimspacechar":
-		rule.notTrimSpace = true
-	case "description":
-		rule.description = val
 	}
+
+	return rule
 }
-
-func (p *_TagParser) OnDone() {
-	rule := p.current
-	p.current = nil
-	p.field = nil
-
-	if !rule.fLR { // field can not be empty by default
-		rule.fLR = true
-		rule.minLV = new(int)
-		*rule.minLV = 1
-	}
-
-	if rule.isSlice && !rule.fSSR {
-		rule.fSSR = true
-		rule.minSSV = new(int)
-		*rule.minSSV = 1
-	}
-	p.rules = append(p.rules, rule)
-}
-
-// all validate type should be prepared before use
-var cacheMap = map[reflect.Type]Rules{}
 
 func GetRules(t reflect.Type) Rules {
 	v, ok := cacheMap[t]
@@ -238,9 +189,21 @@ func GetRules(t reflect.Type) Rules {
 		return v
 	}
 
-	parser := _TagParser{name: fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())}
-	typereflect.Tags(t, "validator", &parser)
+	ele := reflect.New(t).Elem().Interface()
+	var d Defaulter
+	var fn func(string) interface{}
+	if d, ok = ele.(Defaulter); ok {
+		fn = d.Default
+	}
 
-	cacheMap[t] = parser.rules
-	return parser.rules
+	var rules Rules
+	fmap := reflectMapper.TypeMap(t)
+	for _, f := range fmap.Index {
+		rule := fieldInfoToRule(t, f, fn)
+		if rule != nil {
+			rules = append(rules, rule)
+		}
+	}
+	cacheMap[t] = rules
+	return rules
 }

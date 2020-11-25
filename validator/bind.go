@@ -67,8 +67,9 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 	} else {
 		fv, ok = former.FormValue(rule.formName)
 		if !ok {
-			if rule.defaultValPtr != nil {
-				fv = *rule.defaultValPtr
+			if rule.defaultVal != nil {
+				filed.Set(reflect.ValueOf(rule.defaultVal))
+				return nil
 			} else {
 				if rule.isRequired {
 					return &FormError{FormName: internal.S(rule.formName), Type: MissingRequired}
@@ -110,8 +111,12 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 	var ret interface{}
 	formVals := former.FormValues(rule.formName)
-	if len(formVals) < 0 {
+	if len(formVals) < 1 {
 		if rule.isRequired {
+			if rule.defaultVal != nil {
+				field.Set(reflect.ValueOf(rule.defaultVal))
+				return nil
+			}
 			return &FormError{FormName: internal.S(rule.formName), Type: MissingRequired}
 		} else {
 			return nil

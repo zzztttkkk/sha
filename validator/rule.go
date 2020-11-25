@@ -71,7 +71,7 @@ type Rule struct {
 	minLV        *int
 	maxLV        *int
 
-	defaultValPtr *[]byte
+	defaultVal interface{}
 
 	reg     *regexp.Regexp
 	regName string
@@ -107,9 +107,6 @@ func (rule *Rule) String() string {
 	m["name"] = string(rule.formName)
 	if len(rule.pathParamsName) > 0 {
 		m["name"] = fmt.Sprintf("PathParam: %s", rule.pathParamsName)
-	}
-	if rule.fSSR {
-		m["type"] = fmt.Sprintf("%s; multi values", m["type"])
 	}
 
 	if rule.fLR {
@@ -187,8 +184,8 @@ func (rule *Rule) String() string {
 		m["regexp"] = "/"
 	}
 
-	if rule.defaultValPtr != nil && len(*rule.defaultValPtr) > 0 {
-		m["default"] = html.EscapeString(string(*rule.defaultValPtr))
+	if rule.defaultVal != nil {
+		m["default"] = html.EscapeString(fmt.Sprintf("%v", rule.defaultVal))
 	} else {
 		m["default"] = "/"
 	}
