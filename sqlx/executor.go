@@ -11,6 +11,14 @@ import (
 var wdb *x.DB
 var rdbs []*x.DB
 
+func OpenWriteableDB(drivername, uri string) {
+	wdb = x.MustOpen(drivername, uri)
+}
+
+func OpenReadableDB(drivername, uri string) {
+	rdbs = append(rdbs, x.MustOpen(drivername, uri))
+}
+
 type Executor interface {
 	x.ExecerContext
 	x.QueryerContext

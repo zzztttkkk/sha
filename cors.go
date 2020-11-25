@@ -32,10 +32,14 @@ func (options *CorsOptions) init() {
 		options.headerKvs = append(options.headerKvs, headerAccessControlMaxAge)
 		options.headerKvs = append(options.headerKvs, []byte(strconv.FormatInt(options.MaxAge, 10)))
 	}
-	if len(options.AllowMethods) > 0 {
-		options.headerKvs = append(options.headerKvs, headerAccessControlAllowMethods)
-		options.headerKvs = append(options.headerKvs, []byte(options.AllowMethods))
+
+	if len(options.AllowMethods) < 1 {
+		options.AllowMethods = "GET, POST, OPTIONS"
 	}
+
+	options.headerKvs = append(options.headerKvs, headerAccessControlAllowMethods)
+	options.headerKvs = append(options.headerKvs, []byte(options.AllowMethods))
+
 	if len(options.AllowHeaders) > 0 {
 		options.headerKvs = append(options.headerKvs, headerAccessControlAllowHeaders)
 		options.headerKvs = append(options.headerKvs, []byte(options.AllowHeaders))
@@ -54,13 +58,9 @@ func (options *CorsOptions) init() {
 }
 
 func (options *CorsOptions) writeHeader(ctx *RequestCtx) {
-	origin, ok := ctx.Request.Header.Get(headerOrigin)
-	if len(origin) < 1 || !ok { // same origin
-		return
-	}
 	var key []byte
 	for i, v := range options.headerKvs {
-		if i%2 == 0 {
+		if i&1 == 0 {
 			key = v
 		} else {
 			ctx.Response.Header.Set(key, v)
@@ -85,6 +85,6 @@ func (options *CorsOptions) Process(ctx *RequestCtx, next func()) {
 		options.OnForbidden(ctx)
 		return
 	}
-	defer options.writeHeader(ctx)
+	options.writeHeader(ctx)
 	next()
 }

@@ -16,7 +16,7 @@ type TestModel struct {
 	CreatedAt time.Time  `db:"created_at" json:"created_at"`
 	DeletedAt *time.Time `db:"deleted_at" json:"-"`
 	Name      Bytes      `db:"name,g=login" json:"name"`
-	Password  Bytes      `db:"password,g=login" json:"password,string"`
+	Password  Bytes      `db:"password,g=login" json:"password"`
 }
 
 func (TestModel) TableColumns(db *sqlx.DB) []string {
@@ -32,7 +32,7 @@ func (TestModel) TableColumns(db *sqlx.DB) []string {
 var TestModelOperator *Operator
 
 func init() {
-	wdb = sqlx.MustOpen("mysql", "root:123456@/suna?parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"))
+	OpenWriteableDB("mysql", "root:123456@/suna?parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"))
 	EnableLogging()
 
 	TestModelOperator = NewOperator(TestModel{})
