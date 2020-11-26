@@ -20,7 +20,7 @@ type _RouteNode struct {
 	handler      RequestHandler
 	parent       *_RouteNode
 	name         string
-	children     map[string]*_RouteNode
+	children     []*_RouteNode
 	methods      []byte
 	autoHandler  bool
 }
@@ -32,10 +32,23 @@ func (node *_RouteNode) addMethod(method string) {
 	node.methods = append(node.methods, []byte(method)...)
 }
 
-var allowHeader = []byte("Allow")
+var headerAllow = []byte("Allow")
 
 func (node *_RouteNode) handleOptions(ctx *RequestCtx) {
-	ctx.Response.Header.Set(allowHeader, node.methods)
+	ctx.Response.Header.Set(headerAllow, node.methods)
+}
+
+func (node *_RouteNode) addChild(c *_RouteNode) {
+	node.children = append(node.children, c)
+}
+
+func (node *_RouteNode) getChild(name string) *_RouteNode {
+	for _, n := range node.children {
+		if n.name == name {
+			return n
+		}
+	}
+	return nil
 }
 
 func (node *_RouteNode) addHandler(
@@ -70,13 +83,10 @@ func (node *_RouteNode) addHandler(
 			panic(fmt.Errorf("suna.router: `%s` conflict with others", raw))
 		}
 
-		if node.children == nil {
-			node.children = map[string]*_RouteNode{}
-		}
-		sn := node.children[p]
+		sn := node.getChild(p)
 		if sn == nil {
 			sn = &_RouteNode{name: p, parent: node}
-			node.children[p] = sn
+			node.addChild(sn)
 		}
 		sn.addHandler(path[1:], handler, raw, isAutoHandler, method, newNodePtr)
 		return
@@ -146,7 +156,7 @@ func (node *_RouteNode) find(path []byte, kvs *internal.Kvs, paramsC *int) (int,
 				return prevI, nil
 			}
 
-			n = n.children[internal.S(key)]
+			n = n.getChild(internal.S(key))
 			key = key[:0]
 			if n == nil {
 				return prevI, nil
@@ -178,7 +188,7 @@ func (node *_RouteNode) find(path []byte, kvs *internal.Kvs, paramsC *int) (int,
 		return prevI, nil
 	}
 
-	n = n.children[internal.S(key)]
+	n = n.getChild(internal.S(key))
 	if n == nil {
 		return prevI, nil
 	}
@@ -211,9 +221,6 @@ func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 		docs:   map[string]map[string]string{},
 	}
 	if mux.cors != nil {
-		if mux.cors.CheckOrigin == nil {
-			panic("suna.router: nil `CorsOptions`.`CheckOrigin`")
-		}
 		mux.Use(mux.cors)
 	}
 	return mux
@@ -323,13 +330,6 @@ func doAutoRectDelSlash(ctx *RequestCtx) {
 	ctx.Response.Header.Set(locationHeader, path[:len(path)-1])
 }
 
-func (node *_RouteNode) getChildren(name string) *_RouteNode {
-	if len(node.children) == 0 {
-		return nil
-	}
-	return node.children[name]
-}
-
 func (mux *_Mux) autoRedirect(newNode *_RouteNode, path string) {
 	var _n *_RouteNode
 
@@ -342,15 +342,10 @@ func (mux *_Mux) autoRedirect(newNode *_RouteNode, path string) {
 		return
 	}
 
-	c := newNode.children
-	if len(c) < 1 {
-		c = map[string]*_RouteNode{}
-		newNode.children = c
-	}
-	_n = c[""]
+	_n = newNode.getChild("")
 	if _n == nil {
 		_n = &_RouteNode{parent: newNode}
-		c[""] = _n
+		newNode.addChild(_n)
 	}
 
 	if _n.handler == nil {
@@ -433,7 +428,7 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 	if len(n.wildcardName) > 0 {
 		// wildcard path must endswith "/"
 		if path[i] == '/' {
-			n = n.getChildren("")
+			n = n.getChild("")
 			if n != nil {
 				n.handler.Handle(ctx)
 			} else {
