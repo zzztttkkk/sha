@@ -11,7 +11,7 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 	mux := NewMux("", nil)
 	s.Handler = mux
 
-	mux.AddHandler(
+	mux.REST(
 		"get",
 		"/",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
@@ -20,7 +20,7 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 		}),
 	)
 
-	mux.AddHandler(
+	mux.REST(
 		"get",
 		"/a",
 		RequestHandlerFunc(func(ctx *RequestCtx) {

@@ -58,15 +58,3 @@ func (header *Header) ContentType() []byte {
 	}
 	return v
 }
-
-func (header *Header) GetStr(key string) string {
-	v, ok := header.Get(internal.B(key))
-	if !ok {
-		return ""
-	}
-	return internal.S(v)
-}
-
-func (header *Header) SetStr(key, val string) {
-	header.Set(internal.B(key), internal.B(val))
-}

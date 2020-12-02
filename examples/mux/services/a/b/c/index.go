@@ -14,7 +14,7 @@ func init() {
 		h.NewPrintMiddleware("a.b.c.m3"),
 	)
 
-	Branch.AddHandler(
+	Branch.REST(
 		"get",
 		"/",
 		h.NewPrintHandler("a.b.c.h"),

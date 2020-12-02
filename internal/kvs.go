@@ -57,7 +57,7 @@ func ReleaseKvs(kvs *Kvs) {
 	kvsPool.Put(kvs)
 }
 
-func (kvs *Kvs) Append(k, v []byte) *KvItem {
+func (kvs *Kvs) Append(k, v []byte) {
 	var item *KvItem
 
 	s := len(kvs.lst)
@@ -70,12 +70,11 @@ func (kvs *Kvs) Append(k, v []byte) *KvItem {
 	item.invalid = false
 	item.Key = append(item.Key, k...)
 	item.Val = append(item.Val, v...)
-	return item
 }
 
-func (kvs *Kvs) Set(k, v []byte) *KvItem {
+func (kvs *Kvs) Set(k, v []byte) {
 	kvs.Del(k)
-	return kvs.Append(k, v)
+	kvs.Append(k, v)
 }
 
 func (kvs *Kvs) Del(k []byte) {
@@ -103,6 +102,26 @@ func (kvs *Kvs) Get(k []byte) ([]byte, bool) {
 	return nil, false
 }
 
+func (kvs *Kvs) GetStr(k string) string {
+	v, ok := kvs.Get(B(k))
+	if !ok {
+		return ""
+	}
+	return S(v)
+}
+
+func (kvs *Kvs) AppendStr(k, v string) {
+	kvs.Append(B(k), B(v))
+}
+
+func (kvs *Kvs) SetStr(k, v string) {
+	kvs.Set(B(k), B(v))
+}
+
+func (kvs *Kvs) DelStr(k string) {
+	kvs.Del(B(k))
+}
+
 func (kvs *Kvs) GetAll(k []byte) [][]byte {
 	var rv [][]byte
 
@@ -118,19 +137,12 @@ func (kvs *Kvs) GetAll(k []byte) [][]byte {
 	return rv
 }
 
-func (kvs *Kvs) GetAllRef(k []byte) []*[]byte {
-	var rv []*[]byte
-
-	for i := 0; i < len(kvs.lst); i++ {
-		item := &(kvs.lst[i])
-		if item.invalid {
-			continue
-		}
-		if bytes.Equal(item.Key, k) {
-			rv = append(rv, &item.Val)
-		}
+func (kvs *Kvs) GetAllStr(k string) []string {
+	var ret []string
+	for _, v := range kvs.GetAll(B(k)) {
+		ret = append(ret, S(v))
 	}
-	return rv
+	return ret
 }
 
 func (kvs *Kvs) EachKey(visitor func(k []byte) bool) {

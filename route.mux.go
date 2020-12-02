@@ -320,8 +320,8 @@ var locationHeader = []byte("Location")
 
 func doAutoRectAddSlash(ctx *RequestCtx) {
 	ctx.WriteStatus(http.StatusMovedPermanently)
-	item := ctx.Response.Header.Set(locationHeader, ctx.Request.Path)
-	item.Val = append(item.Val, '/')
+	ctx.Request.Path = append(ctx.Request.Path, '/')
+	ctx.Response.Header.Set(locationHeader, ctx.Request.Path)
 }
 
 func doAutoRectDelSlash(ctx *RequestCtx) {
@@ -354,8 +354,12 @@ func (mux *_Mux) autoRedirect(newNode *_RouteNode, path string) {
 	}
 }
 
-func (mux *_Mux) AddHandler(method, path string, handler RequestHandler) {
+func (mux *_Mux) REST(method, path string, handler RequestHandler) {
 	mux.doAddHandler1(method, path, handler, true)
+}
+
+func (mux *_Mux) WebSocket(path string, wh WebSocketHandlerFunc) {
+	mux.REST("get", path, wshToHandler(wh))
 }
 
 type _FormRequestHandler struct {
@@ -364,7 +368,7 @@ type _FormRequestHandler struct {
 }
 
 func (mux *_Mux) AddHandlerWithForm(method, path string, handler RequestHandler, form interface{}) {
-	mux.AddHandler(
+	mux.REST(
 		method, path,
 		&_FormRequestHandler{
 			RequestHandler: handler,
@@ -503,7 +507,7 @@ func (mux *_Mux) HandleStaticFile(method, path string, fs http.FileSystem, index
 		panic(fmt.Errorf("suna.router: bad static path"))
 	}
 
-	mux.AddHandler(
+	mux.REST(
 		method,
 		path,
 		handlerWithMiddleware(

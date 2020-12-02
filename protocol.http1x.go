@@ -18,7 +18,6 @@ type Http1xProtocol struct {
 	OnParseError   func(conn net.Conn, err HttpError) bool // close connection if return true
 	OnWriteError   func(conn net.Conn, err error) bool     // close connection if return true
 	ReadBufferSize int
-	SubProtocols   map[string]Protocol
 
 	server  *Server
 	handler RequestHandler
@@ -28,7 +27,6 @@ func (protocol *Http1xProtocol) Handshake(_ *RequestCtx) bool {
 	return false
 }
 
-var closeStr = []byte("close")
 var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
 
@@ -47,7 +45,7 @@ func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 var ZeroTime time.Time
 var MaxIdleSleepTime = time.Millisecond * 100
 
-func (protocol *Http1xProtocol) Serve(ctx context.Context, _ *Request, conn net.Conn) {
+func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 	var err error
 	var n int
 	var stop bool
@@ -114,33 +112,30 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, _ *Request, conn net.
 				if rctx.Context == nil {
 					rctx.initRequest()
 				}
-
-				if protocol.WriteTimeout > 0 {
-					_ = conn.SetWriteDeadline(time.Now().Add(protocol.WriteTimeout))
-				}
-
-				subp := rctx.UpgradeProtocol()
-				if subp != nil {
-					if subp.Handshake(rctx) {
-						subp.Serve(rctx.Context, &rctx.Request, conn)
-						return
-					}
-				}
-
 				protocol.handler.Handle(rctx)
 
-				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
-					if protocol.OnWriteError != nil {
-						if protocol.OnWriteError(conn, err) {
+				if !rctx.hijacked {
+					if protocol.WriteTimeout > 0 {
+						_ = conn.SetWriteDeadline(time.Now().Add(protocol.WriteTimeout))
+					}
+
+					if protocol.keepalive(rctx) {
+						rctx.Response.Header.Set(headerConnection, keepAliveStr)
+					}
+
+					if err := rctx.sendHttp1xResponseBuffer(); err != nil {
+						if protocol.OnWriteError != nil {
+							if protocol.OnWriteError(conn, err) {
+								return
+							}
+						} else {
 							return
 						}
-					} else {
-						return
 					}
-				}
 
-				if protocol.WriteTimeout > 0 {
-					_ = conn.SetWriteDeadline(ZeroTime)
+					if protocol.WriteTimeout > 0 {
+						_ = conn.SetWriteDeadline(ZeroTime)
+					}
 				}
 
 				rctx.Reset()

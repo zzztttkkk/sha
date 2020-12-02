@@ -1,0 +1,3 @@
+[submodule "internal/websocket"]
+	path = internal/websocket
+	url = git@github.com:zzztttkkk/websocket.git

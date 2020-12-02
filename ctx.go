@@ -24,6 +24,10 @@ type Request struct {
 	rawPath       []byte
 	version       []byte
 	bodyBufferPtr *[]byte
+
+	// websocket
+	wsSubP       SubWebSocketProtocol
+	wsDoCompress bool
 }
 
 func (req *Request) Reset() {
@@ -41,6 +45,8 @@ func (req *Request) Reset() {
 	req.rawPath = req.rawPath[:0]
 	req.version = req.version[:0]
 	req.bodyBufferPtr = nil
+	req.wsSubP = nil
+	req.wsDoCompress = false
 }
 
 type Response struct {
@@ -111,6 +117,7 @@ type RequestCtx struct {
 	kvSep        bool   // `:`
 	bodyRemain   int
 	bodySize     int
+	hijacked     bool
 }
 
 func (ctx *RequestCtx) RemoteAddr() net.Addr {
@@ -121,7 +128,7 @@ var headerConnection = []byte("Connection")
 var lowerUpgradeHeader = []byte("upgrade")
 var headerUpgrade = []byte("Upgrade")
 
-func (ctx *RequestCtx) UpgradeProtocol() Protocol {
+func (ctx *RequestCtx) UpgradeProtocol() []byte {
 	if string(ctx.Request.Method) != http.MethodGet {
 		return nil
 	}
@@ -137,7 +144,7 @@ func (ctx *RequestCtx) UpgradeProtocol() Protocol {
 		return nil
 	}
 	v = inplaceLowercase(v)
-	return ctx.protocol.SubProtocols[internal.S(v)]
+	return v
 }
 
 func (ctx *RequestCtx) Reset() {

@@ -13,6 +13,20 @@ var responseHeaderBufferPool = internal.NewBufferPoll(4096)
 var newline = []byte("\r\n")
 var headerKVSep = []byte(": ")
 
+func (ctx *RequestCtx) KeepAlive() bool {
+	req := &ctx.Request
+	cv, _ := req.Header.Get(headerConnection)
+	if string(inplaceLowercase(cv)) == "close" {
+		return false
+	}
+	res := &ctx.Response
+	cv, _ = res.Header.Get(headerConnection)
+	if string(inplaceLowercase(cv)) == "close" {
+		return false
+	}
+	return true
+}
+
 func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 	res := &ctx.Response
 	if res.compressWriter != nil {

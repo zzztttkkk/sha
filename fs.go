@@ -6,7 +6,7 @@ package suna
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// HTTP file system request handler
+// HTTP file system request Handler
 
 import (
 	"bytes"
@@ -393,13 +393,13 @@ func isZeroTime(t time.Time) bool {
 	return t.IsZero() || t.Equal(unixEpochTime)
 }
 
-const TimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
+const fsTimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 
 var headerLastModified = []byte("Last-Modified")
 
 func setLastModified(w *Response, modtime time.Time) {
 	if !isZeroTime(modtime) {
-		w.Header.Set(headerLastModified, internal.B(modtime.UTC().Format(TimeFormat)))
+		w.Header.Set(headerLastModified, internal.B(modtime.UTC().Format(fsTimeFormat)))
 	}
 }
 

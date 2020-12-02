@@ -17,7 +17,7 @@ type _RouteBranch struct {
 	children map[string]*_RouteBranch
 }
 
-func (branch *_RouteBranch) AddHandler(method, path string, handler RequestHandler) {
+func (branch *_RouteBranch) REST(method, path string, handler RequestHandler) {
 	method = strings.ToUpper(method)
 	m := branch.allHandlers[method]
 	if m == nil {
@@ -27,8 +27,12 @@ func (branch *_RouteBranch) AddHandler(method, path string, handler RequestHandl
 	m[path] = handler
 }
 
+func (branch *_RouteBranch) WebSocket(path string, wh WebSocketHandlerFunc) {
+	branch.REST("get", path, wshToHandler(wh))
+}
+
 func (branch *_RouteBranch) AddHandlerWithForm(method, path string, handler RequestHandler, form interface{}) {
-	branch.AddHandler(
+	branch.REST(
 		method, path,
 		&_FormRequestHandler{
 			RequestHandler: handler,

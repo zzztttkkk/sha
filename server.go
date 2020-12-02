@@ -147,7 +147,6 @@ func (s *Server) serve(connCtx context.Context, conn net.Conn) {
 	var subProtocolName string
 	var tlsConn *tls.Conn
 	var err error
-	var protocol Protocol
 
 	tlsConn, subProtocolName, err = s.tslHandshake(conn)
 	if err != nil { // tls handshake error
@@ -160,18 +159,13 @@ func (s *Server) serve(connCtx context.Context, conn net.Conn) {
 		return
 	}
 
-	if tlsConn == nil {
-		protocol = &s.Http1xProtocol
-	} else {
+	if tlsConn != nil {
 		conn = tlsConn
 		switch subProtocolName {
 		case "", "http/1.0", "http/1.1":
-			protocol = &s.Http1xProtocol
+		default:
+			conn.Close()
 		}
 	}
-	if protocol == nil {
-		return
-	}
-
-	protocol.Serve(connCtx, nil, conn)
+	s.Http1xProtocol.Serve(connCtx, conn)
 }

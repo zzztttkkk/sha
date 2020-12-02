@@ -54,8 +54,8 @@ func (ctx *RequestCtx) AutoCompress() {
 	acceptGzip := false
 	acceptDeflate := false
 
-	for _, headerVal := range ctx.Request.Header.GetAllRef(headerAcceptEncoding) {
-		for _, v := range bytes.Split(*headerVal, headerCompressValueSep) {
+	for _, headerVal := range ctx.Request.Header.GetAll(headerAcceptEncoding) {
+		for _, v := range bytes.Split(headerVal, headerCompressValueSep) {
 			switch string(v) {
 			case "gzip":
 				acceptGzip = true
