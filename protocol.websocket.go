@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/internal/websocket"
+	"github.com/zzztttkkk/websocket"
 	"log"
 	"net/http"
 	"time"

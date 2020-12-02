@@ -3,7 +3,7 @@ package suna
 import (
 	"context"
 	"fmt"
-	"github.com/zzztttkkk/suna/internal/websocket"
+	"github.com/zzztttkkk/websocket"
 	"log"
 	"testing"
 	"time"
