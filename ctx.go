@@ -118,32 +118,26 @@ func (ctx *RequestCtx) RemoteAddr() net.Addr {
 }
 
 var headerConnection = []byte("Connection")
-var upgradeHeader = []byte("Upgrade")
+var lowerUpgradeHeader = []byte("upgrade")
+var headerUpgrade = []byte("Upgrade")
 
-// Upgrade return false, if not an upgrade request
-func (ctx *RequestCtx) Upgrade() (Protocol, bool) {
+func (ctx *RequestCtx) UpgradeProtocol() Protocol {
+	if string(ctx.Request.Method) != http.MethodGet {
+		return nil
+	}
 	v, ok := ctx.Request.Header.Get(headerConnection)
 	if !ok {
-		return nil, false
+		return nil
 	}
-	if string(v) != string(upgradeHeader) {
-		return nil, false
+	if string(inplaceLowercase(v)) != string(lowerUpgradeHeader) {
+		return nil
 	}
-	v, ok = ctx.Request.Header.Get(upgradeHeader)
-	if !ok || len(v) < 1 {
-		return nil, false
+	v, ok = ctx.Request.Header.Get(headerUpgrade)
+	if !ok {
+		return nil
 	}
 	v = inplaceLowercase(v)
-	protocol := ctx.protocol.SubProtocols[internal.S(v)]
-	if protocol == nil {
-		ctx.WriteStatus(http.StatusNotFound)
-		return nil, false
-	}
-
-	if !protocol.Handshake(ctx) {
-		return protocol, false
-	}
-	return protocol, true
+	return ctx.protocol.SubProtocols[internal.S(v)]
 }
 
 func (ctx *RequestCtx) Reset() {

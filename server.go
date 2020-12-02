@@ -91,6 +91,7 @@ func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listene
 
 func (s *Server) doAccept(l net.Listener) {
 	s.Http1xProtocol.server = s
+	s.Http1xProtocol.handler = s.Handler
 
 	var tempDelay time.Duration
 	ctx := context.WithValue(s.BaseCtx, CtxServerKey, s)
@@ -172,5 +173,5 @@ func (s *Server) serve(connCtx context.Context, conn net.Conn) {
 		return
 	}
 
-	protocol.Serve(connCtx, conn, nil)
+	protocol.Serve(connCtx, nil, conn)
 }

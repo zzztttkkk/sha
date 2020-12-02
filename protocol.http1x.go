@@ -20,7 +20,8 @@ type Http1xProtocol struct {
 	ReadBufferSize int
 	SubProtocols   map[string]Protocol
 
-	server *Server
+	server  *Server
+	handler RequestHandler
 }
 
 func (protocol *Http1xProtocol) Handshake(_ *RequestCtx) bool {
@@ -28,6 +29,7 @@ func (protocol *Http1xProtocol) Handshake(_ *RequestCtx) bool {
 }
 
 var closeStr = []byte("close")
+var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
 
 func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
@@ -45,7 +47,7 @@ func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 var ZeroTime time.Time
 var MaxIdleSleepTime = time.Millisecond * 100
 
-func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Request) {
+func (protocol *Http1xProtocol) Serve(ctx context.Context, _ *Request, conn net.Conn) {
 	var err error
 	var n int
 	var stop bool
@@ -113,23 +115,19 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 					rctx.initRequest()
 				}
 
-				keepalive := true
-				subProtocol, upgradeOk := rctx.Upgrade()
-				if subProtocol == nil { // upgrade failed
-					if rctx.Response.statusCode == 0 {
-						protocol.server.Handler.Handle(rctx)
-					}
-					keepalive = protocol.keepalive(rctx)
-					if keepalive {
-						rctx.Response.Header.Set(headerConnection, keepAliveStr)
-					} else {
-						rctx.Response.Header.Set(headerConnection, closeStr)
-					}
-				}
-
 				if protocol.WriteTimeout > 0 {
 					_ = conn.SetWriteDeadline(time.Now().Add(protocol.WriteTimeout))
 				}
+
+				subp := rctx.UpgradeProtocol()
+				if subp != nil {
+					if subp.Handshake(rctx) {
+						subp.Serve(rctx.Context, &rctx.Request, conn)
+						return
+					}
+				}
+
+				protocol.handler.Handle(rctx)
 
 				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
 					if protocol.OnWriteError != nil {
@@ -143,12 +141,6 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn, _ *Req
 
 				if protocol.WriteTimeout > 0 {
 					_ = conn.SetWriteDeadline(ZeroTime)
-				}
-
-				if upgradeOk {
-					//goland:noinspection GoNilness
-					subProtocol.Serve(ctx, conn, &rctx.Request)
-					return
 				}
 
 				rctx.Reset()

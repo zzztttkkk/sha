@@ -7,5 +7,5 @@ import (
 
 type Protocol interface {
 	Handshake(ctx *RequestCtx) bool
-	Serve(ctx context.Context, conn net.Conn, request *Request)
+	Serve(ctx context.Context, req *Request, conn net.Conn)
 }

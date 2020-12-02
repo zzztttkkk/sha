@@ -1,6 +1,7 @@
 package suna
 
 import (
+	"errors"
 	"fmt"
 	"github.com/zzztttkkk/suna/internal"
 	"net/http"
@@ -116,4 +117,14 @@ func (ctx *RequestCtx) WriteError(err error) {
 
 func (ctx *RequestCtx) WriteStatus(status int) {
 	ctx.WriteError(StatusError(status))
+}
+
+var ErrNotImpl = errors.New("suna: not implemented")
+
+func (ctx *RequestCtx) Send() error {
+	switch ctx.Request.version[0] {
+	case '2':
+		return ErrNotImpl
+	}
+	return ctx.sendHttp1xResponseBuffer()
 }
