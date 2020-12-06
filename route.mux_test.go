@@ -30,9 +30,7 @@ func Test_Mux_AddHandler(t *testing.T) {
 	m.REST("POST", "/g/:f/jjj", makeTestHandler(8))
 	m.REST("GET", "/fi/", makeTestHandler(1))
 
-	s := Default()
-
-	s.Handler = m
+	s := Default(m)
 
 	s.ListenAndServe()
 }

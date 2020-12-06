@@ -5,7 +5,7 @@ import (
 )
 
 func TestServer_ListenAndServeTLS(t *testing.T) {
-	s := Default()
+	s := Default(nil)
 
 	s.Handler = RequestHandlerFunc(
 		func(ctx *RequestCtx) {

@@ -13,7 +13,7 @@ type DocedRequestHandler interface {
 type Router interface {
 	REST(method, path string, handler RequestHandler)
 	WebSocket(path string, handler WebSocketHandlerFunc)
-	AddHandlerWithForm(method, path string, handler RequestHandler, form interface{})
+	RESTWithForm(method, path string, handler RequestHandler, form interface{})
 	AddBranch(prefix string, router Router)
 	Use(middleware ...Middleware)
 }

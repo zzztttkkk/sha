@@ -28,16 +28,12 @@ const (
 	CtxConnKey
 )
 
-func Default() *Server {
+func Default(handler RequestHandler) *Server {
 	server := &Server{
-		Host:    "127.0.0.1",
-		Port:    8080,
-		BaseCtx: context.Background(),
-		Handler: RequestHandlerFunc(
-			func(ctx *RequestCtx) {
-				_, _ = ctx.WriteString("Hello world!")
-			},
-		),
+		Host:                   "127.0.0.1",
+		Port:                   8080,
+		BaseCtx:                context.Background(),
+		Handler:                handler,
 		MaxConnectionKeepAlive: time.Minute * 3,
 	}
 

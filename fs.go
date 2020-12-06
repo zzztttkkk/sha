@@ -521,7 +521,7 @@ func serveFile(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
 			dirList(ctx, f)
 			return
 		}
-		ctx.WriteStatus(StatusNotFound)
+		ctx.SetStatus(StatusNotFound)
 		return
 	}
 

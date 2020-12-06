@@ -7,7 +7,7 @@ import (
 )
 
 func TestServer_Run(t *testing.T) {
-	server := Default()
+	server := Default(nil)
 
 	server.Handler = RequestHandlerFunc(
 		func(ctx *RequestCtx) {

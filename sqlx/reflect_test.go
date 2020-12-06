@@ -43,7 +43,7 @@ func Test_XWrapper_Exe(t *testing.T) {
 	ctx := context.Background()
 
 	var m TestModel
-	_ = TestModelOperator.One(ctx, "*", "WHERE id=1", nil, &m)
+	_ = TestModelOperator.FetchOne(ctx, "*", "WHERE id=1", nil, &m)
 	fmt.Println(m, string(m.Name))
 	j, e := json.Marshal(&m)
 	fmt.Println(e, string(j), 111)
@@ -52,7 +52,7 @@ func Test_XWrapper_Exe(t *testing.T) {
 	_ = Exe(ctx).Row(ctx, "select name,password from test_model where id=1 and deleted_at is null", nil, &name, &password)
 	fmt.Println(string(name), string(password))
 
-	fmt.Println(TestModelOperator.GroupKeys("login"))
+	fmt.Println(TestModelOperator.GroupColumns("login"))
 }
 
 func TestOperator_Insert(t *testing.T) {
@@ -60,6 +60,6 @@ func TestOperator_Insert(t *testing.T) {
 	tctx, committer := Tx(ctx)
 	defer committer()
 
-	r := TestModelOperator.Insert(tctx, M{"name": "pou", "created_at": Raw("DATE_ADD(NOW(), INTERVAL 31 DAY)")})
-	fmt.Println(r.LastInsertId())
+	r := TestModelOperator.Insert(tctx, Data{"name": "pou", "created_at": Raw("DATE_ADD(NOW(), INTERVAL 31 DAY)")})
+	fmt.Println(r)
 }

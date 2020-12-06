@@ -319,13 +319,13 @@ func (mux *_Mux) getOrNewTree(method string) *_RouteNode {
 var locationHeader = []byte("Location")
 
 func doAutoRectAddSlash(ctx *RequestCtx) {
-	ctx.WriteStatus(http.StatusMovedPermanently)
+	ctx.SetStatus(http.StatusMovedPermanently)
 	ctx.Request.Path = append(ctx.Request.Path, '/')
 	ctx.Response.Header.Set(locationHeader, ctx.Request.Path)
 }
 
 func doAutoRectDelSlash(ctx *RequestCtx) {
-	ctx.WriteStatus(http.StatusMovedPermanently)
+	ctx.SetStatus(http.StatusMovedPermanently)
 	path := ctx.Request.Path
 	ctx.Response.Header.Set(locationHeader, path[:len(path)-1])
 }
@@ -367,7 +367,12 @@ type _FormRequestHandler struct {
 	Documenter
 }
 
-func (mux *_Mux) AddHandlerWithForm(method, path string, handler RequestHandler, form interface{}) {
+func (mux *_Mux) RESTWithForm(method, path string, handler RequestHandler, form interface{}) {
+	if form == nil {
+		mux.REST(method, path, handler)
+		return
+	}
+
 	mux.REST(
 		method, path,
 		&_FormRequestHandler{
@@ -400,7 +405,7 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 			}
 			ctx.WriteError(rv)
 		default:
-			ctx.WriteStatus(http.StatusInternalServerError)
+			ctx.SetStatus(http.StatusInternalServerError)
 		}
 
 		if logStack {
@@ -411,7 +416,7 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 	req := &ctx.Request
 	tree := mux.m[internal.S(req.Method)]
 	if tree == nil {
-		ctx.WriteStatus(http.StatusMethodNotAllowed)
+		ctx.SetStatus(http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -420,12 +425,12 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 
 	i, n := tree.find(path[1:], &req.Params, &paramsC)
 	if n == nil || n.handler == nil {
-		ctx.WriteStatus(http.StatusNotFound)
+		ctx.SetStatus(http.StatusNotFound)
 		return
 	}
 
 	if len(n.params) > 0 && paramsC != len(n.params) {
-		ctx.WriteStatus(http.StatusNotFound)
+		ctx.SetStatus(http.StatusNotFound)
 		return
 	}
 
@@ -436,13 +441,13 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 			if n != nil {
 				n.handler.Handle(ctx)
 			} else {
-				ctx.WriteStatus(http.StatusNotFound)
+				ctx.SetStatus(http.StatusNotFound)
 			}
 			return
 		}
 		req.Params.Append(n.wildcardName, path[i+2:])
 	} else if i < len(path)-2 {
-		ctx.WriteStatus(http.StatusNotFound)
+		ctx.SetStatus(http.StatusNotFound)
 		return
 	}
 	n.handler.Handle(ctx)
@@ -495,7 +500,7 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 		_, _ = ctx.WriteString(buf.String())
 	}
 
-	mux.AddHandlerWithForm(
+	mux.RESTWithForm(
 		method, path,
 		handlerWithMiddleware(RequestHandlerFunc(handler), middleware...),
 		Form{},

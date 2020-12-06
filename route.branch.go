@@ -31,7 +31,12 @@ func (branch *_RouteBranch) WebSocket(path string, wh WebSocketHandlerFunc) {
 	branch.REST("get", path, wshToHandler(wh))
 }
 
-func (branch *_RouteBranch) AddHandlerWithForm(method, path string, handler RequestHandler, form interface{}) {
+func (branch *_RouteBranch) RESTWithForm(method, path string, handler RequestHandler, form interface{}) {
+	if form == nil {
+		branch.REST(method, path, handler)
+		return
+	}
+
 	branch.REST(
 		method, path,
 		&_FormRequestHandler{

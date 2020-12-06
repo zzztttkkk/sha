@@ -3,6 +3,7 @@ package sqlx
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/jmoiron/sqlx/reflectx"
@@ -24,7 +25,7 @@ func NewOperator(ele interface{}) *Operator {
 	return op
 }
 
-func (op *Operator) GroupKeys(name string) []string {
+func (op *Operator) GroupColumns(name string) []string {
 	m := op.info.groups[name]
 	if len(m) < 1 {
 		return nil
@@ -36,7 +37,7 @@ func (op *Operator) GroupKeys(name string) []string {
 	return ret
 }
 
-func toTablename(v string) string {
+func toTableName(v string) string {
 	var ret []rune
 	for i, r := range v {
 		if i == 0 {
@@ -58,7 +59,7 @@ func getTableName(ele reflect.Value) string {
 	if tablenameFn.IsValid() {
 		return (tablenameFn.Call(nil)[0]).Interface().(string)
 	}
-	return toTablename(ele.Type().Name())
+	return toTableName(ele.Type().Name())
 }
 
 func (op *Operator) TableName() string {
@@ -123,18 +124,20 @@ func (op *Operator) simpleSelect(group, cond string) string {
 	}
 	buf.WriteString(" FROM ")
 	buf.WriteString(op.TableName())
-	buf.WriteRune(' ')
-	buf.WriteString(cond)
+	if len(cond) > 0 {
+		buf.WriteRune(' ')
+		buf.WriteString(cond)
+	}
 	return buf.String()
 }
 
-func (op *Operator) simpleUpdate(cond string, m M) (string, M) {
+func (op *Operator) simpleUpdate(cond string, m Data) (string, Data) {
 	buf := strings.Builder{}
 	buf.WriteString("UPDATE ")
 	buf.WriteString(op.TableName())
 	buf.WriteString(" SET ")
 
-	var retM M
+	var retM Data
 	i := 0
 	lastInd := len(m) - 1
 	for k, v := range m {
@@ -148,7 +151,7 @@ func (op *Operator) simpleUpdate(cond string, m M) (string, M) {
 			buf.WriteRune(':')
 			buf.WriteString(k)
 			if retM == nil {
-				retM = M{}
+				retM = Data{}
 			}
 			retM[k] = v
 		}
@@ -162,9 +165,9 @@ func (op *Operator) simpleUpdate(cond string, m M) (string, M) {
 	return buf.String(), retM
 }
 
-var mType = reflect.TypeOf(M{})
+var mType = reflect.TypeOf(Data{})
 
-func mergeMap(ctx context.Context, dist M, src interface{}) interface{} {
+func mergeMap(ctx context.Context, dist Data, src interface{}) interface{} {
 	if len(dist) < 1 {
 		return src
 	}
@@ -172,7 +175,7 @@ func mergeMap(ctx context.Context, dist M, src interface{}) interface{} {
 	t := reflect.TypeOf(src)
 	if t.Kind() == reflect.Map {
 		if t == mType {
-			for a, b := range src.(M) {
+			for a, b := range src.(Data) {
 				dist[a] = b
 			}
 			return dist
@@ -197,30 +200,56 @@ func mergeMap(ctx context.Context, dist M, src interface{}) interface{} {
 	return dist
 }
 
-func (op *Operator) One(ctx context.Context, group string, condition string, arg interface{}, dist interface{}) error {
-	return Exe(ctx).RowStruct(ctx, op.simpleSelect(group, condition), arg, dist)
+func (op *Operator) FetchOne(ctx context.Context, keysGroup string, condition string, namedargs interface{}, dist interface{}) error {
+	return Exe(ctx).RowStruct(ctx, op.simpleSelect(keysGroup, condition), namedargs, dist)
 }
 
-func (op *Operator) Many(ctx context.Context, group string, condition string, arg interface{}, dist interface{}) error {
-	return Exe(ctx).RowsStruct(ctx, op.simpleSelect(group, condition), arg, dist)
+func (op *Operator) RowColumns(ctx context.Context, columns string, cond string, namedargs interface{}, dist ...interface{}) error {
+	buf := strings.Builder{}
+	buf.WriteString("SELECT ")
+	buf.WriteString(columns)
+	buf.WriteString(" FROM ")
+	buf.WriteString(op.TableName())
+	buf.WriteRune(' ')
+	if len(cond) > 0 {
+		buf.WriteString(cond)
+	}
+	return Exe(ctx).Row(ctx, buf.String(), namedargs, dist...)
+}
+
+func (op *Operator) RowsColumn(ctx context.Context, column string, cond string, namedargs interface{}, dist interface{}) error {
+	buf := strings.Builder{}
+	buf.WriteString("SELECT ")
+	buf.WriteString(column)
+	buf.WriteString(" FROM ")
+	buf.WriteString(op.TableName())
+	buf.WriteRune(' ')
+	if len(cond) > 0 {
+		buf.WriteString(cond)
+	}
+	return Exe(ctx).Rows(ctx, buf.String(), namedargs, dist)
+}
+
+func (op *Operator) FetchMany(ctx context.Context, keysGroup string, condition string, arg interface{}, dist interface{}) error {
+	return Exe(ctx).RowsStruct(ctx, op.simpleSelect(keysGroup, condition), arg, dist)
 }
 
 type Raw string
-type M map[string]interface{}
+type Data map[string]interface{}
 
-func (op *Operator) Update(ctx context.Context, data M, condition string, arg interface{}) sql.Result {
+func (op *Operator) Update(ctx context.Context, data Data, condition string, namedargs interface{}) sql.Result {
 	s, m := op.simpleUpdate(condition, data)
-	return Exe(ctx).Exec(ctx, s, mergeMap(ctx, m, arg))
+	return Exe(ctx).Exec(ctx, s, mergeMap(ctx, m, namedargs))
 }
 
-func (op *Operator) simpleInsert(data M, returning string) (string, M) {
+func (op *Operator) simpleInsert(data Data, returning string) (string, Data) {
 	buf := strings.Builder{}
 	buf.WriteString("INSERT INTO ")
 	buf.WriteString(op.TableName())
 	buf.WriteRune('(')
 
 	var vals []string
-	var retM M
+	var retM Data
 	ind := 0
 	lastInd := len(data) - 1
 	for a, b := range data {
@@ -230,7 +259,7 @@ func (op *Operator) simpleInsert(data M, returning string) (string, M) {
 		default:
 			vals = append(vals, ":"+a)
 			if retM == nil {
-				retM = M{}
+				retM = Data{}
 			}
 			retM[a] = b
 		}
@@ -252,14 +281,33 @@ func (op *Operator) simpleInsert(data M, returning string) (string, M) {
 	return buf.String(), retM
 }
 
-func (op *Operator) Insert(ctx context.Context, data M) sql.Result {
+func (op *Operator) Insert(ctx context.Context, data Data) int64 {
 	s, m := op.simpleInsert(data, "")
-	return Exe(ctx).Exec(ctx, s, m)
+	ret, e := Exe(ctx).Exec(ctx, s, m).LastInsertId()
+	if e != nil {
+		panic(e)
+	}
+	return ret
 }
 
-func (op *Operator) InsertWithReturning(ctx context.Context, data M, returning string, dist interface{}) {
+func (op *Operator) InsertWithReturning(ctx context.Context, data Data, returning string, dist ...interface{}) {
 	s, m := op.simpleInsert(data, returning)
 	if err := Exe(ctx).Row(ctx, s, m, dist); err != nil {
 		panic(err)
 	}
+}
+
+var ErrDeleteWithoutCondition = errors.New("suna.sqlx: delete without condition")
+
+func (op *Operator) Delete(ctx context.Context, cond string, namedargs interface{}) sql.Result {
+	if len(cond) < 1 {
+		panic(ErrDeleteWithoutCondition)
+	}
+
+	var buf strings.Builder
+	buf.WriteString("delete from ")
+	buf.WriteString(op.TableName())
+	buf.WriteRune(' ')
+
+	return Exe(ctx).Exec(ctx, buf.String(), namedargs)
 }

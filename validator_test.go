@@ -18,11 +18,11 @@ func (TestForm) Default(fn string) interface{} {
 }
 
 func TestRequestCtx_Validate(t *testing.T) {
-	s := Default()
+	s := Default(nil)
 
 	mux := NewMux("", nil)
 
-	mux.AddHandlerWithForm(
+	mux.RESTWithForm(
 		"get",
 		"/",
 		RequestHandlerFunc(

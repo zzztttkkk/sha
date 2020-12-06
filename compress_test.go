@@ -6,7 +6,7 @@ import (
 )
 
 func TestRequestCtx_AutoCompress(t *testing.T) {
-	s := Default()
+	s := Default(nil)
 
 	mux := NewMux("", nil)
 	s.Handler = mux

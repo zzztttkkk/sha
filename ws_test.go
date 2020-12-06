@@ -10,7 +10,7 @@ import (
 )
 
 func TestWebSocketProtocol_Serve(t *testing.T) {
-	s := Default()
+	s := Default(nil)
 	mux := NewMux("", nil)
 	mux.WebSocket(
 		"/ws",

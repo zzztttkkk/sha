@@ -53,7 +53,7 @@ func (options *CorsOptions) init() {
 		options.headerKvs = append(options.headerKvs, []byte(options.ExposeHeaders))
 	}
 	if options.OnForbidden == nil {
-		options.OnForbidden = func(ctx *RequestCtx) { ctx.WriteStatus(http.StatusForbidden) }
+		options.OnForbidden = func(ctx *RequestCtx) { ctx.SetStatus(http.StatusForbidden) }
 	}
 }
 

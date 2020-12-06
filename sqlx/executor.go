@@ -12,6 +12,10 @@ var wdb *x.DB
 var rdbs []*x.DB
 
 func OpenWriteableDB(drivername, uri string) {
+	if wdb != nil {
+		panic("suna.sqlx: `wdb` is not nil")
+	}
+
 	wdb = x.MustOpen(drivername, uri)
 }
 

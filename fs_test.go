@@ -6,7 +6,7 @@ import (
 )
 
 func TestFs(t *testing.T) {
-	server := Default()
+	server := Default(nil)
 	mux := NewMux("", nil)
 	mux.HandleStaticFile(
 		"get",

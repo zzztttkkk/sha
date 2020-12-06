@@ -1,9 +1,13 @@
 package suna
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/zzztttkkk/suna/internal"
+	"html/template"
+	"io"
+	"mime"
 	"net/http"
 	"strconv"
 )
@@ -129,7 +133,49 @@ func (ctx *RequestCtx) WriteError(err error) {
 	}
 }
 
-func (ctx *RequestCtx) WriteStatus(status int) {
+func (ctx *RequestCtx) WriteJSON(v interface{}) {
+	ctx.Response.Header.Set(headerContentType, MIMEJson)
+
+	encoder := json.NewEncoder(ctx)
+	err := encoder.Encode(v)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (ctx *RequestCtx) WriteHTML(v []byte) {
+	ctx.Response.Header.Set(headerContentType, MIMEHtml)
+	_, e := ctx.Write(v)
+	if e != nil {
+		panic(e)
+	}
+}
+
+func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
+	ctx.Response.Header.SetStr("Content-Type", mime.TypeByExtension(ext))
+
+	buf := make([]byte, 512, 512)
+	for {
+		l, e := f.Read(buf)
+		if e != nil {
+			panic(e)
+		}
+		_, e = ctx.Write(buf[:l])
+		if e != nil {
+			panic(e)
+		}
+	}
+}
+
+func (ctx *RequestCtx) WriteTemplate(t *template.Template, data interface{}) {
+	ctx.Response.Header.Set(headerContentType, MIMEHtml)
+	e := t.Execute(ctx, data)
+	if e != nil {
+		panic(e)
+	}
+}
+
+func (ctx *RequestCtx) SetStatus(status int) {
 	ctx.WriteError(StatusError(status))
 }
 
