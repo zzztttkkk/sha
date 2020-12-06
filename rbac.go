@@ -1,7 +1,6 @@
 package suna
 
 import (
-	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/rbac"
 	"log"
 )
@@ -44,17 +43,7 @@ func MustGrantedAll(permissions ...string) Middleware {
 		func(ctx *RequestCtx, next func()) {
 			err := rbac.GrantedAll(ctx, permissions...)
 			if err != nil {
-				switch err {
-				case auth.ErrUnauthenticatedOperation:
-					ctx.SetStatus(StatusUnauthorized)
-					return
-				case rbac.ErrPermissionDenied, rbac.ErrUnknownPermission:
-					ctx.SetStatus(StatusForbidden)
-					return
-				default:
-					ctx.SetStatus(StatusInternalServerError)
-					return
-				}
+				panic(err)
 			}
 			next()
 		},
@@ -66,17 +55,7 @@ func MustGrantedAny(permissions ...string) Middleware {
 		func(ctx *RequestCtx, next func()) {
 			err := rbac.GrantedAny(ctx, permissions...)
 			if err != nil {
-				switch err {
-				case auth.ErrUnauthenticatedOperation:
-					ctx.SetStatus(StatusUnauthorized)
-					return
-				case rbac.ErrPermissionDenied, rbac.ErrUnknownPermission:
-					ctx.SetStatus(StatusForbidden)
-					return
-				default:
-					ctx.SetStatus(StatusInternalServerError)
-					return
-				}
+				panic(err)
 			}
 			next()
 		},
