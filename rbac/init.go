@@ -6,6 +6,7 @@ import (
 	"github.com/zzztttkkk/suna/rbac/dao"
 	"github.com/zzztttkkk/suna/rbac/internal"
 	"github.com/zzztttkkk/suna/rbac/model"
+	"log"
 )
 
 type Options struct {
@@ -13,6 +14,7 @@ type Options struct {
 	TableNamePrefix  string
 	LogReadOperation bool
 	Router           Router
+	Logger           *log.Logger
 }
 
 var inited bool
@@ -23,6 +25,10 @@ func Init(options *Options) {
 	}
 
 	dao.LogReadOperation = options.LogReadOperation
+
+	if options.Logger != nil {
+		internal.Logger = options.Logger
+	}
 
 	internal.Dig.Provide(func() auth.Authenticator { return options.Authenticator })
 	internal.Dig.Provide(func() Router { return options.Router })

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	pathlib "path"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -199,6 +200,7 @@ type _Mux struct {
 	_MiddlewareOrg
 	prefix string
 	m      map[string]*_RouteNode
+	rm     map[string]map[string]RequestHandler
 
 	optionsMap map[string]*_RouteNode
 
@@ -217,6 +219,7 @@ func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 	mux := &_Mux{
 		prefix: prefix,
 		m:      map[string]*_RouteNode{},
+		rm:     map[string]map[string]RequestHandler{},
 		cors:   corsOptions,
 		docs:   map[string]map[string]string{},
 	}
@@ -226,16 +229,124 @@ func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 	return mux
 }
 
+func middlewareToString(m Middleware) string {
+	t := reflect.TypeOf(m)
+	if t.Kind() == reflect.Func {
+		return fmt.Sprintf("F %s", runtime.FuncForPC(reflect.ValueOf(m).Pointer()).Name())
+	}
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return fmt.Sprintf("S %s.%s", t.PkgPath(), t.Name())
+}
+
+var mwType = reflect.TypeOf(_MiddlewareWrapper{})
+var fwType = reflect.TypeOf(_FormRequestHandler{})
+
+func handlerToString(h RequestHandler) string {
+	t := reflect.TypeOf(h)
+	if t.Kind() == reflect.Func {
+		return fmt.Sprintf("F %s", runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name())
+	}
+
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	if t == mwType {
+		return handlerToString(h.(*_MiddlewareWrapper).raw)
+	}
+
+	if t == fwType {
+		return handlerToString(h.(*_FormRequestHandler).RequestHandler)
+	}
+
+	return fmt.Sprintf("S %s.%s", t.PkgPath(), t.Name())
+}
+
+func printRequestHandler(buf *strings.Builder, h RequestHandler, showMiddleware bool) {
+	if !showMiddleware {
+		buf.WriteString(" Handler: ")
+		buf.WriteString(handlerToString(h))
+		return
+	}
+
+	mw, ok := h.(*_MiddlewareWrapper)
+	if ok {
+		buf.WriteString("\n\t\tMiddleware:")
+		for _, m := range mw.middleware {
+			buf.WriteString("\n\t\t\t")
+			buf.WriteString(middlewareToString(m))
+		}
+		buf.WriteString("\n")
+	}
+
+	buf.WriteString("\t\tHandler: ")
+	buf.WriteString(handlerToString(h))
+}
+
+func (mux *_Mux) Print(showHandler, showMiddleware bool) {
+	type _M struct {
+		method string
+		m      map[string]RequestHandler
+	}
+
+	var ms []*_M
+	for m, v := range mux.rm {
+		ms = append(ms, &_M{method: m, m: v})
+	}
+	sort.Slice(ms, func(i, j int) bool { return ms[i].method < ms[j].method })
+
+	type _H struct {
+		p string
+		h RequestHandler
+	}
+
+	var buf strings.Builder
+	buf.WriteString("Mux:\n")
+
+	for _, v := range ms {
+		buf.WriteString(v.method)
+		buf.WriteString(":\n")
+
+		var hs []*_H
+		for k, hv := range v.m {
+			hs = append(hs, &_H{p: k, h: hv})
+		}
+		sort.Slice(hs, func(i, j int) bool { return hs[i].p < hs[j].p })
+
+		for _, h := range hs {
+			buf.WriteString("\tPath: ")
+			buf.WriteString(h.p)
+			if showHandler {
+				printRequestHandler(&buf, h.h, showMiddleware)
+			}
+			buf.WriteString("\n")
+		}
+	}
+
+	log.Print(buf.String())
+}
+
 func (mux *_Mux) doAddHandler(method, path string, handler RequestHandler) {
 	mux.doAddHandler1(method, path, handler, false)
 }
 
+func (mux *_Mux) arm(method, path string, handler RequestHandler) {
+	m := mux.rm[method]
+	if len(m) < 1 {
+		m = map[string]RequestHandler{}
+		mux.rm[method] = m
+	}
+	m[path] = handler
+}
+
 func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWrap bool) {
+	defer mux.arm(method, path, handler)
+
 	if doWrap {
 		handler = mux.wrap(handler)
 	}
-
-	method = strings.ToUpper(method)
 
 	if path[0] != '/' {
 		panic(fmt.Errorf("suna.router: error path: `%s`", path))
@@ -355,6 +466,7 @@ func (mux *_Mux) autoRedirect(newNode *_RouteNode, path string) {
 }
 
 func (mux *_Mux) REST(method, path string, handler RequestHandler) {
+	method = strings.ToUpper(method)
 	mux.doAddHandler1(method, path, handler, true)
 }
 
@@ -507,7 +619,7 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 	)
 }
 
-func (mux *_Mux) HandleStaticFile(method, path string, fs http.FileSystem, index bool, middleware ...Middleware) {
+func (mux *_Mux) StaticFile(method, path string, fs http.FileSystem, index bool, middleware ...Middleware) {
 	if !strings.HasSuffix(path, "/filename:*") {
 		panic(fmt.Errorf("suna.router: bad static path"))
 	}

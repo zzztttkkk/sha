@@ -8,7 +8,7 @@ import (
 func TestFs(t *testing.T) {
 	server := Default(nil)
 	mux := NewMux("", nil)
-	mux.HandleStaticFile(
+	mux.StaticFile(
 		"get",
 		"/suna/filename:*",
 		http.Dir("./"),

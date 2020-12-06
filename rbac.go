@@ -3,6 +3,7 @@ package suna
 import (
 	"github.com/zzztttkkk/suna/rbac"
 	"github.com/zzztttkkk/suna/rbac/auth"
+	"log"
 )
 
 type _RbacR struct {
@@ -25,7 +26,9 @@ func (r *_RbacR) HandleWithDoc(
 func UseRBAC(
 	router Router,
 	authenticator auth.Authenticator,
-	tableNamePrefix string, loggingFroReadOperation bool,
+	tableNamePrefix string,
+	logger *log.Logger,
+	loggingFroReadOperation bool,
 ) {
 	rbac.Init(
 		&rbac.Options{
@@ -33,6 +36,7 @@ func UseRBAC(
 			Router:           &_RbacR{router},
 			TableNamePrefix:  tableNamePrefix,
 			LogReadOperation: loggingFroReadOperation,
+			Logger:           logger,
 		},
 	)
 }

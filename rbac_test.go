@@ -8,20 +8,20 @@ import (
 	"github.com/zzztttkkk/suna/sqlx"
 	"net/url"
 	"testing"
+	"time"
 )
 
-type _RbacUser struct {
-	id int64
-}
+type _RbacUser int64
 
-func (u *_RbacUser) GetID() int64 { return u.id }
+func (u _RbacUser) GetID() int64 { return int64(u) }
+
+func (u _RbacUser) Info() interface{} { return "rbac.TestUser" }
 
 func init() {
 	sqlx.OpenWriteableDB(
 		"mysql",
 		"root:123456@/suna_test?autocommit=false&parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"),
 	)
-	sqlx.EnableLogging()
 }
 
 func Test_Rbac(t *testing.T) {
@@ -41,14 +41,18 @@ func Test_Rbac(t *testing.T) {
 
 	UseRBAC(
 		branch,
-		auth.Func(func(ctx context.Context) (auth.Subject, bool) { return &_RbacUser{id: 12}, true }),
-		"",
-		false,
+		auth.Func(func(ctx context.Context) (auth.Subject, bool) { return _RbacUser(12), true }),
+		"", nil, false,
 	)
 
 	rbac.GrantRoot(12)
 
 	mux.AddBranch("/rbac", branch)
+
+	go func() {
+		time.Sleep(time.Second)
+		mux.Print(false, false)
+	}()
 
 	server.ListenAndServe()
 }

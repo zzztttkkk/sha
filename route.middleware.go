@@ -36,25 +36,33 @@ func (org *_MiddlewareOrg) expand() {
 	org.freezen = true
 }
 
+type _MiddlewareWrapper struct {
+	middleware []Middleware
+	raw        RequestHandler
+}
+
+func (w *_MiddlewareWrapper) Handle(ctx *RequestCtx) {
+	var next func()
+	cursor := -1
+	next = func() {
+		cursor++
+		if cursor < len(w.middleware) {
+			w.middleware[cursor].Process(ctx, next)
+		} else {
+			w.raw.Handle(ctx)
+		}
+	}
+	next()
+}
+
 func handlerWithMiddleware(handler RequestHandler, middleware ...Middleware) RequestHandler {
 	if len(middleware) < 1 {
 		return handler
 	}
-	return RequestHandlerFunc(
-		func(ctx *RequestCtx) {
-			var next func()
-			cursor := -1
-			next = func() {
-				cursor++
-				if cursor < len(middleware) {
-					middleware[cursor].Process(ctx, next)
-				} else {
-					handler.Handle(ctx)
-				}
-			}
-			next()
-		},
-	)
+	return &_MiddlewareWrapper{
+		middleware: middleware,
+		raw:        handler,
+	}
 }
 
 func (org *_MiddlewareOrg) wrap(handler RequestHandler) RequestHandler {

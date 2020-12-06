@@ -8,6 +8,7 @@ import (
 
 type Subject interface {
 	GetID() int64
+	Info() interface{}
 }
 
 type Authenticator interface {

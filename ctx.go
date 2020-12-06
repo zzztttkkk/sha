@@ -128,23 +128,22 @@ var headerConnection = []byte("Connection")
 var lowerUpgradeHeader = []byte("upgrade")
 var headerUpgrade = []byte("Upgrade")
 
-func (ctx *RequestCtx) UpgradeProtocol() []byte {
+func (ctx *RequestCtx) UpgradeProtocol() string {
 	if string(ctx.Request.Method) != http.MethodGet {
-		return nil
+		return ""
 	}
 	v, ok := ctx.Request.Header.Get(headerConnection)
 	if !ok {
-		return nil
+		return ""
 	}
 	if string(inplaceLowercase(v)) != string(lowerUpgradeHeader) {
-		return nil
+		return ""
 	}
 	v, ok = ctx.Request.Header.Get(headerUpgrade)
 	if !ok {
-		return nil
+		return ""
 	}
-	v = inplaceLowercase(v)
-	return v
+	return internal.S(inplaceLowercase(v))
 }
 
 func (ctx *RequestCtx) Reset() {

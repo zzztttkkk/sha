@@ -9,8 +9,8 @@ type TestForm struct {
 	Nums []int64 `validator:",V=0-9,S=3"`
 }
 
-func (TestForm) Default(fn string) interface{} {
-	switch fn {
+func (TestForm) Default(fieldName string) interface{} {
+	switch fieldName {
 	case "Nums":
 		return []int64{1, 2, 3}
 	}

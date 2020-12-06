@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/jmoiron/sqlx/reflectx"
-	"log"
 	"reflect"
 	"strings"
 	"unicode"
@@ -77,7 +76,7 @@ func doCreate(db *sqlx.DB, name string, fnV reflect.Value) {
 		strings.Join(columns, ","),
 	)
 	if logging {
-		log.Printf("suna.sqlx: %s\n", q)
+		logger.Printf("%s\n", q)
 	}
 	db.MustExec(q)
 }

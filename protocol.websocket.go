@@ -3,12 +3,10 @@ package suna
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/websocket"
 	"log"
 	"net/http"
-	"time"
 )
 
 type SubWebSocketProtocol interface {
@@ -130,8 +128,8 @@ type WebSocketHandlerFunc func(ctx context.Context, req *Request, conn *websocke
 func wshToHandler(wsh WebSocketHandlerFunc) RequestHandler {
 	return RequestHandlerFunc(func(ctx *RequestCtx) {
 		p := ctx.UpgradeProtocol()
-		if string(p) != "websocket" {
-			_, _ = ctx.WriteString(fmt.Sprintf("Hello world: %s", time.Now()))
+		if p != "websocket" {
+			ctx.SetStatus(StatusBadRequest)
 			return
 		}
 		if !wsp.Handshake(ctx) {

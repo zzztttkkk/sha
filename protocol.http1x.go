@@ -30,16 +30,18 @@ func (protocol *Http1xProtocol) Handshake(_ *RequestCtx) bool {
 var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
 
+const closeStr = "close"
+
 func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 	if string(ctx.Request.version) < "1.1" {
 		return false
 	}
 	connVal, _ := ctx.Request.Header.Get(headerConnection)
-	if string(connVal) == "close" {
+	if string(inplaceLowercase(connVal)) == closeStr {
 		return false
 	}
 	connVal, _ = ctx.Response.Header.Get(headerConnection)
-	return string(connVal) != "close"
+	return string(inplaceLowercase(connVal)) != closeStr
 }
 
 var ZeroTime time.Time
@@ -69,7 +71,6 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			{
 				return
 			}
-			//goland:noinspection GoNilness
 		default:
 			if protocol.IdleTimeout > 0 && resetIdleTimeout {
 				conn.SetReadDeadline(time.Now().Add(protocol.IdleTimeout))
@@ -80,7 +81,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			if err != nil {
 				if err == io.EOF {
 					time.Sleep(sleepDu)
-					sleepDu = time.Duration(int64(float64(sleepDu) * 1.5))
+					sleepDu = sleepDu * 2
 					resetIdleTimeout = false
 					if sleepDu > MaxIdleSleepTime {
 						sleepDu = MaxIdleSleepTime
@@ -112,6 +113,11 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 				if rctx.Context == nil {
 					rctx.initRequest()
 				}
+
+				if protocol.server.AutoCompress {
+					rctx.AutoCompress()
+				}
+
 				protocol.handler.Handle(rctx)
 
 				if !rctx.hijacked {

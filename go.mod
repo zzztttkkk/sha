@@ -13,5 +13,6 @@ require (
 	github.com/klauspost/compress v1.11.2
 	github.com/zzztttkkk/websocket v1.4.3-0.20201202165116-41b4e6b0fbf7
 	go.uber.org/dig v1.10.0
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	google.golang.org/appengine v1.6.7 // indirect
 )

@@ -1,19 +1,12 @@
 package main
 
 import (
-	"context"
 	"github.com/zzztttkkk/suna"
 	"simple/h"
 	"simple/services/a"
 )
 
 func main() {
-	server := suna.Server{
-		Host:    "127.0.0.1",
-		Port:    8080,
-		BaseCtx: context.Background(),
-	}
-
 	mux := suna.NewMux("", nil)
 	mux.AutoRedirect = true
 	mux.AutoOptions = true
@@ -24,8 +17,10 @@ func main() {
 		h.NewPrintMiddleware("g.m3"),
 	)
 
+	server := suna.Default(mux)
+
 	mux.AddBranch("/a", a.Branch)
 
-	server.Handler = mux
+	mux.Print(true)
 	server.ListenAndServe()
 }

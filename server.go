@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"golang.org/x/crypto/acme/autocert"
 	"io"
 	"log"
 	"net"
@@ -18,6 +19,7 @@ type Server struct {
 	Handler                RequestHandler
 	MaxConnectionKeepAlive time.Duration
 	Http1xProtocol         Http1xProtocol
+	AutoCompress           bool
 	isTls                  bool
 }
 
@@ -123,6 +125,11 @@ func (s *Server) ListenAndServe() {
 func (s *Server) ListenAndServeTLS(certFile, keyFile string) {
 	s.isTls = true
 	s.doAccept(s.enableTls(s.doListen(), certFile, keyFile))
+}
+
+func (s *Server) ListenAndServerWithAutoCert(hostnames ...string) {
+	s.isTls = true
+	s.doAccept(autocert.NewListener(hostnames...))
 }
 
 func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"os"
 )
 
 type W struct {
@@ -26,6 +27,16 @@ func (w W) Row(ctx context.Context, q string, namedargs interface{}, dist ...int
 	return row.Scan(dist...)
 }
 
+var logger *log.Logger
+
+func SetLogger(l *log.Logger) {
+	logger = l
+}
+
+func init() {
+	logger = log.New(os.Stdout, "suna.sqlx ", log.LstdFlags)
+}
+
 func bindNamedargs(exe Executor, q string, namedargs interface{}) (string, []interface{}) {
 	var qs string
 	var args []interface{}
@@ -44,7 +55,7 @@ func bindNamedargs(exe Executor, q string, namedargs interface{}) (string, []int
 		panic(err)
 	}
 	if logging {
-		log.Printf("suna.sqlx: %s %v\n", qs, args)
+		logger.Printf("%s %v\n", qs, args)
 	}
 	return qs, args
 }

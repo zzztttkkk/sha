@@ -9,12 +9,12 @@ import (
 
 type _RouteBranch struct {
 	_MiddlewareOrg
-	allHandlers  map[string]map[string]RequestHandler
+	allHandlers map[string]map[string]RequestHandler
+
 	root         *_Mux
 	parentRouter *_RouteBranch
 	prefix       string
-
-	children map[string]*_RouteBranch
+	children     map[string]*_RouteBranch
 }
 
 func (branch *_RouteBranch) REST(method, path string, handler RequestHandler) {
@@ -78,5 +78,8 @@ func (branch *_RouteBranch) rising(method, path string, handler RequestHandler) 
 }
 
 func NewBranch() Router {
-	return &_RouteBranch{allHandlers: map[string]map[string]RequestHandler{}, children: map[string]*_RouteBranch{}}
+	return &_RouteBranch{
+		allHandlers: map[string]map[string]RequestHandler{},
+		children:    map[string]*_RouteBranch{},
+	}
 }
