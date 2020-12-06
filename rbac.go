@@ -1,8 +1,8 @@
 package suna
 
 import (
+	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/rbac"
-	"github.com/zzztttkkk/suna/rbac/auth"
 	"log"
 )
 
@@ -25,18 +25,60 @@ func (r *_RbacR) HandleWithDoc(
 
 func UseRBAC(
 	router Router,
-	authenticator auth.Authenticator,
 	tableNamePrefix string,
 	logger *log.Logger,
 	loggingFroReadOperation bool,
 ) {
 	rbac.Init(
 		&rbac.Options{
-			Authenticator:    authenticator,
 			Router:           &_RbacR{router},
 			TableNamePrefix:  tableNamePrefix,
 			LogReadOperation: loggingFroReadOperation,
 			Logger:           logger,
+		},
+	)
+}
+
+func MustGrantedAll(permissions ...string) Middleware {
+	return MiddlewareFunc(
+		func(ctx *RequestCtx, next func()) {
+			err := rbac.GrantedAll(ctx, permissions...)
+			if err != nil {
+				switch err {
+				case auth.ErrUnauthenticatedOperation:
+					ctx.SetStatus(StatusUnauthorized)
+					return
+				case rbac.ErrPermissionDenied, rbac.ErrUnknownPermission:
+					ctx.SetStatus(StatusForbidden)
+					return
+				default:
+					ctx.SetStatus(StatusInternalServerError)
+					return
+				}
+			}
+			next()
+		},
+	)
+}
+
+func MustGrantedAny(permissions ...string) Middleware {
+	return MiddlewareFunc(
+		func(ctx *RequestCtx, next func()) {
+			err := rbac.GrantedAny(ctx, permissions...)
+			if err != nil {
+				switch err {
+				case auth.ErrUnauthenticatedOperation:
+					ctx.SetStatus(StatusUnauthorized)
+					return
+				case rbac.ErrPermissionDenied, rbac.ErrUnknownPermission:
+					ctx.SetStatus(StatusForbidden)
+					return
+				default:
+					ctx.SetStatus(StatusInternalServerError)
+					return
+				}
+			}
+			next()
 		},
 	)
 }

@@ -5,8 +5,10 @@ import (
 	"errors"
 	"github.com/RoaringBitmap/roaring/roaring64"
 	"github.com/golang/groupcache/lru"
-	"github.com/zzztttkkk/suna/rbac/auth"
+	"github.com/zzztttkkk/suna/auth"
+	sunainternal "github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/rbac/dao"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -69,6 +71,12 @@ var ErrPermissionDenied = errors.New("suna.rbac: permission denied")
 var ErrUnknownRole = errors.New("suna.rbac: unexpected role")
 var ErrUnknownPermission = errors.New("suna.rbac: unknown permission")
 
+func init() {
+	sunainternal.ErrorStatusByValue[ErrUnknownPermission] = http.StatusBadRequest
+	sunainternal.ErrorStatusByValue[ErrPermissionDenied] = http.StatusForbidden
+	sunainternal.ErrorStatusByValue[ErrUnknownRole] = http.StatusInternalServerError
+}
+
 func getBitmap(ctx context.Context, subject auth.Subject) *roaring64.Bitmap {
 	var buf strings.Builder
 	rs := dao.SubjectRoles(ctx, subject)
@@ -100,7 +108,10 @@ func getBitmap(ctx context.Context, subject auth.Subject) *roaring64.Bitmap {
 }
 
 func granted(ctx context.Context, policy _Policy, permissions ...string) error {
-	subject := auth.MustAuth(ctx)
+	subject, err := auth.Auth(ctx)
+	if err != nil {
+		return err
+	}
 
 	g.RLock()
 	var ps []int64

@@ -3,8 +3,8 @@ package suna
 import (
 	"context"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/rbac"
-	"github.com/zzztttkkk/suna/rbac/auth"
 	"github.com/zzztttkkk/suna/sqlx"
 	"net/url"
 	"testing"
@@ -39,11 +39,8 @@ func Test_Rbac(t *testing.T) {
 		),
 	)
 
-	UseRBAC(
-		branch,
-		auth.Func(func(ctx context.Context) (auth.Subject, bool) { return _RbacUser(12), true }),
-		"", nil, false,
-	)
+	auth.SetImplementation(auth.Func(func(ctx context.Context) (auth.Subject, error) { return _RbacUser(12), nil }))
+	UseRBAC(branch, "", nil, false)
 
 	rbac.GrantRoot(12)
 

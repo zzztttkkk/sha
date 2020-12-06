@@ -8,7 +8,6 @@ import (
 	"html/template"
 	"io"
 	"mime"
-	"net/http"
 	"strconv"
 )
 
@@ -108,31 +107,6 @@ func (ctx *RequestCtx) WriteString(s string) (int, error) {
 	return ctx.Write(internal.B(s))
 }
 
-func (ctx *RequestCtx) WriteError(err error) {
-	res := &ctx.Response
-	res.ResetBodyBuffer()
-
-	switch rv := err.(type) {
-	case HttpResponseError:
-		res.statusCode = rv.StatusCode()
-		header := rv.Header()
-		if header != nil {
-			header.EachItem(
-				func(k, v []byte) bool {
-					res.Header.Append(k, v)
-					return true
-				},
-			)
-		}
-		_, _ = res.Write(rv.Body())
-	case HttpError:
-		res.statusCode = rv.StatusCode()
-		res.Write(internal.B(rv.Error()))
-	default:
-		res.statusCode = http.StatusInternalServerError
-	}
-}
-
 func (ctx *RequestCtx) WriteJSON(v interface{}) {
 	ctx.Response.Header.Set(headerContentType, MIMEJson)
 
@@ -176,7 +150,7 @@ func (ctx *RequestCtx) WriteTemplate(t *template.Template, data interface{}) {
 }
 
 func (ctx *RequestCtx) SetStatus(status int) {
-	ctx.WriteError(StatusError(status))
+	ctx.Response.statusCode = status
 }
 
 var ErrNotImpl = errors.New("suna: not implemented")

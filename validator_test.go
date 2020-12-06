@@ -1,6 +1,7 @@
 package suna
 
 import (
+	"github.com/zzztttkkk/suna/auth"
 	"testing"
 )
 
@@ -18,9 +19,8 @@ func (TestForm) Default(fieldName string) interface{} {
 }
 
 func TestRequestCtx_Validate(t *testing.T) {
-	s := Default(nil)
-
 	mux := NewMux("", nil)
+	server := Default(mux)
 
 	mux.RESTWithForm(
 		"get",
@@ -28,6 +28,7 @@ func TestRequestCtx_Validate(t *testing.T) {
 		RequestHandlerFunc(
 			func(ctx *RequestCtx) {
 				form := TestForm{}
+				panic(auth.ErrUnauthenticatedOperation)
 				ctx.MustValidate(&form)
 				_, _ = ctx.WriteString("OK")
 			},
@@ -37,7 +38,5 @@ func TestRequestCtx_Validate(t *testing.T) {
 
 	mux.HandleDoc("get", "/doc")
 
-	s.Handler = mux
-
-	s.ListenAndServe()
+	server.ListenAndServe()
 }

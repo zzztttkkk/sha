@@ -2,7 +2,7 @@ package dao
 
 import (
 	"context"
-	"github.com/zzztttkkk/suna/rbac/auth"
+	"github.com/zzztttkkk/suna/auth"
 	"github.com/zzztttkkk/suna/rbac/internal"
 	"github.com/zzztttkkk/suna/sqlx"
 )

@@ -16,7 +16,7 @@ var permOp *sqlx.Operator
 
 func init() {
 	internal.Dig.Provide(
-		func(_ internal.AuthOK) _PermOk {
+		func() _PermOk {
 			permOp = sqlx.NewOperator(model.Permission{})
 			permOp.CreateTable(true)
 			return 0

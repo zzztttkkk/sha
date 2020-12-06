@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/zzztttkkk/suna/internal"
 	"golang.org/x/crypto/acme/autocert"
 	"io"
 	"log"
@@ -21,6 +22,7 @@ type Server struct {
 	Http1xProtocol         Http1xProtocol
 	AutoCompress           bool
 	isTls                  bool
+	beforeListen           []func(server *Server)
 }
 
 type _CtxVKey int
@@ -46,6 +48,29 @@ func Default(handler RequestHandler) *Server {
 	server.Http1xProtocol.WriteTimeout = time.Second * 30
 	server.Http1xProtocol.IdleTimeout = time.Second * 30
 	server.Http1xProtocol.ReadBufferSize = 512
+
+	server.beforeListen = append(
+		server.beforeListen,
+		func(server *Server) {
+			go func() {
+				time.Sleep(time.Second)
+
+				mux, ok := server.Handler.(*_Mux)
+				if !ok {
+					return
+				}
+				for k, v := range internal.ErrorStatusByValue {
+					mux.RecoverByValue(
+						k,
+						func(sc int) ErrorHandler {
+							return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }
+						}(v),
+					)
+				}
+			}()
+		},
+	)
+
 	return server
 }
 
@@ -88,6 +113,10 @@ func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listene
 }
 
 func (s *Server) doAccept(l net.Listener) {
+	for _, fn := range s.beforeListen {
+		fn(s)
+	}
+
 	s.Http1xProtocol.server = s
 	s.Http1xProtocol.handler = s.Handler
 

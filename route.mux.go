@@ -209,8 +209,21 @@ type _Mux struct {
 	AutoRedirect bool
 	cors         *CorsOptions
 	docs         map[string]map[string]string
+	reco         *_Recover
+}
 
-	PanicHandler func(ctx *RequestCtx, v interface{})
+func (mux *_Mux) RecoverByType(t reflect.Type, fn ErrorHandler) {
+	if mux.reco.typeMap == nil {
+		mux.reco.typeMap = map[reflect.Type]ErrorHandler{}
+	}
+	mux.reco.typeMap[t] = fn
+}
+
+func (mux *_Mux) RecoverByValue(v interface{}, fn ErrorHandler) {
+	if mux.reco.valMap == nil {
+		mux.reco.valMap = map[interface{}]ErrorHandler{}
+	}
+	mux.reco.valMap[v] = fn
 }
 
 var _ Router = &_Mux{}
@@ -222,6 +235,7 @@ func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 		rm:     map[string]map[string]RequestHandler{},
 		cors:   corsOptions,
 		docs:   map[string]map[string]string{},
+		reco:   &_Recover{},
 	}
 	if mux.cors != nil {
 		mux.Use(mux.cors)
@@ -495,35 +509,7 @@ func (mux *_Mux) RESTWithForm(method, path string, handler RequestHandler, form 
 }
 
 func (mux *_Mux) Handle(ctx *RequestCtx) {
-	defer func() {
-		v := recover()
-		if v == nil {
-			return
-		}
-
-		ctx.Response.ResetBodyBuffer()
-
-		if mux.PanicHandler != nil {
-			mux.PanicHandler(ctx, v)
-			return
-		}
-
-		logStack := true
-
-		switch rv := v.(type) {
-		case HttpError:
-			if rv.StatusCode() < 500 {
-				logStack = false
-			}
-			ctx.WriteError(rv)
-		default:
-			ctx.SetStatus(http.StatusInternalServerError)
-		}
-
-		if logStack {
-			log.Print(internal.Stacks(v, 2, 20))
-		}
-	}()
+	defer mux.reco.doRecover(ctx)
 
 	req := &ctx.Request
 	tree := mux.m[internal.S(req.Method)]
@@ -576,8 +562,7 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 		form := Form{}
 		err := ctx.Validate(&form)
 		if err != nil {
-			ctx.WriteError(err)
-			return
+			panic(err)
 		}
 
 		var m = map[string]map[string]string{}
