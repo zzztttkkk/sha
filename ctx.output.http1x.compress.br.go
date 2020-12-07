@@ -2,6 +2,7 @@ package suna
 
 import (
 	"github.com/andybalholm/brotli"
+	"github.com/zzztttkkk/suna/internal"
 	"sync"
 )
 
@@ -42,7 +43,7 @@ func acquireBrW(res *Response) WriteFlusher {
 }
 
 func (ctx *RequestCtx) CompressBrotli() {
-	ctx.Response.Header.Set(headerContentEncoding, brotliStr)
+	ctx.Response.Header.Set(internal.B(HeaderContentEncoding), brotliStr)
 	ctx.Response.compressWriter = acquireBrW(&ctx.Response)
 	ctx.Response.newCompressWriter = acquireBrW
 }

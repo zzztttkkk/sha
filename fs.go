@@ -68,8 +68,6 @@ func dirList(ctx *RequestCtx, f http.File) {
 // errNoOverlap is returned by serveContent's parseRange if first-byte-pos of
 // all of the byte-range-spec values is greater than the content size.
 var errNoOverlap = errors.New("invalid range: failed to overlap")
-var headerContentRange = []byte("Content-Range")
-var headerAcceptRanges = []byte("Accept-Ranges")
 
 // if name is empty, filename is unknown. (used for mime type, before sniffing)
 // if modtime.IsZero(), modtime is unknown.
@@ -88,7 +86,7 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, sizeFunc func
 
 	// If Content-Type isn't set, use the file's extension to find it, but
 	// if the Content-Type is unset explicitly, do not sniff the type.
-	_, haveType := w.Header.Get(headerContentType)
+	_, haveType := w.Header.Get(internal.B(HeaderContentType))
 	var ctype string
 	if !haveType {
 		ctype = mime.TypeByExtension(filepath.Ext(name))
@@ -112,7 +110,7 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, sizeFunc func
 		ranges, err := parseRange(rangeReq, size)
 		if err != nil {
 			if err == errNoOverlap {
-				w.Header.Set(headerContentRange, internal.B(fmt.Sprintf("bytes */%d", size)))
+				w.Header.Set(internal.B(HeaderContentRange), internal.B(fmt.Sprintf("bytes */%d", size)))
 			}
 			w.statusCode = StatusRequestedRangeNotSatisfiable
 			return
@@ -144,14 +142,14 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, sizeFunc func
 			}
 			sendSize = ra.length
 			w.statusCode = StatusPartialContent
-			w.Header.Set(headerContentRange, ra.contentRange(size))
+			w.Header.Set(internal.B(HeaderContentRange), ra.contentRange(size))
 		case len(ranges) > 1:
 			sendSize = rangesMIMESize(ranges, ctype, size)
 			w.statusCode = StatusPartialContent
 
 			pr, pw := io.Pipe()
 			mw := multipart.NewWriter(pw)
-			w.Header.Set(headerContentType, internal.B("multipart/byteranges; boundary="+mw.Boundary()))
+			w.Header.Set(internal.B(HeaderContentType), internal.B("multipart/byteranges; boundary="+mw.Boundary()))
 			sendContent = pr
 			defer pr.Close() // cause writing goroutine to fail and exit if CopyN doesn't finish.
 			go func() {
@@ -174,8 +172,7 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, sizeFunc func
 				_ = pw.Close()
 			}()
 		}
-
-		w.Header.Set(headerAcceptRanges, []byte("bytes"))
+		w.Header.Set(internal.B(HeaderAcceptRanges), []byte("bytes"))
 	}
 
 	if string(r.Method) != "HEAD" {
@@ -270,10 +267,8 @@ func checkIfMatch(w *Response, r *Request) condResult {
 	return condFalse
 }
 
-var headerIfUnmodifiedSince = []byte("If-Unmodified-Since")
-
 func checkIfUnmodifiedSince(r *Request, modtime time.Time) condResult {
-	ius, _ := r.Header.Get(headerIfUnmodifiedSince)
+	ius, _ := r.Header.Get(internal.B(HeaderIfUnmodifiedSince))
 	if len(ius) < 1 || isZeroTime(modtime) {
 		return condNone
 	}
@@ -292,10 +287,8 @@ func checkIfUnmodifiedSince(r *Request, modtime time.Time) condResult {
 	return condFalse
 }
 
-var headerIfNoneMatch = []byte("If-None-Match")
-
 func checkIfNoneMatch(w *Response, r *Request) condResult {
-	inmb, _ := r.Header.Get(headerIfNoneMatch)
+	inmb, _ := r.Header.Get(internal.B(HeaderIfNoneMatch))
 	if len(inmb) < 1 {
 		return condNone
 	}
@@ -325,15 +318,13 @@ func checkIfNoneMatch(w *Response, r *Request) condResult {
 	return condTrue
 }
 
-var headerIfModifiedSince = []byte("If-Modified-Since")
-
 func checkIfModifiedSince(r *Request, modtime time.Time) condResult {
 	m := internal.S(r.Method)
 	if m != "GET" && m != "HEAD" {
 		return condNone
 	}
 
-	ims, _ := r.Header.Get(headerIfModifiedSince)
+	ims, _ := r.Header.Get(internal.B(HeaderIfModifiedSince))
 	if len(ims) < 1 || isZeroTime(modtime) {
 		return condNone
 	}
@@ -350,14 +341,12 @@ func checkIfModifiedSince(r *Request, modtime time.Time) condResult {
 	return condTrue
 }
 
-var headerIfRange = []byte("If-Range")
-
 func checkIfRange(w *Response, r *Request, modtime time.Time) condResult {
 	m := internal.S(r.Method)
 	if m != "GET" && m != "HEAD" {
 		return condNone
 	}
-	irb, _ := r.Header.Get(headerIfRange)
+	irb, _ := r.Header.Get(internal.B(HeaderIfRange))
 	if len(irb) < 1 {
 		return condNone
 	}
@@ -395,11 +384,9 @@ func isZeroTime(t time.Time) bool {
 
 const fsTimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 
-var headerLastModified = []byte("Last-Modified")
-
 func setLastModified(w *Response, modtime time.Time) {
 	if !isZeroTime(modtime) {
-		w.Header.Set(headerLastModified, internal.B(modtime.UTC().Format(fsTimeFormat)))
+		w.Header.Set(internal.B(HeaderLastModified), internal.B(modtime.UTC().Format(fsTimeFormat)))
 	}
 }
 
@@ -410,15 +397,13 @@ func writeNotModified(w *Response) {
 	// guiding cache updates (e.g., Last-Modified might be useful if the
 	// response does not have an ETag field).
 	w.statusCode = StatusNotModified
-	w.Header.Del(headerContentType)
-	w.Header.Del(headerContentLength)
+	w.Header.Del(internal.B(HeaderContentType))
+	w.Header.Del(internal.B(HeaderContentLength))
 	etagV, _ := w.Header.Get(headerEtag)
 	if len(etagV) > 0 {
-		w.Header.Del(headerLastModified)
+		w.Header.Del(internal.B(HeaderLastModified))
 	}
 }
-
-var headerRange = []byte("Range")
 
 // checkPreconditions evaluates request preconditions and reports whether a precondition
 // resulted in sending StatusNotModified or StatusPreconditionFailed.
@@ -451,7 +436,7 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 		}
 	}
 
-	rangeHeaderB, _ := r.Header.Get(headerRange)
+	rangeHeaderB, _ := r.Header.Get(internal.B(HeaderRange))
 	if len(rangeHeaderB) > 0 && checkIfRange(w, r, modtime) == condFalse {
 		rangeHeader = ""
 	} else {
@@ -546,15 +531,13 @@ func toHTTPError(err error) (httpStatus int) {
 	return StatusInternalServerError
 }
 
-var headerLocation = []byte("Location")
-
 // localRedirect gives a Moved Permanently response.
 // It does not convert relative paths to absolute paths like Redirect does.
 func localRedirect(w *Response, r *Request, newPath string) {
 	if q := internal.S(r.rawPath); len(q) > 0 {
 		newPath += "?" + q
 	}
-	w.Header.Set(headerLocation, internal.B(newPath))
+	w.Header.Set(internal.B(HeaderLocation), internal.B(newPath))
 	w.statusCode = StatusMovedPermanently
 }
 

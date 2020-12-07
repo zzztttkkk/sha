@@ -2,6 +2,7 @@ package suna
 
 import (
 	"github.com/klauspost/compress/flate"
+	"github.com/zzztttkkk/suna/internal"
 	"sync"
 )
 
@@ -45,7 +46,7 @@ func acquireDeflateW(res *Response) WriteFlusher {
 }
 
 func (ctx *RequestCtx) CompressDeflate() {
-	ctx.Response.Header.Set(headerContentEncoding, deflateStr)
+	ctx.Response.Header.Set(internal.B(HeaderContentEncoding), deflateStr)
 	ctx.Response.compressWriter = acquireDeflateW(&ctx.Response)
 	ctx.Response.newCompressWriter = acquireDeflateW
 }

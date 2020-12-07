@@ -209,14 +209,13 @@ func (p *_MultiPartParser) appendLine() {
 	p.current.buf = append(p.current.buf, p.line...)
 }
 
-var headerContentDisposition = []byte("Content-Disposition")
-var formdataStr = []byte("formName-data;")
+var formdataStr = []byte("form-data;")
 var headerValueAttrsSep = []byte(";")
 var nameStr = []byte("name=")
 var filenameStr = []byte("filename=")
 
 func (p *_MultiPartParser) onFieldOk() bool {
-	disposition, ok := p.current.Header.Get(headerContentDisposition)
+	disposition, ok := p.current.Header.Get(internal.B(HeaderContentDisposition))
 	if !ok || len(disposition) < 1 {
 		return false
 	}

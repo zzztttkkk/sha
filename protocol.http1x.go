@@ -2,6 +2,7 @@ package suna
 
 import (
 	"context"
+	"github.com/zzztttkkk/suna/internal"
 	"io"
 	"net"
 	"time"
@@ -36,11 +37,11 @@ func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 	if string(ctx.Request.version) < "1.1" {
 		return false
 	}
-	connVal, _ := ctx.Request.Header.Get(headerConnection)
+	connVal, _ := ctx.Request.Header.Get(internal.B(HeaderConnection))
 	if string(inplaceLowercase(connVal)) == closeStr {
 		return false
 	}
-	connVal, _ = ctx.Response.Header.Get(headerConnection)
+	connVal, _ = ctx.Response.Header.Get(internal.B(HeaderConnection))
 	return string(inplaceLowercase(connVal)) != closeStr
 }
 
@@ -126,7 +127,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 					}
 
 					if protocol.keepalive(rctx) {
-						rctx.Response.Header.Set(headerConnection, keepAliveStr)
+						rctx.Response.Header.Set(internal.B(HeaderConnection), keepAliveStr)
 					}
 
 					if err := rctx.sendHttp1xResponseBuffer(); err != nil {

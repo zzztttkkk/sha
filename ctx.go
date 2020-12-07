@@ -124,22 +124,20 @@ func (ctx *RequestCtx) RemoteAddr() net.Addr {
 	return ctx.conn.RemoteAddr()
 }
 
-var headerConnection = []byte("Connection")
-var lowerUpgradeHeader = []byte("upgrade")
-var headerUpgrade = []byte("Upgrade")
+const lowerUpgradeHeader = "upgrade"
 
 func (ctx *RequestCtx) UpgradeProtocol() string {
 	if string(ctx.Request.Method) != http.MethodGet {
 		return ""
 	}
-	v, ok := ctx.Request.Header.Get(headerConnection)
+	v, ok := ctx.Request.Header.Get(internal.B(HeaderConnection))
 	if !ok {
 		return ""
 	}
-	if string(inplaceLowercase(v)) != string(lowerUpgradeHeader) {
+	if string(inplaceLowercase(v)) != lowerUpgradeHeader {
 		return ""
 	}
-	v, ok = ctx.Request.Header.Get(headerUpgrade)
+	v, ok = ctx.Request.Header.Get(internal.B(HeaderUpgrade))
 	if !ok {
 		return ""
 	}

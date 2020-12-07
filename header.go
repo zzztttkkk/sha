@@ -26,13 +26,8 @@ func inplaceUppercase(d []byte) []byte {
 	return d
 }
 
-var (
-	headerContentLength = []byte("Content-Length")
-	headerContentType   = []byte("Content-Type")
-)
-
 func (header *Header) ContentLength() int {
-	v, ok := header.Kvs.Get(headerContentLength)
+	v, ok := header.Kvs.Get(internal.B(HeaderContentLength))
 	if !ok {
 		return -1
 	}
@@ -44,15 +39,15 @@ func (header *Header) ContentLength() int {
 }
 
 func (header *Header) SetContentLength(v int64) {
-	header.Kvs.Set(headerContentLength, internal.B(strconv.FormatInt(v, 10)))
+	header.Kvs.Set(internal.B(HeaderContentLength), internal.B(strconv.FormatInt(v, 10)))
 }
 
 func (header *Header) SetContentType(v []byte) {
-	header.Kvs.Set(headerContentType, v)
+	header.Kvs.Set(internal.B(HeaderContentType), v)
 }
 
 func (header *Header) ContentType() []byte {
-	v, ok := header.Get(headerContentType)
+	v, ok := header.Get(internal.B(HeaderContentType))
 	if !ok {
 		return nil
 	}

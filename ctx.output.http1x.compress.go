@@ -5,12 +5,11 @@ import (
 	"github.com/andybalholm/brotli"
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
+	"github.com/zzztttkkk/suna/internal"
 	"io"
 )
 
 var (
-	headerContentEncoding  = []byte("Content-Encoding")
-	headerAcceptEncoding   = []byte("Accept-Encoding")
 	headerCompressValueSep = []byte(", ")
 	gzipStr                = []byte("gzip")
 	deflateStr             = []byte("deflate")
@@ -54,7 +53,7 @@ func (ctx *RequestCtx) AutoCompress() {
 	acceptGzip := false
 	acceptDeflate := false
 
-	for _, headerVal := range ctx.Request.Header.GetAll(headerAcceptEncoding) {
+	for _, headerVal := range ctx.Request.Header.GetAll(internal.B(HeaderAcceptEncoding)) {
 		for _, v := range bytes.Split(headerVal, headerCompressValueSep) {
 			switch string(v) {
 			case "gzip":

@@ -2,6 +2,7 @@ package suna
 
 import (
 	"github.com/klauspost/compress/gzip"
+	"github.com/zzztttkkk/suna/internal"
 	"sync"
 )
 
@@ -46,7 +47,7 @@ func acquireGzipW(res *Response) WriteFlusher {
 }
 
 func (ctx *RequestCtx) CompressGzip() {
-	ctx.Response.Header.Set(headerContentEncoding, gzipStr)
+	ctx.Response.Header.Set(internal.B(HeaderContentEncoding), gzipStr)
 	ctx.Response.compressWriter = acquireGzipW(&ctx.Response)
 	ctx.Response.newCompressWriter = acquireGzipW
 }

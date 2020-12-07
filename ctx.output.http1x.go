@@ -17,14 +17,17 @@ var newline = []byte("\r\n")
 var headerKVSep = []byte(": ")
 
 func (ctx *RequestCtx) KeepAlive() bool {
+	const closeStr = "close"
+
 	req := &ctx.Request
-	cv, _ := req.Header.Get(headerConnection)
-	if string(inplaceLowercase(cv)) == "close" {
+	hc := internal.B(HeaderConnection)
+	cv, _ := req.Header.Get(hc)
+	if string(inplaceLowercase(cv)) == closeStr {
 		return false
 	}
 	res := &ctx.Response
-	cv, _ = res.Header.Get(headerConnection)
-	if string(inplaceLowercase(cv)) == "close" {
+	cv, _ = res.Header.Get(hc)
+	if string(inplaceLowercase(cv)) == closeStr {
 		return false
 	}
 	return true
@@ -59,7 +62,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res := &ctx.Response
 	res.headerWritten = true
 
-	_, exists := res.Header.Get(headerContentLength)
+	_, exists := res.Header.Get(internal.B(HeaderContentLength))
 	if !exists {
 		return ErrNilContentLength
 	}
@@ -108,7 +111,7 @@ func (ctx *RequestCtx) WriteString(s string) (int, error) {
 }
 
 func (ctx *RequestCtx) WriteJSON(v interface{}) {
-	ctx.Response.Header.Set(headerContentType, MIMEJson)
+	ctx.Response.Header.SetContentType(MIMEJson)
 
 	encoder := json.NewEncoder(ctx)
 	err := encoder.Encode(v)
@@ -118,7 +121,7 @@ func (ctx *RequestCtx) WriteJSON(v interface{}) {
 }
 
 func (ctx *RequestCtx) WriteHTML(v []byte) {
-	ctx.Response.Header.Set(headerContentType, MIMEHtml)
+	ctx.Response.Header.SetContentType(MIMEHtml)
 	_, e := ctx.Write(v)
 	if e != nil {
 		panic(e)
@@ -126,7 +129,7 @@ func (ctx *RequestCtx) WriteHTML(v []byte) {
 }
 
 func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
-	ctx.Response.Header.SetStr("Content-Type", mime.TypeByExtension(ext))
+	ctx.Response.Header.SetContentType(internal.B(mime.TypeByExtension(ext)))
 
 	buf := make([]byte, 512, 512)
 	for {
@@ -142,7 +145,7 @@ func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
 }
 
 func (ctx *RequestCtx) WriteTemplate(t *template.Template, data interface{}) {
-	ctx.Response.Header.Set(headerContentType, MIMEHtml)
+	ctx.Response.Header.SetContentType(MIMEHtml)
 	e := t.Execute(ctx, data)
 	if e != nil {
 		panic(e)
