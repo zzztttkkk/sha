@@ -68,12 +68,20 @@ func InplaceTrimAsciiSpace(v []byte) []byte {
 	var left = 0
 	var right = len(v) - 1
 	for ; left <= right; left++ {
-		if spaceMap[v[left]] != 1 {
+		b := v[left]
+		if b > 127 {
+			break
+		}
+		if spaceMap[b] != 1 {
 			break
 		}
 	}
 	for ; right >= left; right-- {
-		if spaceMap[v[right]] != 1 {
+		b := v[left]
+		if b > 127 {
+			break
+		}
+		if spaceMap[b] != 1 {
 			break
 		}
 	}

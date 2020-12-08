@@ -91,8 +91,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 		func(k, v []byte) bool {
 			buf.Data = append(buf.Data, k...)
 			buf.Data = append(buf.Data, headerKVSep...)
-			buf.Data = append(buf.Data)
-			quoteHeaderValueToBuf(v, &(buf.Data))
+			encodeURI(v, &buf.Data)
 			buf.Data = append(buf.Data, newline...)
 			return true
 		},

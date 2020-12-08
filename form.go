@@ -13,7 +13,7 @@ type Form struct {
 }
 
 func (form *Form) onItem(k []byte, v []byte) {
-	form.Append(inplaceUnquote(k), inplaceUnquote(v))
+	form.Append(decodeURIFormed(k), decodeURIFormed(v))
 }
 
 func (form *Form) ParseUrlEncoded(p []byte) {
@@ -230,11 +230,11 @@ func (p *_MultiPartParser) onFieldOk() bool {
 		v = internal.InplaceTrimAsciiSpace(v)
 
 		if bytes.HasPrefix(v, nameStr) {
-			name = inplaceUnquote(v[6 : len(v)-1])
+			name = decodeURI(v[6 : len(v)-1])
 			continue
 		}
 		if bytes.HasPrefix(v, filenameStr) {
-			filename = inplaceUnquote(v[10 : len(v)-1])
+			filename = decodeURI(v[10 : len(v)-1])
 		}
 	}
 

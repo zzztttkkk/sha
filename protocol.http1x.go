@@ -24,10 +24,6 @@ type Http1xProtocol struct {
 	handler RequestHandler
 }
 
-func (protocol *Http1xProtocol) Handshake(_ *RequestCtx) bool {
-	return false
-}
-
 var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
 

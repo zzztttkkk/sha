@@ -5,6 +5,7 @@ import (
 	"github.com/zzztttkkk/suna/internal"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -15,12 +16,14 @@ type Request struct {
 	Path   []byte
 	Params internal.Kvs
 
-	query Form
-	body  Form
-	files FormFiles
+	cookies internal.Kvs
+	query   Form
+	body    Form
+	files   FormFiles
 
 	queryStatus   int // >2: `?` index; 1: parsed; 0 empty
 	bodyStatus    int // 0: unparsed; 1: unsupported content type; 2: parsed
+	cookieParsed  bool
 	rawPath       []byte
 	version       []byte
 	bodyBufferPtr *[]byte
@@ -36,10 +39,12 @@ func (req *Request) Reset() {
 	req.Path = req.Path[:0]
 	req.Params.Reset()
 
+	req.cookies.Reset()
 	req.query.Reset()
 	req.body.Reset()
 	req.files = nil
 	req.files = nil
+	req.cookieParsed = false
 	req.queryStatus = 0
 	req.bodyStatus = 0
 	req.rawPath = req.rawPath[:0]
@@ -47,6 +52,39 @@ func (req *Request) Reset() {
 	req.bodyBufferPtr = nil
 	req.wsSubP = nil
 	req.wsDoCompress = false
+}
+
+func (req *Request) Cookie(key []byte) ([]byte, bool) {
+	if !req.cookieParsed {
+		v, ok := req.Header.Get(internal.B(HeaderCookie))
+		if ok {
+			var key []byte
+			var buf []byte
+
+			for _, b := range v {
+				switch b {
+				case '=':
+					key = append(key, buf...)
+					buf = buf[:0]
+				case ';':
+					req.cookies.Set(decodeURI(key), decodeURI(buf))
+					key = key[:0]
+					buf = buf[:0]
+				case ' ':
+					continue
+				default:
+					buf = append(buf, b)
+				}
+			}
+			req.cookies.Set(decodeURI(key), decodeURI(buf))
+		}
+		req.cookieParsed = true
+	}
+	return req.cookies.Get(key)
+}
+
+func (ctx *RequestCtx) Cookie(key []byte) ([]byte, bool) {
+	return ctx.Request.Cookie(key)
 }
 
 type Response struct {
@@ -78,6 +116,80 @@ func (res *Response) ResetBodyBuffer() {
 		res.compressWriter = res.newCompressWriter(res)
 	}
 	res.buf = res.buf[:0]
+}
+
+type _SameSiteVal string
+
+const (
+	CookeSameSizeDefault = _SameSiteVal("")
+	CookieSameSiteLax    = _SameSiteVal("lax")
+	CookieSameSiteStrict = _SameSiteVal("strict")
+	CookieSameSizeNone   = _SameSiteVal("none")
+)
+
+type CookieOptions struct {
+	Domain   string
+	Path     string
+	MaxAge   int64
+	Expires  time.Time
+	Secure   bool
+	HttpOnly bool
+	SameSite _SameSiteVal
+}
+
+func (res *Response) SetCookie(k, v string, options CookieOptions) {
+	item := res.Header.Append(internal.B(HeaderSetCookie), nil)
+
+	item.Val = append(item.Val, internal.B(k)...)
+	item.Val = append(item.Val, '=')
+	item.Val = append(item.Val, internal.B(v)...)
+	item.Val = append(item.Val, ';')
+	item.Val = append(item.Val, ' ')
+
+	if len(options.Domain) > 0 {
+		item.Val = append(item.Val, 'D', 'o', 'm', 'a', 'i', 'n', '=')
+		item.Val = append(item.Val, internal.B(options.Domain)...)
+		item.Val = append(item.Val, ';')
+		item.Val = append(item.Val, ' ')
+	}
+
+	if len(options.Path) > 0 {
+		item.Val = append(item.Val, 'P', 'a', 't', 'h', '=')
+		item.Val = append(item.Val, internal.B(options.Path)...)
+		item.Val = append(item.Val, ';')
+		item.Val = append(item.Val, ' ')
+	}
+
+	if !options.Expires.IsZero() {
+		item.Val = append(item.Val, 'E', 'x', 'p', 'i', 'r', 'e', 's', '=')
+		item.Val = append(item.Val, internal.B(options.Expires.Format(time.RFC1123))...)
+		item.Val = append(item.Val, ';')
+		item.Val = append(item.Val, ' ')
+	} else {
+		item.Val = append(item.Val, 'M', 'a', 'x', '-', 'A', 'g', 'e', '=')
+		item.Val = append(item.Val, internal.B(strconv.FormatInt(options.MaxAge, 10))...)
+		item.Val = append(item.Val, ';')
+		item.Val = append(item.Val, ' ')
+	}
+
+	if options.Secure {
+		item.Val = append(item.Val, 'S', 'e', 'c', 'u', 'r', 'e')
+		item.Val = append(item.Val, ';')
+		item.Val = append(item.Val, ' ')
+	}
+
+	if options.HttpOnly {
+		item.Val = append(item.Val, 'H', 't', 't', 'p', 'o', 'n', 'l', 'y')
+		item.Val = append(item.Val, ';')
+		item.Val = append(item.Val, ' ')
+	}
+
+	if len(options.SameSite) > 0 {
+		item.Val = append(item.Val, 'S', 'a', 'm', 'e', 's', 'i', 't', 'e', '=')
+		item.Val = append(item.Val, internal.B(string(options.SameSite))...)
+		item.Val = append(item.Val, ';')
+		item.Val = append(item.Val, ' ')
+	}
 }
 
 //Reset after executing `Response.Reset`, we still need to keep the compression

@@ -8,7 +8,6 @@ import (
 	"github.com/zzztttkkk/suna/sqlx"
 	"net/url"
 	"testing"
-	"time"
 )
 
 type _RbacUser int64
@@ -29,6 +28,14 @@ func Test_Rbac(t *testing.T) {
 	server := Default(mux)
 	mux.HandleDoc("get", "/doc")
 
+	mux.REST(
+		"get",
+		"/redirect33",
+		RequestHandlerFunc(func(ctx *RequestCtx) {
+			RedirectPermanently("https://google.com")
+		}),
+	)
+
 	branch := NewBranch()
 	branch.Use(
 		MiddlewareFunc(
@@ -46,10 +53,6 @@ func Test_Rbac(t *testing.T) {
 
 	mux.AddBranch("/rbac", branch)
 
-	go func() {
-		time.Sleep(time.Second)
-		mux.Print(false, false)
-	}()
-
+	mux.Print(false, false)
 	server.ListenAndServe()
 }

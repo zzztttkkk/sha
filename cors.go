@@ -1,6 +1,7 @@
 package suna
 
 import (
+	"github.com/zzztttkkk/suna/internal"
 	"net/http"
 	"strconv"
 )
@@ -17,19 +18,9 @@ type CorsOptions struct {
 	headerKvs [][]byte
 }
 
-var (
-	headerAccessControlAllowCredentials = []byte("Access-Control-Allow-Credentials")
-	headerAccessControlAllowHeaders     = []byte("Access-Control-Allow-Headers")
-	headerAccessControlAllowMethods     = []byte("Access-Control-Allow-Methods")
-	headerAccessControlExposeHeaders    = []byte("Access-Control-Expose-Headers")
-	headerAccessControlMaxAge           = []byte("Access-Control-Max-Age")
-	headerAccessControlAllowOrigin      = []byte("Access-Control-Allow-Origin")
-	headerOrigin                        = []byte("Origin")
-)
-
 func (options *CorsOptions) init() {
 	if options.MaxAge > 0 {
-		options.headerKvs = append(options.headerKvs, headerAccessControlMaxAge)
+		options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlMaxAge))
 		options.headerKvs = append(options.headerKvs, []byte(strconv.FormatInt(options.MaxAge, 10)))
 	}
 
@@ -37,19 +28,19 @@ func (options *CorsOptions) init() {
 		options.AllowMethods = "GET, POST, OPTIONS"
 	}
 
-	options.headerKvs = append(options.headerKvs, headerAccessControlAllowMethods)
+	options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlAllowMethods))
 	options.headerKvs = append(options.headerKvs, []byte(options.AllowMethods))
 
 	if len(options.AllowHeaders) > 0 {
-		options.headerKvs = append(options.headerKvs, headerAccessControlAllowHeaders)
+		options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlAllowHeaders))
 		options.headerKvs = append(options.headerKvs, []byte(options.AllowHeaders))
 	}
 	if options.AllowCredentials {
-		options.headerKvs = append(options.headerKvs, headerAccessControlAllowCredentials)
+		options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlAllowCredentials))
 		options.headerKvs = append(options.headerKvs, []byte("true"))
 	}
 	if len(options.ExposeHeaders) > 0 {
-		options.headerKvs = append(options.headerKvs, headerAccessControlExposeHeaders)
+		options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlExposeHeaders))
 		options.headerKvs = append(options.headerKvs, []byte(options.ExposeHeaders))
 	}
 	if options.OnForbidden == nil {
@@ -69,14 +60,14 @@ func (options *CorsOptions) writeHeader(ctx *RequestCtx) {
 }
 
 func (options *CorsOptions) verify(ctx *RequestCtx) bool {
-	origin, ok := ctx.Request.Header.Get(headerOrigin)
+	origin, ok := ctx.Request.Header.Get(internal.B(HeaderOrigin))
 	if !ok || len(origin) < 1 { // same origin
 		return true
 	}
 	if !options.CheckOrigin(origin) {
 		return false
 	}
-	ctx.Response.Header.Set(headerAccessControlAllowOrigin, origin)
+	ctx.Response.Header.Set(internal.B(HeaderAccessControlAllowOrigin), origin)
 	return true
 }
 

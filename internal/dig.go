@@ -34,3 +34,5 @@ func (d *_Dig) Invoke() {
 		}
 	}
 }
+
+var RbacInited bool

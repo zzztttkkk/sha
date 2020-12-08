@@ -15,24 +15,25 @@ func TestWebSocketProtocol_Serve(t *testing.T) {
 	mux.WebSocket(
 		"/ws",
 		func(ctx context.Context, req *Request, conn *websocket.Conn) {
-		loop:
-			for {
-				select {
-				case <-ctx.Done():
-					break loop
-				default:
-					i, p, e := conn.ReadMessage()
-					if e != nil {
-						log.Println(e)
-						break loop
-					}
-					fmt.Println(i, string(p))
-					e = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s", time.Now())))
-					if e != nil {
-						log.Println(e)
-						break loop
+			go func() {
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+						i, p, e := conn.ReadMessage()
+						if e != nil {
+							log.Println(e)
+							return
+						}
+						fmt.Println(i, string(p))
 					}
 				}
+			}()
+
+			for {
+				time.Sleep(time.Second)
+				_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s", time.Now())))
 			}
 		},
 	)

@@ -6,6 +6,7 @@ import (
 	"github.com/zzztttkkk/suna/validator"
 	"log"
 	"net/http"
+	"net/url"
 	pathlib "path"
 	"reflect"
 	"runtime"
@@ -219,9 +220,9 @@ func (mux *_Mux) RecoverByType(t reflect.Type, fn ErrorHandler) {
 	mux.reco.typeMap[t] = fn
 }
 
-func (mux *_Mux) RecoverByValue(v interface{}, fn ErrorHandler) {
+func (mux *_Mux) RecoverByErr(v error, fn ErrorHandler) {
 	if mux.reco.valMap == nil {
-		mux.reco.valMap = map[interface{}]ErrorHandler{}
+		mux.reco.valMap = map[error]ErrorHandler{}
 	}
 	mux.reco.valMap[v] = fn
 }
@@ -356,6 +357,10 @@ func (mux *_Mux) arm(method, path string, handler RequestHandler) {
 }
 
 func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWrap bool) {
+	u, e := url.Parse(path)
+	if e != nil || len(u.RawQuery) != 0 || len(u.Fragment) != 0 {
+		panic(fmt.Errorf("suna.mux: bad path value `%s`", path))
+	}
 	defer mux.arm(method, path, handler)
 
 	if doWrap {

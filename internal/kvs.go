@@ -28,21 +28,18 @@ func (kvs *Kvs) Size() int {
 
 func (kvs *Kvs) String() string {
 	buf := strings.Builder{}
-
+	buf.WriteString("kvs[")
 	kvs.EachItem(
 		func(k, v []byte) bool {
-			buf.WriteByte('`')
 			buf.Write(k)
-			buf.WriteByte('`')
-			buf.WriteByte(':')
-			buf.WriteByte('`')
+			buf.WriteByte(' ')
 			buf.Write(v)
-			buf.WriteByte('`')
 			buf.WriteByte(';')
-			buf.WriteByte('\n')
+			buf.WriteByte(' ')
 			return true
 		},
 	)
+	buf.WriteByte(']')
 	return buf.String()
 }
 
@@ -57,7 +54,7 @@ func ReleaseKvs(kvs *Kvs) {
 	kvsPool.Put(kvs)
 }
 
-func (kvs *Kvs) Append(k, v []byte) {
+func (kvs *Kvs) Append(k, v []byte) *KvItem {
 	var item *KvItem
 
 	s := len(kvs.lst)
@@ -70,6 +67,8 @@ func (kvs *Kvs) Append(k, v []byte) {
 	item.invalid = false
 	item.Key = append(item.Key, k...)
 	item.Val = append(item.Val, v...)
+
+	return item
 }
 
 func (kvs *Kvs) Set(k, v []byte) {

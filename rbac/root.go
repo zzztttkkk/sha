@@ -31,7 +31,7 @@ func grantRoot(subjectID int64) {
 }
 
 func GrantRoot(subjectID int64) {
-	if inited {
+	if sunainternal.RbacInited {
 		grantRoot(subjectID)
 		return
 	}

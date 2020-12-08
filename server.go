@@ -60,7 +60,7 @@ func Default(handler RequestHandler) *Server {
 					return
 				}
 				for k, v := range internal.ErrorStatusByValue {
-					mux.RecoverByValue(
+					mux.RecoverByErr(
 						k,
 						func(sc int) ErrorHandler {
 							return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }

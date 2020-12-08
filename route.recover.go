@@ -11,8 +11,14 @@ type ErrorHandler func(ctx *RequestCtx, v interface{})
 
 type _Recover struct {
 	typeMap map[reflect.Type]ErrorHandler
-	valMap  map[interface{}]ErrorHandler
+	valMap  map[error]ErrorHandler
 }
+
+var (
+	errType     = reflect.TypeOf((*error)(nil)).Elem()
+	hResErrType = reflect.TypeOf((*HttpResponseError)(nil)).Elem()
+	hErrType    = reflect.TypeOf((*HttpError)(nil)).Elem()
+)
 
 func (r *_Recover) doRecover(ctx *RequestCtx) {
 	v := recover()
@@ -22,24 +28,27 @@ func (r *_Recover) doRecover(ctx *RequestCtx) {
 
 	ctx.Response.ResetBodyBuffer()
 
-	fn := r.valMap[v]
-	if fn != nil {
-		fn(ctx, v)
-		return
-	}
+	vt := reflect.TypeOf(v)
 
-	if len(r.typeMap) > 0 {
-		t := reflect.TypeOf(v)
-		fn = r.typeMap[t]
+	if vt.ConvertibleTo(errType) {
+		fn := r.valMap[v.(error)]
 		if fn != nil {
 			fn(ctx, v)
 			return
 		}
 	}
 
+	if len(r.typeMap) > 0 {
+		fn := r.typeMap[vt]
+		if fn != nil {
+			fn(ctx, v)
+			return
+		}
+	}
 	logStack := true
-	switch rv := v.(type) {
-	case HttpResponseError:
+
+	if vt.ConvertibleTo(hResErrType) {
+		rv := v.(HttpResponseError)
 		if rv.StatusCode() < 500 {
 			logStack = false
 		}
@@ -54,13 +63,14 @@ func (r *_Recover) doRecover(ctx *RequestCtx) {
 			)
 		}
 		_, _ = ctx.Write(rv.Body())
-	case HttpError:
+	} else if vt.ConvertibleTo(hErrType) {
+		rv := v.(HttpError)
 		if rv.StatusCode() < 500 {
 			logStack = false
 		}
 		ctx.SetStatus(rv.StatusCode())
 		_, _ = ctx.WriteString(rv.Error())
-	default:
+	} else {
 		ctx.SetStatus(http.StatusInternalServerError)
 	}
 

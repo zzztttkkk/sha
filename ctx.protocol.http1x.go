@@ -18,19 +18,17 @@ func (ctx *RequestCtx) initRequest() {
 
 	ind := bytes.IndexByte(req.rawPath, '?')
 	if ind > 0 {
-		req.Path = inplaceUnquote(req.rawPath[:ind])
+		req.Path = decodeURI(req.rawPath[:ind])
 		req.queryStatus = ind + 2
 	} else {
-		req.Path = inplaceUnquote(req.rawPath)
+		req.Path = decodeURI(req.rawPath)
 	}
-
-	// todo may request body should be uncompress
 	req.bodyBufferPtr = &ctx.buf
 }
 
 func (ctx *RequestCtx) onRequestHeaderLine() {
-	key := internal.InplaceTrimAsciiSpace(ctx.cHKey)
-	val := internal.InplaceTrimAsciiSpace(ctx.buf)
+	key := decodeURI(internal.InplaceTrimAsciiSpace(ctx.cHKey))
+	val := decodeURI(internal.InplaceTrimAsciiSpace(ctx.buf))
 	ctx.Request.Header.Append(key, val)
 }
 
@@ -91,9 +89,6 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			if ctx.hSize > ctx.protocol.MaxHeadersSize {
 				return 10006, ErrRequestHeaderFieldsTooLarge
 			}
-			if v > 126 || v < 10 {
-				return 10007, ErrBadConnection
-			}
 
 			if v == '\n' {
 				if len(ctx.cHKey) < 1 { // allM header data read done
@@ -116,10 +111,11 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				if v == ':' {
 					ctx.kvSep = true
 				} else {
-					if ctx.cHKeyDoUpper {
+					if v < 127 && ctx.cHKeyDoUpper {
 						ctx.cHKeyDoUpper = false
 						v = toUpperTable[v]
 					}
+
 					ctx.cHKey = append(ctx.cHKey, v)
 					if v == '-' {
 						ctx.cHKeyDoUpper = true

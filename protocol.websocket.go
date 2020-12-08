@@ -7,6 +7,7 @@ import (
 	"github.com/zzztttkkk/websocket"
 	"log"
 	"net/http"
+	"sync"
 )
 
 type SubWebSocketProtocol interface {
@@ -14,6 +15,8 @@ type SubWebSocketProtocol interface {
 }
 
 type WebSocketProtocol struct {
+	ReadBufferSize    int
+	WriteBufferSize   int
 	Subprotocols      map[string]SubWebSocketProtocol
 	EnableCompression bool
 }
@@ -94,11 +97,15 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 	return true
 }
 
+var websocketWriteBufferPool sync.Pool
+
 func (p *WebSocketProtocol) Hijack(ctx *RequestCtx) *websocket.Conn {
 	req := &ctx.Request
 	ctx.hijacked = true
 	return websocket.NewConn(
-		ctx.conn, true, req.wsDoCompress, 0, 0, nil, nil, nil,
+		ctx.conn, true, req.wsDoCompress,
+		p.ReadBufferSize, p.WriteBufferSize,
+		&websocketWriteBufferPool, nil, nil,
 	)
 }
 
@@ -108,6 +115,8 @@ func init() {
 	wsp = &WebSocketProtocol{
 		Subprotocols:      nil,
 		EnableCompression: false,
+		ReadBufferSize:    2048,
+		WriteBufferSize:   2048,
 	}
 }
 

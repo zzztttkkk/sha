@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-var ErrorStatusByValue = map[interface{}]int{}
+var ErrorStatusByValue = map[error]int{}
 
 func init() {
 	ErrorStatusByValue[sql.ErrNoRows] = http.StatusNotFound

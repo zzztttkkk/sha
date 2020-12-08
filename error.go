@@ -48,3 +48,28 @@ var (
 	ErrRequestHeaderFieldsTooLarge = StatusError(http.StatusRequestHeaderFieldsTooLarge)
 	ErrRequestEntityTooLarge       = StatusError(http.StatusRequestEntityTooLarge)
 )
+
+type _RedirectError struct {
+	status int
+	h      Header
+}
+
+func (err *_RedirectError) Error() string { return "" }
+
+func (err *_RedirectError) StatusCode() int { return err.status }
+
+func (err *_RedirectError) Header() *Header { return &err.h }
+
+func (err *_RedirectError) Body() []byte { return nil }
+
+func RedirectPermanently(uri string) {
+	err := &_RedirectError{status: StatusMovedPermanently}
+	err.h.SetStr(HeaderLocation, uri)
+	panic(err)
+}
+
+func RedirectTemporarily(uri string) {
+	err := &_RedirectError{status: StatusFound}
+	err.h.SetStr(HeaderLocation, uri)
+	panic(err)
+}

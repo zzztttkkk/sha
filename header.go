@@ -19,13 +19,6 @@ func inplaceLowercase(d []byte) []byte {
 	return d
 }
 
-func inplaceUppercase(d []byte) []byte {
-	for i, v := range d {
-		d[i] = toUpperTable[v]
-	}
-	return d
-}
-
 func (header *Header) ContentLength() int {
 	v, ok := header.Kvs.Get(internal.B(HeaderContentLength))
 	if !ok {
