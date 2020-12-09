@@ -43,7 +43,6 @@ func (req *Request) Reset() {
 	req.query.Reset()
 	req.body.Reset()
 	req.files = nil
-	req.files = nil
 	req.cookieParsed = false
 	req.queryStatus = 0
 	req.bodyStatus = 0
@@ -192,13 +191,17 @@ func (res *Response) SetCookie(k, v string, options CookieOptions) {
 	}
 }
 
-//Reset after executing `Response.Reset`, we still need to keep the compression
-func (res *Response) Reset() {
+func (res *Response) reset() {
 	res.statusCode = 0
 	res.Header.Reset()
 	res.headerWritten = false
 
-	res.ResetBodyBuffer()
+	if res.compressWriter != nil {
+		_ = res.compressWriter.Flush()
+		res.compressWriter = nil
+		res.newCompressWriter = nil
+	}
+	res.buf = res.buf[:0]
 }
 
 type RequestCtx struct {
@@ -262,12 +265,8 @@ func (ctx *RequestCtx) Reset() {
 	}
 
 	ctx.Context = nil
-
 	ctx.Request.Reset()
-
-	ctx.Response.Reset()
-	ctx.Response.compressWriter = nil
-	ctx.Response.newCompressWriter = nil
+	ctx.Response.reset()
 
 	ctx.status = 0
 	ctx.fStatus = 0

@@ -107,9 +107,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			}
 
 			if rctx.status == 2 && rctx.bodyRemain < 1 {
-				if rctx.Context == nil {
-					rctx.initRequest()
-				}
+				rctx.initRequest()
 
 				if protocol.server.AutoCompress {
 					rctx.AutoCompress()

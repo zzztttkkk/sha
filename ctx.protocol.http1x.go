@@ -9,11 +9,15 @@ import (
 var httpVersion = []byte("http/")
 
 func (ctx *RequestCtx) initRequest() {
+	if ctx.Context != nil {
+		return
+	}
+
 	req := &ctx.Request
 
 	ctx.Context = ctx.makeRequestCtx()
 	ctx.reqTime = time.Now()
-	ctx.bodySize = req.Header.ContentLength()
+
 	ctx.bodyRemain = ctx.bodySize
 
 	ind := bytes.IndexByte(req.rawPath, '?')
@@ -93,6 +97,10 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			if v == '\n' {
 				if len(ctx.cHKey) < 1 { // allM header data read done
 					ctx.status++
+					ctx.bodySize = ctx.Request.Header.ContentLength()
+					if ctx.bodySize > ctx.protocol.MaxBodySize {
+						return 10008, ErrRequestEntityTooLarge
+					}
 					return offset, nil
 				}
 				ctx.onRequestHeaderLine()
@@ -126,12 +134,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			ctx.buf = append(ctx.buf, v)
 		}
 	case 2:
-		if ctx.Context == nil {
-			ctx.initRequest()
-			if ctx.bodySize > ctx.protocol.MaxBodySize {
-				return 10008, ErrRequestEntityTooLarge
-			}
-		}
+		ctx.initRequest()
 
 		size := end - offset
 		if size > ctx.bodyRemain {

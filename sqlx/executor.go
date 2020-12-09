@@ -90,15 +90,10 @@ func Exe(ctx context.Context) W {
 }
 
 func db(ctx context.Context) *x.DB {
-	tx := ctx.Value(txKey)
-	if tx != nil {
-		return wdb
+	exe := Exe(ctx).Exe
+	if d, ok := exe.(*x.DB); ok {
+		return d
 	}
-	if ctx.Value(justLeaderKey) != nil {
-		return wdb
-	}
-	if len(rdbs) < 1 {
-		return wdb
-	}
-	return PickReadonlyDB(rdbs)
+	// tx
+	return wdb
 }

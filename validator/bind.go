@@ -210,6 +210,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 	return nil
 }
 
+// return value is a ptr, not an interface.
 func Validate(former Former, dist interface{}) (err *FormError, isNil bool) {
 	v := reflect.ValueOf(dist).Elem()
 	var field reflect.Value

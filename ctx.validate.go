@@ -1,6 +1,8 @@
 package suna
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/zzztttkkk/suna/validator"
 )
 
@@ -17,6 +19,23 @@ func (ctx *RequestCtx) Validate(dist interface{}) HttpError {
 		return nil
 	}
 	return e
+}
+
+func (ctx *RequestCtx) ValidateJSON(dist interface{}) HttpError {
+	if !bytes.HasPrefix(ctx.Request.Header.ContentType(), MIMEJson) {
+		return StatusError(StatusBadRequest)
+	}
+	if err := json.Unmarshal(ctx.buf, dist); err != nil {
+		return StatusError(StatusBadRequest)
+	}
+	return nil
+}
+
+func (ctx *RequestCtx) MustValidateJSON(dist interface{}) {
+	err := ctx.ValidateJSON(dist)
+	if err != nil {
+		panic(err)
+	}
 }
 
 type _ValidateHandler struct {

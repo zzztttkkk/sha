@@ -14,10 +14,24 @@ type _Recover struct {
 	valMap  map[error]ErrorHandler
 }
 
+func (r *_Recover) RecoverByType(t reflect.Type, fn ErrorHandler) {
+	if r.typeMap == nil {
+		r.typeMap = map[reflect.Type]ErrorHandler{}
+	}
+	r.typeMap[t] = fn
+}
+
+func (r *_Recover) RecoverByErr(v error, fn ErrorHandler) {
+	if r.valMap == nil {
+		r.valMap = map[error]ErrorHandler{}
+	}
+	r.valMap[v] = fn
+}
+
 var (
-	errType     = reflect.TypeOf((*error)(nil)).Elem()
-	hResErrType = reflect.TypeOf((*HttpResponseError)(nil)).Elem()
-	hErrType    = reflect.TypeOf((*HttpError)(nil)).Elem()
+	errType        = reflect.TypeOf((*error)(nil)).Elem()
+	httpResErrType = reflect.TypeOf((*HttpResponseError)(nil)).Elem()
+	httpErrType    = reflect.TypeOf((*HttpError)(nil)).Elem()
 )
 
 func (r *_Recover) doRecover(ctx *RequestCtx) {
@@ -45,9 +59,10 @@ func (r *_Recover) doRecover(ctx *RequestCtx) {
 			return
 		}
 	}
+
 	logStack := true
 
-	if vt.ConvertibleTo(hResErrType) {
+	if vt.ConvertibleTo(httpResErrType) {
 		rv := v.(HttpResponseError)
 		if rv.StatusCode() < 500 {
 			logStack = false
@@ -63,7 +78,7 @@ func (r *_Recover) doRecover(ctx *RequestCtx) {
 			)
 		}
 		_, _ = ctx.Write(rv.Body())
-	} else if vt.ConvertibleTo(hErrType) {
+	} else if vt.ConvertibleTo(httpErrType) {
 		rv := v.(HttpError)
 		if rv.StatusCode() < 500 {
 			logStack = false

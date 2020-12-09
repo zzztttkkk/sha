@@ -231,11 +231,9 @@ const (
 	condFalse
 )
 
-var headerIfMatch = []byte("If-Match")
-var headerEtag = []byte("Etag")
 
 func checkIfMatch(w *Response, r *Request) condResult {
-	imb, _ := r.Header.Get(headerIfMatch)
+	imb, _ := r.Header.Get(internal.B(HeaderIfMatch))
 	if len(imb) < 1 {
 		return condNone
 	}
@@ -257,7 +255,7 @@ func checkIfMatch(w *Response, r *Request) condResult {
 			break
 		}
 
-		etagV, _ := w.Header.Get(headerEtag)
+		etagV, _ := w.Header.Get(internal.B(HeaderETag))
 		if etagStrongMatch(etag, internal.S(etagV)) {
 			return condTrue
 		}
@@ -309,7 +307,7 @@ func checkIfNoneMatch(w *Response, r *Request) condResult {
 		if etag == "" {
 			break
 		}
-		etagV, _ := w.Header.Get(headerEtag)
+		etagV, _ := w.Header.Get(internal.B(HeaderETag))
 		if etagWeakMatch(etag, string(etagV)) {
 			return condFalse
 		}
@@ -353,7 +351,7 @@ func checkIfRange(w *Response, r *Request, modtime time.Time) condResult {
 	ir := string(irb)
 	etag, _ := scanETag(ir)
 	if etag != "" {
-		etagV, _ := w.Header.Get(headerEtag)
+		etagV, _ := w.Header.Get(internal.B(HeaderETag))
 		if etagStrongMatch(etag, string(etagV)) {
 			return condTrue
 		} else {
@@ -399,7 +397,7 @@ func writeNotModified(w *Response) {
 	w.statusCode = StatusNotModified
 	w.Header.Del(internal.B(HeaderContentType))
 	w.Header.Del(internal.B(HeaderContentLength))
-	etagV, _ := w.Header.Get(headerEtag)
+	etagV, _ := w.Header.Get(internal.B(HeaderETag))
 	if len(etagV) > 0 {
 		w.Header.Del(internal.B(HeaderLastModified))
 	}
