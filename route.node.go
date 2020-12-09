@@ -3,6 +3,7 @@ package suna
 import (
 	"fmt"
 	"github.com/zzztttkkk/suna/internal"
+	"sort"
 	"strings"
 )
 
@@ -34,13 +35,31 @@ func (node *_RouteNode) handleOptions(ctx *RequestCtx) {
 
 func (node *_RouteNode) addChild(c *_RouteNode) {
 	node.nl = append(node.nl, c)
-
+	c.parent = node
+	sort.Slice(node.nl, func(i, j int) bool { return node.nl[i].name < node.nl[j].name })
 }
 
 func (node *_RouteNode) getChild(name string) *_RouteNode {
-	for _, n := range node.nl {
+	i, j := 0, len(node.nl)
+	if j < 6 {
+		for _, n := range node.nl {
+			if n.name == name {
+				return n
+			}
+		}
+		return nil
+	}
+
+	for i < j {
+		h := int(uint(i+j) >> 1)
+		n := node.nl[h]
 		if n.name == name {
 			return n
+		}
+		if n.name < name {
+			i = h + 1
+		} else {
+			j = h
 		}
 	}
 	return nil

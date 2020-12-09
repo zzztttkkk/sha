@@ -16,7 +16,7 @@ func makeTestHandler(id int) RequestHandler {
 func Test_Mux_AddHandler(t *testing.T) {
 	m := NewMux("", nil)
 	m.AutoOptions = true
-	m.AutoRedirect = true
+	m.AutoSlashRedirect = true
 
 	//rawHandlerMap.REST("GET", "/current:*", h)
 	m.REST("GET", "/", makeTestHandler(0))
@@ -31,8 +31,8 @@ func Test_Mux_AddHandler(t *testing.T) {
 	m.REST("GET", "/fi/", makeTestHandler(1))
 	m.REST("GET", "/虎虎虎/", makeTestHandler(1))
 
-	s := Default(m)
-
 	m.Print(false, false)
+
+	s := Default(m)
 	s.ListenAndServe()
 }

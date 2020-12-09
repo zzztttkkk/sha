@@ -8,7 +8,7 @@ import (
 
 func main() {
 	mux := suna.NewMux("", nil)
-	mux.AutoRedirect = true
+	mux.AutoSlashRedirect = true
 	mux.AutoOptions = true
 
 	mux.Use(

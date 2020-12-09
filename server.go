@@ -75,7 +75,10 @@ func Default(handler RequestHandler) *Server {
 }
 
 func (s *Server) doListen() net.Listener {
-	listener, err := net.Listen("tcp4", fmt.Sprintf("%s:%d", s.Host, s.Port))
+	addr := fmt.Sprintf("%s:%d", s.Host, s.Port)
+	log.Printf("suna: listening at `%s`\n", addr)
+
+	listener, err := net.Listen("tcp4", addr)
 	if err != nil {
 		panic(err)
 	}

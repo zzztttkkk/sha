@@ -20,15 +20,16 @@ type _Mux struct {
 
 	prefix string
 	m      map[string]*_RouteNode
-	rm     map[string]map[string]RequestHandler
+	trees  []*_RouteNode
+	rawMap map[string]map[string]RequestHandler
 
 	optionsMap map[string]*_RouteNode
 
 	// unlike "Cors", "AutoOptions" only runs when the request is same origin and method == "OPTIONS"
-	AutoOptions  bool
-	AutoRedirect bool
-	cors         *CorsOptions
-	docs         map[string]map[string]string
+	AutoOptions       bool
+	AutoSlashRedirect bool
+	cors              *CorsOptions
+	docs              map[string]map[string]string
 }
 
 var _ Router = &_Mux{}
@@ -37,7 +38,7 @@ func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 	mux := &_Mux{
 		prefix: prefix,
 		m:      map[string]*_RouteNode{},
-		rm:     map[string]map[string]RequestHandler{},
+		rawMap: map[string]map[string]RequestHandler{},
 		cors:   corsOptions,
 		docs:   map[string]map[string]string{},
 	}
@@ -110,7 +111,7 @@ func (mux *_Mux) Print(showHandler, showMiddleware bool) {
 	}
 
 	var ms []*_M
-	for m, v := range mux.rm {
+	for m, v := range mux.rawMap {
 		ms = append(ms, &_M{method: m, m: v})
 	}
 	sort.Slice(ms, func(i, j int) bool { return ms[i].method < ms[j].method })
@@ -150,11 +151,11 @@ func (mux *_Mux) doAddHandler(method, path string, handler RequestHandler) {
 	mux.doAddHandler1(method, path, handler, false)
 }
 
-func (mux *_Mux) arm(method, path string, handler RequestHandler) {
-	m := mux.rm[method]
+func (mux *_Mux) addToRawMap(method, path string, handler RequestHandler) {
+	m := mux.rawMap[method]
 	if len(m) < 1 {
 		m = map[string]RequestHandler{}
-		mux.rm[method] = m
+		mux.rawMap[method] = m
 	}
 	m[path] = handler
 }
@@ -164,7 +165,7 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 	if e != nil || len(u.RawQuery) != 0 || len(u.Fragment) != 0 {
 		panic(fmt.Errorf("suna.mux: bad path value `%s`", path))
 	}
-	defer mux.arm(method, path, handler)
+	defer mux.addToRawMap(method, path, handler)
 
 	if doWrap {
 		handler = mux.wrap(handler)
@@ -181,8 +182,8 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 	tree.addHandler(strings.Split(path, "/"), handler, path, false, "", &newNode)
 	tree.freezeParams()
 
-	if mux.AutoRedirect && method != "OPTIONS" {
-		mux.autoRedirect(newNode, path)
+	if mux.AutoSlashRedirect && method != "OPTIONS" {
+		mux.autoSlashRedirect(newNode)
 	}
 
 	if mux.AutoOptions && method != "OPTIONS" {
@@ -263,7 +264,7 @@ func doAutoRectDelSlash(ctx *RequestCtx) {
 	ctx.Response.Header.Set(locationHeader, path[:len(path)-1])
 }
 
-func (mux *_Mux) autoRedirect(newNode *_RouteNode, path string) {
+func (mux *_Mux) autoSlashRedirect(newNode *_RouteNode) {
 	var _n *_RouteNode
 
 	if newNode.name == "" {
