@@ -2,7 +2,7 @@ package rbac
 
 import (
 	"context"
-	"github.com/zzztttkkk/suna/rbac/internal"
+	"github.com/zzztttkkk/sha/rbac/internal"
 	"html/template"
 )
 

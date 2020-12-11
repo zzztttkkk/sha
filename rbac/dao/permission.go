@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/zzztttkkk/suna/rbac/internal"
-	"github.com/zzztttkkk/suna/rbac/model"
-	"github.com/zzztttkkk/suna/sqlx"
+	"github.com/zzztttkkk/sha/rbac/internal"
+	"github.com/zzztttkkk/sha/rbac/model"
+	"github.com/zzztttkkk/sha/sqlx"
 	"time"
 )
 
@@ -67,7 +67,7 @@ func EnsurePerm(name string) string {
 		sqlx.Data{
 			"created_at":  time.Now().Unix(),
 			"name":        name,
-			"description": fmt.Sprintf("created by `suna.rbac.dao.EnsurePerm`"),
+			"description": fmt.Sprintf("created by `sha.rbac.dao.EnsurePerm`"),
 		},
 	)
 	return name

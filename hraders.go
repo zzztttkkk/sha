@@ -1,4 +1,4 @@
-package suna
+package sha
 
 // copied from https://github.com/valyala/fasthttp/blob/master/headers.go
 // Headers

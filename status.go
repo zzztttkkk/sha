@@ -1,4 +1,4 @@
-package suna
+package sha
 
 import "net/http"
 
@@ -32,7 +32,7 @@ const (
 	StatusPermanentRedirect = 308 // RFC 7538, 3
 
 	StatusBadRequest                   = 400 // RFC 7231, 6.5.1
-	StatusUnauthorized                 = 401 // RFC 7235, 3.1
+	Statushauthorized                 = 401 // RFC 7235, 3.1
 	StatusPaymentRequired              = 402 // RFC 7231, 6.5.2
 	StatusForbidden                    = 403 // RFC 7231, 6.5.3
 	StatusNotFound                     = 404 // RFC 7231, 6.5.4
@@ -59,7 +59,7 @@ const (
 	StatusPreconditionRequired         = 428 // RFC 6585, 3
 	StatusTooManyRequests              = 429 // RFC 6585, 4
 	StatusRequestHeaderFieldsTooLarge  = 431 // RFC 6585, 5
-	StatusUnavailableForLegalReasons   = 451 // RFC 7725, 3
+	StatushavailableForLegalReasons   = 451 // RFC 7725, 3
 
 	StatusInternalServerError           = 500 // RFC 7231, 6.6.1
 	StatusNotImplemented                = 501 // RFC 7231, 6.6.2

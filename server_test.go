@@ -1,12 +1,12 @@
-package suna
+package sha
 
 import (
 	"context"
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/validator"
+	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/validator"
 	"github.com/zzztttkkk/websocket"
 	"regexp"
 	"strconv"

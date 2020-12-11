@@ -32,7 +32,7 @@ func (TestModel) TableColumns(db *sqlx.DB) []string {
 var TestModelOperator *Operator
 
 func init() {
-	OpenWriteableDB("mysql", "root:123456@/suna?parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"))
+	OpenWriteableDB("mysql", "root:123456@/sha?parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"))
 	EnableLogging()
 
 	TestModelOperator = NewOperator(TestModel{})

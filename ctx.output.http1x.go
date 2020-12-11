@@ -1,10 +1,10 @@
-package suna
+package sha
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"html/template"
 	"io"
 	"mime"
@@ -53,8 +53,8 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 	return err
 }
 
-var ErrNilContentLength = fmt.Errorf("suna: nil content length")
-var ErrUnknownResponseStatusCode = fmt.Errorf("suna: ")
+var ErrNilContentLength = fmt.Errorf("sha: nil content length")
+var ErrUnknownResponseStatusCode = fmt.Errorf("sha: ")
 var responseHeaderBufferPool = internal.NewBufferPoll(4096)
 
 func (ctx *RequestCtx) writeHttp1xHeader() error {
@@ -154,7 +154,7 @@ func (ctx *RequestCtx) SetStatus(status int) {
 	ctx.Response.statusCode = status
 }
 
-var ErrNotImpl = errors.New("suna: not implemented")
+var ErrNotImpl = errors.New("sha: not implemented")
 
 func (ctx *RequestCtx) Send() error {
 	switch ctx.Request.version[5] {

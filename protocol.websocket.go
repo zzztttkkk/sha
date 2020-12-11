@@ -1,9 +1,9 @@
-package suna
+package sha
 
 import (
 	"bytes"
 	"context"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/websocket"
 	"log"
 	"net/http"

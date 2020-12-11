@@ -1,9 +1,9 @@
-package suna
+package sha
 
 import (
 	"context"
 	"errors"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"net"
 	"net/http"
 	"strconv"
@@ -244,7 +244,7 @@ func (ctx *RequestCtx) RemoteAddr() net.Addr {
 	return ctx.conn.RemoteAddr()
 }
 
-var ErrRequestHijacked = errors.New("suna: request is already hijacked")
+var ErrRequestHijacked = errors.New("sha: request is already hijacked")
 
 func (ctx *RequestCtx) Hijack() net.Conn {
 	if ctx.hijacked {

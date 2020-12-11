@@ -1,4 +1,4 @@
-module github.com/zzztttkkk/suna
+module github.com/zzztttkkk/sha
 
 go 1.15
 

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"github.com/RoaringBitmap/roaring/roaring64"
 	"github.com/golang/groupcache/lru"
-	"github.com/zzztttkkk/suna/auth"
-	sunainternal "github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/rbac/dao"
+	"github.com/zzztttkkk/sha/auth"
+	shainternal "github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/rbac/dao"
 	"net/http"
 	"strconv"
 	"strings"
@@ -67,14 +67,14 @@ const (
 	any
 )
 
-var ErrPermissionDenied = errors.New("suna.rbac: permission denied")
-var ErrUnknownRole = errors.New("suna.rbac: unexpected role")
-var ErrUnknownPermission = errors.New("suna.rbac: unknown permission")
+var ErrPermissionDenied = errors.New("sha.rbac: permission denied")
+var ErrUnknownRole = errors.New("sha.rbac: unexpected role")
+var ErrUnknownPermission = errors.New("sha.rbac: unknown permission")
 
 func init() {
-	sunainternal.ErrorStatusByValue[ErrUnknownPermission] = http.StatusBadRequest
-	sunainternal.ErrorStatusByValue[ErrPermissionDenied] = http.StatusForbidden
-	sunainternal.ErrorStatusByValue[ErrUnknownRole] = http.StatusInternalServerError
+	shainternal.ErrorStatusByValue[ErrUnknownPermission] = http.StatusBadRequest
+	shainternal.ErrorStatusByValue[ErrPermissionDenied] = http.StatusForbidden
+	shainternal.ErrorStatusByValue[ErrUnknownRole] = http.StatusInternalServerError
 }
 
 func getBitmap(ctx context.Context, subject auth.Subject) *roaring64.Bitmap {

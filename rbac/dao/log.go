@@ -2,9 +2,9 @@ package dao
 
 import (
 	"context"
-	"github.com/zzztttkkk/suna/auth"
-	"github.com/zzztttkkk/suna/rbac/internal"
-	"github.com/zzztttkkk/suna/sqlx"
+	"github.com/zzztttkkk/sha/auth"
+	"github.com/zzztttkkk/sha/rbac/internal"
+	"github.com/zzztttkkk/sha/sqlx"
 )
 
 var LogReadOperation bool

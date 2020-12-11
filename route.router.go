@@ -1,4 +1,4 @@
-package suna
+package sha
 
 type Documenter interface {
 	Document() string

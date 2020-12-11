@@ -1,8 +1,8 @@
-package suna
+package sha
 
 import (
 	"bytes"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"time"
 )
 

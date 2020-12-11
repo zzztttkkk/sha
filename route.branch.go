@@ -1,8 +1,8 @@
-package suna
+package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/suna/validator"
+	"github.com/zzztttkkk/sha/validator"
 	"reflect"
 	"strings"
 )
@@ -51,7 +51,7 @@ func (branch *_RouteBranch) RESTWithForm(method, path string, handler RequestHan
 func (branch *_RouteBranch) AddBranch(prefix string, router Router) {
 	v, ok := router.(*_RouteBranch)
 	if !ok {
-		panic(fmt.Errorf("suna.router: `%v` is not a branch", router))
+		panic(fmt.Errorf("sha.router: `%v` is not a branch", router))
 	}
 	branch.children[prefix] = v
 	v.prefix = prefix

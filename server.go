@@ -1,10 +1,10 @@
-package suna
+package sha
 
 import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"golang.org/x/crypto/acme/autocert"
 	"io"
 	"log"
@@ -85,7 +85,7 @@ func (s *Server) BeforeListening(fn func()) {
 
 func (s *Server) doListen() net.Listener {
 	addr := fmt.Sprintf("%s:%d", s.Host, s.Port)
-	log.Printf("suna: listening at `%s`\n", addr)
+	log.Printf("sha: listening at `%s`\n", addr)
 
 	listener, err := net.Listen("tcp4", addr)
 	if err != nil {
@@ -138,7 +138,7 @@ func (s *Server) doAccept(l net.Listener) {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			log.Printf("suna.server: bad connection: %s\n", err.Error())
+			log.Printf("sha.server: bad connection: %s\n", err.Error())
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {
 					tempDelay = 5 * time.Millisecond

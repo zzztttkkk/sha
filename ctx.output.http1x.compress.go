@@ -1,11 +1,11 @@
-package suna
+package sha
 
 import (
 	"bytes"
 	"github.com/andybalholm/brotli"
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"io"
 )
 

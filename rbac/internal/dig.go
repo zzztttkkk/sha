@@ -1,6 +1,6 @@
 package internal
 
-import "github.com/zzztttkkk/suna/internal"
+import "github.com/zzztttkkk/sha/internal"
 
 var Dig = internal.NewDigContainer()
 

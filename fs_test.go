@@ -1,4 +1,4 @@
-package suna
+package sha
 
 import (
 	"net/http"
@@ -10,7 +10,7 @@ func TestFs(t *testing.T) {
 	mux := NewMux("", nil)
 	mux.StaticFile(
 		"get",
-		"/suna/filename:*",
+		"/sha/filename:*",
 		http.Dir("./"),
 		true,
 		MiddlewareFunc(

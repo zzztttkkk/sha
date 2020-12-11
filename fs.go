@@ -1,6 +1,6 @@
 // copied from `go.stdlib: http/fs.go`
 
-package suna
+package sha
 
 // Copyright 2009 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -12,7 +12,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"io"
 	"mime"
 	"mime/multipart"

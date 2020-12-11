@@ -1,7 +1,7 @@
-package suna
+package sha
 
 import (
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"strconv"
 )
 

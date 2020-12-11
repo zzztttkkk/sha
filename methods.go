@@ -1,4 +1,4 @@
-package suna
+package sha
 
 const (
 	MethodGet     = "GET"     // RFC 7231, 4.3.1

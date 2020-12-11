@@ -1,9 +1,9 @@
-package suna
+package sha
 
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/zzztttkkk/suna/validator"
+	"github.com/zzztttkkk/sha/validator"
 )
 
 func (ctx *RequestCtx) MustValidate(dist interface{}) {

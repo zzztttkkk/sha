@@ -2,10 +2,10 @@ package rbac
 
 import (
 	"context"
-	sunainternal "github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/rbac/dao"
-	"github.com/zzztttkkk/suna/rbac/internal"
-	"github.com/zzztttkkk/suna/sqlx"
+	shainternal "github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/rbac/dao"
+	"github.com/zzztttkkk/sha/rbac/internal"
+	"github.com/zzztttkkk/sha/sqlx"
 )
 
 const root = "rbac.root"
@@ -23,15 +23,15 @@ func grantRoot(subjectID int64) {
 
 	// grant all rbac permissions
 	for _, perm := range dao.Perms(ctx) {
-		sunainternal.Silence(func() { dao.RoleAddPerm(ctx, root, perm.Name) })
+		shainternal.Silence(func() { dao.RoleAddPerm(ctx, root, perm.Name) })
 	}
 
 	// grant role
-	sunainternal.Silence(func() { dao.GrantRole(ctx, root, subjectID) })
+	shainternal.Silence(func() { dao.GrantRole(ctx, root, subjectID) })
 }
 
 func GrantRoot(subjectID int64) {
-	if sunainternal.RbacInited {
+	if shainternal.RbacInited {
 		grantRoot(subjectID)
 		return
 	}

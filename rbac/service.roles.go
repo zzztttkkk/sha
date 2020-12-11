@@ -2,9 +2,9 @@ package rbac
 
 import (
 	"context"
-	"github.com/zzztttkkk/suna/rbac/dao"
-	"github.com/zzztttkkk/suna/rbac/internal"
-	"github.com/zzztttkkk/suna/sqlx"
+	"github.com/zzztttkkk/sha/rbac/dao"
+	"github.com/zzztttkkk/sha/rbac/internal"
+	"github.com/zzztttkkk/sha/sqlx"
 	"net/http"
 )
 

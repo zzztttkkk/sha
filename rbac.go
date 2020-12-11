@@ -1,7 +1,7 @@
-package suna
+package sha
 
 import (
-	"github.com/zzztttkkk/suna/rbac"
+	"github.com/zzztttkkk/sha/rbac"
 	"log"
 )
 

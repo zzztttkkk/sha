@@ -3,7 +3,7 @@ package validator
 import (
 	"fmt"
 	"github.com/jmoiron/sqlx/reflectx"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"log"
 	"reflect"
 	"strings"
@@ -76,7 +76,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			rule.indirectCustomField = true
 		} else {
 			log.Printf(
-				"suna.validator: number is non-64bit value or unsupported type, `%s:%s.%s`\n",
+				"sha.validator: number is non-64bit value or unsupported type, `%s:%s.%s`\n",
 				t.PkgPath(), t.Name(), f.Name,
 			)
 			return nil
@@ -97,13 +97,13 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			rule.reg = regexpMap[val]
 			rule.regName = val
 			if rule.reg == nil {
-				panic(fmt.Errorf("suna.validator: unregistered regexp `%s`", val))
+				panic(fmt.Errorf("sha.validator: unregistered regexp `%s`", val))
 			}
 		case "F", "f", "filter":
 			rule.fn = bytesFilterMap[val]
 			rule.fnName = val
 			if rule.fn == nil {
-				panic(fmt.Errorf("suna.validator: unregistered bytes filter `%s`", val))
+				panic(fmt.Errorf("sha.validator: unregistered bytes filter `%s`", val))
 			}
 		case "L", "l", "length":
 			rule.fLR = true
@@ -119,7 +119,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			if rule.minLV == nil && rule.maxLV == nil {
 				panic(
 					fmt.Errorf(
-						"suna.validator: bad length range value, field: `%s:%s.%s`, tag value: `%s`",
+						"sha.validator: bad length range value, field: `%s:%s.%s`, tag value: `%s`",
 						t.PkgPath(), t.Name(), f.Field.Name, val,
 					),
 				)
@@ -165,7 +165,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			if err {
 				panic(
 					fmt.Errorf(
-						"suna.validator: bad value range value, field: `%s:%s.%s`, tag value: `%s`",
+						"sha.validator: bad value range value, field: `%s:%s.%s`, tag value: `%s`",
 						t.PkgPath(), t.Name(), f.Field.Name, val,
 					),
 				)
@@ -184,7 +184,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			if rule.minSSV == nil && rule.maxSSV == nil {
 				panic(
 					fmt.Errorf(
-						"suna.validator: bad slice size range value, field: `%s:%s.%s`, tag value: `%s`",
+						"sha.validator: bad slice size range value, field: `%s:%s.%s`, tag value: `%s`",
 						t.PkgPath(), t.Name(), f.Field.Name, val,
 					),
 				)

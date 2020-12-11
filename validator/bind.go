@@ -3,7 +3,7 @@ package validator
 import (
 	"bytes"
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"net/http"
 	"reflect"
 )
@@ -105,7 +105,7 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 			ret, ok = rule.toCustomField(data)
 		}
 	default:
-		panic(fmt.Errorf("suna.validator: unexpected rule type"))
+		panic(fmt.Errorf("sha.validator: unexpected rule type"))
 	}
 	if ok {
 		filed.Set(reflect.ValueOf(ret))
@@ -191,7 +191,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 		}
 		ret = lst
 	default:
-		panic(fmt.Errorf("suna.validator: unexpected rule type"))
+		panic(fmt.Errorf("sha.validator: unexpected rule type"))
 	}
 
 	v := reflect.ValueOf(ret)

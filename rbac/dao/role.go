@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/suna/auth"
-	sunainternal "github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/rbac/internal"
-	"github.com/zzztttkkk/suna/rbac/model"
-	"github.com/zzztttkkk/suna/sqlx"
+	"github.com/zzztttkkk/sha/auth"
+	shainternal "github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/rbac/internal"
+	"github.com/zzztttkkk/sha/rbac/model"
+	"github.com/zzztttkkk/sha/sqlx"
 	"net/http"
 	"time"
 )
@@ -222,10 +222,10 @@ func GetAllBasedRoleIDs(ctx context.Context, roleID int64) map[int64]struct{} {
 	return ret
 }
 
-var ErrCircularReference = errors.New("suna.rbac: circular reference")
+var ErrCircularReference = errors.New("sha.rbac: circular reference")
 
 func init() {
-	sunainternal.ErrorStatusByValue[ErrCircularReference] = http.StatusInternalServerError
+	shainternal.ErrorStatusByValue[ErrCircularReference] = http.StatusInternalServerError
 }
 
 func RoleInheritFrom(ctx context.Context, role, base string) error {

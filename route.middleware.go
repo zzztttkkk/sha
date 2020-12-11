@@ -1,4 +1,4 @@
-package suna
+package sha
 
 type Middleware interface {
 	Process(ctx *RequestCtx, next func())
@@ -19,7 +19,7 @@ type _MiddlewareNode struct {
 
 func (org *_MiddlewareNode) Use(middleware ...Middleware) {
 	if org.frozen {
-		panic("suna.router: has been frozen")
+		panic("sha.router: has been frozen")
 	}
 	org.local = append(org.local, middleware...)
 }

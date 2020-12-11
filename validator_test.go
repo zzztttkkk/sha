@@ -1,7 +1,7 @@
-package suna
+package sha
 
 import (
-	"github.com/zzztttkkk/suna/auth"
+	"github.com/zzztttkkk/sha/auth"
 	"testing"
 )
 

@@ -1,4 +1,4 @@
-package suna
+package sha
 
 import (
 	"fmt"

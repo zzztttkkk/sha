@@ -34,7 +34,7 @@ func SetLogger(l *log.Logger) {
 }
 
 func init() {
-	logger = log.New(os.Stdout, "suna.sqlx ", log.LstdFlags)
+	logger = log.New(os.Stdout, "sha.sqlx ", log.LstdFlags)
 }
 
 func bindNamedargs(exe Executor, q string, namedargs interface{}) (string, []interface{}) {

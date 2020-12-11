@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/zzztttkkk/suna"
+	"github.com/zzztttkkk/sha"
 	"simple/h"
 	"simple/services/a"
 )
 
 func main() {
-	mux := suna.NewMux("", nil)
+	mux := sha.NewMux("", nil)
 	mux.AutoSlashRedirect = true
 	mux.AutoOptions = true
 
@@ -17,7 +17,7 @@ func main() {
 		h.NewPrintMiddleware("g.m3"),
 	)
 
-	server := suna.Default(mux)
+	server := sha.Default(mux)
 
 	mux.AddBranch("/a", a.Branch)
 

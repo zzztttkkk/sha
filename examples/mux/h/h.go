@@ -2,21 +2,21 @@ package h
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/suna"
+	"github.com/zzztttkkk/sha"
 )
 
-func NewPrintMiddleware(s string) suna.Middleware {
-	return suna.MiddlewareFunc(
-		func(ctx *suna.RequestCtx, next func()) {
+func NewPrintMiddleware(s string) sha.Middleware {
+	return sha.MiddlewareFunc(
+		func(ctx *sha.RequestCtx, next func()) {
 			fmt.Println(s)
 			next()
 		},
 	)
 }
 
-func NewPrintHandler(s string) suna.RequestHandler {
-	return suna.RequestHandlerFunc(
-		func(ctx *suna.RequestCtx) {
+func NewPrintHandler(s string) sha.RequestHandler {
+	return sha.RequestHandlerFunc(
+		func(ctx *sha.RequestCtx) {
 			fmt.Println(s)
 		},
 	)

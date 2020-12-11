@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"net/http"
 )
 
@@ -28,7 +28,7 @@ func (fn Func) Auth(ctx context.Context) (Subject, error) {
 	return fn(ctx)
 }
 
-var ErrUnauthenticatedOperation = errors.New("suna.rbac: unauthenticated operation")
+var ErrUnauthenticatedOperation = errors.New("sha.rbac: unauthenticated operation")
 
 func init() {
 	internal.ErrorStatusByValue[ErrUnauthenticatedOperation] = http.StatusUnauthorized

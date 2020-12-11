@@ -1,11 +1,11 @@
-package suna
+package sha
 
 import (
 	"context"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/zzztttkkk/suna/auth"
-	"github.com/zzztttkkk/suna/rbac"
-	"github.com/zzztttkkk/suna/sqlx"
+	"github.com/zzztttkkk/sha/auth"
+	"github.com/zzztttkkk/sha/rbac"
+	"github.com/zzztttkkk/sha/sqlx"
 	"net/url"
 	"testing"
 )
@@ -19,7 +19,7 @@ func (u _RbacUser) Info() interface{} { return "rbac.TestUser" }
 func init() {
 	sqlx.OpenWriteableDB(
 		"mysql",
-		"root:123456@/suna_test?autocommit=false&parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"),
+		"root:123456@/sha_test?autocommit=false&parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"),
 	)
 }
 

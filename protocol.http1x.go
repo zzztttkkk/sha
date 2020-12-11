@@ -1,8 +1,8 @@
-package suna
+package sha
 
 import (
 	"context"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"io"
 	"net"
 	"time"

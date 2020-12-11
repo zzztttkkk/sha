@@ -3,7 +3,7 @@ package validator
 import (
 	"bytes"
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"html"
 	"reflect"
 	"regexp"

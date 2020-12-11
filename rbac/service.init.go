@@ -3,8 +3,8 @@ package rbac
 import (
 	"context"
 	"github.com/gobuffalo/packr/v2"
-	"github.com/zzztttkkk/suna/rbac/dao"
-	"github.com/zzztttkkk/suna/rbac/internal"
+	"github.com/zzztttkkk/sha/rbac/dao"
+	"github.com/zzztttkkk/sha/rbac/internal"
 	"html/template"
 )
 

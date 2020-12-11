@@ -2,7 +2,7 @@ package model
 
 import (
 	x "github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/suna/sqlx"
+	"github.com/zzztttkkk/sha/sqlx"
 )
 
 type Permission struct {

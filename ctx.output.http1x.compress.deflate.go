@@ -1,8 +1,8 @@
-package suna
+package sha
 
 import (
 	"github.com/klauspost/compress/flate"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"sync"
 )
 

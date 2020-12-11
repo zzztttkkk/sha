@@ -13,7 +13,7 @@ var rdbs []*x.DB
 
 func OpenWriteableDB(drivername, uri string) {
 	if wdb != nil {
-		panic("suna.sqlx: `wdb` is not nil")
+		panic("sha.sqlx: `wdb` is not nil")
 	}
 
 	wdb = x.MustOpen(drivername, uri)
@@ -48,7 +48,7 @@ func WriteableDB(ctx context.Context) context.Context {
 func Tx(ctx context.Context) (nctx context.Context, committer func()) {
 	_tx := ctx.Value(txKey)
 	if _tx != nil {
-		panic(errors.New("suna.sqlx: sub tx is invalid"))
+		panic(errors.New("sha.sqlx: sub tx is invalid"))
 	}
 
 	tx := wdb.MustBegin()

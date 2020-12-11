@@ -1,9 +1,9 @@
-package suna
+package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
-	"github.com/zzztttkkk/suna/validator"
+	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/validator"
 	"log"
 	"net/http"
 	"net/url"
@@ -163,7 +163,7 @@ func (mux *_Mux) addToRawMap(method, path string, handler RequestHandler) {
 func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWrap bool) {
 	u, e := url.Parse(path)
 	if e != nil || len(u.RawQuery) != 0 || len(u.Fragment) != 0 {
-		panic(fmt.Errorf("suna.mux: bad path value `%s`", path))
+		panic(fmt.Errorf("sha.mux: bad path value `%s`", path))
 	}
 	defer mux.addToRawMap(method, path, handler)
 
@@ -172,7 +172,7 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 	}
 
 	if path[0] != '/' {
-		panic(fmt.Errorf("suna.router: error path: `%s`", path))
+		panic(fmt.Errorf("sha.router: error path: `%s`", path))
 	}
 	path = mux.prefix + path
 	path = path[1:]
@@ -214,7 +214,7 @@ func (mux *_Mux) doAutoOptions(method, path string) {
 func (mux *_Mux) AddBranch(prefix string, router Router) {
 	v, ok := router.(*_RouteBranch)
 	if !ok {
-		panic(fmt.Errorf("suna.router: `%v` is not a branch", router))
+		panic(fmt.Errorf("sha.router: `%v` is not a branch", router))
 	}
 	v.prefix = prefix
 	v.root = mux
@@ -433,7 +433,7 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 
 func (mux *_Mux) StaticFile(method, path string, fs http.FileSystem, index bool, middleware ...Middleware) {
 	if !strings.HasSuffix(path, "/filename:*") {
-		panic(fmt.Errorf("suna.router: bad static path"))
+		panic(fmt.Errorf("sha.router: bad static path"))
 	}
 
 	mux.REST(

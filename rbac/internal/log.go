@@ -8,5 +8,5 @@ import (
 var Logger *log.Logger
 
 func init() {
-	Logger = log.New(os.Stderr, "suna.rbac ", log.LstdFlags)
+	Logger = log.New(os.Stderr, "sha.rbac ", log.LstdFlags)
 }

@@ -1,8 +1,8 @@
-package suna
+package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 	"sort"
 	"strings"
 )
@@ -77,7 +77,7 @@ func (node *_RouteNode) addHandler(
 				node.handler = handler
 				node.autoHandler = false
 			} else {
-				panic(fmt.Errorf("suna.router: `%s` conflict with `%s`", raw, node.raw))
+				panic(fmt.Errorf("sha.router: `%s` conflict with `%s`", raw, node.raw))
 			}
 			return node
 		}
@@ -91,7 +91,7 @@ func (node *_RouteNode) addHandler(
 	ind := strings.IndexByte(p, ':')
 	if ind < 0 {
 		if node.paramsStatus == 2 || node.wildcardName != nil {
-			panic(fmt.Errorf("suna.router: `%s` conflict with others", raw))
+			panic(fmt.Errorf("sha.router: `%s` conflict with others", raw))
 		}
 
 		sn := node.getChild(p)
@@ -104,7 +104,7 @@ func (node *_RouteNode) addHandler(
 
 	if ind == 0 {
 		if node.paramsStatus == 2 || node.wildcardName != nil {
-			panic(fmt.Errorf("suna.router: `%s` conflict with others", raw))
+			panic(fmt.Errorf("sha.router: `%s` conflict with others", raw))
 		}
 
 		node.paramsStatus = 1
@@ -114,11 +114,11 @@ func (node *_RouteNode) addHandler(
 	}
 
 	if len(node.children) != 0 || len(node.params) != 0 || len(node.wildcardName) != 0 {
-		panic(fmt.Errorf("suna.router: `%s` conflict with others", raw))
+		panic(fmt.Errorf("sha.router: `%s` conflict with others", raw))
 	}
 
 	if !strings.HasSuffix(p, ":*") {
-		panic(fmt.Errorf("suna.router: bad path value `%s`", raw))
+		panic(fmt.Errorf("sha.router: bad path value `%s`", raw))
 	}
 
 	node.wildcardName = []byte(p[:len(p)-2])

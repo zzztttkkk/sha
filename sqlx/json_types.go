@@ -4,7 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"github.com/zzztttkkk/suna/internal"
+	"github.com/zzztttkkk/sha/internal"
 )
 
 type Bytes []byte
@@ -57,7 +57,7 @@ type JsonArray []interface{}
 
 var emptyJsonArrayBytes = []byte("[]")
 
-var ErrJsonValue = errors.New("suna.sqlx: json value error")
+var ErrJsonValue = errors.New("sha.sqlx: json value error")
 
 func (a JsonArray) Value() (driver.Value, error) {
 	if len(a) == 0 {

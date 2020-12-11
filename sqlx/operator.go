@@ -86,7 +86,7 @@ func (op *Operator) CreateTable(forEveryDB bool) {
 	if !fnV.IsValid() {
 		panic(
 			fmt.Errorf(
-				"suna.sqlx: `%s.%s` does not have a method named `TableColumns`",
+				"sha.sqlx: `%s.%s` does not have a method named `TableColumns`",
 				op.ele.Type().PkgPath(),
 				op.ele.Type().Name(),
 			),
@@ -110,7 +110,7 @@ func (op *Operator) simpleSelect(group, cond string) string {
 		keys := op.info.groups[group]
 		lastInd := len(keys) - 1
 		if lastInd < 0 {
-			panic(fmt.Errorf("suna.sqlx: empty group `%s`", group))
+			panic(fmt.Errorf("sha.sqlx: empty group `%s`", group))
 		}
 		i := 0
 		for v := range keys {
@@ -296,7 +296,7 @@ func (op *Operator) InsertWithReturning(ctx context.Context, data Data, returnin
 	}
 }
 
-var ErrDeleteWithoutCondition = errors.New("suna.sqlx: delete without condition")
+var ErrDeleteWithoutCondition = errors.New("sha.sqlx: delete without condition")
 
 func (op *Operator) Delete(ctx context.Context, cond string, namedargs interface{}) sql.Result {
 	if len(cond) < 1 {

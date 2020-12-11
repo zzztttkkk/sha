@@ -1,17 +1,17 @@
 package c
 
 import (
-	"github.com/zzztttkkk/suna"
+	"github.com/zzztttkkk/sha"
 	"simple/h"
 )
 
-var Branch = suna.NewBranch()
+var Branch = sha.NewBranch()
 
 type _H struct {
 	Name string
 }
 
-func (h *_H) Handle(ctx *suna.RequestCtx) {
+func (h *_H) Handle(ctx *sha.RequestCtx) {
 	_, _ = ctx.WriteString(h.Name)
 }
 

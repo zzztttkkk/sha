@@ -1,12 +1,12 @@
 package b
 
 import (
-	"github.com/zzztttkkk/suna"
+	"github.com/zzztttkkk/sha"
 	"simple/h"
 	"simple/services/a/b/c"
 )
 
-var Branch = suna.NewBranch()
+var Branch = sha.NewBranch()
 
 func init() {
 	Branch.AddBranch("/c", c.Branch)
