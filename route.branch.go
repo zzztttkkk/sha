@@ -17,6 +17,8 @@ type _RouteBranch struct {
 	children     map[string]*_RouteBranch
 }
 
+var _ Router = (*_RouteBranch)(nil)
+
 func (branch *_RouteBranch) REST(method, path string, handler RequestHandler) {
 	method = strings.ToUpper(method)
 	m := branch.allHandlers[method]

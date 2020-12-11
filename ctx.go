@@ -2,6 +2,7 @@ package suna
 
 import (
 	"context"
+	"errors"
 	"github.com/zzztttkkk/suna/internal"
 	"net"
 	"net/http"
@@ -11,10 +12,13 @@ import (
 )
 
 type Request struct {
-	Header Header
-	Method []byte
-	Path   []byte
-	Params internal.Kvs
+	Header  Header
+	Method  []byte
+	_method _Method
+
+	RawPath []byte
+	Path    []byte
+	Params  internal.Kvs
 
 	cookies internal.Kvs
 	query   Form
@@ -24,7 +28,6 @@ type Request struct {
 	queryStatus   int // >2: `?` index; 1: parsed; 0 empty
 	bodyStatus    int // 0: unparsed; 1: unsupported content type; 2: parsed
 	cookieParsed  bool
-	rawPath       []byte
 	version       []byte
 	bodyBufferPtr *[]byte
 
@@ -46,7 +49,7 @@ func (req *Request) Reset() {
 	req.cookieParsed = false
 	req.queryStatus = 0
 	req.bodyStatus = 0
-	req.rawPath = req.rawPath[:0]
+	req.RawPath = req.RawPath[:0]
 	req.version = req.version[:0]
 	req.bodyBufferPtr = nil
 	req.wsSubP = nil
@@ -90,7 +93,7 @@ type Response struct {
 	statusCode int
 	Header     Header
 
-	buf               []byte
+	buf               *internal.Buf
 	compressWriter    WriteFlusher
 	newCompressWriter func(response *Response) WriteFlusher
 
@@ -101,7 +104,7 @@ func (res *Response) Write(p []byte) (int, error) {
 	if res.compressWriter != nil {
 		return res.compressWriter.Write(p)
 	}
-	res.buf = append(res.buf, p...)
+	res.buf.Data = append(res.buf.Data, p...)
 	return len(p), nil
 }
 
@@ -114,7 +117,7 @@ func (res *Response) ResetBodyBuffer() {
 		_ = res.compressWriter.Flush()
 		res.compressWriter = res.newCompressWriter(res)
 	}
-	res.buf = res.buf[:0]
+	res.buf.Data = res.buf.Data[:0]
 }
 
 type _SameSiteVal string
@@ -201,7 +204,7 @@ func (res *Response) reset() {
 		res.compressWriter = nil
 		res.newCompressWriter = nil
 	}
-	res.buf = res.buf[:0]
+	res.buf.Data = res.buf.Data[:0]
 }
 
 type RequestCtx struct {
@@ -211,32 +214,44 @@ type RequestCtx struct {
 
 	protocol *Http1xProtocol
 
-	makeRequestCtx func() context.Context
-
 	// time
 	connTime time.Time
 	reqTime  time.Time
 
 	// writer
-	conn    net.Conn
-	connCtx context.Context
+	conn     net.Conn
+	hijacked bool
 
-	// parse
-	status       int
-	fStatus      int // first line status
-	fLSize       int // first line size
-	hSize        int // header lines size
-	buf          []byte
-	cHKey        []byte // current header key
-	cHKeyDoUpper bool   // prev byte is '-' or first byte
-	kvSep        bool   // `:`
-	bodyRemain   int
-	bodySize     int
-	hijacked     bool
+	// parser
+	status           int
+	fStatus          int // first line status
+	firstLineSize    int // first line size
+	headersSize      int // header lines size
+	buf              []byte
+	currentHeaderKey []byte // current header key
+	cHKeyDoUpper     bool   // prev byte is '-' or first byte
+	headerKVSepRead  bool   // `:`
+	bodyRemain       int
+	bodySize         int
+}
+
+type MutexRequestCtx struct {
+	sync.Mutex
+	*RequestCtx
 }
 
 func (ctx *RequestCtx) RemoteAddr() net.Addr {
 	return ctx.conn.RemoteAddr()
+}
+
+var ErrRequestHijacked = errors.New("suna: request is already hijacked")
+
+func (ctx *RequestCtx) Hijack() net.Conn {
+	if ctx.hijacked {
+		panic(ErrRequestHijacked)
+	}
+	ctx.hijacked = true
+	return ctx.conn
 }
 
 const lowerUpgradeHeader = "upgrade"
@@ -270,12 +285,12 @@ func (ctx *RequestCtx) Reset() {
 
 	ctx.status = 0
 	ctx.fStatus = 0
-	ctx.fLSize = 0
-	ctx.hSize = 0
+	ctx.firstLineSize = 0
+	ctx.headersSize = 0
 	ctx.buf = ctx.buf[:0]
-	ctx.cHKey = ctx.cHKey[:0]
+	ctx.currentHeaderKey = ctx.currentHeaderKey[:0]
 	ctx.cHKeyDoUpper = false
-	ctx.kvSep = false
+	ctx.headerKVSepRead = false
 	ctx.bodySize = -1
 	ctx.bodyRemain = -1
 }
@@ -287,23 +302,10 @@ func AcquireRequestCtx() *RequestCtx {
 	return v
 }
 
-var MaxRequestCtxPooledBufferSize = 1024 * 4
-
 func ReleaseRequestCtx(ctx *RequestCtx) {
 	ctx.Reset()
-	// request body buffer
-	if cap(ctx.buf) > MaxRequestCtxPooledBufferSize {
-		ctx.buf = nil
-	}
-	// response body buffer
-	if cap(ctx.Response.buf) > MaxRequestCtxPooledBufferSize {
-		ctx.Response.buf = nil
-	}
-
-	ctx.makeRequestCtx = nil
+	ctx.Response.buf = nil
 	ctx.conn = nil
-	ctx.connCtx = nil
-
 	ctxPool.Put(ctx)
 }
 

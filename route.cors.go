@@ -7,13 +7,13 @@ import (
 )
 
 type CorsOptions struct {
-	AllowMethods     string
-	AllowHeaders     string
-	ExposeHeaders    string
-	AllowCredentials bool
-	MaxAge           int64
-	CheckOrigin      func(origin []byte) bool
-	OnForbidden      func(ctx *RequestCtx)
+	AllowMethods     string                   `json:"allow_methods" toml:"allow-methods"`
+	AllowHeaders     string                   `json:"allow_headers" toml:"allow-headers"`
+	ExposeHeaders    string                   `json:"expose_headers" toml:"expose-headers"`
+	AllowCredentials bool                     `json:"allow_credentials" toml:"allow-credentials"`
+	MaxAge           int64                    `json:"max_age" toml:"max-age"`
+	CheckOrigin      func(origin []byte) bool `json:"-" toml:"-"`
+	OnForbidden      func(ctx *RequestCtx)    `json:"-" toml:"-"`
 
 	headerKvs [][]byte
 }

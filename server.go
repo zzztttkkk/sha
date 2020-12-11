@@ -13,23 +13,24 @@ import (
 )
 
 type Server struct {
+	Http1xProtocol
+
 	Host                   string
 	Port                   int
 	TlsConfig              *tls.Config
 	BaseCtx                context.Context
 	Handler                RequestHandler
 	MaxConnectionKeepAlive time.Duration
-	Http1xProtocol         Http1xProtocol
 	AutoCompress           bool
 	isTls                  bool
-	beforeListen           []func(server *Server)
+	beforeListen           []func()
 }
 
 type _CtxVKey int
 
 const (
-	CtxServerKey = _CtxVKey(iota)
-	CtxConnKey
+	CtxKeyServer = _CtxVKey(iota)
+	CtxKeyConnection
 )
 
 func Default(handler RequestHandler) *Server {
@@ -42,36 +43,44 @@ func Default(handler RequestHandler) *Server {
 	}
 
 	server.Http1xProtocol.Version = []byte("HTTP/1.1")
-	server.Http1xProtocol.MaxFirstLintSize = 1024 * 4
-	server.Http1xProtocol.MaxHeadersSize = 1024 * 8
-	server.Http1xProtocol.MaxBodySize = 1024 * 1024 * 10
+	server.Http1xProtocol.MaxRequestFirstLineSize = 1024 * 4
+	server.Http1xProtocol.MaxRequestHeaderPartSize = 1024 * 8
+	server.Http1xProtocol.MaxRequestBodySize = 1024 * 1024 * 10
 	server.Http1xProtocol.WriteTimeout = time.Second * 30
 	server.Http1xProtocol.IdleTimeout = time.Second * 30
 	server.Http1xProtocol.ReadBufferSize = 512
+	server.Http1xProtocol.MaxWriteBufferSize = 4096
 
 	server.beforeListen = append(
 		server.beforeListen,
-		func(server *Server) {
-			go func() {
-				time.Sleep(time.Second)
-
-				mux, ok := server.Handler.(*_Mux)
-				if !ok {
-					return
-				}
-				for k, v := range internal.ErrorStatusByValue {
-					mux.RecoverByErr(
-						k,
-						func(sc int) ErrorHandler {
-							return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }
-						}(v),
-					)
-				}
-			}()
+		func() {
+			mux, ok := server.Handler.(*_Mux)
+			if !ok {
+				return
+			}
+			for k, v := range internal.ErrorStatusByValue {
+				mux.RecoverByErr(
+					k,
+					func(sc int) ErrorHandler {
+						return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }
+					}(v),
+				)
+			}
+		},
+		func() {
+			protocol := &server.Http1xProtocol
+			protocol.readBufferPool = internal.NewFixedSizeBufferPoll(
+				protocol.ReadBufferSize, protocol.MaxReadBufferSize,
+			)
+			protocol.writeBufferPool = internal.NewBufferPoll(protocol.MaxWriteBufferSize)
 		},
 	)
 
 	return server
+}
+
+func (s *Server) BeforeListening(fn func()) {
+	s.beforeListen = append(s.beforeListen, fn)
 }
 
 func (s *Server) doListen() net.Listener {
@@ -117,14 +126,14 @@ func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listene
 
 func (s *Server) doAccept(l net.Listener) {
 	for _, fn := range s.beforeListen {
-		fn(s)
+		fn()
 	}
 
 	s.Http1xProtocol.server = s
 	s.Http1xProtocol.handler = s.Handler
 
 	var tempDelay time.Duration
-	ctx := context.WithValue(s.BaseCtx, CtxServerKey, s)
+	ctx := context.WithValue(s.BaseCtx, CtxKeyServer, s)
 
 	for {
 		conn, err := l.Accept()
@@ -146,7 +155,7 @@ func (s *Server) doAccept(l net.Listener) {
 		if s.MaxConnectionKeepAlive > 0 {
 			_ = conn.SetDeadline(time.Now().Add(s.MaxConnectionKeepAlive))
 		}
-		go s.serve(context.WithValue(ctx, CtxConnKey, conn), conn)
+		go s.serve(context.WithValue(ctx, CtxKeyConnection, conn), conn)
 	}
 }
 

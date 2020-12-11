@@ -18,12 +18,10 @@ type _Mux struct {
 	_MiddlewareOrg
 	_Recover
 
-	prefix string
-	m      map[string]*_RouteNode
-	trees  []*_RouteNode
-	rawMap map[string]map[string]RequestHandler
-
-	optionsMap map[string]*_RouteNode
+	prefix            string
+	customMethodTrees map[string]*_RouteNode
+	stdMethodTrees    []*_RouteNode
+	rawMap            map[string]map[string]RequestHandler
 
 	// unlike "Cors", "AutoOptions" only runs when the request is same origin and method == "OPTIONS"
 	AutoOptions       bool
@@ -32,16 +30,18 @@ type _Mux struct {
 	docs              map[string]map[string]string
 }
 
-var _ Router = &_Mux{}
+var _ Router = (*_Mux)(nil)
 
 func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 	mux := &_Mux{
-		prefix: prefix,
-		m:      map[string]*_RouteNode{},
-		rawMap: map[string]map[string]RequestHandler{},
-		cors:   corsOptions,
-		docs:   map[string]map[string]string{},
+		prefix:            prefix,
+		customMethodTrees: map[string]*_RouteNode{},
+		stdMethodTrees:    make([]*_RouteNode, 10),
+		rawMap:            map[string]map[string]RequestHandler{},
+		cors:              corsOptions,
+		docs:              map[string]map[string]string{},
 	}
+
 	if mux.cors != nil {
 		mux.Use(mux.cors)
 	}
@@ -204,29 +204,14 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 }
 
 func (mux *_Mux) doAutoOptions(method, path string) {
-	if mux.optionsMap == nil {
-		mux.optionsMap = map[string]*_RouteNode{}
-	}
-
-	var newNode = mux.optionsMap[path]
-	if newNode == nil {
-		mux.getOrNewTree("OPTIONS").addHandler(
-			strings.Split(path, "/"),
-			nil,
-			path,
-			true,
-			method,
-			&newNode,
-		)
-		mux.optionsMap[path] = newNode
-	} else {
-		newNode.addMethod(method)
-	}
-
-	if newNode.handler != nil {
-		newNode.handler = RequestHandlerFunc(newNode.handleOptions)
-		newNode.autoHandler = true
-	}
+	mux.getOrNewTree("OPTIONS").addHandler(
+		strings.Split(path, "/"),
+		nil,
+		path,
+		true,
+		method,
+		nil,
+	)
 }
 
 func (mux *_Mux) AddBranch(prefix string, router Router) {
@@ -242,10 +227,40 @@ func (mux *_Mux) AddBranch(prefix string, router Router) {
 }
 
 func (mux *_Mux) getOrNewTree(method string) *_RouteNode {
-	n, ok := mux.m[method]
+	ind := 0
+
+	switch method {
+	case "GET":
+		ind = 1
+	case "HEAD":
+		ind = 2
+	case "POST":
+		ind = 3
+	case "PUT":
+		ind = 4
+	case "PATCH":
+		ind = 5
+	case "DELETE":
+		ind = 6
+	case "CONNECT":
+		ind = 7
+	case "OPTIONS":
+		ind = 8
+	case "TRACE":
+		ind = 9
+	}
+
+	if ind != 0 {
+		if mux.stdMethodTrees[ind] == nil {
+			mux.stdMethodTrees[ind] = &_RouteNode{}
+		}
+		return mux.stdMethodTrees[ind]
+	}
+
+	n, ok := mux.customMethodTrees[method]
 	if !ok {
 		n = &_RouteNode{}
-		mux.m[method] = n
+		mux.customMethodTrees[method] = n
 	}
 	return n
 }
@@ -321,9 +336,15 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 	defer mux.doRecover(ctx)
 
 	req := &ctx.Request
-	tree := mux.m[internal.S(req.Method)]
+
+	var tree *_RouteNode
+	if req._method == _MCustom {
+		tree = mux.customMethodTrees[string(req.Method)]
+	} else {
+		tree = mux.stdMethodTrees[req._method]
+	}
 	if tree == nil {
-		ctx.SetStatus(http.StatusMethodNotAllowed)
+		ctx.SetStatus(http.StatusNotFound)
 		return
 	}
 

@@ -12,7 +12,7 @@ type _DeflateW struct {
 }
 
 func (defW *_DeflateW) setPtr(ptr *Response) {
-	defW._ResponseBufWrapper.res = ptr
+	defW._ResponseBufWrapper.buf = ptr.buf
 }
 
 func (defW *_DeflateW) Write(p []byte) (int, error) {

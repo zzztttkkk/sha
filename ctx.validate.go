@@ -37,18 +37,3 @@ func (ctx *RequestCtx) MustValidateJSON(dist interface{}) {
 		panic(err)
 	}
 }
-
-type _ValidateHandler struct {
-	rules validator.Rules
-	fn    func(ctx *RequestCtx)
-}
-
-var _ DocedRequestHandler = &_ValidateHandler{}
-
-func (h *_ValidateHandler) Document() string {
-	return h.rules.String()
-}
-
-func (h *_ValidateHandler) Handle(ctx *RequestCtx) {
-	h.fn(ctx)
-}

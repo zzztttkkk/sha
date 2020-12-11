@@ -12,7 +12,7 @@ type _GzipW struct {
 }
 
 func (gW *_GzipW) setPtr(ptr *Response) {
-	gW._ResponseBufWrapper.res = ptr
+	gW._ResponseBufWrapper.buf = ptr.buf
 }
 
 func (gW *_GzipW) Write(p []byte) (int, error) {

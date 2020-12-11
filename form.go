@@ -120,7 +120,7 @@ func (files FormFiles) GetAll(name []byte) []*FormFile {
 }
 
 func (req *Request) parseQuery() {
-	req.query.ParseUrlEncoded(req.rawPath[req.queryStatus-1:])
+	req.query.ParseUrlEncoded(req.RawPath[req.queryStatus-1:])
 	req.queryStatus = 1
 }
 

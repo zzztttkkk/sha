@@ -11,8 +11,6 @@ import (
 	"strconv"
 )
 
-var responseHeaderBufferPool = internal.NewBufferPoll(4096)
-
 var newline = []byte("\r\n")
 var headerKVSep = []byte(": ")
 
@@ -40,7 +38,7 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 		res.compressWriter = nil
 	}
 
-	res.Header.SetContentLength(int64(len(res.buf)))
+	res.Header.SetContentLength(int64(len(res.buf.Data)))
 	if !res.headerWritten {
 		err := ctx.writeHttp1xHeader()
 		if err != nil {
@@ -51,12 +49,13 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 		return err
 	}
 
-	_, err := ctx.conn.Write(ctx.Response.buf)
+	_, err := ctx.conn.Write(ctx.Response.buf.Data)
 	return err
 }
 
 var ErrNilContentLength = fmt.Errorf("suna: nil content length")
 var ErrUnknownResponseStatusCode = fmt.Errorf("suna: ")
+var responseHeaderBufferPool = internal.NewBufferPoll(4096)
 
 func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res := &ctx.Response
@@ -158,7 +157,7 @@ func (ctx *RequestCtx) SetStatus(status int) {
 var ErrNotImpl = errors.New("suna: not implemented")
 
 func (ctx *RequestCtx) Send() error {
-	switch ctx.Request.version[0] {
+	switch ctx.Request.version[5] {
 	case '2':
 		return ErrNotImpl
 	}

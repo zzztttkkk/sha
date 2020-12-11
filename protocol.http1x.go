@@ -9,30 +9,41 @@ import (
 )
 
 type Http1xProtocol struct {
-	Version          []byte
-	MaxFirstLintSize int
-	MaxHeadersSize   int
-	MaxBodySize      int
-	IdleTimeout      time.Duration
-	WriteTimeout     time.Duration
+	Version                  []byte
+	MaxRequestFirstLineSize  int
+	MaxRequestHeaderPartSize int
+	MaxRequestBodySize       int
 
-	OnParseError   func(conn net.Conn, err HttpError) bool // close connection if return true
-	OnWriteError   func(conn net.Conn, err error) bool     // close connection if return true
-	ReadBufferSize int
+	IdleTimeout  time.Duration
+	WriteTimeout time.Duration
+	OnParseError func(conn net.Conn, err HttpError) (shouldCloseConn bool) // close connection if return true
+	OnWriteError func(conn net.Conn, err error) (shouldCloseConn bool)     // close connection if return true
+
+	ReadBufferSize     int
+	MaxReadBufferSize  int
+	MaxWriteBufferSize int
 
 	server  *Server
 	handler RequestHandler
+
+	readBufferPool  *internal.FixedSizeBufferPool
+	writeBufferPool *internal.BufferPool
 }
 
 var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
 
-const closeStr = "close"
+const (
+	closeStr  = "close"
+	http11Str = "1.1"
+)
 
 func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
-	if string(ctx.Request.version) < "1.1" {
+	req := &ctx.Request
+	if string(req.version[5:]) < http11Str {
 		return false
 	}
+
 	connVal, _ := ctx.Request.Header.Get(internal.B(HeaderConnection))
 	if string(inplaceLowercase(connVal)) == closeStr {
 		return false
@@ -50,14 +61,19 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 	var stop bool
 
 	rctx := AcquireRequestCtx()
-	defer ReleaseRequestCtx(rctx)
+	readBuf := protocol.readBufferPool.Get()
+	rctx.Response.buf = protocol.writeBufferPool.Get()
+
+	defer func() {
+		protocol.readBufferPool.Put(readBuf)
+		protocol.writeBufferPool.Put(rctx.Response.buf)
+		ReleaseRequestCtx(rctx)
+	}()
 
 	rctx.conn = conn
 	rctx.connTime = time.Now()
-	rctx.makeRequestCtx = func() context.Context { return ctx }
+	rctx.Context = ctx
 	rctx.protocol = protocol
-
-	buf := make([]byte, protocol.ReadBufferSize)
 
 	sleepDu := time.Millisecond * 10
 	resetIdleTimeout := true
@@ -74,7 +90,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			}
 
 			offset := 0
-			n, err = conn.Read(buf)
+			n, err = conn.Read(readBuf.Data)
 			if err != nil {
 				if err == io.EOF {
 					time.Sleep(sleepDu)
@@ -94,7 +110,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			}
 
 			for offset != n {
-				offset, err = rctx.feedHttp1xReqData(buf, offset, n)
+				offset, err = rctx.feedHttp1xReqData(readBuf.Data, offset, n)
 				if err != nil {
 					if protocol.OnParseError != nil {
 						if protocol.OnParseError(conn, err.(HttpError)) {
@@ -107,36 +123,38 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			}
 
 			if rctx.status == 2 && rctx.bodyRemain < 1 {
-				rctx.initRequest()
-
 				if protocol.server.AutoCompress {
 					rctx.AutoCompress()
 				}
 
 				protocol.handler.Handle(rctx)
 
-				if !rctx.hijacked {
-					if protocol.WriteTimeout > 0 {
-						_ = conn.SetWriteDeadline(time.Now().Add(protocol.WriteTimeout))
-					}
+				if rctx.hijacked {
+					return
+				}
 
-					if protocol.keepalive(rctx) {
-						rctx.Response.Header.Set(internal.B(HeaderConnection), keepAliveStr)
-					}
+				if protocol.WriteTimeout > 0 {
+					_ = conn.SetWriteDeadline(time.Now().Add(protocol.WriteTimeout))
+				}
 
-					if err := rctx.sendHttp1xResponseBuffer(); err != nil {
-						if protocol.OnWriteError != nil {
-							if protocol.OnWriteError(conn, err) {
-								return
-							}
-						} else {
+				if protocol.keepalive(rctx) {
+					rctx.Response.Header.Set(internal.B(HeaderConnection), keepAliveStr)
+				} else {
+					stop = true
+				}
+
+				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
+					if protocol.OnWriteError != nil {
+						if protocol.OnWriteError(conn, err) {
 							return
 						}
+					} else {
+						return
 					}
+				}
 
-					if protocol.WriteTimeout > 0 {
-						_ = conn.SetWriteDeadline(ZeroTime)
-					}
+				if protocol.WriteTimeout > 0 {
+					_ = conn.SetWriteDeadline(ZeroTime)
 				}
 
 				rctx.Reset()

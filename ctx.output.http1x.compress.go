@@ -26,14 +26,14 @@ type WriteFlusher interface {
 }
 
 type _ResponseBufWrapper struct {
-	res *Response
+	buf *internal.Buf
 }
 
 func (w *_ResponseBufWrapper) Write(p []byte) (int, error) {
-	if w.res == nil {
+	if w.buf == nil {
 		return 0, nil
 	}
-	w.res.buf = append(w.res.buf, p...)
+	w.buf.Data = append(w.buf.Data, p...)
 	return len(p), nil
 }
 

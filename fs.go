@@ -532,7 +532,7 @@ func toHTTPError(err error) (httpStatus int) {
 // localRedirect gives a Moved Permanently response.
 // It does not convert relative paths to absolute paths like Redirect does.
 func localRedirect(w *Response, r *Request, newPath string) {
-	if q := internal.S(r.rawPath); len(q) > 0 {
+	if q := internal.S(r.RawPath); len(q) > 0 {
 		newPath += "?" + q
 	}
 	w.Header.Set(internal.B(HeaderLocation), internal.B(newPath))

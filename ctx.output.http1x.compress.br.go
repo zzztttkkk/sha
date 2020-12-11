@@ -12,7 +12,7 @@ type _CompressBrotli struct {
 }
 
 func (brw *_CompressBrotli) setPtr(ptr *Response) {
-	brw._ResponseBufWrapper.res = ptr
+	brw._ResponseBufWrapper.buf = ptr.buf
 }
 
 func (brw *_CompressBrotli) Write(p []byte) (int, error) {
