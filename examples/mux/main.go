@@ -21,6 +21,6 @@ func main() {
 
 	mux.AddBranch("/a", a.Branch)
 
-	mux.Print(true)
+	mux.Print(true, true)
 	server.ListenAndServe()
 }

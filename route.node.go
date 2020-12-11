@@ -16,8 +16,7 @@ type _RouteNode struct {
 	parent       *_RouteNode
 	name         string
 
-	nl []*_RouteNode
-
+	children    []*_RouteNode
 	methods     []byte
 	autoHandler bool
 }
@@ -34,15 +33,15 @@ func (node *_RouteNode) handleOptions(ctx *RequestCtx) {
 }
 
 func (node *_RouteNode) addChild(c *_RouteNode) {
-	node.nl = append(node.nl, c)
+	node.children = append(node.children, c)
 	c.parent = node
-	sort.Slice(node.nl, func(i, j int) bool { return node.nl[i].name < node.nl[j].name })
+	sort.Slice(node.children, func(i, j int) bool { return node.children[i].name < node.children[j].name })
 }
 
 func (node *_RouteNode) getChild(name string) *_RouteNode {
-	i, j := 0, len(node.nl)
+	i, j := 0, len(node.children)
 	if j < 6 {
-		for _, n := range node.nl {
+		for _, n := range node.children {
 			if n.name == name {
 				return n
 			}
@@ -52,7 +51,7 @@ func (node *_RouteNode) getChild(name string) *_RouteNode {
 
 	for i < j {
 		h := int(uint(i+j) >> 1)
-		n := node.nl[h]
+		n := node.children[h]
 		if n.name == name {
 			return n
 		}
@@ -67,27 +66,25 @@ func (node *_RouteNode) getChild(name string) *_RouteNode {
 
 func (node *_RouteNode) addHandler(
 	path []string, handler RequestHandler, raw string,
-	isAutoHandler bool, method string,
-	newNodePtr **_RouteNode,
-) {
+) *_RouteNode {
 	if len(path) < 1 {
-		if newNodePtr != nil {
-			*newNodePtr = node
+		if handler == nil {
+			return node
 		}
 
-		if isAutoHandler {
-			node.handler = handler
-			if len(method) > 0 {
-				node.addMethod(method)
+		if node.handler != nil {
+			if node.autoHandler {
+				node.handler = handler
+				node.autoHandler = false
+			} else {
+				panic(fmt.Errorf("suna.router: `%s` conflict with `%s`", raw, node.raw))
 			}
-		} else {
-			if node.handler != nil && !node.autoHandler {
-				panic(fmt.Errorf("suna.router: `%s` conflict with others", raw))
-			}
-			node.handler = handler
-			node.raw = raw
+			return node
 		}
-		return
+
+		node.handler = handler
+		node.raw = raw
+		return node
 	}
 
 	p := path[0]
@@ -102,8 +99,7 @@ func (node *_RouteNode) addHandler(
 			sn = &_RouteNode{name: p, parent: node}
 			node.addChild(sn)
 		}
-		sn.addHandler(path[1:], handler, raw, isAutoHandler, method, newNodePtr)
-		return
+		return sn.addHandler(path[1:], handler, raw)
 	}
 
 	if ind == 0 {
@@ -113,11 +109,11 @@ func (node *_RouteNode) addHandler(
 
 		node.paramsStatus = 1
 		node.params = append(node.params, []byte(p[1:]))
-		node.addHandler(path[1:], handler, raw, isAutoHandler, method, newNodePtr)
-		return
+
+		return node.addHandler(path[1:], handler, raw)
 	}
 
-	if len(node.nl) != 0 || len(node.params) != 0 || len(node.wildcardName) != 0 {
+	if len(node.children) != 0 || len(node.params) != 0 || len(node.wildcardName) != 0 {
 		panic(fmt.Errorf("suna.router: `%s` conflict with others", raw))
 	}
 
@@ -126,14 +122,14 @@ func (node *_RouteNode) addHandler(
 	}
 
 	node.wildcardName = []byte(p[:len(p)-2])
-	node.addHandler(nil, handler, raw, isAutoHandler, method, newNodePtr)
+	return node.addHandler(nil, handler, raw)
 }
 
 func (node *_RouteNode) freezeParams() {
 	if node.paramsStatus == 1 {
 		node.paramsStatus = 2
 	}
-	for _, n := range node.nl {
+	for _, n := range node.children {
 		n.freezeParams()
 	}
 }
@@ -166,7 +162,7 @@ func (node *_RouteNode) find(path []byte, kvs *internal.Kvs, paramsC *int) (int,
 				continue
 			}
 
-			if len(n.nl) < 1 {
+			if len(n.children) < 1 {
 				return prevI, nil
 			}
 
@@ -198,7 +194,7 @@ func (node *_RouteNode) find(path []byte, kvs *internal.Kvs, paramsC *int) (int,
 		return i, n
 	}
 
-	if len(n.nl) < 1 {
+	if len(n.children) < 1 {
 		return prevI, nil
 	}
 

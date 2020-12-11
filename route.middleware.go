@@ -10,30 +10,30 @@ func (fn MiddlewareFunc) Process(ctx *RequestCtx, next func()) {
 	fn(ctx, next)
 }
 
-type _MiddlewareOrg struct {
-	local      []Middleware
-	allM       []Middleware
-	parentMOrg *_MiddlewareOrg
-	freezen    bool
+type _MiddlewareNode struct {
+	local        []Middleware
+	allM         []Middleware
+	parentMwNode *_MiddlewareNode
+	frozen       bool
 }
 
-func (org *_MiddlewareOrg) Use(middleware ...Middleware) {
-	if org.freezen {
-		panic("suna.router: router freezen")
+func (org *_MiddlewareNode) Use(middleware ...Middleware) {
+	if org.frozen {
+		panic("suna.router: has been frozen")
 	}
 	org.local = append(org.local, middleware...)
 }
 
-func (org *_MiddlewareOrg) expand() {
+func (org *_MiddlewareNode) expand() {
 	if len(org.allM) > 0 {
 		return
 	}
-	if org.parentMOrg != nil {
-		org.parentMOrg.expand()
-		org.allM = append(org.allM, org.parentMOrg.allM...)
+	if org.parentMwNode != nil {
+		org.parentMwNode.expand()
+		org.allM = append(org.allM, org.parentMwNode.allM...)
 	}
 	org.allM = append(org.allM, org.local...)
-	org.freezen = true
+	org.frozen = true
 }
 
 type _MiddlewareWrapper struct {
@@ -65,7 +65,7 @@ func handlerWithMiddleware(handler RequestHandler, middleware ...Middleware) Req
 	}
 }
 
-func (org *_MiddlewareOrg) wrap(handler RequestHandler) RequestHandler {
+func (org *_MiddlewareNode) wrap(handler RequestHandler) RequestHandler {
 	org.expand()
 	if len(org.allM) < 1 {
 		return handler

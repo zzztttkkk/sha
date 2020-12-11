@@ -15,7 +15,7 @@ import (
 )
 
 type _Mux struct {
-	_MiddlewareOrg
+	_MiddlewareNode
 	_Recover
 
 	prefix            string
@@ -177,13 +177,12 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 	path = mux.prefix + path
 	path = path[1:]
 
-	var newNode *_RouteNode
 	tree := mux.getOrNewTree(method)
-	tree.addHandler(strings.Split(path, "/"), handler, path, false, "", &newNode)
+	newNode := tree.addHandler(strings.Split(path, "/"), handler, path)
 	tree.freezeParams()
 
 	if mux.AutoSlashRedirect && method != "OPTIONS" {
-		mux.autoSlashRedirect(newNode)
+		autoSlashRedirect(newNode)
 	}
 
 	if mux.AutoOptions && method != "OPTIONS" {
@@ -204,14 +203,12 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 }
 
 func (mux *_Mux) doAutoOptions(method, path string) {
-	mux.getOrNewTree("OPTIONS").addHandler(
-		strings.Split(path, "/"),
-		nil,
-		path,
-		true,
-		method,
-		nil,
-	)
+	newNode := mux.getOrNewTree("OPTIONS").addHandler(strings.Split(path, "/"), nil, path)
+	newNode.addMethod(method)
+	if newNode.handler == nil {
+		newNode.autoHandler = true
+		newNode.handler = RequestHandlerFunc(newNode.handleOptions)
+	}
 }
 
 func (mux *_Mux) AddBranch(prefix string, router Router) {
@@ -221,7 +218,7 @@ func (mux *_Mux) AddBranch(prefix string, router Router) {
 	}
 	v.prefix = prefix
 	v.root = mux
-	v._MiddlewareOrg.parentMOrg = &mux._MiddlewareOrg
+	v._MiddlewareNode.parentMwNode = &mux._MiddlewareNode
 
 	v.sinking()
 }
@@ -279,7 +276,7 @@ func doAutoRectDelSlash(ctx *RequestCtx) {
 	ctx.Response.Header.Set(locationHeader, path[:len(path)-1])
 }
 
-func (mux *_Mux) autoSlashRedirect(newNode *_RouteNode) {
+func autoSlashRedirect(newNode *_RouteNode) {
 	var _n *_RouteNode
 
 	if newNode.name == "" {

@@ -8,7 +8,7 @@ import (
 )
 
 type _RouteBranch struct {
-	_MiddlewareOrg
+	_MiddlewareNode
 	allHandlers map[string]map[string]RequestHandler
 
 	root         *_Mux
@@ -55,7 +55,7 @@ func (branch *_RouteBranch) AddBranch(prefix string, router Router) {
 	}
 	branch.children[prefix] = v
 	v.prefix = prefix
-	v._MiddlewareOrg.parentMOrg = &branch._MiddlewareOrg
+	v._MiddlewareNode.parentMwNode = &branch._MiddlewareNode
 	v.parentRouter = branch
 }
 
