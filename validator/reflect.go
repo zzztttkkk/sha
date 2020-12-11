@@ -17,9 +17,12 @@ type Defaulter interface {
 	Default(fieldName string) interface{}
 }
 
+var customFieldType = reflect.TypeOf((*CustomField)(nil)).Elem()
+
 func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string2 string) interface{}) *Rule {
 	rule := &Rule{
 		fieldIndex: f.Index,
+		fieldType:  f.Field.Type,
 		formName:   []byte(f.Name),
 		isRequired: true,
 	}
@@ -31,44 +34,53 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 		rule.defaultVal = defaultF(f.Field.Name)
 	}
 
-	ele := reflect.New(f.Field.Type).Elem()
+	elePtr := reflect.New(f.Field.Type)
+	ele := elePtr.Elem()
+
 	switch ele.Interface().(type) {
 	case int64:
-		rule.rtype = Int64
+		rule.rtype = _Int64
 	case uint64:
-		rule.rtype = Uint64
+		rule.rtype = _Uint64
 	case float64:
-		rule.rtype = Float64
+		rule.rtype = _Float64
 	case bool:
-		rule.rtype = Bool
+		rule.rtype = _Bool
 	case string:
-		rule.rtype = String
+		rule.rtype = _String
 	case []byte:
-		rule.rtype = Bytes
+		rule.rtype = _Bytes
 	case [][]byte:
-		rule.rtype = BytesSlice
+		rule.rtype = _BytesSlice
 		rule.isSlice = true
 	case []string:
-		rule.rtype = StringSlice
+		rule.rtype = _StringSlice
 		rule.isSlice = true
 	case []int64:
-		rule.rtype = IntSlice
+		rule.rtype = _IntSlice
 		rule.isSlice = true
 	case []uint64:
-		rule.rtype = UintSlice
+		rule.rtype = _UintSlice
 		rule.isSlice = true
 	case []bool:
-		rule.rtype = BoolSlice
+		rule.rtype = _BoolSlice
 		rule.isSlice = true
 	case []float64:
-		rule.rtype = FloatSlice
+		rule.rtype = _FloatSlice
 		rule.isSlice = true
+	case CustomField:
+		rule.rtype = _CustomType
 	default:
-		log.Printf(
-			"suna.validator: number is non-64bit value or unsupported type, `%s:%s.%s`\n",
-			t.PkgPath(), t.Name(), f.Name,
-		)
-		return nil
+		if elePtr.Type().ConvertibleTo(customFieldType) {
+			rule.rtype = _CustomType
+			rule.indirectCustomField = true
+		} else {
+			log.Printf(
+				"suna.validator: number is non-64bit value or unsupported type, `%s:%s.%s`\n",
+				t.PkgPath(), t.Name(), f.Name,
+			)
+			return nil
+		}
 	}
 
 	for key, val := range f.Options {
@@ -116,7 +128,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			rule.fVR = true
 			var err bool
 			switch rule.rtype {
-			case Int64, IntSlice:
+			case _Int64, _IntSlice:
 				minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 				if minVF {
 					rule.minIV = new(int64)
@@ -127,7 +139,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 					*rule.maxIV = maxV
 				}
 				err = rule.minIV == nil && rule.maxIV == nil
-			case Uint64, UintSlice:
+			case _Uint64, _UintSlice:
 				minV, maxV, minVF, maxVF := internal.ParseUintRange(val)
 				if minVF {
 					rule.minUV = new(uint64)
@@ -138,7 +150,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 					*rule.maxUV = maxV
 				}
 				err = rule.minUV == nil && rule.maxUV == nil
-			case Float64, FloatSlice:
+			case _Float64, _FloatSlice:
 				minV, maxV, minVF, maxVF := internal.ParseFloatRange(val)
 				if minVF {
 					rule.minDV = new(float64)

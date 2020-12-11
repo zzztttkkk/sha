@@ -75,10 +75,10 @@ const upperhex = "0123456789ABCDEF"
 var noEscapedURI [256]bool
 
 func init() {
-	for b := 'A'; b < 'z'; b++ {
+	for b := 'A'; b <= 'z'; b++ {
 		noEscapedURI[b] = true
 	}
-	for b := '0'; b < '9'; b++ {
+	for b := '0'; b <= '9'; b++ {
 		noEscapedURI[b] = true
 	}
 	for _, b := range ";,/?:@&=+$-_.!~*'()#" {
@@ -99,10 +99,10 @@ func encodeURI(v []byte, buf *[]byte) {
 var noEscapedURIComponent [256]bool
 
 func init() {
-	for b := 'A'; b < 'z'; b++ {
+	for b := 'A'; b <= 'z'; b++ {
 		noEscapedURIComponent[b] = true
 	}
-	for b := '0'; b < '9'; b++ {
+	for b := '0'; b <= '9'; b++ {
 		noEscapedURIComponent[b] = true
 	}
 	for _, b := range "-_.!~*'()" {

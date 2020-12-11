@@ -86,18 +86,24 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 
 	var ret interface{}
 	switch rule.rtype {
-	case Bool:
+	case _Bool:
 		ret, ok = rule.toBool(fv)
-	case Int64:
+	case _Int64:
 		ret, ok = rule.toInt(fv)
-	case Uint64:
+	case _Uint64:
 		ret, ok = rule.toUint(fv)
-	case Float64:
+	case _Float64:
 		ret, ok = rule.toFloat(fv)
-	case Bytes:
+	case _Bytes:
 		ret, ok = rule.toBytes(fv)
-	case String:
+	case _String:
 		ret, ok = rule.toString(fv)
+	case _CustomType:
+		var data []byte
+		data, ok = rule.toBytes(fv)
+		if ok {
+			ret, ok = rule.toCustomField(data)
+		}
 	default:
 		panic(fmt.Errorf("suna.validator: unexpected rule type"))
 	}
@@ -124,7 +130,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 	}
 
 	switch rule.rtype {
-	case BoolSlice:
+	case _BoolSlice:
 		var lst []bool
 		for _, bs := range formVals {
 			a, b := rule.toBool(bs)
@@ -134,7 +140,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 			lst = append(lst, a)
 		}
 		ret = lst
-	case IntSlice:
+	case _IntSlice:
 		var lst []int64
 		for _, bs := range formVals {
 			a, b := rule.toInt(bs)
@@ -144,7 +150,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 			lst = append(lst, a)
 		}
 		ret = lst
-	case UintSlice:
+	case _UintSlice:
 		var lst []uint64
 		for _, bs := range formVals {
 			a, b := rule.toUint(bs)
@@ -154,7 +160,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 			lst = append(lst, a)
 		}
 		ret = lst
-	case FloatSlice:
+	case _FloatSlice:
 		var lst []float64
 		for _, bs := range formVals {
 			a, b := rule.toFloat(bs)
@@ -164,7 +170,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 			lst = append(lst, a)
 		}
 		ret = lst
-	case StringSlice:
+	case _StringSlice:
 		var lst []string
 		for _, bs := range formVals {
 			a, b := rule.toString(bs)
@@ -174,7 +180,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 			lst = append(lst, a)
 		}
 		ret = lst
-	case BytesSlice:
+	case _BytesSlice:
 		var lst [][]byte
 		for _, bs := range formVals {
 			a, b := rule.toBytes(bs)

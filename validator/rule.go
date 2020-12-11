@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/suna/internal"
 	"html"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,19 +14,21 @@ import (
 type _RuleType int
 
 const (
-	Bool = _RuleType(iota)
-	Int64
-	Uint64
-	Float64
-	Bytes
-	String
+	_Bool = _RuleType(iota)
+	_Int64
+	_Uint64
+	_Float64
+	_Bytes
+	_String
 
-	BoolSlice
-	IntSlice
-	UintSlice
-	FloatSlice
-	StringSlice
-	BytesSlice
+	_BoolSlice
+	_IntSlice
+	_UintSlice
+	_FloatSlice
+	_StringSlice
+	_BytesSlice
+
+	_CustomType
 )
 
 var typeNames = []string{
@@ -42,10 +45,15 @@ var typeNames = []string{
 	"FloatArray",
 	"StringArray",
 	"StringArray",
+
+	"CustomType",
 }
 
 type Rule struct {
-	fieldIndex     []int
+	fieldIndex          []int
+	fieldType           reflect.Type
+	indirectCustomField bool
+
 	formName       []byte
 	pathParamsName []byte
 	rtype          _RuleType
@@ -93,8 +101,16 @@ var ruleFmt = internal.NewNamedFmt(
 
 // markdown table row
 func (rule *Rule) String() string {
+	typeString := typeNames[rule.rtype]
+	if rule.rtype == _CustomType {
+		if rule.indirectCustomField {
+			typeString = reflect.New(rule.fieldType).Type().Elem().Name()
+		} else {
+			typeString = rule.fieldType.Name()
+		}
+	}
 	m := internal.M{
-		"type":     typeNames[rule.rtype],
+		"type":     typeString,
 		"required": fmt.Sprintf("%v", rule.isRequired),
 	}
 
@@ -139,7 +155,7 @@ func (rule *Rule) String() string {
 
 	if rule.fVR {
 		switch rule.rtype {
-		case Int64, IntSlice:
+		case _Int64, _IntSlice:
 			if rule.minIV != nil && rule.maxIV != nil {
 				m["vrange"] = fmt.Sprintf("%d-%d", *rule.minIV, *rule.maxIV)
 			} else if rule.minIV != nil {
@@ -149,7 +165,7 @@ func (rule *Rule) String() string {
 			} else {
 				m["vrange"] = "/"
 			}
-		case Uint64, UintSlice:
+		case _Uint64, _UintSlice:
 			if rule.minUV != nil && rule.maxUV != nil {
 				m["vrange"] = fmt.Sprintf("%d-%d", *rule.minUV, *rule.maxUV)
 			} else if rule.minUV != nil {
@@ -159,7 +175,7 @@ func (rule *Rule) String() string {
 			} else {
 				m["vrange"] = "/"
 			}
-		case Float64, FloatSlice:
+		case _Float64, _FloatSlice:
 			if rule.minDV != nil && rule.maxDV != nil {
 				m["vrange"] = fmt.Sprintf("%f-%f", *rule.minDV, *rule.maxDV)
 			} else if rule.minDV != nil {
@@ -338,7 +354,7 @@ type Rules []*Rule
 func (rules Rules) String() string {
 	buf := strings.Builder{}
 
-	buf.WriteString("#### fields\n\n")
+	buf.WriteString("#### fields\n")
 	buf.WriteString(MarkdownTableHeader)
 	for _, r := range rules {
 		buf.WriteString(r.String())

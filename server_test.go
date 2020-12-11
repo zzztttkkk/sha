@@ -2,14 +2,47 @@ package suna
 
 import (
 	"context"
+	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
+	"github.com/zzztttkkk/suna/internal"
 	"github.com/zzztttkkk/suna/validator"
 	"github.com/zzztttkkk/websocket"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 )
+
+type _CustomFormTime time.Time
+
+func (ft *_CustomFormTime) FormValue(v []byte) bool {
+	*ft = _CustomFormTime(time.Now())
+	return true
+}
+
+type _CustomFormInt int64
+
+func (fi *_CustomFormInt) FormValue(v []byte) bool {
+	i, e := strconv.ParseInt(internal.S(v), 10, 64)
+	if e != nil {
+		return false
+	}
+	*fi = _CustomFormInt(i)
+	return true
+}
+
+type Sha5256Hash []byte
+
+func (pwd *Sha5256Hash) FormValue(v []byte) bool {
+	n := sha512.New512_256()
+	n.Write(v)
+	dist := make([]byte, 64)
+	hex.Encode(dist, n.Sum(nil))
+	*pwd = dist
+	return true
+}
 
 func TestServer_Run(t *testing.T) {
 	mux := NewMux("", nil)
@@ -33,16 +66,20 @@ func TestServer_Run(t *testing.T) {
 		}),
 	)
 
-	validator.RegisterRegexp("joineduints", regexp.MustCompile(`\d+(,\d+)*`))
+	validator.RegisterRegexp("joineduints", regexp.MustCompile(`^\d+(,\d+)*$`))
+	validator.RegisterRegexp("password", regexp.MustCompile(`^\w{6,}$`))
 
 	type Form struct {
-		String string `validator:",L=3"`
-		Bytes  []byte `validator:",R=joineduints"`
-		Int    int64  `validator:",V=40-60"`
-		Bool   bool   `validator:",optional"`
+		FormTime _CustomFormTime `validator:"ft"`
+		FormInt  _CustomFormInt  `validator:"fi"`
+		String   string          `validator:",L=3"`
+		Bytes    []byte          `validator:",R=joineduints"`
+		Int      int64           `validator:",V=40-60"`
+		Bool     bool            `validator:",optional"`
+		Password Sha5256Hash     `validator:"pwd,R=password"`
 	}
 
-	mux.REST(
+	mux.RESTWithForm(
 		"get",
 		"/form",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
@@ -51,6 +88,7 @@ func TestServer_Run(t *testing.T) {
 			fmt.Printf("%+v\n", form)
 			_, _ = ctx.WriteString("Hello World!")
 		}),
+		Form{},
 	)
 
 	mux.WebSocket(
