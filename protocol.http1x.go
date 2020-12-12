@@ -13,6 +13,7 @@ type Http1xProtocol struct {
 	MaxRequestFirstLineSize  int
 	MaxRequestHeaderPartSize int
 	MaxRequestBodySize       int
+	NewRequestContext        func(connCtx context.Context) context.Context
 
 	IdleTimeout  time.Duration
 	WriteTimeout time.Duration
@@ -60,7 +61,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 	var n int
 	var stop bool
 
-	rctx := AcquireRequestCtx()
+	rctx := acquireRequestCtx()
 	readBuf := protocol.readBufferPool.Get()
 	rctx.Response.buf = protocol.writeBufferPool.Get()
 
@@ -72,7 +73,6 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 
 	rctx.conn = conn
 	rctx.connTime = time.Now()
-	rctx.Context = ctx
 	rctx.protocol = protocol
 
 	sleepDu := time.Millisecond * 10
@@ -86,7 +86,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			}
 		default:
 			if protocol.IdleTimeout > 0 && resetIdleTimeout {
-				conn.SetReadDeadline(time.Now().Add(protocol.IdleTimeout))
+				_ = conn.SetReadDeadline(time.Now().Add(protocol.IdleTimeout))
 			}
 
 			offset := 0
@@ -105,7 +105,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			}
 
 			if protocol.IdleTimeout > 0 {
-				conn.SetReadDeadline(ZeroTime)
+				_ = conn.SetReadDeadline(ZeroTime)
 				resetIdleTimeout = true
 			}
 
@@ -127,6 +127,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 					rctx.AutoCompress()
 				}
 
+				rctx.Context = protocol.NewRequestContext(ctx)
 				protocol.handler.Handle(rctx)
 
 				if rctx.hijacked {

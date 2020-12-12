@@ -48,7 +48,7 @@ func TestServer_Run(t *testing.T) {
 	mux := NewMux("", nil)
 	mux.AutoOptions = true
 	mux.AutoSlashRedirect = true
-	mux.REST(
+	mux.HTTP(
 		"get",
 		"/compress",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
@@ -57,7 +57,7 @@ func TestServer_Run(t *testing.T) {
 		}),
 	)
 
-	mux.REST(
+	mux.HTTP(
 		"get",
 		"/close",
 		RequestHandlerFunc(func(ctx *RequestCtx) {

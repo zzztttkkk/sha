@@ -11,7 +11,7 @@ type DocedRequestHandler interface {
 }
 
 type Router interface {
-	REST(method, path string, handler RequestHandler)
+	HTTP(method, path string, handler RequestHandler)
 	WebSocket(path string, handler WebSocketHandlerFunc)
 	RESTWithForm(method, path string, handler RequestHandler, form interface{})
 	AddBranch(prefix string, router Router)

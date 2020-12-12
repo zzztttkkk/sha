@@ -17,7 +17,7 @@ func init() {
 		h.NewPrintMiddleware("a.b.m3"),
 	)
 
-	Branch.REST(
+	Branch.HTTP(
 		"get",
 		"/",
 		h.NewPrintHandler("a.b.h"),

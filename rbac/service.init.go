@@ -2,7 +2,6 @@ package rbac
 
 import (
 	"context"
-	"github.com/gobuffalo/packr/v2"
 	"github.com/zzztttkkk/sha/rbac/dao"
 	"github.com/zzztttkkk/sha/rbac/internal"
 	"html/template"
@@ -47,8 +46,6 @@ const (
 
 type _PermOK int
 
-var box *packr.Box
-
 func init() {
 	internal.Dig.Provide(
 		func(router Router, _ internal.DaoOK) _PermOK {
@@ -67,8 +64,6 @@ func init() {
 			dao.EnsurePerm(PermRbacLogin)
 			dao.EnsurePerm(PermGrantRole)
 			dao.EnsurePerm(PermCancelRole)
-
-			box = packr.New("", "./html")
 
 			return 0
 		},

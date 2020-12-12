@@ -22,13 +22,13 @@ func init() {
 		h.NewPrintMiddleware("a.b.c.m3"),
 	)
 
-	Branch.REST(
+	Branch.HTTP(
 		"get",
 		"/",
 		h.NewPrintHandler("a.b.c.h"),
 	)
 
-	Branch.REST(
+	Branch.HTTP(
 		"get",
 		"/h",
 		&_H{Name: "0.0"},

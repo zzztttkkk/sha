@@ -146,3 +146,12 @@ func ParseFloatRange(s string) (float64, float64, bool, bool) {
 	}
 	return minV, maxV, true, true
 }
+
+func StrSliceContains(ss []string, s string) bool {
+	for _, v := range ss {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}

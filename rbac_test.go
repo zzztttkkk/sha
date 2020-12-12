@@ -28,7 +28,7 @@ func Test_Rbac(t *testing.T) {
 	server := Default(mux)
 	mux.HandleDoc("get", "/doc")
 
-	mux.REST(
+	mux.HTTP(
 		"get",
 		"/redirect33",
 		RequestHandlerFunc(func(ctx *RequestCtx) {

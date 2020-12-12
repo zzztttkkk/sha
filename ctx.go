@@ -123,7 +123,7 @@ func (res *Response) ResetBodyBuffer() {
 type _SameSiteVal string
 
 const (
-	CookeSameSizeDefault = _SameSiteVal("")
+	CookeSameSiteDefault = _SameSiteVal("")
 	CookieSameSiteLax    = _SameSiteVal("lax")
 	CookieSameSiteStrict = _SameSiteVal("strict")
 	CookieSameSizeNone   = _SameSiteVal("none")
@@ -297,7 +297,7 @@ func (ctx *RequestCtx) Reset() {
 
 var ctxPool = sync.Pool{New: func() interface{} { return &RequestCtx{} }}
 
-func AcquireRequestCtx() *RequestCtx {
+func acquireRequestCtx() *RequestCtx {
 	v := ctxPool.Get().(*RequestCtx)
 	return v
 }

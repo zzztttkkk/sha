@@ -300,13 +300,13 @@ func autoSlashRedirect(newNode *_RouteNode) {
 	}
 }
 
-func (mux *_Mux) REST(method, path string, handler RequestHandler) {
+func (mux *_Mux) HTTP(method, path string, handler RequestHandler) {
 	method = strings.ToUpper(method)
 	mux.doAddHandler1(method, path, handler, true)
 }
 
 func (mux *_Mux) WebSocket(path string, wh WebSocketHandlerFunc) {
-	mux.REST("get", path, wshToHandler(wh))
+	mux.HTTP("get", path, wshToHandler(wh))
 }
 
 type _FormRequestHandler struct {
@@ -316,11 +316,11 @@ type _FormRequestHandler struct {
 
 func (mux *_Mux) RESTWithForm(method, path string, handler RequestHandler, form interface{}) {
 	if form == nil {
-		mux.REST(method, path, handler)
+		mux.HTTP(method, path, handler)
 		return
 	}
 
-	mux.REST(
+	mux.HTTP(
 		method, path,
 		&_FormRequestHandler{
 			RequestHandler: handler,
@@ -436,7 +436,7 @@ func (mux *_Mux) StaticFile(method, path string, fs http.FileSystem, index bool,
 		panic(fmt.Errorf("sha.router: bad static path"))
 	}
 
-	mux.REST(
+	mux.HTTP(
 		method,
 		path,
 		handlerWithMiddleware(

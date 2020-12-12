@@ -73,6 +73,9 @@ func Default(handler RequestHandler) *Server {
 				protocol.ReadBufferSize, protocol.MaxReadBufferSize,
 			)
 			protocol.writeBufferPool = internal.NewBufferPoll(protocol.MaxWriteBufferSize)
+			if protocol.NewRequestContext == nil {
+				protocol.NewRequestContext = func(connCtx context.Context) context.Context { return connCtx }
+			}
 		},
 	)
 
@@ -94,22 +97,12 @@ func (s *Server) doListen() net.Listener {
 	return listener
 }
 
-//goland:noinspection GoSnakeCaseUsage  disable ide suggestion
-func _0011111_strSliceContains(ss []string, s string) bool {
-	for _, v := range ss {
-		if v == s {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listener {
 	if s.TlsConfig == nil {
 		s.TlsConfig = &tls.Config{}
 	}
 
-	if !_0011111_strSliceContains(s.TlsConfig.NextProtos, "http/1.1") {
+	if !internal.StrSliceContains(s.TlsConfig.NextProtos, "http/1.1") {
 		s.TlsConfig.NextProtos = append(s.TlsConfig.NextProtos, "http/1.1")
 	}
 	configHasCert := len(s.TlsConfig.Certificates) > 0 || s.TlsConfig.GetCertificate != nil

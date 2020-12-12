@@ -19,7 +19,7 @@ type _RouteBranch struct {
 
 var _ Router = (*_RouteBranch)(nil)
 
-func (branch *_RouteBranch) REST(method, path string, handler RequestHandler) {
+func (branch *_RouteBranch) HTTP(method, path string, handler RequestHandler) {
 	method = strings.ToUpper(method)
 	m := branch.allHandlers[method]
 	if m == nil {
@@ -30,16 +30,16 @@ func (branch *_RouteBranch) REST(method, path string, handler RequestHandler) {
 }
 
 func (branch *_RouteBranch) WebSocket(path string, wh WebSocketHandlerFunc) {
-	branch.REST("get", path, wshToHandler(wh))
+	branch.HTTP("get", path, wshToHandler(wh))
 }
 
 func (branch *_RouteBranch) RESTWithForm(method, path string, handler RequestHandler, form interface{}) {
 	if form == nil {
-		branch.REST(method, path, handler)
+		branch.HTTP(method, path, handler)
 		return
 	}
 
-	branch.REST(
+	branch.HTTP(
 		method, path,
 		&_FormRequestHandler{
 			RequestHandler: handler,

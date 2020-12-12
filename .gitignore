@@ -6,3 +6,4 @@
 /sqls
 *.pem
 *.sum
+/tls

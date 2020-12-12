@@ -37,11 +37,11 @@ type _Key int
 
 const (
 	txKey = _Key(iota + 1000)
-	justLeaderKey
+	justWDBKey
 )
 
 func WriteableDB(ctx context.Context) context.Context {
-	return context.WithValue(ctx, justLeaderKey, true)
+	return context.WithValue(ctx, justWDBKey, true)
 }
 
 // starts a transaction, return a sub context and a commit function
@@ -80,7 +80,7 @@ func Exe(ctx context.Context) W {
 	if tx != nil {
 		return W{tx.(*x.Tx)}
 	}
-	if ctx.Value(justLeaderKey) != nil {
+	if ctx.Value(justWDBKey) != nil {
 		return W{wdb}
 	}
 	if len(rdbs) < 1 {
