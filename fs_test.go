@@ -8,10 +8,11 @@ import (
 func TestFs(t *testing.T) {
 	server := Default(nil)
 	mux := NewMux("", nil)
-	mux.StaticFile(
+
+	mux.FileSystem(
+		http.Dir("./"),
 		"get",
 		"/sha/filename:*",
-		http.Dir("./"),
 		true,
 		MiddlewareFunc(
 			func(ctx *RequestCtx, next func()) {

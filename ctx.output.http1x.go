@@ -35,7 +35,6 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 	res := &ctx.Response
 	if res.compressWriter != nil {
 		_ = res.compressWriter.Flush()
-		res.compressWriter = nil
 	}
 
 	res.Header.SetContentLength(int64(len(res.buf.Data)))
@@ -90,7 +89,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 		func(k, v []byte) bool {
 			buf.Data = append(buf.Data, k...)
 			buf.Data = append(buf.Data, headerKVSep...)
-			encodeURI(v, &buf.Data)
+			encodeHeaderValue(v, &buf.Data)
 			buf.Data = append(buf.Data, newline...)
 			return true
 		},

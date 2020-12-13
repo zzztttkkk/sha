@@ -3,6 +3,7 @@ package sha
 import (
 	"fmt"
 	"github.com/zzztttkkk/sha/validator"
+	"net/http"
 	"reflect"
 	"strings"
 )
@@ -33,7 +34,7 @@ func (branch *_RouteBranch) WebSocket(path string, wh WebSocketHandlerFunc) {
 	branch.HTTP("get", path, wshToHandler(wh))
 }
 
-func (branch *_RouteBranch) RESTWithForm(method, path string, handler RequestHandler, form interface{}) {
+func (branch *_RouteBranch) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
 	if form == nil {
 		branch.HTTP(method, path, handler)
 		return
@@ -45,6 +46,13 @@ func (branch *_RouteBranch) RESTWithForm(method, path string, handler RequestHan
 			RequestHandler: handler,
 			Documenter:     validator.GetRules(reflect.TypeOf(form)),
 		},
+	)
+}
+
+func (branch *_RouteBranch) FileSystem(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware) {
+	branch.HTTP(
+		method, path,
+		fileSystemHandler(fs, path, autoIndex, middleware...),
 	)
 }
 

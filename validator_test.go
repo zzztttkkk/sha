@@ -22,7 +22,7 @@ func TestRequestCtx_Validate(t *testing.T) {
 	mux := NewMux("", nil)
 	server := Default(mux)
 
-	mux.RESTWithForm(
+	mux.HTTPWithForm(
 		"get",
 		"/",
 		RequestHandlerFunc(

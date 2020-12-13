@@ -79,7 +79,7 @@ func TestServer_Run(t *testing.T) {
 		Password Sha5256Hash     `validator:"pwd,R=password"`
 	}
 
-	mux.RESTWithForm(
+	mux.HTTPWithForm(
 		"get",
 		"/form",
 		RequestHandlerFunc(func(ctx *RequestCtx) {

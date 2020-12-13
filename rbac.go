@@ -14,7 +14,7 @@ func (r *_RbacR) HandleWithDoc(
 	handler rbac.HandlerFunc,
 	doc interface{},
 ) {
-	r.Router.RESTWithForm(
+	r.Router.HTTPWithForm(
 		method,
 		path,
 		RequestHandlerFunc(func(ctx *RequestCtx) { handler(ctx, ctx) }),

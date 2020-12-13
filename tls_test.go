@@ -13,5 +13,5 @@ func TestServer_ListenAndServeTLS(t *testing.T) {
 		},
 	)
 
-	s.ListenAndServeTLS("./tls/ztk.local+4.pem", "./tls/ztk.local+4-key.pem")
+	s.ListenAndServeTLS("./tls/ztk.local+3.pem", "./tls/ztk.local+3-key.pem")
 }

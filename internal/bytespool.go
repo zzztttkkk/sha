@@ -8,6 +8,11 @@ type Buf struct {
 	Data []byte
 }
 
+func (b *Buf) Write(p []byte) (int, error) {
+	b.Data = append(b.Data, p...)
+	return len(p), nil
+}
+
 type BufferPool struct {
 	sync.Pool
 	maxSize int

@@ -73,6 +73,7 @@ func decodeURIFormed(src []byte) []byte {
 const upperhex = "0123456789ABCDEF"
 
 var noEscapedURI [256]bool
+var noEscapedHeaderValue [256]bool
 
 func init() {
 	for b := 'A'; b <= 'z'; b++ {
@@ -84,11 +85,26 @@ func init() {
 	for _, b := range ";,/?:@&=+$-_.!~*'()#" {
 		noEscapedURI[b] = true
 	}
+
+	for i, v := range noEscapedURI {
+		noEscapedHeaderValue[i] = v
+	}
+	noEscapedHeaderValue[' '] = true
 }
 
 func encodeURI(v []byte, buf *[]byte) {
 	for _, b := range v {
 		if noEscapedURI[b] {
+			*buf = append(*buf, b)
+			continue
+		}
+		*buf = append(*buf, '%', upperhex[b>>4], upperhex[b&0xf])
+	}
+}
+
+func encodeHeaderValue(v []byte, buf *[]byte) {
+	for _, b := range v {
+		if noEscapedHeaderValue[b] {
 			*buf = append(*buf, b)
 			continue
 		}

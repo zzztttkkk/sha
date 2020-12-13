@@ -2,12 +2,10 @@ package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/validator"
 	"log"
 	"net/http"
 	"net/url"
-	pathlib "path"
 	"reflect"
 	"runtime"
 	"sort"
@@ -314,7 +312,7 @@ type _FormRequestHandler struct {
 	Documenter
 }
 
-func (mux *_Mux) RESTWithForm(method, path string, handler RequestHandler, form interface{}) {
+func (mux *_Mux) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
 	if form == nil {
 		mux.HTTP(method, path, handler)
 		return
@@ -424,29 +422,16 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 		_, _ = ctx.WriteString(buf.String())
 	}
 
-	mux.RESTWithForm(
+	mux.HTTPWithForm(
 		method, path,
 		handlerWithMiddleware(RequestHandlerFunc(handler), middleware...),
 		Form{},
 	)
 }
 
-func (mux *_Mux) StaticFile(method, path string, fs http.FileSystem, index bool, middleware ...Middleware) {
-	if !strings.HasSuffix(path, "/filename:*") {
-		panic(fmt.Errorf("sha.router: bad static path"))
-	}
-
+func (mux *_Mux) FileSystem(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware) {
 	mux.HTTP(
-		method,
-		path,
-		handlerWithMiddleware(
-			RequestHandlerFunc(
-				func(ctx *RequestCtx) {
-					filename, _ := ctx.PathParam(internal.B("filename"))
-					serveFile(ctx, fs, pathlib.Clean(internal.S(filename)), index)
-				},
-			),
-			middleware...,
-		),
+		method, path,
+		fileSystemHandler(fs, path, autoIndex, middleware...),
 	)
 }
