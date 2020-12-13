@@ -53,7 +53,7 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 }
 
 var ErrNilContentLength = fmt.Errorf("sha: nil content length")
-var ErrUnknownResponseStatusCode = fmt.Errorf("sha: ")
+var ErrUnknownResponseStatusCode = fmt.Errorf("sha: unknown response status code")
 var responseHeaderBufferPool = internal.NewBufferPoll(4096)
 
 func (ctx *RequestCtx) writeHttp1xHeader() error {

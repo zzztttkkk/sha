@@ -68,15 +68,7 @@ func (r *_Recover) doRecover(ctx *RequestCtx) {
 			logStack = false
 		}
 		ctx.SetStatus(rv.StatusCode())
-		header := rv.Header()
-		if header != nil {
-			header.EachItem(
-				func(k, v []byte) bool {
-					ctx.Response.Header.Set(k, v)
-					return true
-				},
-			)
-		}
+		rv.Header(&ctx.Response.Header)
 		_, _ = ctx.Write(rv.Body())
 	} else if vt.ConvertibleTo(httpErrType) {
 		rv := v.(HttpError)

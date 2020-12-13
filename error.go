@@ -2,6 +2,7 @@ package sha
 
 import (
 	"fmt"
+	"github.com/zzztttkkk/sha/internal"
 	"net/http"
 )
 
@@ -12,7 +13,7 @@ type HttpError interface {
 
 type HttpResponseError interface {
 	HttpError
-	Header() *Header
+	Header(*Header)
 	Body() []byte
 }
 
@@ -22,13 +23,9 @@ func (err StatusError) Error() string {
 	return fmt.Sprintf("%d %s", err, http.StatusText(int(err)))
 }
 
-func (err StatusError) StatusCode() int {
-	return int(err)
-}
+func (err StatusError) StatusCode() int { return int(err) }
 
-func (err StatusError) Header() *Header {
-	return nil
-}
+func (err StatusError) Header(_ *Header) {}
 
 func (err StatusError) Body() []byte {
 	i := int(err)
@@ -51,25 +48,17 @@ var (
 
 type _RedirectError struct {
 	status int
-	h      Header
+	uri    string
 }
 
 func (err *_RedirectError) Error() string { return "" }
 
 func (err *_RedirectError) StatusCode() int { return err.status }
 
-func (err *_RedirectError) Header() *Header { return &err.h }
+func (err *_RedirectError) Header(h *Header) { h.Set(internal.B(HeaderLocation), internal.B(err.uri)) }
 
 func (err *_RedirectError) Body() []byte { return nil }
 
-func RedirectPermanently(uri string) {
-	err := &_RedirectError{status: StatusMovedPermanently}
-	err.h.SetStr(HeaderLocation, uri)
-	panic(err)
-}
+func RedirectPermanently(uri string) { panic(&_RedirectError{status: StatusMovedPermanently, uri: uri}) }
 
-func RedirectTemporarily(uri string) {
-	err := &_RedirectError{status: StatusFound}
-	err.h.SetStr(HeaderLocation, uri)
-	panic(err)
-}
+func RedirectTemporarily(uri string) { panic(&_RedirectError{status: StatusFound, uri: uri}) }
