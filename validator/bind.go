@@ -3,15 +3,14 @@ package validator
 import (
 	"bytes"
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
 	"net/http"
 	"reflect"
 )
 
 type Former interface {
-	PathParam(name []byte) ([]byte, bool)
-	FormValue(name []byte) ([]byte, bool)
-	FormValues(name []byte) [][]byte
+	PathParam(name string) ([]byte, bool)
+	FormValue(name string) ([]byte, bool)
+	FormValues(name string) [][]byte
 }
 
 type _FormErrorType int
@@ -72,7 +71,7 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 				return nil
 			} else {
 				if rule.isRequired {
-					return &FormError{FormName: internal.S(rule.formName), Type: MissingRequired}
+					return &FormError{FormName: rule.formName, Type: MissingRequired}
 				} else {
 					return nil
 				}
@@ -111,7 +110,7 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 		filed.Set(reflect.ValueOf(ret))
 		return nil
 	}
-	return &FormError{FormName: internal.S(rule.formName), Type: BadValue}
+	return &FormError{FormName: rule.formName, Type: BadValue}
 }
 
 func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
@@ -123,7 +122,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 				field.Set(reflect.ValueOf(rule.defaultVal))
 				return nil
 			}
-			return &FormError{FormName: internal.S(rule.formName), Type: MissingRequired}
+			return &FormError{FormName: rule.formName, Type: MissingRequired}
 		} else {
 			return nil
 		}
@@ -135,7 +134,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 		for _, bs := range formVals {
 			a, b := rule.toBool(bs)
 			if !b {
-				return &FormError{FormName: internal.S(rule.formName), Type: BadValue}
+				return &FormError{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -145,7 +144,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 		for _, bs := range formVals {
 			a, b := rule.toInt(bs)
 			if !b {
-				return &FormError{FormName: internal.S(rule.formName), Type: BadValue}
+				return &FormError{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -155,7 +154,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 		for _, bs := range formVals {
 			a, b := rule.toUint(bs)
 			if !b {
-				return &FormError{FormName: internal.S(rule.formName), Type: BadValue}
+				return &FormError{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -165,7 +164,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 		for _, bs := range formVals {
 			a, b := rule.toFloat(bs)
 			if !b {
-				return &FormError{FormName: internal.S(rule.formName), Type: BadValue}
+				return &FormError{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -175,7 +174,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 		for _, bs := range formVals {
 			a, b := rule.toString(bs)
 			if !b {
-				return &FormError{FormName: internal.S(rule.formName), Type: BadValue}
+				return &FormError{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -185,7 +184,7 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 		for _, bs := range formVals {
 			a, b := rule.toBytes(bs)
 			if !b {
-				return &FormError{FormName: internal.S(rule.formName), Type: BadValue}
+				return &FormError{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -199,16 +198,16 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 	if rule.fSSR {
 		if v.IsNil() {
 			if rule.isRequired {
-				return &FormError{FormName: internal.S(rule.formName), Type: MissingRequired}
+				return &FormError{FormName: rule.formName, Type: MissingRequired}
 			}
 			return nil
 		}
 		s := v.Len()
 		if rule.minSSV != nil && s < *rule.minSSV {
-			return &FormError{FormName: internal.S(rule.formName), Type: MissingRequired}
+			return &FormError{FormName: rule.formName, Type: MissingRequired}
 		}
 		if rule.maxSSV != nil && s > *rule.maxSSV {
-			return &FormError{FormName: internal.S(rule.formName), Type: MissingRequired}
+			return &FormError{FormName: rule.formName, Type: MissingRequired}
 		}
 	}
 

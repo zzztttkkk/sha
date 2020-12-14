@@ -11,7 +11,7 @@ type _RouteNode struct {
 	params       [][]byte
 	paramsStatus int
 	raw          string
-	wildcardName []byte
+	wildcardName string
 	handler      RequestHandler
 	parent       *_RouteNode
 	name         string
@@ -29,7 +29,7 @@ func (node *_RouteNode) addMethod(method string) {
 }
 
 func (node *_RouteNode) handleOptions(ctx *RequestCtx) {
-	ctx.Response.Header.Set(internal.B(HeaderAllow), node.methods)
+	ctx.Response.Header.Set(HeaderAllow, node.methods)
 }
 
 func (node *_RouteNode) addChild(c *_RouteNode) {
@@ -90,7 +90,7 @@ func (node *_RouteNode) addHandler(
 	p := path[0]
 	ind := strings.IndexByte(p, ':')
 	if ind < 0 {
-		if node.paramsStatus == 2 || node.wildcardName != nil {
+		if node.paramsStatus == 2 || len(node.wildcardName) != 0 {
 			panic(fmt.Errorf("sha.router: `%s` conflict with others", raw))
 		}
 
@@ -103,7 +103,7 @@ func (node *_RouteNode) addHandler(
 	}
 
 	if ind == 0 {
-		if node.paramsStatus == 2 || node.wildcardName != nil {
+		if node.paramsStatus == 2 || len(node.wildcardName) != 0 {
 			panic(fmt.Errorf("sha.router: `%s` conflict with others", raw))
 		}
 
@@ -121,7 +121,7 @@ func (node *_RouteNode) addHandler(
 		panic(fmt.Errorf("sha.router: bad path value `%s`", raw))
 	}
 
-	node.wildcardName = []byte(p[:len(p)-2])
+	node.wildcardName = p[:len(p)-2]
 	return node.addHandler(nil, handler, raw)
 }
 
@@ -150,7 +150,7 @@ func (node *_RouteNode) find(path []byte, kvs *internal.Kvs, paramsC *int) (int,
 	for i, b = range path {
 		if b == '/' {
 			if len(params) > 0 {
-				kvs.Append(params[paramsI], key)
+				kvs.AppendBytes(params[paramsI], key)
 				*paramsC = (*paramsC) + 1
 				key = key[:0]
 				paramsI++
@@ -189,7 +189,7 @@ func (node *_RouteNode) find(path []byte, kvs *internal.Kvs, paramsC *int) (int,
 	}
 	// path not endswith "/"
 	if len(params) > 0 {
-		kvs.Append(params[paramsI], key)
+		kvs.AppendBytes(params[paramsI], key)
 		*paramsC = (*paramsC) + 1
 		return i, n
 	}

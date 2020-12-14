@@ -20,7 +20,7 @@ func inplaceLowercase(d []byte) []byte {
 }
 
 func (header *Header) ContentLength() int {
-	v, ok := header.Kvs.Get(internal.B(HeaderContentLength))
+	v, ok := header.Kvs.Get(HeaderContentLength)
 	if !ok {
 		return -1
 	}
@@ -32,15 +32,15 @@ func (header *Header) ContentLength() int {
 }
 
 func (header *Header) SetContentLength(v int64) {
-	header.Kvs.Set(internal.B(HeaderContentLength), internal.B(strconv.FormatInt(v, 10)))
+	header.Kvs.Set(HeaderContentLength, internal.B(strconv.FormatInt(v, 10)))
 }
 
-func (header *Header) SetContentType(v []byte) {
-	header.Kvs.Set(internal.B(HeaderContentType), v)
+func (header *Header) SetContentType(v string) {
+	header.Kvs.Set(HeaderContentType, internal.B(v))
 }
 
 func (header *Header) ContentType() []byte {
-	v, ok := header.Get(internal.B(HeaderContentType))
+	v, ok := header.Get(HeaderContentType)
 	if !ok {
 		return nil
 	}

@@ -12,9 +12,7 @@ type Form struct {
 	internal.Kvs
 }
 
-func (form *Form) onItem(k []byte, v []byte) {
-	form.Append(decodeURIFormed(k), decodeURIFormed(v))
-}
+func (form *Form) onItem(k []byte, v []byte) { form.AppendBytes(decodeURIFormed(k), decodeURIFormed(v)) }
 
 func (form *Form) ParseUrlEncoded(p []byte) {
 	var key []byte
@@ -120,21 +118,23 @@ func (files FormFiles) GetAll(name []byte) []*FormFile {
 }
 
 func (req *Request) parseQuery() {
-	req.query.ParseUrlEncoded(req.RawPath[req.queryStatus-1:])
-	req.queryStatus = 1
+	if req.qmIndex < 1 {
+		req.qmIndex = _QueryParsed
+		return
+	}
+
+	req.query.ParseUrlEncoded(req.RawPath[req.qmIndex:])
+	req.qmIndex = _QueryParsed
 }
 
 func (req *Request) Query() *Form {
-	if req.queryStatus > 2 {
+	if req.qmIndex != _QueryParsed {
 		req.parseQuery()
-	}
-	if req.queryStatus != 1 {
-		return nil
 	}
 	return &req.query
 }
 
-func (req *Request) QueryValue(name []byte) ([]byte, bool) {
+func (req *Request) QueryValue(name string) ([]byte, bool) {
 	query := req.Query()
 	if query != nil {
 		return query.Get(name)
@@ -142,7 +142,7 @@ func (req *Request) QueryValue(name []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (req *Request) QueryValues(name []byte) [][]byte {
+func (req *Request) QueryValues(name string) [][]byte {
 	query := req.Query()
 	if query != nil {
 		return query.GetAll(name)
@@ -197,11 +197,11 @@ func (p *_MultiPartParser) setBoundary(boundary []byte) {
 }
 
 func (p *_MultiPartParser) onHeaderLineOk() bool {
-	ind := bytes.Index(p.line, headerKVSep)
+	ind := bytes.IndexByte(p.line, ':')
 	if ind < 0 {
 		return false
 	}
-	p.current.Header.Append(p.line[:ind], p.line[ind+2:])
+	p.current.Header.AppendBytes(p.line[:ind], p.line[ind+2:])
 	return true
 }
 
@@ -215,7 +215,7 @@ var nameStr = []byte("name=")
 var filenameStr = []byte("filename=")
 
 func (p *_MultiPartParser) onFieldOk() bool {
-	disposition, ok := p.current.Header.Get(internal.B(HeaderContentDisposition))
+	disposition, ok := p.current.Header.Get(HeaderContentDisposition)
 	if !ok || len(disposition) < 1 {
 		return false
 	}
@@ -241,12 +241,12 @@ func (p *_MultiPartParser) onFieldOk() bool {
 	p.current.buf = p.current.buf[:len(p.current.buf)-2] // \r\n
 
 	if len(filename) > 0 {
-		p.current.Name = string(name)
-		p.current.FileName = string(filename)
+		p.current.Name = internal.S(name)
+		p.current.FileName = internal.S(filename)
 		*p.files = append(*p.files, p.current)
 		p.current = nil
 	} else {
-		p.form.Append(name, p.current.buf)
+		p.form.AppendBytes(name, p.current.buf)
 	}
 	return true
 }
@@ -322,13 +322,13 @@ func (req *Request) parseBodyBuf() {
 		return
 	}
 
-	if bytes.HasPrefix(typeValue, MIMEForm) {
+	if bytes.HasPrefix(typeValue, internal.B(MIMEForm)) {
 		req.body.ParseUrlEncoded(buf)
 		req.bodyStatus = 2
 		return
 	}
 
-	if bytes.HasPrefix(typeValue, MIMEMultiPart) {
+	if bytes.HasPrefix(typeValue, internal.B(MIMEMultiPart)) {
 		ind := bytes.Index(typeValue, boundaryBytes)
 		if ind < 1 {
 			req.bodyStatus = 1
@@ -352,7 +352,7 @@ func (req *Request) BodyForm() *Form {
 	return &req.body
 }
 
-func (req *Request) BodyFormValue(name []byte) ([]byte, bool) {
+func (req *Request) BodyFormValue(name string) ([]byte, bool) {
 	form := req.BodyForm()
 	if form == nil {
 		return nil, false
@@ -360,7 +360,7 @@ func (req *Request) BodyFormValue(name []byte) ([]byte, bool) {
 	return form.Get(name)
 }
 
-func (req *Request) BodyFormValues(name []byte) [][]byte {
+func (req *Request) BodyFormValues(name string) [][]byte {
 	form := req.BodyForm()
 	if form == nil {
 		return nil
@@ -379,7 +379,7 @@ func (req *Request) Files() FormFiles {
 }
 
 // ctx
-func (ctx *RequestCtx) FormValue(name []byte) ([]byte, bool) {
+func (ctx *RequestCtx) FormValue(name string) ([]byte, bool) {
 	v, ok := ctx.Request.QueryValue(name)
 	if ok {
 		return v, true
@@ -387,13 +387,13 @@ func (ctx *RequestCtx) FormValue(name []byte) ([]byte, bool) {
 	return ctx.Request.BodyFormValue(name)
 }
 
-func (ctx *RequestCtx) FormValues(name []byte) [][]byte {
+func (ctx *RequestCtx) FormValues(name string) [][]byte {
 	v := ctx.Request.QueryValues(name)
 	v = append(v, ctx.Request.BodyFormValues(name)...)
 	return v
 }
 
-func (ctx *RequestCtx) PathParam(name []byte) ([]byte, bool) {
+func (ctx *RequestCtx) PathParam(name string) ([]byte, bool) {
 	return ctx.Request.Params.Get(name)
 }
 

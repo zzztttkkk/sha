@@ -2,6 +2,8 @@ package sha
 
 import "github.com/zzztttkkk/sha/internal"
 
+const _QueryParsed = -2
+
 type Request struct {
 	Header  Header
 	Method  []byte
@@ -9,6 +11,8 @@ type Request struct {
 
 	RawPath []byte
 	Path    []byte
+	qmIndex int // question mark index
+	qmOK    bool
 	Params  internal.Kvs
 
 	cookies internal.Kvs
@@ -16,7 +20,6 @@ type Request struct {
 	body    Form
 	files   FormFiles
 
-	queryStatus   int // >2: `?` index; 1: parsed; 0 empty
 	bodyStatus    int // 0: unparsed; 1: unsupported content type; 2: parsed
 	cookieParsed  bool
 	version       []byte
@@ -30,6 +33,8 @@ type Request struct {
 func (req *Request) Reset() {
 	req.Header.Reset()
 	req.Method = req.Method[:0]
+	req.qmIndex = -1
+	req.qmOK = false
 	req.Path = req.Path[:0]
 	req.Params.Reset()
 
@@ -38,7 +43,6 @@ func (req *Request) Reset() {
 	req.body.Reset()
 	req.files = nil
 	req.cookieParsed = false
-	req.queryStatus = 0
 	req.bodyStatus = 0
 	req.RawPath = req.RawPath[:0]
 	req.version = req.version[:0]
@@ -47,9 +51,9 @@ func (req *Request) Reset() {
 	req.wsDoCompress = false
 }
 
-func (req *Request) Cookie(key []byte) ([]byte, bool) {
+func (req *Request) Cookie(key string) ([]byte, bool) {
 	if !req.cookieParsed {
-		v, ok := req.Header.Get(internal.B(HeaderCookie))
+		v, ok := req.Header.Get(HeaderCookie)
 		if ok {
 			var key []byte
 			var buf []byte
@@ -60,7 +64,7 @@ func (req *Request) Cookie(key []byte) ([]byte, bool) {
 					key = append(key, buf...)
 					buf = buf[:0]
 				case ';':
-					req.cookies.Set(decodeURI(key), decodeURI(buf))
+					req.cookies.Set(internal.S(decodeURI(key)), decodeURI(buf))
 					key = key[:0]
 					buf = buf[:0]
 				case ' ':
@@ -69,13 +73,11 @@ func (req *Request) Cookie(key []byte) ([]byte, bool) {
 					buf = append(buf, b)
 				}
 			}
-			req.cookies.Set(decodeURI(key), decodeURI(buf))
+			req.cookies.Set(internal.S(decodeURI(key)), decodeURI(buf))
 		}
 		req.cookieParsed = true
 	}
 	return req.cookies.Get(key)
 }
 
-func (ctx *RequestCtx) Cookie(key []byte) ([]byte, bool) {
-	return ctx.Request.Cookie(key)
-}
+func (ctx *RequestCtx) Cookie(key string) ([]byte, bool) { return ctx.Request.Cookie(key) }

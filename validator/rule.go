@@ -54,8 +54,8 @@ type Rule struct {
 	fieldType           reflect.Type
 	indirectCustomField bool
 
-	formName       []byte
-	pathParamsName []byte
+	formName       string
+	pathParamsName string
 	rtype          _RuleType
 
 	isRequired  bool

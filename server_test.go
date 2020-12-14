@@ -8,6 +8,9 @@ import (
 	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/validator"
 	"github.com/zzztttkkk/websocket"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"regexp"
 	"strconv"
 	"strings"
@@ -62,7 +65,7 @@ func TestServer_Run(t *testing.T) {
 		"/close",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			_, _ = ctx.WriteString("Hello World!")
-			ctx.Response.Header.SetStr(HeaderConnection, "close")
+			ctx.Response.Header.Set(HeaderConnection, []byte("close"))
 		}),
 	)
 
@@ -108,7 +111,40 @@ func TestServer_Run(t *testing.T) {
 		},
 	)
 
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	mux.HTTP(
+		"get",
+		"/hello",
+		RequestHandlerFunc(func(ctx *RequestCtx) {
+			_, _ = ctx.WriteString("hello world")
+		}),
+	)
+
 	mux.Print(false, false)
 	server := Default(mux)
 	server.ListenAndServe()
+}
+
+func TestServer_RunSimple(t *testing.T) {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) {
+		_, _ = ctx.WriteString("hello world")
+	}))
+	server.ListenAndServe()
+}
+
+func TestStdHttp(t *testing.T) {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+	http.Handle("/", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = writer.Write([]byte("hello world"))
+	}))
+	_ = http.ListenAndServe("127.0.0.1:8080", nil)
 }

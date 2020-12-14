@@ -12,24 +12,6 @@ import (
 )
 
 var newline = []byte("\r\n")
-var headerKVSep = []byte(": ")
-
-func (ctx *RequestCtx) KeepAlive() bool {
-	const closeStr = "close"
-
-	req := &ctx.Request
-	hc := internal.B(HeaderConnection)
-	cv, _ := req.Header.Get(hc)
-	if string(inplaceLowercase(cv)) == closeStr {
-		return false
-	}
-	res := &ctx.Response
-	cv, _ = res.Header.Get(hc)
-	if string(inplaceLowercase(cv)) == closeStr {
-		return false
-	}
-	return true
-}
 
 func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 	res := &ctx.Response
@@ -52,6 +34,11 @@ func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 	return err
 }
 
+const (
+	NewLine     = "\r\n"
+	headerKVSep = ": "
+)
+
 var ErrNilContentLength = fmt.Errorf("sha: nil content length")
 var ErrUnknownResponseStatusCode = fmt.Errorf("sha: unknown response status code")
 var responseHeaderBufferPool = internal.NewBufferPoll(4096)
@@ -60,7 +47,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res := &ctx.Response
 	res.headerWritten = true
 
-	_, exists := res.Header.Get(internal.B(HeaderContentLength))
+	_, exists := res.Header.Get(HeaderContentLength)
 	if !exists {
 		return ErrNilContentLength
 	}
@@ -79,17 +66,17 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 
 	buf.Data = append(buf.Data, ctx.protocol.Version...)
 	buf.Data = append(buf.Data, ' ')
-	buf.Data = append(buf.Data, internal.B(strconv.FormatInt(int64(res.statusCode), 10))...)
+	buf.Data = append(buf.Data, strconv.FormatInt(int64(res.statusCode), 10)...)
 	buf.Data = append(buf.Data, ' ')
 
 	buf.Data = append(buf.Data, statusTxt...)
-	buf.Data = append(buf.Data, '\r', '\n')
+	buf.Data = append(buf.Data, NewLine...)
 
 	res.Header.EachItem(
-		func(k, v []byte) bool {
-			buf.Data = append(buf.Data, k...)
+		func(item *internal.KvItem) bool {
+			buf.Data = append(buf.Data, item.Key...)
 			buf.Data = append(buf.Data, headerKVSep...)
-			encodeHeaderValue(v, &buf.Data)
+			encodeHeaderValue(item.Val, &buf.Data)
 			buf.Data = append(buf.Data, newline...)
 			return true
 		},
@@ -126,7 +113,7 @@ func (ctx *RequestCtx) WriteHTML(v []byte) {
 }
 
 func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
-	ctx.Response.Header.SetContentType(internal.B(mime.TypeByExtension(ext)))
+	ctx.Response.Header.SetContentType(mime.TypeByExtension(ext))
 
 	buf := make([]byte, 512, 512)
 	for {

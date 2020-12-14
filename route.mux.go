@@ -46,6 +46,26 @@ func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
 	return mux
 }
 
+type _NamedMiddleware struct {
+	Middleware
+	name string
+}
+
+//goland:noinspection GoExportedFuncWithUnexportedType
+func NamedMiddleware(name string, middleware Middleware) _NamedMiddleware {
+	return _NamedMiddleware{name: name, Middleware: middleware}
+}
+
+type _NamedRequestHandler struct {
+	RequestHandler
+	name string
+}
+
+//goland:noinspection GoExportedFuncWithUnexportedType
+func NamedRequestHandler(name string, handler RequestHandler) _NamedRequestHandler {
+	return _NamedRequestHandler{name: name, RequestHandler: handler}
+}
+
 func middlewareToString(m Middleware) string {
 	t := reflect.TypeOf(m)
 	if t.Kind() == reflect.Func {
@@ -54,11 +74,18 @@ func middlewareToString(m Middleware) string {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
+
+	if t == namedMiddlewareType {
+		v := m.(_NamedMiddleware)
+		return fmt.Sprintf("%s Name %s", middlewareToString(v.Middleware), v.name)
+	}
 	return fmt.Sprintf("S %s.%s", t.PkgPath(), t.Name())
 }
 
 var mwType = reflect.TypeOf(_MiddlewareWrapper{})
 var fwType = reflect.TypeOf(_FormRequestHandler{})
+var namedMiddlewareType = reflect.TypeOf(_NamedMiddleware{})
+var namedRequestHandlerType = reflect.TypeOf(_NamedRequestHandler{})
 
 func handlerToString(h RequestHandler) string {
 	t := reflect.TypeOf(h)
@@ -78,6 +105,10 @@ func handlerToString(h RequestHandler) string {
 		return handlerToString(h.(*_FormRequestHandler).RequestHandler)
 	}
 
+	if t == namedRequestHandlerType {
+		v := h.(_NamedRequestHandler)
+		return fmt.Sprintf("%s Name %s", handlerToString(v.RequestHandler), v.name)
+	}
 	return fmt.Sprintf("S %s.%s", t.PkgPath(), t.Name())
 }
 
@@ -260,18 +291,16 @@ func (mux *_Mux) getOrNewTree(method string) *_RouteNode {
 	return n
 }
 
-var locationHeader = []byte("Location")
-
 func doAutoRectAddSlash(ctx *RequestCtx) {
 	ctx.SetStatus(http.StatusMovedPermanently)
 	ctx.Request.Path = append(ctx.Request.Path, '/')
-	ctx.Response.Header.Set(locationHeader, ctx.Request.Path)
+	ctx.Response.Header.Set(HeaderLocation, ctx.Request.Path)
 }
 
 func doAutoRectDelSlash(ctx *RequestCtx) {
 	ctx.SetStatus(http.StatusMovedPermanently)
 	path := ctx.Request.Path
-	ctx.Response.Header.Set(locationHeader, path[:len(path)-1])
+	ctx.Response.Header.Set(HeaderLocation, path[:len(path)-1])
 }
 
 func autoSlashRedirect(newNode *_RouteNode) {

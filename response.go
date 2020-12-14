@@ -11,9 +11,9 @@ type Response struct {
 	statusCode int
 	Header     Header
 
-	buf            *internal.Buf
-	compressWriter _CompressionWriter
-	cwrPool        *sync.Pool
+	buf                *internal.Buf
+	compressWriter     _CompressionWriter
+	compressWriterPool *sync.Pool
 
 	headerWritten bool
 }
@@ -56,58 +56,59 @@ type CookieOptions struct {
 	SameSite _SameSiteVal
 }
 
+const (
+	_CookieSep      = "; "
+	_CookieDomain   = "Domain="
+	_CookiePath     = "Path="
+	_CookieExpires  = "Expires="
+	_CookieMaxAge   = "Max-Age="
+	_CookieSecure   = "Secure"
+	_CookieHttpOnly = "Httponly"
+	_CookieSameSite = "Samesite="
+)
+
 func (res *Response) SetCookie(k, v string, options CookieOptions) {
-	item := res.Header.Append(internal.B(HeaderSetCookie), nil)
+	item := res.Header.Append(HeaderSetCookie, nil)
 
 	item.Val = append(item.Val, internal.B(k)...)
 	item.Val = append(item.Val, '=')
 	item.Val = append(item.Val, internal.B(v)...)
-	item.Val = append(item.Val, ';')
-	item.Val = append(item.Val, ' ')
+	item.Val = append(item.Val, _CookieSep...)
 
 	if len(options.Domain) > 0 {
-		item.Val = append(item.Val, 'D', 'o', 'm', 'a', 'i', 'n', '=')
+		item.Val = append(item.Val, _CookieDomain...)
 		item.Val = append(item.Val, internal.B(options.Domain)...)
-		item.Val = append(item.Val, ';')
-		item.Val = append(item.Val, ' ')
+		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if len(options.Path) > 0 {
-		item.Val = append(item.Val, 'P', 'a', 't', 'h', '=')
+		item.Val = append(item.Val, _CookiePath...)
 		item.Val = append(item.Val, internal.B(options.Path)...)
-		item.Val = append(item.Val, ';')
-		item.Val = append(item.Val, ' ')
+		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if !options.Expires.IsZero() {
-		item.Val = append(item.Val, 'E', 'x', 'p', 'i', 'r', 'e', 's', '=')
+		item.Val = append(item.Val, _CookieExpires...)
 		item.Val = append(item.Val, internal.B(options.Expires.Format(time.RFC1123))...)
-		item.Val = append(item.Val, ';')
-		item.Val = append(item.Val, ' ')
+		item.Val = append(item.Val, _CookieSep...)
 	} else {
-		item.Val = append(item.Val, 'M', 'a', 'x', '-', 'A', 'g', 'e', '=')
+		item.Val = append(item.Val, _CookieMaxAge...)
 		item.Val = append(item.Val, internal.B(strconv.FormatInt(options.MaxAge, 10))...)
-		item.Val = append(item.Val, ';')
-		item.Val = append(item.Val, ' ')
+		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if options.Secure {
-		item.Val = append(item.Val, 'S', 'e', 'c', 'u', 'r', 'e')
-		item.Val = append(item.Val, ';')
-		item.Val = append(item.Val, ' ')
+		item.Val = append(item.Val, _CookieSecure...)
+		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if options.HttpOnly {
-		item.Val = append(item.Val, 'H', 't', 't', 'p', 'o', 'n', 'l', 'y')
-		item.Val = append(item.Val, ';')
-		item.Val = append(item.Val, ' ')
+		item.Val = append(item.Val, _CookieHttpOnly...)
+		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if len(options.SameSite) > 0 {
-		item.Val = append(item.Val, 'S', 'a', 'm', 'e', 's', 'i', 't', 'e', '=')
-		item.Val = append(item.Val, internal.B(string(options.SameSite))...)
-		item.Val = append(item.Val, ';')
-		item.Val = append(item.Val, ' ')
+		item.Val = append(item.Val, _CookieSameSite...)
 	}
 }
 

@@ -23,11 +23,11 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 	rule := &Rule{
 		fieldIndex: f.Index,
 		fieldType:  f.Field.Type,
-		formName:   []byte(f.Name),
+		formName:   f.Name,
 		isRequired: true,
 	}
 	if len(rule.formName) < 1 {
-		rule.formName = []byte(strings.ToLower(f.Field.Name))
+		rule.formName = strings.ToLower(f.Field.Name)
 	}
 
 	if defaultF != nil {
@@ -86,7 +86,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 	for key, val := range f.Options {
 		switch key {
 		case "P", "p", "params":
-			rule.pathParamsName = []byte(val)
+			rule.pathParamsName = val
 		case "optional":
 			rule.isRequired = false
 		case "NTSC", "nottrimspacechar":

@@ -63,14 +63,14 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 	if string(ctx.Request.Method) != http.MethodGet {
 		return ""
 	}
-	v, ok := ctx.Request.Header.Get(internal.B(HeaderConnection))
+	v, ok := ctx.Request.Header.Get(HeaderConnection)
 	if !ok {
 		return ""
 	}
 	if string(inplaceLowercase(v)) != lowerUpgradeHeader {
 		return ""
 	}
-	v, ok = ctx.Request.Header.Get(internal.B(HeaderUpgrade))
+	v, ok = ctx.Request.Header.Get(HeaderUpgrade)
 	if !ok {
 		return ""
 	}
@@ -102,6 +102,7 @@ var ctxPool = sync.Pool{New: func() interface{} { return &RequestCtx{} }}
 
 func acquireRequestCtx() *RequestCtx {
 	v := ctxPool.Get().(*RequestCtx)
+	v.Request.qmIndex = -1
 	return v
 }
 

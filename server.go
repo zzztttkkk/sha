@@ -117,16 +117,21 @@ func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listene
 	return tls.NewListener(l, s.TlsConfig)
 }
 
-func (s *Server) doAccept(l net.Listener) {
+func (s *Server) Serve(l net.Listener) {
 	for _, fn := range s.beforeListen {
 		fn()
 	}
+	s.BaseCtx = context.WithValue(s.BaseCtx, CtxKeyServer, s)
 
 	s.Http1xProtocol.server = s
 	s.Http1xProtocol.handler = s.Handler
 
 	var tempDelay time.Duration
-	ctx := context.WithValue(s.BaseCtx, CtxKeyServer, s)
+	var serveFunc func(conn net.Conn)
+	serveFunc = s.serve
+	if s.isTls {
+		serveFunc = s.serveTLS
+	}
 
 	for {
 		conn, err := l.Accept()
@@ -148,22 +153,22 @@ func (s *Server) doAccept(l net.Listener) {
 		if s.MaxConnectionKeepAlive > 0 {
 			_ = conn.SetDeadline(time.Now().Add(s.MaxConnectionKeepAlive))
 		}
-		go s.serve(context.WithValue(ctx, CtxKeyConnection, conn), conn)
+		go serveFunc(conn)
 	}
 }
 
 func (s *Server) ListenAndServe() {
-	s.doAccept(s.doListen())
+	s.Serve(s.doListen())
 }
 
 func (s *Server) ListenAndServeTLS(certFile, keyFile string) {
 	s.isTls = true
-	s.doAccept(s.enableTls(s.doListen(), certFile, keyFile))
+	s.Serve(s.enableTls(s.doListen(), certFile, keyFile))
 }
 
 func (s *Server) ListenAndServerWithAutoCert(hostnames ...string) {
 	s.isTls = true
-	s.doAccept(autocert.NewListener(hostnames...))
+	s.Serve(autocert.NewListener(hostnames...))
 }
 
 func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
@@ -178,7 +183,7 @@ func (s *Server) tslHandshake(conn net.Conn) (*tls.Conn, string, error) {
 	return tlsConn, tlsConn.ConnectionState().NegotiatedProtocol, nil
 }
 
-func (s *Server) serve(connCtx context.Context, conn net.Conn) {
+func (s *Server) serveTLS(conn net.Conn) {
 	defer conn.Close()
 
 	var subProtocolName string
@@ -204,5 +209,10 @@ func (s *Server) serve(connCtx context.Context, conn net.Conn) {
 			conn.Close()
 		}
 	}
-	s.Http1xProtocol.Serve(connCtx, conn)
+	s.Http1xProtocol.Serve(context.WithValue(s.BaseCtx, CtxKeyConnection, conn), conn)
+}
+
+func (s *Server) serve(conn net.Conn) {
+	defer conn.Close()
+	s.Http1xProtocol.Serve(context.WithValue(s.BaseCtx, CtxKeyConnection, conn), conn)
 }

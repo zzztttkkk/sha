@@ -29,17 +29,17 @@ const (
 )
 
 func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
-	version, _ := ctx.Request.Header.Get(internal.B(HeaderSecWebSocketVersion))
+	version, _ := ctx.Request.Header.Get(HeaderSecWebSocketVersion)
 	if len(version) != 2 || version[0] != '1' || version[1] != '3' {
 		ctx.Response.statusCode = http.StatusBadRequest
 		return false
 	}
-	if _, ok := ctx.Response.Header.Get(internal.B(HeaderSecWebSocketExtensions)); ok {
+	if _, ok := ctx.Response.Header.Get(HeaderSecWebSocketExtensions); ok {
 		log.Println("websocket: application specific 'Sec-WebSocket-Extensions' headers are unsupported")
 		ctx.Response.statusCode = http.StatusInternalServerError
 		return false
 	}
-	key, _ := ctx.Request.Header.Get(internal.B(HeaderSecWebSocketKey))
+	key, _ := ctx.Request.Header.Get(HeaderSecWebSocketKey)
 	if len(key) < 1 {
 		ctx.Response.statusCode = http.StatusBadRequest
 		return false
@@ -47,7 +47,7 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 
 	var subprotocol []byte
 	if len(p.Subprotocols) > 0 {
-		hv, ok := ctx.Response.Header.Get(internal.B(HeaderSecWebSocketProtocol))
+		hv, ok := ctx.Response.Header.Get(HeaderSecWebSocketProtocol)
 		if ok {
 			if sp, ok := p.Subprotocols[internal.S(hv)]; ok {
 				subprotocol = hv
@@ -57,7 +57,7 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 				return false
 			}
 		} else {
-			hv, ok = ctx.Request.Header.Get(internal.B(HeaderSecWebSocketProtocol))
+			hv, ok = ctx.Request.Header.Get(HeaderSecWebSocketProtocol)
 			if ok && len(hv) > 0 {
 				for _, v := range bytes.Split(hv, []byte(",")) {
 					v = internal.InplaceTrimAsciiSpace(v)
@@ -73,7 +73,7 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 
 	var compress bool
 	if p.EnableCompression {
-		for _, hv := range ctx.Response.Header.GetAll(internal.B(HeaderSecWebSocketExtensions)) {
+		for _, hv := range ctx.Response.Header.GetAll(HeaderSecWebSocketExtensions) {
 			if bytes.Contains(hv, internal.B(websocketExtCompress)) {
 				compress = true
 				break
@@ -83,15 +83,15 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 
 	res := &ctx.Response
 	res.statusCode = http.StatusSwitchingProtocols
-	res.Header.Append(internal.B(HeaderConnection), upgradeStr)
-	res.Header.Append(internal.B(HeaderUpgrade), websocketStr)
+	res.Header.Append(HeaderConnection, upgradeStr)
+	res.Header.Append(HeaderUpgrade, websocketStr)
 	if len(subprotocol) > 0 {
-		res.Header.Append(internal.B(HeaderSecWebSocketProtocol), subprotocol)
+		res.Header.Append(HeaderSecWebSocketProtocol, subprotocol)
 	}
-	res.Header.AppendStr(HeaderSecWebSocketAccept, websocket.ComputeAcceptKey(internal.S(key)))
+	res.Header.Append(HeaderSecWebSocketAccept, internal.B(websocket.ComputeAcceptKey(internal.S(key))))
 	if compress {
 		ctx.Request.wsDoCompress = true
-		res.Header.AppendStr(HeaderSecWebSocketExtensions, websocketExt)
+		res.Header.Append(HeaderSecWebSocketExtensions, internal.B(websocketExt))
 	}
 	_ = ctx.Send()
 	return true

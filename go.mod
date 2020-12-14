@@ -16,6 +16,7 @@ require (
 	github.com/zzztttkkk/websocket v1.4.3-0.20201202165116-41b4e6b0fbf7
 	go.uber.org/dig v1.10.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/tools v0.0.0-20200928182047-19e03678916f
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )

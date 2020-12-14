@@ -27,6 +27,8 @@ type Router interface {
 	Use(middleware ...Middleware)
 }
 
+const _filename = "filename"
+
 func fileSystemHandler(fs http.FileSystem, path string, autoIndex bool, middleware ...Middleware) RequestHandler {
 	if !strings.HasSuffix(path, "/filename:*") {
 		panic(fmt.Errorf("sha.router: bad static path"))
@@ -34,7 +36,7 @@ func fileSystemHandler(fs http.FileSystem, path string, autoIndex bool, middlewa
 	return handlerWithMiddleware(
 		RequestHandlerFunc(
 			func(ctx *RequestCtx) {
-				filename, _ := ctx.PathParam(internal.B("filename"))
+				filename, _ := ctx.PathParam(_filename)
 				serveFile(ctx, fs, pathlib.Clean(internal.S(filename)), autoIndex)
 			},
 		),

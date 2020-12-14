@@ -1,7 +1,6 @@
 package sha
 
 import (
-	"github.com/zzztttkkk/sha/internal"
 	"net/http"
 	"strconv"
 )
@@ -15,33 +14,34 @@ type CorsOptions struct {
 	CheckOrigin      func(origin []byte) bool `json:"-" toml:"-"`
 	OnForbidden      func(ctx *RequestCtx)    `json:"-" toml:"-"`
 
-	headerKvs [][]byte
+	headerKeys []string
+	headerVals [][]byte
 }
 
 func (options *CorsOptions) init() {
 	if options.MaxAge > 0 {
-		options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlMaxAge))
-		options.headerKvs = append(options.headerKvs, []byte(strconv.FormatInt(options.MaxAge, 10)))
+		options.headerKeys = append(options.headerKeys, HeaderAccessControlMaxAge)
+		options.headerVals = append(options.headerVals, []byte(strconv.FormatInt(options.MaxAge, 10)))
 	}
 
 	if len(options.AllowMethods) < 1 {
 		options.AllowMethods = "GET, POST, OPTIONS"
 	}
 
-	options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlAllowMethods))
-	options.headerKvs = append(options.headerKvs, []byte(options.AllowMethods))
+	options.headerKeys = append(options.headerKeys, HeaderAccessControlAllowMethods)
+	options.headerVals = append(options.headerVals, []byte(options.AllowMethods))
 
 	if len(options.AllowHeaders) > 0 {
-		options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlAllowHeaders))
-		options.headerKvs = append(options.headerKvs, []byte(options.AllowHeaders))
+		options.headerKeys = append(options.headerKeys, HeaderAccessControlAllowHeaders)
+		options.headerVals = append(options.headerVals, []byte(options.AllowHeaders))
 	}
 	if options.AllowCredentials {
-		options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlAllowCredentials))
-		options.headerKvs = append(options.headerKvs, []byte("true"))
+		options.headerKeys = append(options.headerKeys, HeaderAccessControlAllowCredentials)
+		options.headerVals = append(options.headerVals, []byte("true"))
 	}
 	if len(options.ExposeHeaders) > 0 {
-		options.headerKvs = append(options.headerKvs, internal.B(HeaderAccessControlExposeHeaders))
-		options.headerKvs = append(options.headerKvs, []byte(options.ExposeHeaders))
+		options.headerKeys = append(options.headerKeys, HeaderAccessControlExposeHeaders)
+		options.headerVals = append(options.headerVals, []byte(options.ExposeHeaders))
 	}
 	if options.OnForbidden == nil {
 		options.OnForbidden = func(ctx *RequestCtx) { ctx.SetStatus(http.StatusForbidden) }
@@ -49,25 +49,21 @@ func (options *CorsOptions) init() {
 }
 
 func (options *CorsOptions) writeHeader(ctx *RequestCtx) {
-	var key []byte
-	for i, v := range options.headerKvs {
-		if i&1 == 0 {
-			key = v
-		} else {
-			ctx.Response.Header.Set(key, v)
-		}
+	header := &ctx.Response.Header
+	for i := 0; i < len(options.headerKeys); i++ {
+		header.Append(options.headerKeys[i], options.headerVals[i])
 	}
 }
 
 func (options *CorsOptions) verify(ctx *RequestCtx) bool {
-	origin, ok := ctx.Request.Header.Get(internal.B(HeaderOrigin))
+	origin, ok := ctx.Request.Header.Get(HeaderOrigin)
 	if !ok || len(origin) < 1 { // same origin
 		return true
 	}
 	if !options.CheckOrigin(origin) {
 		return false
 	}
-	ctx.Response.Header.Set(internal.B(HeaderAccessControlAllowOrigin), origin)
+	ctx.Response.Header.Set(HeaderAccessControlAllowOrigin, origin)
 	return true
 }
 
