@@ -8,7 +8,6 @@ import (
 	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/validator"
 	"github.com/zzztttkkk/websocket"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"regexp"
@@ -111,10 +110,6 @@ func TestServer_Run(t *testing.T) {
 		},
 	)
 
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
 	mux.HTTP(
 		"get",
 		"/hello",
@@ -129,22 +124,24 @@ func TestServer_Run(t *testing.T) {
 }
 
 func TestServer_RunSimple(t *testing.T) {
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("hello world") }))
+	server.ListenAndServe()
+}
 
-	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) {
-		_, _ = ctx.WriteString("hello world")
-	}))
+func TestServer_RunTimeout(t *testing.T) {
+	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("hello world") }))
+	//goland:noinspection GoVetLostCancel
+	server.BaseCtx, _ = context.WithTimeout(context.Background(), time.Second)
 	server.ListenAndServe()
 }
 
 func TestStdHttp(t *testing.T) {
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-	http.Handle("/", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	s := &http.Server{
+		IdleTimeout: time.Second * 30,
+		Addr:        "127.0.0.1:8080",
+	}
+	s.Handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		_, _ = writer.Write([]byte("hello world"))
-	}))
-	_ = http.ListenAndServe("127.0.0.1:8080", nil)
+	})
+	_ = s.ListenAndServe()
 }

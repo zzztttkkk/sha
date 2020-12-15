@@ -27,7 +27,7 @@ type RequestCtx struct {
 
 	// parser
 	status           int
-	fStatus          int // first line status
+	firstLineStatus  int
 	firstLineSize    int // first line size
 	headersSize      int // header lines size
 	buf              []byte
@@ -87,7 +87,7 @@ func (ctx *RequestCtx) Reset() {
 	ctx.Response.reset()
 
 	ctx.status = 0
-	ctx.fStatus = 0
+	ctx.firstLineStatus = 0
 	ctx.firstLineSize = 0
 	ctx.headersSize = 0
 	ctx.buf = ctx.buf[:0]
@@ -108,7 +108,7 @@ func acquireRequestCtx() *RequestCtx {
 
 func ReleaseRequestCtx(ctx *RequestCtx) {
 	ctx.Reset()
-	ctx.Response.freeCompressionWriter()
+	ctx.Response.freeWriter()
 	ctx.conn = nil
 	ctxPool.Put(ctx)
 }

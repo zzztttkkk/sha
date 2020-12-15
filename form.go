@@ -378,6 +378,13 @@ func (req *Request) Files() FormFiles {
 	return req.files
 }
 
+func (req *Request) BodyRaw() []byte {
+	if req.bodyBufferPtr == nil {
+		return nil
+	}
+	return *req.bodyBufferPtr
+}
+
 // ctx
 func (ctx *RequestCtx) FormValue(name string) ([]byte, bool) {
 	v, ok := ctx.Request.QueryValue(name)
@@ -404,3 +411,5 @@ func (ctx *RequestCtx) File(name []byte) *FormFile {
 func (ctx *RequestCtx) Files(name []byte) []*FormFile {
 	return ctx.Request.Files().GetAll(name)
 }
+
+func (ctx *RequestCtx) BodyRaw() []byte { return ctx.buf }

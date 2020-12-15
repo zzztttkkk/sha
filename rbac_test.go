@@ -19,7 +19,7 @@ func (u _RbacUser) Info() interface{} { return "rbac.TestUser" }
 func init() {
 	sqlx.OpenWriteableDB(
 		"mysql",
-		"root:123456@/sha_test?autocommit=false&parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"),
+		"root:123456@/sha?autocommit=false&parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"),
 	)
 }
 

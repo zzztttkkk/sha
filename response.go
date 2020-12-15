@@ -1,6 +1,7 @@
 package sha
 
 import (
+	"bufio"
 	"github.com/zzztttkkk/sha/internal"
 	"strconv"
 	"sync"
@@ -11,18 +12,18 @@ type Response struct {
 	statusCode int
 	Header     Header
 
-	buf                *internal.Buf
+	headerBuf          []byte
+	sendBuf            *bufio.Writer
+	bodyBuf            *internal.Buf
 	compressWriter     _CompressionWriter
 	compressWriterPool *sync.Pool
-
-	headerWritten bool
 }
 
 func (res *Response) Write(p []byte) (int, error) {
 	if res.compressWriter != nil {
 		return res.compressWriter.Write(p)
 	}
-	res.buf.Data = append(res.buf.Data, p...)
+	res.bodyBuf.Data = append(res.bodyBuf.Data, p...)
 	return len(p), nil
 }
 
@@ -31,9 +32,9 @@ func (res *Response) SetStatusCode(v int) {
 }
 
 func (res *Response) ResetBodyBuffer() {
-	res.buf.Data = res.buf.Data[:0]
+	res.bodyBuf.Data = res.bodyBuf.Data[:0]
 	if res.compressWriter != nil {
-		res.compressWriter.Reset(res.buf)
+		res.compressWriter.Reset(res.bodyBuf)
 	}
 }
 
@@ -114,8 +115,7 @@ func (res *Response) SetCookie(k, v string, options CookieOptions) {
 
 func (res *Response) reset() {
 	res.statusCode = 0
+	res.headerBuf = res.headerBuf[:0]
 	res.Header.Reset()
-	res.headerWritten = false
-
 	res.ResetBodyBuffer()
 }

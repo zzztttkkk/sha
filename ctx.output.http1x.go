@@ -11,46 +11,36 @@ import (
 	"strconv"
 )
 
-var newline = []byte("\r\n")
-
 func (ctx *RequestCtx) sendHttp1xResponseBuffer() error {
 	res := &ctx.Response
 	if res.compressWriter != nil {
 		_ = res.compressWriter.Flush()
 	}
 
-	res.Header.SetContentLength(int64(len(res.buf.Data)))
-	if !res.headerWritten {
-		err := ctx.writeHttp1xHeader()
-		if err != nil {
-			return err
-		}
-	}
-	if _, err := ctx.conn.Write(newline); err != nil {
+	size := int64(len(res.bodyBuf.Data))
+
+	res.Header.SetContentLength(size)
+	err := ctx.writeHttp1xHeader()
+	if err != nil {
 		return err
 	}
 
-	_, err := ctx.conn.Write(ctx.Response.buf.Data)
-	return err
+	_, err = res.sendBuf.Write(ctx.Response.bodyBuf.Data)
+	if err != nil {
+		return err
+	}
+	return res.sendBuf.Flush()
 }
 
 const (
-	NewLine     = "\r\n"
+	EndLine     = "\r\n"
 	headerKVSep = ": "
 )
 
-var ErrNilContentLength = fmt.Errorf("sha: nil content length")
 var ErrUnknownResponseStatusCode = fmt.Errorf("sha: unknown response status code")
-var responseHeaderBufferPool = internal.NewBufferPoll(4096)
 
 func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res := &ctx.Response
-	res.headerWritten = true
-
-	_, exists := res.Header.Get(HeaderContentLength)
-	if !exists {
-		return ErrNilContentLength
-	}
 
 	if res.statusCode < 1 {
 		res.statusCode = 200
@@ -61,29 +51,26 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 		return ErrUnknownResponseStatusCode
 	}
 
-	buf := responseHeaderBufferPool.Get()
-	defer responseHeaderBufferPool.Put(buf)
-
-	buf.Data = append(buf.Data, ctx.protocol.Version...)
-	buf.Data = append(buf.Data, ' ')
-	buf.Data = append(buf.Data, strconv.FormatInt(int64(res.statusCode), 10)...)
-	buf.Data = append(buf.Data, ' ')
-
-	buf.Data = append(buf.Data, statusTxt...)
-	buf.Data = append(buf.Data, NewLine...)
+	res.headerBuf = append(res.headerBuf, ctx.protocol.Version...)
+	res.headerBuf = append(res.headerBuf, ' ')
+	res.headerBuf = append(res.headerBuf, strconv.FormatInt(int64(res.statusCode), 10)...)
+	res.headerBuf = append(res.headerBuf, ' ')
+	res.headerBuf = append(res.headerBuf, statusTxt...)
+	res.headerBuf = append(res.headerBuf, EndLine...)
 
 	res.Header.EachItem(
 		func(item *internal.KvItem) bool {
-			buf.Data = append(buf.Data, item.Key...)
-			buf.Data = append(buf.Data, headerKVSep...)
-			encodeHeaderValue(item.Val, &buf.Data)
-			buf.Data = append(buf.Data, newline...)
+			res.headerBuf = append(res.headerBuf, item.Key...)
+			res.headerBuf = append(res.headerBuf, headerKVSep...)
+			encodeHeaderValue(item.Val, &res.headerBuf)
+			res.headerBuf = append(res.headerBuf, EndLine...)
 			return true
 		},
 	)
 
-	_, err := ctx.conn.Write(buf.Data)
-	return err
+	res.headerBuf = append(res.headerBuf, EndLine...)
+	_, e := res.sendBuf.Write(res.headerBuf)
+	return e
 }
 
 func (ctx *RequestCtx) Write(p []byte) (int, error) {

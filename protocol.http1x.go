@@ -1,35 +1,35 @@
 package sha
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"github.com/zzztttkkk/sha/internal"
-	"io"
 	"net"
+	"sync"
 	"time"
 )
 
 type Http1xProtocol struct {
 	Version                  []byte
 	MaxRequestFirstLineSize  int
-	MaxRequestHeaderPartSize int
+	MaxRequestHeaderPartSize int // all header lines
 	MaxRequestBodySize       int
-	NewRequestContext        func(connCtx context.Context) context.Context
 
-	IdleTimeout  time.Duration
-	WriteTimeout time.Duration
 	OnParseError func(conn net.Conn, err HttpError) (shouldCloseConn bool) // close connection if return true
 	OnWriteError func(conn net.Conn, err error) (shouldCloseConn bool)     // close connection if return true
 
-	ReadBufferSize     int
-	MaxReadBufferSize  int
-	MaxWriteBufferSize int
+	ReadBufferSize                int
+	MaxReadBufferSize             int
+	MaxResponseBodyBufferSize     int
+	DefaultResponseSendBufferSize int
 
 	server  *Server
 	handler RequestHandler
 
-	readBufferPool  *internal.FixedSizeBufferPool
-	writeBufferPool *internal.BufferPool
+	readBufferPool    *internal.FixedSizeBufferPool
+	resBodyBufferPool *internal.BufferPool
+	resSendBufferPool *sync.Pool
 }
 
 var upgradeStr = []byte("upgrade")
@@ -54,21 +54,29 @@ func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 	return string(inplaceLowercase(connVal)) != closeStr
 }
 
-var ZeroTime time.Time
-var MaxIdleSleepTime = time.Millisecond * 100
+var zeroTime time.Time
 
 func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 	var err error
 	var n int
-	var stop bool
+	var keepAlive = true
+	var cancelFn func()
 
 	rctx := acquireRequestCtx()
 	readBuf := protocol.readBufferPool.Get()
-	rctx.Response.buf = protocol.writeBufferPool.Get()
+	rctx.Response.bodyBuf = protocol.resBodyBufferPool.Get()
+	i := protocol.resSendBufferPool.Get()
+	if i == nil {
+		rctx.Response.sendBuf = bufio.NewWriterSize(conn, protocol.DefaultResponseSendBufferSize)
+	} else {
+		rctx.Response.sendBuf = i.(*bufio.Writer)
+		rctx.Response.sendBuf.Reset(conn)
+	}
 
 	defer func() {
 		protocol.readBufferPool.Put(readBuf)
-		protocol.writeBufferPool.Put(rctx.Response.buf)
+		protocol.resBodyBufferPool.Put(rctx.Response.bodyBuf)
+		protocol.resSendBufferPool.Put(rctx.Response.sendBuf)
 		ReleaseRequestCtx(rctx)
 	}()
 
@@ -76,93 +84,97 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 	rctx.connTime = time.Now()
 	rctx.protocol = protocol
 
-	sleepDu := time.Millisecond * 10
-	resetIdleTimeout := true
+	idleTimeout := protocol.server.IdleTimeout
+	readTimeout := protocol.server.ReadTimeout
+	writeTimeout := protocol.server.WriteTimeout
+	autoCompression := protocol.server.AutoCompression
 
-	for !stop {
-		select {
-		case <-ctx.Done():
-			{
-				return
-			}
-		default:
-			if protocol.IdleTimeout > 0 && resetIdleTimeout {
-				_ = conn.SetReadDeadline(time.Now().Add(protocol.IdleTimeout))
-			}
+	inIdle := false
 
-			offset := 0
-			n, err = conn.Read(readBuf.Data)
+	if readTimeout > 0 {
+		_ = conn.SetReadDeadline(time.Now().Add(readTimeout))
+	}
+
+	for keepAlive {
+		offset := 0
+		n, err = conn.Read(readBuf.Data)
+		if n < 1 {
+			if err == nil {
+				continue
+			}
+			return
+		}
+
+		if inIdle {
+			inIdle = false
+			_ = conn.SetReadDeadline(time.Now().Add(readTimeout))
+		}
+
+		for offset != n {
+			offset, err = rctx.feedHttp1xReqData(readBuf.Data, offset, n)
 			if err != nil {
-				if err == io.EOF {
-					time.Sleep(sleepDu)
-					sleepDu = sleepDu * 2
-					resetIdleTimeout = false
-					if sleepDu > MaxIdleSleepTime {
-						sleepDu = MaxIdleSleepTime
-					}
-					continue
-				}
-				return
-			}
-
-			if protocol.IdleTimeout > 0 {
-				_ = conn.SetReadDeadline(ZeroTime)
-				resetIdleTimeout = true
-			}
-
-			for offset != n {
-				offset, err = rctx.feedHttp1xReqData(readBuf.Data, offset, n)
-				if err != nil {
-					if protocol.OnParseError != nil {
-						if protocol.OnParseError(conn, err.(HttpError)) {
-							return
-						}
-					} else {
+				if protocol.OnParseError != nil {
+					if protocol.OnParseError(conn, err.(HttpError)) {
 						return
 					}
-				}
-			}
-
-			if rctx.status == 2 && rctx.bodyRemain < 1 {
-				if protocol.server.AutoCompress {
-					rctx.AutoCompress()
-				}
-
-				rctx.Context = protocol.NewRequestContext(ctx)
-				protocol.handler.Handle(rctx)
-
-				if rctx.hijacked {
+				} else {
 					return
 				}
-
-				if protocol.WriteTimeout > 0 {
-					_ = conn.SetWriteDeadline(time.Now().Add(protocol.WriteTimeout))
-				}
-
-				if protocol.keepalive(rctx) {
-					rctx.Response.Header.Set(HeaderConnection, keepAliveStr)
-				} else {
-					stop = true
-				}
-
-				if err := rctx.sendHttp1xResponseBuffer(); err != nil {
-					if protocol.OnWriteError != nil {
-						if protocol.OnWriteError(conn, err) {
-							return
-						}
-					} else {
-						return
-					}
-				}
-
-				if protocol.WriteTimeout > 0 {
-					_ = conn.SetWriteDeadline(ZeroTime)
-				}
-
-				rctx.Reset()
 			}
 		}
-		continue
+
+		if rctx.status != 2 || rctx.bodyRemain > 0 {
+			continue
+		}
+
+		if autoCompression {
+			rctx.AutoCompress()
+		}
+
+		rctx.Context, cancelFn = context.WithCancel(ctx)
+		protocol.handler.Handle(rctx)
+
+		if rctx.hijacked {
+			cancelFn()
+			return
+		}
+
+		if writeTimeout > 0 {
+			_ = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+		}
+
+		if protocol.keepalive(rctx) {
+			rctx.Response.Header.Set(HeaderConnection, keepAliveStr)
+		} else {
+			keepAlive = false
+		}
+
+		if err := rctx.sendHttp1xResponseBuffer(); err != nil {
+			cancelFn()
+			if protocol.OnWriteError != nil {
+				if protocol.OnWriteError(conn, err) {
+					return
+				}
+			} else {
+				return
+			}
+		}
+
+		if writeTimeout > 0 {
+			_ = conn.SetWriteDeadline(zeroTime)
+		}
+
+		inIdle = true
+		if idleTimeout > 0 {
+			_ = conn.SetReadDeadline(time.Now().Add(idleTimeout))
+		} else if readTimeout > 0 {
+			_ = conn.SetReadDeadline(time.Now().Add(readTimeout))
+		} else {
+			_ = conn.SetReadDeadline(zeroTime)
+		}
+
+		cancelFn()
+		rctx.Reset()
 	}
 }
 
@@ -252,9 +264,9 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			case '\r':
 				continue
 			case ' ':
-				ctx.fStatus += 1
+				ctx.firstLineStatus += 1
 			default:
-				switch ctx.fStatus {
+				switch ctx.firstLineStatus {
 				case 0:
 					req.Method = append(req.Method, toUpperTable[v])
 				case 1:
