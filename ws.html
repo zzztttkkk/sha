@@ -6,29 +6,38 @@
 </head>
 <body>
 <script>
-    // Create WebSocket connection.
-    const socket = new WebSocket('ws://localhost:8080/ws');
+    let url;
+    if (location.protocol === "http:") {
+        url = 'ws://localhost:8080/ws';
+    } else {
+        url = 'wss://localhost:8080/ws';
+    }
 
-    // Connection opened
-    socket.addEventListener(
-        'open',
-        function (event) {
-            let i = setInterval(
-                function () {
-                    socket.send('Hello Server!');
-                },
-                1000
-            );
-        },
-    );
+    window.onload = function () {
+        // Create WebSocket connection.
+        const socket = new WebSocket(url);
 
-    // Listen for messages
-    socket.addEventListener(
-        'message',
-        function (event) {
-            console.log('Message from server ', event.data);
-        },
-    );
+        // Connection opened
+        socket.addEventListener(
+            'open',
+            function (event) {
+                let i = setInterval(
+                    function () {
+                        socket.send('Hello Server!');
+                    },
+                    1000
+                );
+            },
+        );
+
+        // Listen for messages
+        socket.addEventListener(
+            'message',
+            function (event) {
+                console.log('Message from server ', event.data);
+            },
+        );
+    };
 </script>
 </body>
 </html>

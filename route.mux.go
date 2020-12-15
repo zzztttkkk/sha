@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-type _Mux struct {
+type Mux struct {
 	_MiddlewareNode
 	_Recover
 
@@ -28,10 +28,10 @@ type _Mux struct {
 	docs              map[string]map[string]string
 }
 
-var _ Router = (*_Mux)(nil)
+var _ Router = (*Mux)(nil)
 
-func NewMux(prefix string, corsOptions *CorsOptions) *_Mux {
-	mux := &_Mux{
+func NewMux(prefix string, corsOptions *CorsOptions) *Mux {
+	mux := &Mux{
 		prefix:            prefix,
 		customMethodTrees: map[string]*_RouteNode{},
 		stdMethodTrees:    make([]*_RouteNode, 10),
@@ -133,7 +133,7 @@ func printRequestHandler(buf *strings.Builder, h RequestHandler, showMiddleware 
 	buf.WriteString(handlerToString(h))
 }
 
-func (mux *_Mux) Print(showHandler, showMiddleware bool) {
+func (mux *Mux) Print(showHandler, showMiddleware bool) {
 	type _M struct {
 		method string
 		m      map[string]RequestHandler
@@ -176,11 +176,11 @@ func (mux *_Mux) Print(showHandler, showMiddleware bool) {
 	log.Print(buf.String())
 }
 
-func (mux *_Mux) doAddHandler(method, path string, handler RequestHandler) {
+func (mux *Mux) doAddHandler(method, path string, handler RequestHandler) {
 	mux.doAddHandler1(method, path, handler, false)
 }
 
-func (mux *_Mux) addToRawMap(method, path string, handler RequestHandler) {
+func (mux *Mux) addToRawMap(method, path string, handler RequestHandler) {
 	m := mux.rawMap[method]
 	if len(m) < 1 {
 		m = map[string]RequestHandler{}
@@ -189,7 +189,7 @@ func (mux *_Mux) addToRawMap(method, path string, handler RequestHandler) {
 	m[path] = handler
 }
 
-func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWrap bool) {
+func (mux *Mux) doAddHandler1(method, path string, handler RequestHandler, doWrap bool) {
 	u, e := url.Parse(path)
 	if e != nil || len(u.RawQuery) != 0 || len(u.Fragment) != 0 {
 		panic(fmt.Errorf("sha.mux: bad path value `%s`", path))
@@ -231,7 +231,7 @@ func (mux *_Mux) doAddHandler1(method, path string, handler RequestHandler, doWr
 	}
 }
 
-func (mux *_Mux) doAutoOptions(method, path string) {
+func (mux *Mux) doAutoOptions(method, path string) {
 	newNode := mux.getOrNewTree("OPTIONS").addHandler(strings.Split(path, "/"), nil, path)
 	newNode.addMethod(method)
 	if newNode.handler == nil {
@@ -240,7 +240,7 @@ func (mux *_Mux) doAutoOptions(method, path string) {
 	}
 }
 
-func (mux *_Mux) AddBranch(prefix string, router Router) {
+func (mux *Mux) AddBranch(prefix string, router Router) {
 	v, ok := router.(*_RouteBranch)
 	if !ok {
 		panic(fmt.Errorf("sha.router: `%v` is not a branch", router))
@@ -249,10 +249,10 @@ func (mux *_Mux) AddBranch(prefix string, router Router) {
 	v.root = mux
 	v._MiddlewareNode.parentMwNode = &mux._MiddlewareNode
 
-	v.sinking()
+	v.goDown()
 }
 
-func (mux *_Mux) getOrNewTree(method string) *_RouteNode {
+func (mux *Mux) getOrNewTree(method string) *_RouteNode {
 	ind := 0
 
 	switch method {
@@ -327,12 +327,12 @@ func autoSlashRedirect(newNode *_RouteNode) {
 	}
 }
 
-func (mux *_Mux) HTTP(method, path string, handler RequestHandler) {
+func (mux *Mux) HTTP(method, path string, handler RequestHandler) {
 	method = strings.ToUpper(method)
 	mux.doAddHandler1(method, path, handler, true)
 }
 
-func (mux *_Mux) WebSocket(path string, wh WebSocketHandlerFunc) {
+func (mux *Mux) WebSocket(path string, wh WebSocketHandlerFunc) {
 	mux.HTTP("get", path, wshToHandler(wh))
 }
 
@@ -341,7 +341,7 @@ type _FormRequestHandler struct {
 	Documenter
 }
 
-func (mux *_Mux) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
+func (mux *Mux) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
 	if form == nil {
 		mux.HTTP(method, path, handler)
 		return
@@ -356,7 +356,7 @@ func (mux *_Mux) HTTPWithForm(method, path string, handler RequestHandler, form 
 	)
 }
 
-func (mux *_Mux) Handle(ctx *RequestCtx) {
+func (mux *Mux) Handle(ctx *RequestCtx) {
 	defer mux.doRecover(ctx)
 
 	req := &ctx.Request
@@ -405,7 +405,7 @@ func (mux *_Mux) Handle(ctx *RequestCtx) {
 	n.handler.Handle(ctx)
 }
 
-func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
+func (mux *Mux) HandleDoc(method, path string, middleware ...Middleware) {
 	type Form struct {
 		Prefix string `validator:",optional"`
 	}
@@ -458,7 +458,7 @@ func (mux *_Mux) HandleDoc(method, path string, middleware ...Middleware) {
 	)
 }
 
-func (mux *_Mux) FileSystem(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware) {
+func (mux *Mux) FileSystem(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware) {
 	mux.HTTP(
 		method, path,
 		fileSystemHandler(fs, path, autoIndex, middleware...),

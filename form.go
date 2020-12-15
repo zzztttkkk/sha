@@ -118,17 +118,16 @@ func (files FormFiles) GetAll(name []byte) []*FormFile {
 }
 
 func (req *Request) parseQuery() {
-	if req.qmIndex < 1 {
-		req.qmIndex = _QueryParsed
+	if !req.gotQuestionMark {
+		req.questionMarkIndex = _QueryParsed
 		return
 	}
-
-	req.query.ParseUrlEncoded(req.RawPath[req.qmIndex:])
-	req.qmIndex = _QueryParsed
+	req.query.ParseUrlEncoded(req.RawPath[req.questionMarkIndex+1:])
+	req.questionMarkIndex = _QueryParsed
 }
 
 func (req *Request) Query() *Form {
-	if req.qmIndex != _QueryParsed {
+	if req.questionMarkIndex != _QueryParsed {
 		req.parseQuery()
 	}
 	return &req.query

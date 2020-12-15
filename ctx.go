@@ -22,6 +22,7 @@ type RequestCtx struct {
 	reqTime  time.Time
 
 	// writer
+	isTLS    bool
 	conn     net.Conn
 	hijacked bool
 
@@ -42,6 +43,8 @@ type MutexRequestCtx struct {
 	sync.Mutex
 	*RequestCtx
 }
+
+func (ctx *RequestCtx) IsTLS() bool { return ctx.isTLS }
 
 func (ctx *RequestCtx) RemoteAddr() net.Addr {
 	return ctx.conn.RemoteAddr()
@@ -100,16 +103,13 @@ func (ctx *RequestCtx) Reset() {
 
 var ctxPool = sync.Pool{New: func() interface{} { return &RequestCtx{} }}
 
-func acquireRequestCtx() *RequestCtx {
-	v := ctxPool.Get().(*RequestCtx)
-	v.Request.qmIndex = -1
-	return v
-}
+func acquireRequestCtx() *RequestCtx { return ctxPool.Get().(*RequestCtx) }
 
 func ReleaseRequestCtx(ctx *RequestCtx) {
 	ctx.Reset()
 	ctx.Response.freeWriter()
 	ctx.conn = nil
+	ctx.isTLS = false
 	ctxPool.Put(ctx)
 }
 

@@ -9,11 +9,11 @@ type Request struct {
 	Method  []byte
 	_method _Method
 
-	RawPath []byte
-	Path    []byte
-	qmIndex int // question mark index
-	qmOK    bool
-	Params  internal.Kvs
+	RawPath           []byte
+	Path              []byte
+	questionMarkIndex int
+	gotQuestionMark   bool
+	Params            internal.Kvs
 
 	cookies internal.Kvs
 	query   Form
@@ -26,15 +26,15 @@ type Request struct {
 	bodyBufferPtr *[]byte
 
 	// websocket
-	wsSubP       SubWebSocketProtocol
-	wsDoCompress bool
+	webSocketSubProtocolName     []byte
+	webSocketShouldDoCompression bool
 }
 
 func (req *Request) Reset() {
 	req.Header.Reset()
 	req.Method = req.Method[:0]
-	req.qmIndex = -1
-	req.qmOK = false
+	req.questionMarkIndex = 0
+	req.gotQuestionMark = false
 	req.Path = req.Path[:0]
 	req.Params.Reset()
 
@@ -45,10 +45,11 @@ func (req *Request) Reset() {
 	req.cookieParsed = false
 	req.bodyStatus = 0
 	req.RawPath = req.RawPath[:0]
+	req.Path = req.Path[:0]
 	req.version = req.version[:0]
 	req.bodyBufferPtr = nil
-	req.wsSubP = nil
-	req.wsDoCompress = false
+	req.webSocketSubProtocolName = req.webSocketSubProtocolName[:0]
+	req.webSocketShouldDoCompression = false
 }
 
 func (req *Request) Cookie(key string) ([]byte, bool) {

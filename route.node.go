@@ -17,6 +17,8 @@ type _RouteNode struct {
 	name         string
 
 	children    []*_RouteNode
+	childrenMap map[string]*_RouteNode
+
 	methods     []byte
 	autoHandler bool
 }
@@ -36,6 +38,11 @@ func (node *_RouteNode) addChild(c *_RouteNode) {
 	node.children = append(node.children, c)
 	c.parent = node
 	sort.Slice(node.children, func(i, j int) bool { return node.children[i].name < node.children[j].name })
+
+	if node.childrenMap == nil {
+		node.childrenMap = map[string]*_RouteNode{}
+	}
+	node.childrenMap[c.name] = c
 }
 
 func (node *_RouteNode) getChild(name string) *_RouteNode {
@@ -47,6 +54,10 @@ func (node *_RouteNode) getChild(name string) *_RouteNode {
 			}
 		}
 		return nil
+	}
+
+	if j > 16 {
+		return node.childrenMap[name]
 	}
 
 	for i < j {

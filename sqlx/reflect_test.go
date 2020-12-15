@@ -15,8 +15,8 @@ type TestModel struct {
 	Id        int64      `db:"id,g=login" json:"id"`
 	CreatedAt time.Time  `db:"created_at" json:"created_at"`
 	DeletedAt *time.Time `db:"deleted_at" json:"-"`
-	Name      Bytes      `db:"name,g=login" json:"name"`
-	Password  Bytes      `db:"password,g=login" json:"password"`
+	Name      JsonBytes  `db:"name,g=login" json:"name"`
+	Password  JsonBytes  `db:"password,g=login" json:"password"`
 }
 
 func (TestModel) TableColumns(db *sqlx.DB) []string {

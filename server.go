@@ -31,7 +31,7 @@ type Server struct {
 
 	AutoCompression bool
 	isTls           bool
-	beforeListen    []func()
+	beforeListen    []func(s *Server)
 }
 
 type _CtxVKey int
@@ -40,6 +40,37 @@ const (
 	CtxKeyServer = _CtxVKey(iota)
 	CtxKeyConnection
 )
+
+var prepareFunc []func(s *Server)
+
+func init() {
+	prepareFunc = append(prepareFunc,
+		// setup recover
+		func(server *Server) {
+			mux, ok := server.Handler.(*Mux)
+			if !ok {
+				return
+			}
+			for k, v := range internal.ErrorStatusByValue {
+				mux.RecoverByErr(
+					k,
+					func(sc int) ErrorHandler {
+						return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }
+					}(v),
+				)
+			}
+		},
+		// init http1x_protocol
+		func(server *Server) {
+			protocol := &server.Http1xProtocol
+			protocol.readBufferPool = internal.NewFixedSizeBufferPoll(
+				protocol.ReadBufferSize, protocol.MaxReadBufferSize,
+			)
+			protocol.resBodyBufferPool = internal.NewBufferPoll(protocol.MaxResponseBodyBufferSize)
+			protocol.resSendBufferPool = &sync.Pool{New: func() interface{} { return nil }}
+		},
+	)
+}
 
 func Default(handler RequestHandler) *Server {
 	server := &Server{
@@ -53,44 +84,18 @@ func Default(handler RequestHandler) *Server {
 		IdleTimeout:            time.Second * 30,
 	}
 
-	server.Http1xProtocol.Version = []byte("HTTP/1.1")
-	server.Http1xProtocol.MaxRequestFirstLineSize = 1024 * 4
-	server.Http1xProtocol.MaxRequestHeaderPartSize = 1024 * 8
-	server.Http1xProtocol.MaxRequestBodySize = 1024 * 1024 * 10
-	server.Http1xProtocol.ReadBufferSize = 512
-	server.Http1xProtocol.MaxResponseBodyBufferSize = 4096
-	server.Http1xProtocol.DefaultResponseSendBufferSize = 4096
-
-	server.beforeListen = append(
-		server.beforeListen,
-		func() {
-			mux, ok := server.Handler.(*_Mux)
-			if !ok {
-				return
-			}
-			for k, v := range internal.ErrorStatusByValue {
-				mux.RecoverByErr(
-					k,
-					func(sc int) ErrorHandler {
-						return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }
-					}(v),
-				)
-			}
-		},
-		func() {
-			protocol := &server.Http1xProtocol
-			protocol.readBufferPool = internal.NewFixedSizeBufferPoll(
-				protocol.ReadBufferSize, protocol.MaxReadBufferSize,
-			)
-			protocol.resBodyBufferPool = internal.NewBufferPoll(protocol.MaxResponseBodyBufferSize)
-			protocol.resSendBufferPool = &sync.Pool{New: func() interface{} { return nil }}
-		},
-	)
-
+	server.Version = []byte("HTTP/1.1")
+	server.MaxRequestFirstLineSize = 1024 * 4
+	server.MaxRequestHeaderPartSize = 1024 * 8
+	server.MaxRequestBodySize = 1024 * 1024 * 10
+	server.ReadBufferSize = 512
+	server.MaxReadBufferSize = 1024 * 4
+	server.MaxResponseBodyBufferSize = 4096
+	server.DefaultResponseSendBufferSize = 4096
 	return server
 }
 
-func (s *Server) BeforeListening(fn func()) {
+func (s *Server) BeforeListening(fn func(s *Server)) {
 	s.beforeListen = append(s.beforeListen, fn)
 }
 
@@ -126,8 +131,11 @@ func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listene
 }
 
 func (s *Server) Serve(l net.Listener) {
+	for _, fn := range prepareFunc {
+		fn(s)
+	}
 	for _, fn := range s.beforeListen {
-		fn()
+		fn(s)
 	}
 	s.BaseCtx = context.WithValue(s.BaseCtx, CtxKeyServer, s)
 
@@ -194,25 +202,27 @@ func (s *Server) ListenAndServerWithAutoCert(hostnames ...string) {
 	s.Serve(autocert.NewListener(hostnames...))
 }
 
-var NonTLSRequestResponseMessage = "HTTP/1.0 400 Bad Request\n\nClient sent an HTTP request to an HTTPS server.\n"
+var NonTLSRequestResponseMessage = `HTTP/1.0 400 Bad Request
+Connection: close
+Content-Length: 47
+
+Client sent an HTTP request to an HTTPS server.`
+
+var UnSupportedTLSSubProtocolRequestResponseMessage = `HTTP/1.0 510 Not Implemented
+Connection: close
+Content-Length: 25
+
+UnSupportedTLSSubProtocol`
 
 func (s *Server) serveTLS(conn net.Conn) {
 	defer conn.Close()
 
-	var tlsConn *tls.Conn
+	var tlsConn = conn.(*tls.Conn)
 	var err error
-	var ok bool
 
 	if s.ReadTimeout > 0 {
 		_ = conn.SetReadDeadline(time.Now().Add(s.ReadTimeout))
 	}
-
-	tlsConn, ok = conn.(*tls.Conn)
-	if !ok {
-		_, _ = io.WriteString(conn, NonTLSRequestResponseMessage)
-		return
-	}
-
 	err = tlsConn.Handshake()
 	if err != nil { // tls handshake error
 		if re, ok := err.(tls.RecordHeaderError); ok && re.Conn != nil {
@@ -221,19 +231,17 @@ func (s *Server) serveTLS(conn net.Conn) {
 		return
 	}
 
-	if tlsConn != nil {
-		conn = tlsConn
-		switch tlsConn.ConnectionState().NegotiatedProtocol {
-		case "", "http/1.0", "http/1.1":
-		default:
-			conn.Close()
-		}
+	switch tlsConn.ConnectionState().NegotiatedProtocol {
+	case "", "http/1.0", "http/1.1":
+	default:
+		_, _ = io.WriteString(tlsConn, UnSupportedTLSSubProtocolRequestResponseMessage)
+		return
 	}
 
 	if s.ReadTimeout > 0 {
 		_ = conn.SetReadDeadline(zeroTime)
 	}
-	s.Http1xProtocol.Serve(context.WithValue(s.BaseCtx, CtxKeyConnection, conn), conn)
+	s.Http1xProtocol.Serve(context.WithValue(s.BaseCtx, CtxKeyConnection, tlsConn), tlsConn)
 }
 
 func (s *Server) serve(conn net.Conn) {

@@ -89,7 +89,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			rule.pathParamsName = val
 		case "optional":
 			rule.isRequired = false
-		case "NTSC", "nottrimspacechar":
+		case "nottrimspacechar":
 			rule.notTrimSpace = true
 		case "description":
 			rule.description = val

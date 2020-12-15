@@ -3,6 +3,7 @@ package sqlx
 import (
 	"context"
 	"errors"
+	"fmt"
 	x "github.com/jmoiron/sqlx"
 	"math/rand"
 	"time"
@@ -40,8 +41,17 @@ const (
 	justWDBKey
 )
 
-func WriteableDB(ctx context.Context) context.Context {
+func UseWriteableDB(ctx context.Context) context.Context {
 	return context.WithValue(ctx, justWDBKey, true)
+}
+
+type RollbackError struct {
+	RecoverVal interface{}
+	Err        error
+}
+
+func (re *RollbackError) Error() string {
+	return fmt.Sprintf("sha.sqlx: rollback failed, %s %v", re.Err, re.RecoverVal)
 }
 
 // starts a transaction, return a sub context and a commit function
@@ -63,7 +73,7 @@ func Tx(ctx context.Context) (nctx context.Context, committer func()) {
 		}
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
-			panic(rollbackErr)
+			panic(&RollbackError{Err: rollbackErr, RecoverVal: recv})
 		}
 		panic(recv)
 	}

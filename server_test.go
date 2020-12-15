@@ -95,7 +95,7 @@ func TestServer_Run(t *testing.T) {
 
 	mux.WebSocket(
 		"/ws",
-		func(ctx context.Context, req *Request, conn *websocket.Conn) {
+		func(ctx context.Context, req *Request, conn *websocket.Conn, _ string) {
 			for {
 				_, d, e := conn.ReadMessage()
 				if e != nil {
@@ -124,7 +124,27 @@ func TestServer_Run(t *testing.T) {
 }
 
 func TestServer_RunSimple(t *testing.T) {
-	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("hello world") }))
+	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) {
+		_, _ = ctx.WriteString("hello world")
+	}))
+	server.ListenAndServe()
+}
+
+func TestServer_RunPrintRequest(t *testing.T) {
+	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) {
+		req := &ctx.Request
+
+		fmt.Printf(
+			"%s %s\n%s\n%s\n%s\n",
+			req.Method,
+			req.Path,
+			req.Query(),
+			&req.Header,
+			req.BodyForm(),
+		)
+
+		_, _ = ctx.WriteString("hello world")
+	}))
 	server.ListenAndServe()
 }
 

@@ -7,11 +7,11 @@ import (
 )
 
 func TestBytes_UnmarshalJSON(t *testing.T) {
-	a := Bytes("\"\\")
+	a := JsonBytes("\"\\")
 	fmt.Println(len(a))
 	j, _ := json.Marshal(a)
 	fmt.Println(string(j), len(j))
-	var b Bytes
+	var b JsonBytes
 	_ = json.Unmarshal(j, &b)
 	fmt.Println(string(b), len(b))
 

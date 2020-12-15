@@ -12,7 +12,7 @@ type _RouteBranch struct {
 	_MiddlewareNode
 	allHandlers map[string]map[string]RequestHandler
 
-	root         *_Mux
+	root         *Mux
 	parentRouter *_RouteBranch
 	prefix       string
 	children     map[string]*_RouteBranch
@@ -67,21 +67,21 @@ func (branch *_RouteBranch) AddBranch(prefix string, router Router) {
 	v.parentRouter = branch
 }
 
-func (branch *_RouteBranch) sinking() {
+func (branch *_RouteBranch) goDown() {
 	for _, v := range branch.children {
-		v.sinking()
+		v.goDown()
 	}
 
 	for a, b := range branch.allHandlers {
 		for p, h := range b {
-			branch.rising(a, p, branch.wrap(h))
+			branch.goUp(a, p, branch.wrap(h))
 		}
 	}
 }
 
-func (branch *_RouteBranch) rising(method, path string, handler RequestHandler) {
+func (branch *_RouteBranch) goUp(method, path string, handler RequestHandler) {
 	if branch.parentRouter != nil {
-		branch.parentRouter.rising(method, branch.prefix+path, handler)
+		branch.parentRouter.goUp(method, branch.prefix+path, handler)
 	} else {
 		branch.root.doAddHandler(method, branch.prefix+path, handler)
 	}

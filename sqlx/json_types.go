@@ -7,11 +7,11 @@ import (
 	"github.com/zzztttkkk/sha/internal"
 )
 
-type Bytes []byte
+type JsonBytes []byte
 
 var emptyBytes = []byte("\"\"")
 
-func (u Bytes) MarshalJSON() ([]byte, error) {
+func (u JsonBytes) MarshalJSON() ([]byte, error) {
 	if u == nil {
 		return emptyBytes, nil
 	}
@@ -33,7 +33,7 @@ func (u Bytes) MarshalJSON() ([]byte, error) {
 	return ret, nil
 }
 
-func (u *Bytes) UnmarshalJSON(v []byte) error {
+func (u *JsonBytes) UnmarshalJSON(v []byte) error {
 	inEscape := false
 	for _, b := range v {
 		if inEscape {

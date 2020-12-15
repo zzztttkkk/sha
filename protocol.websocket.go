@@ -10,14 +10,10 @@ import (
 	"sync"
 )
 
-type SubWebSocketProtocol interface {
-	OnMessage(t int, data []byte)
-}
-
 type WebSocketProtocol struct {
 	ReadBufferSize    int
 	WriteBufferSize   int
-	Subprotocols      map[string]SubWebSocketProtocol
+	Subprotocols      map[string]struct{}
 	EnableCompression bool
 }
 
@@ -49,9 +45,9 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 	if len(p.Subprotocols) > 0 {
 		hv, ok := ctx.Response.Header.Get(HeaderSecWebSocketProtocol)
 		if ok {
-			if sp, ok := p.Subprotocols[internal.S(hv)]; ok {
+			if _, ok := p.Subprotocols[internal.S(hv)]; ok {
 				subprotocol = hv
-				ctx.Request.wsSubP = sp
+				ctx.Request.webSocketSubProtocolName = append(ctx.Request.webSocketSubProtocolName, hv...)
 			} else {
 				ctx.Response.statusCode = http.StatusBadRequest
 				return false
@@ -61,9 +57,9 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 			if ok && len(hv) > 0 {
 				for _, v := range bytes.Split(hv, []byte(",")) {
 					v = internal.InplaceTrimAsciiSpace(v)
-					if sp, ok := p.Subprotocols[internal.S(v)]; ok {
+					if _, ok := p.Subprotocols[internal.S(v)]; ok {
 						subprotocol = v
-						ctx.Request.wsSubP = sp
+						ctx.Request.webSocketSubProtocolName = append(ctx.Request.webSocketSubProtocolName, v...)
 						break
 					}
 				}
@@ -90,7 +86,7 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 	}
 	res.Header.Append(HeaderSecWebSocketAccept, internal.B(websocket.ComputeAcceptKey(internal.S(key))))
 	if compress {
-		ctx.Request.wsDoCompress = true
+		ctx.Request.webSocketShouldDoCompression = true
 		res.Header.Append(HeaderSecWebSocketExtensions, internal.B(websocketExt))
 	}
 	_ = ctx.Send()
@@ -103,7 +99,7 @@ func (p *WebSocketProtocol) Hijack(ctx *RequestCtx) *websocket.Conn {
 	req := &ctx.Request
 	ctx.hijacked = true
 	return websocket.NewConn(
-		ctx.conn, true, req.wsDoCompress,
+		ctx.conn, true, req.webSocketShouldDoCompression,
 		p.ReadBufferSize, p.WriteBufferSize,
 		&websocketWriteBufferPool, nil, nil,
 	)
@@ -124,7 +120,7 @@ func SetWebSocketProtocol(p *WebSocketProtocol) {
 	wsp = p
 }
 
-type WebSocketHandlerFunc func(ctx context.Context, req *Request, conn *websocket.Conn)
+type WebSocketHandlerFunc func(ctx context.Context, req *Request, conn *websocket.Conn, subProtocolName string)
 
 func wshToHandler(wsh WebSocketHandlerFunc) RequestHandler {
 	return RequestHandlerFunc(func(ctx *RequestCtx) {
@@ -136,6 +132,6 @@ func wshToHandler(wsh WebSocketHandlerFunc) RequestHandler {
 		if !wsp.Handshake(ctx) {
 			return
 		}
-		wsh(ctx, &ctx.Request, wsp.Hijack(ctx))
+		wsh(ctx, &ctx.Request, wsp.Hijack(ctx), internal.S(ctx.Request.webSocketSubProtocolName))
 	})
 }

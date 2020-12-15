@@ -38,20 +38,23 @@ var keepAliveStr = []byte("keep-alive")
 const (
 	closeStr  = "close"
 	http11Str = "1.1"
+	keepAlive = "keep-alive"
 )
 
 func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
-	req := &ctx.Request
-	if string(req.version[5:]) < http11Str {
-		return false
-	}
-
-	connVal, _ := ctx.Request.Header.Get(HeaderConnection)
+	connVal, _ := ctx.Response.Header.Get(HeaderConnection) // disable keep-alive by response
 	if string(inplaceLowercase(connVal)) == closeStr {
 		return false
 	}
-	connVal, _ = ctx.Response.Header.Get(HeaderConnection)
-	return string(inplaceLowercase(connVal)) != closeStr
+	connVal, _ = ctx.Request.Header.Get(HeaderConnection) // disable keep-alive by request
+	connValS := internal.S(connVal)
+	if connValS == closeStr {
+		return false
+	}
+	if connValS == keepAlive { // enable keep-alive by request
+		return true
+	}
+	return string(ctx.Request.version[5:]) >= http11Str // if http version >= 1.1, enable keep-alive default
 }
 
 var zeroTime time.Time
@@ -63,13 +66,14 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 	var cancelFn func()
 
 	rctx := acquireRequestCtx()
+	rctx.isTLS = protocol.server.isTls
 	readBuf := protocol.readBufferPool.Get()
 	rctx.Response.bodyBuf = protocol.resBodyBufferPool.Get()
-	i := protocol.resSendBufferPool.Get()
-	if i == nil {
+	bufI := protocol.resSendBufferPool.Get()
+	if bufI == nil {
 		rctx.Response.sendBuf = bufio.NewWriterSize(conn, protocol.DefaultResponseSendBufferSize)
 	} else {
-		rctx.Response.sendBuf = i.(*bufio.Writer)
+		rctx.Response.sendBuf = bufI.(*bufio.Writer)
 		rctx.Response.sendBuf.Reset(conn)
 	}
 
@@ -102,14 +106,16 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			if err == nil {
 				continue
 			}
+			// `net.Conn.Read` is a blocking call, got 'io.EOF' means that the client closes this connection.
 			return
 		}
 
-		if inIdle {
+		if inIdle { // got data, stop idle, reset ReadTimeout
 			inIdle = false
 			_ = conn.SetReadDeadline(time.Now().Add(readTimeout))
 		}
 
+		// consume all the buffered data
 		for offset != n {
 			offset, err = rctx.feedHttp1xReqData(readBuf.Data, offset, n)
 			if err != nil {
@@ -127,6 +133,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			continue
 		}
 
+		// got a http1x request
 		if autoCompression {
 			rctx.AutoCompress()
 		}
@@ -224,10 +231,14 @@ func (ctx *RequestCtx) initRequest() {
 	}
 
 	if req._method != _MConnect {
-		if req.qmOK && req.qmIndex > 0 {
-			req.Path = decodeURI(req.RawPath[:req.qmIndex])
+		if req.gotQuestionMark {
+			req.questionMarkIndex--
+			req.Path = decodeURI(req.RawPath[:req.questionMarkIndex])
 		} else {
 			req.Path = decodeURI(req.RawPath)
+		}
+		if len(req.Path) < 1 {
+			req.Path = append(req.Path, '/')
 		}
 		req.bodyBufferPtr = &ctx.buf
 	}
@@ -271,11 +282,10 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 					req.Method = append(req.Method, toUpperTable[v])
 				case 1:
 					req.RawPath = append(req.RawPath, v)
-					if !req.qmOK {
+					if !req.gotQuestionMark {
+						req.questionMarkIndex++
 						if v == '?' {
-							req.qmOK = true
-						} else {
-							req.qmIndex++
+							req.gotQuestionMark = true
 						}
 					}
 				case 2:
