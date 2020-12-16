@@ -187,6 +187,25 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 
 var httpVersion = []byte("HTTP/")
 
+func cleanPath(p []byte) []byte {
+	ignoreSlash := false
+	ind := 0
+	for _, b := range p {
+		if b == '/' {
+			if !ignoreSlash {
+				p[ind] = b
+				ind++
+				ignoreSlash = true
+			}
+		} else {
+			ignoreSlash = false
+			p[ind] = b
+			ind++
+		}
+	}
+	return p[:ind]
+}
+
 func (ctx *RequestCtx) initRequest() {
 	req := &ctx.Request
 
@@ -233,13 +252,15 @@ func (ctx *RequestCtx) initRequest() {
 	if req._method != _MConnect {
 		if req.gotQuestionMark {
 			req.questionMarkIndex--
-			req.Path = decodeURI(req.RawPath[:req.questionMarkIndex])
+			req.Path = append(req.Path, req.RawPath[:req.questionMarkIndex]...)
 		} else {
-			req.Path = decodeURI(req.RawPath)
+			req.Path = append(req.Path, req.RawPath...)
 		}
 		if len(req.Path) < 1 {
 			req.Path = append(req.Path, '/')
 		}
+
+		req.Path = decodeURI(cleanPath(req.Path))
 		req.bodyBufferPtr = &ctx.buf
 	}
 }

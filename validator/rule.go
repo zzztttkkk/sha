@@ -49,6 +49,15 @@ var typeNames = []string{
 	"CustomType",
 }
 
+const (
+	_WhereForm = iota
+	_WhereParams
+	_WhereQuery
+	_WhereBody
+	_WhereCookie
+	_WhereHeader
+)
+
 type Rule struct {
 	fieldIndex          []int
 	fieldType           reflect.Type
@@ -74,10 +83,11 @@ type Rule struct {
 	minSSV  *int
 	maxSSV  *int
 
-	notTrimSpace bool
-	fLR          bool // bytes size range flag
-	minLV        *int
-	maxLV        *int
+	notEscapeHtml bool
+	notTrimSpace  bool
+	fLR           bool // bytes size range flag
+	minLV         *int
+	maxLV         *int
 
 	defaultVal interface{}
 
@@ -88,7 +98,7 @@ type Rule struct {
 	fnName string
 }
 
-var MarkdownTableHeader = "\n|name|type|required|length range|value range|size range|default|regexp|function|description|\n"
+var MarkdownTableHeader = "\n|name|type|required|string length range|int value range|list size range|default|regexp|function|description|\n"
 
 func init() {
 	MarkdownTableHeader += strings.Repeat("|:---:", 10)
@@ -255,7 +265,10 @@ func (rule *Rule) toString(v []byte) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	return internal.S(v), true
+	if rule.notEscapeHtml {
+		return internal.S(v), true
+	}
+	return internal.S(htmlEscape(v)), true
 }
 
 func (rule *Rule) toInt(v []byte) (int64, bool) {

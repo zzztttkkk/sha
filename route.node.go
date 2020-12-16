@@ -8,14 +8,14 @@ import (
 )
 
 type _RouteNode struct {
-	params       [][]byte
-	paramsStatus int
+	param        []byte
 	raw          string
 	wildcardName string
 	handler      RequestHandler
 	parent       *_RouteNode
 	name         string
 
+	sChild      *_RouteNode
 	children    []*_RouteNode
 	childrenMap map[string]*_RouteNode
 
@@ -47,6 +47,10 @@ func (node *_RouteNode) addChild(c *_RouteNode) {
 
 func (node *_RouteNode) getChild(name string) *_RouteNode {
 	i, j := 0, len(node.children)
+	if j < 1 {
+		return nil
+	}
+
 	if j < 6 {
 		for _, n := range node.children {
 			if n.name == name {
@@ -75,9 +79,14 @@ func (node *_RouteNode) getChild(name string) *_RouteNode {
 	return nil
 }
 
-func (node *_RouteNode) addHandler(
-	path []string, handler RequestHandler, raw string,
-) *_RouteNode {
+func (node *_RouteNode) _getChild(name []byte) *_RouteNode {
+	if node.sChild != nil {
+		return node.sChild
+	}
+	return node.getChild(internal.S(name))
+}
+
+func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw string) *_RouteNode {
 	if len(path) < 1 {
 		if handler == nil {
 			return node
@@ -88,7 +97,7 @@ func (node *_RouteNode) addHandler(
 				node.handler = handler
 				node.autoHandler = false
 			} else {
-				panic(fmt.Errorf("sha.router: `%s` conflict with `%s`", raw, node.raw))
+				panic(fmt.Errorf("sha.router: `/%s` conflict with `%s`", raw, node.raw))
 			}
 			return node
 		}
@@ -100,9 +109,9 @@ func (node *_RouteNode) addHandler(
 
 	p := path[0]
 	ind := strings.IndexByte(p, ':')
-	if ind < 0 {
-		if node.paramsStatus == 2 || len(node.wildcardName) != 0 {
-			panic(fmt.Errorf("sha.router: `%s` conflict with others", raw))
+	if ind < 0 { // normal part
+		if node.sChild != nil {
+			panic(fmt.Errorf("sha.router: `/%s` conflict with others", raw))
 		}
 
 		sn := node.getChild(p)
@@ -113,105 +122,60 @@ func (node *_RouteNode) addHandler(
 		return sn.addHandler(path[1:], handler, raw)
 	}
 
-	if ind == 0 {
-		if node.paramsStatus == 2 || len(node.wildcardName) != 0 {
-			panic(fmt.Errorf("sha.router: `%s` conflict with others", raw))
+	if ind == 0 { // param part
+		if len(node.children) != 0 {
+			panic(fmt.Errorf("sha.router: `/%s` conflict with others", raw))
 		}
-
-		node.paramsStatus = 1
-		node.params = append(node.params, []byte(p[1:]))
-
-		return node.addHandler(path[1:], handler, raw)
+		node.sChild = &_RouteNode{param: []byte(p[1:])}
+		return node.sChild.addHandler(path[1:], handler, raw)
 	}
 
-	if len(node.children) != 0 || len(node.params) != 0 || len(node.wildcardName) != 0 {
-		panic(fmt.Errorf("sha.router: `%s` conflict with others", raw))
+	if len(node.children) != 0 {
+		panic(fmt.Errorf("sha.router: `/%s` conflict with others", raw))
 	}
-
-	if !strings.HasSuffix(p, ":*") {
-		panic(fmt.Errorf("sha.router: bad path value `%s`", raw))
+	if !strings.HasSuffix(p, ":*") || len(path) != 1 {
+		panic(fmt.Errorf("sha.router: bad path value `/%s`", raw))
 	}
-
-	node.wildcardName = p[:len(p)-2]
-	return node.addHandler(nil, handler, raw)
+	node.sChild = &_RouteNode{wildcardName: p[:len(p)-2]}
+	return node.sChild.addHandler(nil, handler, raw)
 }
 
-func (node *_RouteNode) freezeParams() {
-	if node.paramsStatus == 1 {
-		node.paramsStatus = 2
-	}
-	for _, n := range node.children {
-		n.freezeParams()
-	}
-}
-
-func (node *_RouteNode) find(path []byte, kvs *internal.Kvs, paramsC *int) (int, *_RouteNode) {
+func (node *_RouteNode) find(path []byte, kvs *internal.Kvs) (int, *_RouteNode) {
 	n := node
-	if len(n.wildcardName) > 0 {
-		return 0, n
-	}
-
+	var temp []byte
 	var i int
 	var b byte
-	var key []byte
-	params := n.params
-	var paramsI int
-	var prevI int
-
 	for i, b = range path {
 		if b == '/' {
-			if len(params) > 0 {
-				kvs.AppendBytes(params[paramsI], key)
-				*paramsC = (*paramsC) + 1
-				key = key[:0]
-				paramsI++
-				if paramsI >= len(params) {
-					params = nil
-					paramsI = 0
-					prevI = i
-				}
-				continue
-			}
-
-			if len(n.children) < 1 {
-				return prevI, nil
-			}
-
-			n = n.getChild(internal.S(key))
-			key = key[:0]
+			n = n._getChild(temp)
 			if n == nil {
-				return prevI, nil
+				return 0, nil
 			}
-
-			if len(n.params) > 0 {
-				params = n.params
-				prevI = i
+			if len(n.param) > 0 {
+				kvs.AppendBytes(n.param, temp)
+				temp = temp[:0]
 				continue
 			}
-
 			if len(n.wildcardName) > 0 {
-				return i, n
+				return i - len(temp), n
 			}
-
-			prevI = i
+			temp = temp[:0]
 			continue
 		}
-		key = append(key, b)
+		temp = append(temp, b)
 	}
-	// path not endswith "/"
-	if len(params) > 0 {
-		kvs.AppendBytes(params[paramsI], key)
-		*paramsC = (*paramsC) + 1
-		return i, n
-	}
-
-	if len(n.children) < 1 {
-		return prevI, nil
-	}
-
-	n = n.getChild(internal.S(key))
+	n = n._getChild(temp)
 	if n == nil {
-		return prevI, nil
+		return 0, nil
+	}
+	if len(n.param) > 0 {
+		if len(temp) < 1 {
+			return 0, nil
+		}
+		kvs.AppendBytes(n.param, temp)
+	}
+	if len(n.wildcardName) > 0 {
+		return i - len(temp), n
 	}
 	return i, n
 }

@@ -52,6 +52,23 @@ func (e *FormError) StatusCode() int {
 	return http.StatusBadRequest
 }
 
+func htmlEscape(p []byte) []byte {
+	var ret []byte
+	for _, b := range p {
+		switch b {
+		case '&':
+			ret = append(ret, '&', 'a', 'm', 'p')
+		case '<':
+			ret = append(ret, '&', 'l', 't')
+		case '>':
+			ret = append(ret, '&', 'g', 't')
+		default:
+			ret = append(ret, b)
+		}
+	}
+	return ret
+}
+
 func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError {
 	var fv []byte
 	var ok bool
@@ -94,7 +111,15 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 	case _Float64:
 		ret, ok = rule.toFloat(fv)
 	case _Bytes:
-		ret, ok = rule.toBytes(fv)
+		if rule.notEscapeHtml {
+			ret, ok = rule.toBytes(fv)
+		} else {
+			var p []byte
+			p, ok = rule.toBytes(fv)
+			if ok {
+				ret = htmlEscape(p)
+			}
+		}
 	case _String:
 		ret, ok = rule.toString(fv)
 	case _CustomType:
@@ -182,11 +207,15 @@ func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
 	case _BytesSlice:
 		var lst [][]byte
 		for _, bs := range formVals {
-			a, b := rule.toBytes(bs)
-			if !b {
+			a, ok := rule.toBytes(bs)
+			if !ok {
 				return &FormError{FormName: rule.formName, Type: BadValue}
 			}
-			lst = append(lst, a)
+			if rule.notEscapeHtml {
+				lst = append(lst, a)
+			} else {
+				lst = append(lst, htmlEscape(a))
+			}
 		}
 		ret = lst
 	default:

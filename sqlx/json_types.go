@@ -7,13 +7,13 @@ import (
 	"github.com/zzztttkkk/sha/internal"
 )
 
-type JsonBytes []byte
+type JsonBytesString []byte
 
-var emptyBytes = []byte("\"\"")
+var emptyString = []byte("\"\"")
 
-func (u JsonBytes) MarshalJSON() ([]byte, error) {
+func (u JsonBytesString) MarshalJSON() ([]byte, error) {
 	if u == nil {
-		return emptyBytes, nil
+		return emptyString, nil
 	}
 
 	var ret []byte
@@ -31,26 +31,6 @@ func (u JsonBytes) MarshalJSON() ([]byte, error) {
 	}
 	ret = append(ret, '"')
 	return ret, nil
-}
-
-func (u *JsonBytes) UnmarshalJSON(v []byte) error {
-	inEscape := false
-	for _, b := range v {
-		if inEscape {
-			*u = append(*u, b)
-			inEscape = false
-			continue
-		}
-
-		switch b {
-		case '\\':
-			inEscape = true
-			continue
-		default:
-			*u = append(*u, b)
-		}
-	}
-	return nil
 }
 
 type JsonArray []interface{}

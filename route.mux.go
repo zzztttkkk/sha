@@ -191,7 +191,11 @@ func (mux *Mux) addToRawMap(method, path string, handler RequestHandler) {
 
 func (mux *Mux) doAddHandler1(method, path string, handler RequestHandler, doWrap bool) {
 	u, e := url.Parse(path)
-	if e != nil || len(u.RawQuery) != 0 || len(u.Fragment) != 0 {
+	if e != nil ||
+		len(u.RawQuery) != 0 ||
+		len(u.Fragment) != 0 ||
+		path[0] != '/' ||
+		len(path) != len(strings.ReplaceAll(path, "//", "/")) {
 		panic(fmt.Errorf("sha.mux: bad path value `%s`", path))
 	}
 	defer mux.addToRawMap(method, path, handler)
@@ -200,15 +204,11 @@ func (mux *Mux) doAddHandler1(method, path string, handler RequestHandler, doWra
 		handler = mux.wrap(handler)
 	}
 
-	if path[0] != '/' {
-		panic(fmt.Errorf("sha.router: error path: `%s`", path))
-	}
 	path = mux.prefix + path
 	path = path[1:]
 
 	tree := mux.getOrNewTree(method)
 	newNode := tree.addHandler(strings.Split(path, "/"), handler, path)
-	tree.freezeParams()
 
 	if mux.AutoSlashRedirect && method != "OPTIONS" {
 		autoSlashRedirect(newNode)
@@ -373,30 +373,13 @@ func (mux *Mux) Handle(ctx *RequestCtx) {
 	}
 
 	path := req.Path
-	paramsC := 0
-
-	i, n := tree.find(path[1:], &req.Params, &paramsC)
+	i, n := tree.find(path[1:], &req.Params)
 	if n == nil || n.handler == nil {
 		ctx.SetStatus(http.StatusNotFound)
 		return
 	}
 
-	if len(n.params) > 0 && paramsC != len(n.params) {
-		ctx.SetStatus(http.StatusNotFound)
-		return
-	}
-
 	if len(n.wildcardName) > 0 {
-		// wildcard path must endswith "/"
-		if path[i] == '/' {
-			n = n.getChild("")
-			if n != nil {
-				n.handler.Handle(ctx)
-			} else {
-				ctx.SetStatus(http.StatusNotFound)
-			}
-			return
-		}
 		req.Params.Append(n.wildcardName, path[i+2:])
 	} else if i < len(path)-2 {
 		ctx.SetStatus(http.StatusNotFound)

@@ -18,9 +18,7 @@ func Test_Mux_AddHandler(t *testing.T) {
 	m.AutoOptions = true
 	m.AutoSlashRedirect = true
 
-	//rawHandlerMap.REST("GET", "/current:*", h)
 	m.HTTP("GET", "/", makeTestHandler(0))
-	//rawHandlerMap.REST("GET", "/fi", makeTestHandler(1))
 	m.HTTP("GET", "/s/filename:*", makeTestHandler(2))
 	m.HTTP("GET", "/simple/", makeTestHandler(3))
 	m.HTTP("GET", "/simple/b", makeTestHandler(4))
@@ -29,7 +27,8 @@ func Test_Mux_AddHandler(t *testing.T) {
 	m.HTTP("GET", "/g/:f/jjj", makeTestHandler(7))
 	m.HTTP("POST", "/g/:f/jjj", makeTestHandler(8))
 	m.HTTP("GET", "/fi/", makeTestHandler(1))
-	m.HTTP("GET", "/虎虎虎/", makeTestHandler(1))
+	m.HTTP("GET", "/虎虎虎/", makeTestHandler(56))
+	m.HTTP("GET", "/qwer/:n/d/:m/sp:*", makeTestHandler(17))
 
 	m.Print(false, false)
 
