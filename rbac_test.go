@@ -14,7 +14,7 @@ type _RbacUser int64
 
 func (u _RbacUser) GetID() int64 { return int64(u) }
 
-func (u _RbacUser) Info() interface{} { return "rbac.TestUser" }
+func (u _RbacUser) Info() interface{} { return nil }
 
 func init() {
 	sqlx.OpenWriteableDB(
@@ -30,24 +30,14 @@ func Test_Rbac(t *testing.T) {
 
 	mux.HTTP(
 		"get",
-		"/redirect33",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
-			RedirectPermanently("https://google.com")
-		}),
+		"/redirect",
+		RequestHandlerFunc(func(ctx *RequestCtx) { RedirectPermanently("https://google.com") }),
 	)
 
 	branch := NewBranch()
-	branch.Use(
-		MiddlewareFunc(
-			func(ctx *RequestCtx, next func()) {
-				defer rbac.Recover(ctx)
-				next()
-			},
-		),
-	)
 
 	auth.SetImplementation(auth.Func(func(ctx context.Context) (auth.Subject, error) { return _RbacUser(12), nil }))
-	UseRBAC(branch, "", nil, false)
+	UseRBAC(branch, nil)
 
 	rbac.GrantRoot(12)
 

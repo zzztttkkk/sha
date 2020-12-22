@@ -21,15 +21,15 @@ func B(s string) (b []byte) {
 	return
 }
 
-var spaceMap []byte
+var spaceMap [128]bool
 
 func init() {
-	spaceMap = make([]byte, 128)
 	for i := 0; i < 128; i++ {
-		if i <= 32 || i == 127 {
-			spaceMap[i] = 1
-		} else {
-			spaceMap[i] = 0
+		switch i {
+		case '\t', '\n', '\v', '\f', '\r', ' ', 0x85, 0xA0:
+			spaceMap[i] = true
+		default:
+			spaceMap[i] = false
 		}
 	}
 }
@@ -42,16 +42,16 @@ func InplaceTrimAsciiSpace(v []byte) []byte {
 		if b > 127 {
 			break
 		}
-		if spaceMap[b] != 1 {
+		if !spaceMap[b] {
 			break
 		}
 	}
 	for ; right >= left; right-- {
-		b := v[left]
+		b := v[right]
 		if b > 127 {
 			break
 		}
-		if spaceMap[b] != 1 {
+		if !spaceMap[b] {
 			break
 		}
 	}

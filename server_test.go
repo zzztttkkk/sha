@@ -5,9 +5,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
-	"github.com/zzztttkkk/sha/validator"
-	"github.com/zzztttkkk/websocket"
 	"net/http"
 	_ "net/http/pprof"
 	"regexp"
@@ -15,6 +12,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/validator"
+	"github.com/zzztttkkk/websocket"
 )
 
 type _CustomFormTime time.Time
@@ -82,12 +83,18 @@ func TestServer_Run(t *testing.T) {
 	}
 
 	mux.HTTPWithForm(
-		"get",
+		"post",
 		"/form",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
+			ctx.Response.Header.SetContentType(MIMEText)
 			var form Form
 			ctx.MustValidate(&form)
-			fmt.Printf("%+v\n", form)
+			fmt.Printf("%s\n", form.Password)
+			for _, file := range ctx.Request.Files() {
+				fmt.Println(file.Header)
+				fmt.Println(file.FileName, file.Name)
+				fmt.Println(string(file.Data()))
+			}
 			_, _ = ctx.WriteString("Hello World!")
 		}),
 		Form{},
@@ -150,8 +157,9 @@ func TestServer_RunPrintRequest(t *testing.T) {
 
 func TestServer_RunTimeout(t *testing.T) {
 	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("hello world") }))
-	//goland:noinspection GoVetLostCancel
-	server.BaseCtx, _ = context.WithTimeout(context.Background(), time.Second)
+	var fn func()
+	server.BaseCtx, fn = context.WithTimeout(context.Background(), time.Second)
+	defer fn()
 	server.ListenAndServe()
 }
 

@@ -12,14 +12,14 @@ type Subject interface {
 	Info() interface{}
 }
 
-type Authenticator interface {
+type Interface interface {
 	Auth(ctx context.Context) (Subject, error)
 }
 
-var authenticator Authenticator
+var impl Interface
 
 func Auth(ctx context.Context) (Subject, error) {
-	return authenticator.Auth(ctx)
+	return impl.Auth(ctx)
 }
 
 type Func func(ctx context.Context) (Subject, error)
@@ -42,6 +42,6 @@ func MustAuth(ctx context.Context) Subject {
 	return s
 }
 
-func SetImplementation(a Authenticator) {
-	authenticator = a
+func SetImplementation(authenticator Interface) {
+	impl = authenticator
 }

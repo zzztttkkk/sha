@@ -279,6 +279,11 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				return 10001, ErrRequestUrlTooLong
 			}
 
+			// ascii
+			if v > 127 {
+				return 10002, ErrBadConnection
+			}
+
 			if v == '\n' { // end of first line
 				ctx.status++
 				ctx.buf = ctx.buf[:0]
@@ -324,6 +329,11 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			if ctx.headersSize > ctx.protocol.MaxRequestHeaderPartSize {
 				return 10006, ErrRequestHeaderFieldsTooLarge
 			}
+
+			// ascii
+			//if v > 127 {
+			//	return 10007, ErrBadConnection
+			//}
 
 			if v == '\n' {
 				if len(ctx.currentHeaderKey) < 1 { // all header data read done

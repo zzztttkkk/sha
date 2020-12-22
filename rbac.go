@@ -2,14 +2,13 @@ package sha
 
 import (
 	"github.com/zzztttkkk/sha/rbac"
-	"log"
 )
 
-type _RbacR struct {
+type _RbacRouterAdapter struct {
 	Router
 }
 
-func (r *_RbacR) HandleWithDoc(
+func (r *_RbacRouterAdapter) HandleWithDoc(
 	method string, path string,
 	handler rbac.HandlerFunc,
 	doc interface{},
@@ -22,20 +21,8 @@ func (r *_RbacR) HandleWithDoc(
 	)
 }
 
-func UseRBAC(
-	router Router,
-	tableNamePrefix string,
-	logger *log.Logger,
-	loggingFroReadOperation bool,
-) {
-	rbac.Init(
-		&rbac.Options{
-			Router:           &_RbacR{router},
-			TableNamePrefix:  tableNamePrefix,
-			LogReadOperation: loggingFroReadOperation,
-			Logger:           logger,
-		},
-	)
+func UseRBAC(router Router, options *rbac.Options) {
+	rbac.Init(&_RbacRouterAdapter{router}, options)
 }
 
 func MustGrantedAll(permissions ...string) Middleware {

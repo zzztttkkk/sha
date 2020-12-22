@@ -1,7 +1,6 @@
 package sha
 
 import (
-	"github.com/zzztttkkk/sha/auth"
 	"testing"
 )
 
@@ -28,7 +27,6 @@ func TestRequestCtx_Validate(t *testing.T) {
 		RequestHandlerFunc(
 			func(ctx *RequestCtx) {
 				form := TestForm{}
-				panic(auth.ErrUnauthenticatedOperation)
 				ctx.MustValidate(&form)
 				_, _ = ctx.WriteString("OK")
 			},

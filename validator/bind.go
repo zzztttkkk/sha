@@ -3,8 +3,10 @@ package validator
 import (
 	"bytes"
 	"fmt"
+	"github.com/zzztttkkk/sha/internal"
 	"net/http"
 	"reflect"
+	"unicode/utf8"
 )
 
 type Former interface {
@@ -54,8 +56,9 @@ func (e *FormError) StatusCode() int {
 
 func htmlEscape(p []byte) []byte {
 	var ret []byte
-	for _, b := range p {
-		switch b {
+	var temp = make([]byte, 4)
+	for _, r := range internal.S(p) {
+		switch r {
 		case '&':
 			ret = append(ret, '&', 'a', 'm', 'p')
 		case '<':
@@ -63,7 +66,10 @@ func htmlEscape(p []byte) []byte {
 		case '>':
 			ret = append(ret, '&', 'g', 't')
 		default:
-			ret = append(ret, b)
+			l := utf8.EncodeRune(temp, r)
+			for i := 0; i < l; i++ {
+				ret = append(ret, temp[i])
+			}
 		}
 	}
 	return ret

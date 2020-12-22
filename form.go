@@ -3,7 +3,6 @@ package sha
 import (
 	"bytes"
 	"github.com/zzztttkkk/sha/internal"
-	"io"
 	"os"
 	"sync"
 )
@@ -44,47 +43,10 @@ type FormFile struct {
 	FileName string
 	Header   Header
 
-	buf    []byte
-	cursor int
+	buf []byte
 }
 
-func (file *FormFile) Size() int {
-	return len(file.buf)
-}
-
-func (file *FormFile) Seek(offset int64, whence int) (int64, error) {
-	c := int64(file.cursor)
-	l := int64(len(file.buf))
-	switch whence {
-	case io.SeekCurrent:
-		c += offset
-	case io.SeekEnd:
-		c = l - 1 - offset
-	case io.SeekStart:
-		c = offset
-	}
-	if c > l-1 || c < 0 {
-		return -1, io.ErrUnexpectedEOF
-	}
-	file.cursor = int(c)
-	return c, nil
-}
-
-func (file *FormFile) Write(p []byte) (int, error) {
-	file.buf = append(file.buf, p...)
-	return len(p), nil
-}
-
-func (file *FormFile) Read(p []byte) (int, error) {
-	s := 0
-	for ; s < len(p) && file.cursor < len(file.buf); s++ {
-		p[s] = file.buf[file.cursor+s]
-	}
-	if file.cursor == len(file.buf)-1 {
-		return s, io.EOF
-	}
-	return s, nil
-}
+func (file *FormFile) Data() []byte { return file.buf }
 
 func (file *FormFile) Save(name string) error {
 	f, e := os.OpenFile(name, os.O_WRONLY|os.O_CREATE, 0644)
@@ -303,49 +265,55 @@ func (req *Request) parseMultiPart(boundary []byte) bool {
 
 var boundaryBytes = []byte("boundary=")
 
+const (
+	_BodyUnParsed = iota
+	_BodyUnsupportedType
+	_BodyOK
+)
+
 func (req *Request) parseBodyBuf() {
 	if req.bodyBufferPtr == nil {
-		req.bodyStatus = 1
+		req.bodyStatus = _BodyUnsupportedType
 		return
 	}
 
 	buf := *req.bodyBufferPtr
 	if len(buf) < 1 {
-		req.bodyStatus = 1
+		req.bodyStatus = _BodyUnsupportedType
 		return
 	}
 
 	typeValue := req.Header.ContentType()
 	if len(typeValue) < 1 {
-		req.bodyStatus = 1
+		req.bodyStatus = _BodyUnsupportedType
 		return
 	}
 
 	if bytes.HasPrefix(typeValue, internal.B(MIMEForm)) {
 		req.body.ParseUrlEncoded(buf)
-		req.bodyStatus = 2
+		req.bodyStatus = _BodyOK
 		return
 	}
 
 	if bytes.HasPrefix(typeValue, internal.B(MIMEMultiPart)) {
 		ind := bytes.Index(typeValue, boundaryBytes)
 		if ind < 1 {
-			req.bodyStatus = 1
+			req.bodyStatus = _BodyUnsupportedType
 			return
 		}
 
 		req.parseMultiPart(typeValue[ind+9:])
-		req.bodyStatus = 2
+		req.bodyStatus = _BodyOK
 		return
 	}
-	req.bodyStatus = 1
+	req.bodyStatus = _BodyUnsupportedType
 }
 
 func (req *Request) BodyForm() *Form {
-	if req.bodyStatus == 0 {
+	if req.bodyStatus == _BodyUnParsed {
 		req.parseBodyBuf()
 	}
-	if req.bodyStatus != 2 {
+	if req.bodyStatus != _BodyOK {
 		return nil
 	}
 	return &req.body

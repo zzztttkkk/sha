@@ -19,7 +19,6 @@ var roleWithPermOp *sqlx.Operator
 var roleWithInhOp *sqlx.Operator
 var subjectWithRoleOp *sqlx.Operator
 
-// sqls
 var rolePermsSql = "select * from %s as p where p.id in (select rp.perm from %s as rp where rp.role=:rid) order by p.id"
 
 func init() {
@@ -44,6 +43,8 @@ func init() {
 }
 
 func Roles(ctx context.Context) []*model.Role {
+	logging(ctx, "r.roles", nil)
+
 	var ret []*model.Role
 	err := roleOp.FetchMany(ctx, "*", "where deleted_at=0 and status>=0", nil, &ret)
 	if err != nil {
@@ -56,10 +57,12 @@ func Roles(ctx context.Context) []*model.Role {
 }
 
 func RoleByName(ctx context.Context, name string) *model.Role {
+	logging(ctx, "r.rolebyname", sqlx.JsonObject{"name": name})
+
 	var ret model.Role
 
 	type Arg struct {
-		Name string `db:"name"`
+		Name string `db:"rname"`
 	}
 	err := roleOp.FetchOne(ctx, "*", "where deleted_at=0 and status>=0 and name=:rname", Arg{Name: name}, &ret)
 	if err != nil {
@@ -72,7 +75,7 @@ func RoleByName(ctx context.Context, name string) *model.Role {
 }
 
 func NewRole(ctx context.Context, name, desc string) {
-	defer logging(ctx, "w.new.role", sqlx.JsonObject{"name": name, "description": desc})
+	logging(ctx, "w.new.role", sqlx.JsonObject{"name": name, "description": desc})
 
 	roleOp.Insert(
 		ctx,
@@ -85,7 +88,7 @@ func NewRole(ctx context.Context, name, desc string) {
 }
 
 func GetRoleIDByName(ctx context.Context, name string) (int64, error) {
-	defer logging(ctx, "r.idbyname.role", sqlx.JsonObject{"name": name})
+	logging(ctx, "r.idbyname.role", sqlx.JsonObject{"name": name})
 
 	type Arg struct {
 		Name string `db:"name"`
@@ -114,7 +117,7 @@ func MustGetRoleIDByName(ctx context.Context, name string) int64 {
 
 func DelRole(ctx context.Context, name string) {
 	rid := MustGetRoleIDByName(ctx, name)
-	defer logging(ctx, "w.del.role", sqlx.JsonObject{"name": name})
+	logging(ctx, "w.del.role", sqlx.JsonObject{"name": name})
 
 	type Arg struct {
 		RoleID int64 `db:"rid"`
@@ -137,15 +140,16 @@ func DelRole(ctx context.Context, name string) {
 func RoleAddPerm(ctx context.Context, role, perm string) {
 	rid := MustGetRoleIDByName(ctx, role)
 	pid := MustGetPermIDByName(ctx, perm)
-	defer logging(ctx, "w.add.role.perm", sqlx.JsonObject{"role": role, "perm": perm})
 
+	logging(ctx, "w.add.role.perm", sqlx.JsonObject{"role": role, "perm": perm})
 	roleWithPermOp.Insert(ctx, sqlx.Data{"role": rid, "perm": pid})
 }
 
 func RoleDelPerm(ctx context.Context, role, perm string) {
 	rid := MustGetRoleIDByName(ctx, role)
 	pid := MustGetPermIDByName(ctx, perm)
-	defer logging(ctx, "w.del.role.perm", sqlx.JsonObject{"role": role, "roleID": rid, "perm": perm, "permID": pid})
+
+	logging(ctx, "w.del.role.perm", sqlx.JsonObject{"role": role, "roleID": rid, "perm": perm, "permID": pid})
 
 	type Arg struct {
 		RID int64 `db:"rid"`
@@ -156,6 +160,8 @@ func RoleDelPerm(ctx context.Context, role, perm string) {
 }
 
 func RolePermIDs(ctx context.Context, roleID int64) []int64 {
+	logging(ctx, "r.role.permIDs", sqlx.JsonObject{"roleID": roleID})
+
 	var ret []int64
 	type Arg struct {
 		RoleID int64 `db:"rid"`
@@ -171,6 +177,8 @@ func RolePermIDs(ctx context.Context, roleID int64) []int64 {
 }
 
 func RolePerms(ctx context.Context, roleID int64) []*model.Permission {
+	logging(ctx, "r.role.perms", sqlx.JsonObject{"roleID": roleID})
+
 	var ret []*model.Permission
 
 	type Arg struct {
@@ -187,7 +195,7 @@ func RolePerms(ctx context.Context, roleID int64) []*model.Permission {
 }
 
 func RoleGetBasedByID(ctx context.Context, roleID int64) []int64 {
-	defer logging(ctx, "r.role.based", sqlx.JsonObject{"roleID": roleID})
+	logging(ctx, "r.role.based", sqlx.JsonObject{"roleID": roleID})
 	var ret []int64
 
 	type Arg struct {
@@ -231,7 +239,7 @@ func init() {
 func RoleInheritFrom(ctx context.Context, role, base string) error {
 	rid := MustGetRoleIDByName(ctx, role)
 	bid := MustGetRoleIDByName(ctx, base)
-	defer logging(ctx, "w.add.role.based", sqlx.JsonObject{"role": role, "based": base, "roleID": rid, "basedID": bid})
+	logging(ctx, "w.add.role.based", sqlx.JsonObject{"role": role, "based": base, "roleID": rid, "basedID": bid})
 
 	ret := map[int64]struct{}{}
 	if !upTraverse(ctx, rid, ret) {
@@ -247,7 +255,7 @@ func RoleInheritFrom(ctx context.Context, role, base string) error {
 func RoleUninheritFrom(ctx context.Context, role, base string) {
 	rid := MustGetRoleIDByName(ctx, role)
 	bid := MustGetRoleIDByName(ctx, base)
-	defer logging(ctx, "w.del.role.based", sqlx.JsonObject{"role": role, "based": base, "roleID": rid, "basedID": bid})
+	logging(ctx, "w.del.role.based", sqlx.JsonObject{"role": role, "based": base, "roleID": rid, "basedID": bid})
 
 	type Arg struct {
 		RID int64 `db:"rid"`
@@ -259,14 +267,14 @@ func RoleUninheritFrom(ctx context.Context, role, base string) {
 
 func GrantRole(ctx context.Context, role string, subID int64) {
 	rid := MustGetRoleIDByName(ctx, role)
-	defer logging(ctx, "w.grant.subject.role", sqlx.JsonObject{"role": role, "roleID": rid, "subjectID": subID})
+	logging(ctx, "w.grant.subject.role", sqlx.JsonObject{"role": role, "roleID": rid, "subjectID": subID})
 
 	subjectWithRoleOp.Insert(ctx, sqlx.Data{"subject": subID, "role": rid})
 }
 
 func CancelRole(ctx context.Context, role string, subID int64) {
 	rid := MustGetRoleIDByName(ctx, role)
-	defer logging(ctx, "w.cancel.subject.role", sqlx.JsonObject{"role": role, "roleID": rid, "subjectID": subID})
+	logging(ctx, "w.cancel.subject.role", sqlx.JsonObject{"role": role, "roleID": rid, "subjectID": subID})
 
 	type Arg struct {
 		RID int64 `db:"rid"`
@@ -277,7 +285,7 @@ func CancelRole(ctx context.Context, role string, subID int64) {
 }
 
 func SubjectRoles(ctx context.Context, subject auth.Subject) []int64 {
-	defer logging(ctx, "r.subject.roles", sqlx.JsonObject{"subjectID": subject.GetID()})
+	logging(ctx, "r.subject.roles", sqlx.JsonObject{"subjectID": subject.GetID()})
 
 	type Arg struct {
 		SID int64 `db:"sid"`

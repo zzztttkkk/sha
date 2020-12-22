@@ -12,11 +12,14 @@ import (
 type Options struct {
 	TableNamePrefix  string
 	LogReadOperation bool
-	Router           Router
 	Logger           *log.Logger
 }
 
-func Init(options *Options) {
+func Init(router Router, options *Options) {
+	if options == nil {
+		options = &Options{}
+	}
+
 	if len(options.TableNamePrefix) > 0 {
 		model.TablenamePrefix = options.TableNamePrefix
 	}
@@ -27,7 +30,7 @@ func Init(options *Options) {
 		internal.Logger = options.Logger
 	}
 
-	internal.Dig.Provide(func() Router { return options.Router })
+	internal.Dig.Provide(func() Router { return router })
 	internal.Dig.Append(func(_ internal.DaoOK) { Load(context.Background()) })
 	internal.Dig.Invoke()
 

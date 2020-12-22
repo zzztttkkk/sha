@@ -49,21 +49,21 @@ type _PermOK int
 func init() {
 	internal.Dig.Provide(
 		func(router Router, _ internal.DaoOK) _PermOK {
-			dao.EnsurePerm(PermPermissionCreate)
-			dao.EnsurePerm(PermPermissionDelete)
-			dao.EnsurePerm(PermPermissionListAll)
+			dao.CreatePermIfNotExists(PermPermissionCreate)
+			dao.CreatePermIfNotExists(PermPermissionDelete)
+			dao.CreatePermIfNotExists(PermPermissionListAll)
 
-			dao.EnsurePerm(PermRoleCreate)
-			dao.EnsurePerm(PermRoleDelete)
-			dao.EnsurePerm(PermRoleListAll)
-			dao.EnsurePerm(PermRoleAddPerm)
-			dao.EnsurePerm(PermRoleDelPerm)
-			dao.EnsurePerm(PermRoleAddBased)
-			dao.EnsurePerm(PermRoleDelBased)
+			dao.CreatePermIfNotExists(PermRoleCreate)
+			dao.CreatePermIfNotExists(PermRoleDelete)
+			dao.CreatePermIfNotExists(PermRoleListAll)
+			dao.CreatePermIfNotExists(PermRoleAddPerm)
+			dao.CreatePermIfNotExists(PermRoleDelPerm)
+			dao.CreatePermIfNotExists(PermRoleAddBased)
+			dao.CreatePermIfNotExists(PermRoleDelBased)
 
-			dao.EnsurePerm(PermRbacLogin)
-			dao.EnsurePerm(PermGrantRole)
-			dao.EnsurePerm(PermCancelRole)
+			dao.CreatePermIfNotExists(PermRbacLogin)
+			dao.CreatePermIfNotExists(PermGrantRole)
+			dao.CreatePermIfNotExists(PermCancelRole)
 
 			return 0
 		},

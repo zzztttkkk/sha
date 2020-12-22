@@ -25,6 +25,8 @@ func init() {
 }
 
 func Perms(ctx context.Context) []*model.Permission {
+	logging(ctx, "r.perms", nil)
+
 	var ret []*model.Permission
 	err := permOp.FetchMany(ctx, "*", "where deleted_at=0 and status>=0", nil, &ret)
 	if err != nil {
@@ -37,7 +39,7 @@ func Perms(ctx context.Context) []*model.Permission {
 }
 
 func NewPerm(ctx context.Context, name, desc string) {
-	defer logging(ctx, "w.new.perm", sqlx.JsonObject{"name": name, "description": desc})
+	logging(ctx, "w.new.perm", sqlx.JsonObject{"name": name, "description": desc})
 
 	permOp.Insert(
 		ctx,
@@ -49,7 +51,7 @@ func NewPerm(ctx context.Context, name, desc string) {
 	)
 }
 
-func EnsurePerm(name string) string {
+func CreatePermIfNotExists(name string) string {
 	ctx, committer := sqlx.Tx(context.Background())
 	defer committer()
 
@@ -74,7 +76,7 @@ func EnsurePerm(name string) string {
 }
 
 func DelPerm(ctx context.Context, name string) {
-	defer logging(ctx, "w.del.perm", sqlx.JsonObject{"name": name})
+	logging(ctx, "w.del.perm", sqlx.JsonObject{"name": name})
 
 	pid, err := GetPermIDByName(ctx, name)
 	if err != nil {
@@ -100,7 +102,7 @@ func DelPerm(ctx context.Context, name string) {
 }
 
 func GetPermIDByName(ctx context.Context, name string) (int64, error) {
-	defer logging(ctx, "r.idbyname.perm", sqlx.JsonObject{"name": name})
+	logging(ctx, "r.idbyname.perm", sqlx.JsonObject{"name": name})
 
 	type Arg struct {
 		Name string `db:"name"`
