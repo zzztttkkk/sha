@@ -3,7 +3,7 @@ package validator
 import (
 	"bytes"
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"net/http"
 	"reflect"
 	"unicode/utf8"
@@ -57,7 +57,7 @@ func (e *FormError) StatusCode() int {
 func htmlEscape(p []byte) []byte {
 	var ret []byte
 	var temp = make([]byte, 4)
-	for _, r := range internal.S(p) {
+	for _, r := range utils.S(p) {
 		switch r {
 		case '&':
 			ret = append(ret, '&', 'a', 'm', 'p')

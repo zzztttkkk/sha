@@ -3,6 +3,7 @@ package sha
 import (
 	"bufio"
 	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"strconv"
 	"sync"
 	"time"
@@ -71,30 +72,30 @@ const (
 func (res *Response) SetCookie(k, v string, options CookieOptions) {
 	item := res.Header.Append(HeaderSetCookie, nil)
 
-	item.Val = append(item.Val, internal.B(k)...)
+	item.Val = append(item.Val, utils.B(k)...)
 	item.Val = append(item.Val, '=')
-	item.Val = append(item.Val, internal.B(v)...)
+	item.Val = append(item.Val, utils.B(v)...)
 	item.Val = append(item.Val, _CookieSep...)
 
 	if len(options.Domain) > 0 {
 		item.Val = append(item.Val, _CookieDomain...)
-		item.Val = append(item.Val, internal.B(options.Domain)...)
+		item.Val = append(item.Val, utils.B(options.Domain)...)
 		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if len(options.Path) > 0 {
 		item.Val = append(item.Val, _CookiePath...)
-		item.Val = append(item.Val, internal.B(options.Path)...)
+		item.Val = append(item.Val, utils.B(options.Path)...)
 		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if !options.Expires.IsZero() {
 		item.Val = append(item.Val, _CookieExpires...)
-		item.Val = append(item.Val, internal.B(options.Expires.Format(time.RFC1123))...)
+		item.Val = append(item.Val, utils.B(options.Expires.Format(time.RFC1123))...)
 		item.Val = append(item.Val, _CookieSep...)
 	} else {
 		item.Val = append(item.Val, _CookieMaxAge...)
-		item.Val = append(item.Val, internal.B(strconv.FormatInt(options.MaxAge, 10))...)
+		item.Val = append(item.Val, utils.B(strconv.FormatInt(options.MaxAge, 10))...)
 		item.Val = append(item.Val, _CookieSep...)
 	}
 

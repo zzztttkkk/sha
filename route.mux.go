@@ -14,7 +14,6 @@ import (
 
 type Mux struct {
 	_MiddlewareNode
-	_Recover
 
 	prefix            string
 	customMethodTrees map[string]*_RouteNode
@@ -195,7 +194,7 @@ func (mux *Mux) doAddHandler1(method, path string, handler RequestHandler, doWra
 		len(u.RawQuery) != 0 ||
 		len(u.Fragment) != 0 ||
 		path[0] != '/' ||
-		len(path) != len(strings.ReplaceAll(path, "//", "/")) {
+		strings.Contains(path, "//") {
 		panic(fmt.Errorf("sha.mux: bad path value `%s`", path))
 	}
 	defer mux.addToRawMap(method, path, handler)
@@ -357,7 +356,7 @@ func (mux *Mux) HTTPWithForm(method, path string, handler RequestHandler, form i
 }
 
 func (mux *Mux) Handle(ctx *RequestCtx) {
-	defer mux.doRecover(ctx)
+	defer doRecover(ctx)
 
 	req := &ctx.Request
 
@@ -380,7 +379,7 @@ func (mux *Mux) Handle(ctx *RequestCtx) {
 	}
 
 	if len(n.wildcardName) > 0 {
-		req.Params.Append(n.wildcardName, path[i+2:])
+		req.Params.Append(n.wildcardName, path[i+1:])
 	} else if i < len(path)-2 {
 		ctx.SetStatus(http.StatusNotFound)
 		return

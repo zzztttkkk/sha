@@ -2,13 +2,13 @@ package sha
 
 import (
 	"bytes"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"os"
 	"sync"
 )
 
 type Form struct {
-	internal.Kvs
+	utils.Kvs
 }
 
 func (form *Form) onItem(k []byte, v []byte) { form.AppendBytes(decodeURIFormed(k), decodeURIFormed(v)) }
@@ -188,7 +188,7 @@ func (p *_MultiPartParser) onFieldOk() bool {
 	var filename []byte
 
 	for _, v := range bytes.Split(disposition[11:], headerValueAttrsSep) {
-		v = internal.InplaceTrimAsciiSpace(v)
+		v = utils.InplaceTrimAsciiSpace(v)
 
 		if bytes.HasPrefix(v, nameStr) {
 			name = decodeURI(v[6 : len(v)-1])
@@ -202,8 +202,8 @@ func (p *_MultiPartParser) onFieldOk() bool {
 	p.current.buf = p.current.buf[:len(p.current.buf)-2] // \r\n
 
 	if len(filename) > 0 {
-		p.current.Name = internal.S(name)
-		p.current.FileName = internal.S(filename)
+		p.current.Name = utils.S(name)
+		p.current.FileName = utils.S(filename)
 		*p.files = append(*p.files, p.current)
 		p.current = nil
 	} else {
@@ -224,7 +224,7 @@ func (req *Request) parseMultiPart(boundary []byte) bool {
 		if b == '\n' {
 			parser.line = append(parser.line, b)
 			if parser.inHeader { // is header line
-				parser.line = internal.InplaceTrimAsciiSpace(parser.line)
+				parser.line = utils.InplaceTrimAsciiSpace(parser.line)
 				if len(parser.line) == 0 {
 					parser.inHeader = false
 				} else {
@@ -289,13 +289,13 @@ func (req *Request) parseBodyBuf() {
 		return
 	}
 
-	if bytes.HasPrefix(typeValue, internal.B(MIMEForm)) {
+	if bytes.HasPrefix(typeValue, utils.B(MIMEForm)) {
 		req.body.ParseUrlEncoded(buf)
 		req.bodyStatus = _BodyOK
 		return
 	}
 
-	if bytes.HasPrefix(typeValue, internal.B(MIMEMultiPart)) {
+	if bytes.HasPrefix(typeValue, utils.B(MIMEMultiPart)) {
 		ind := bytes.Index(typeValue, boundaryBytes)
 		if ind < 1 {
 			req.bodyStatus = _BodyUnsupportedType

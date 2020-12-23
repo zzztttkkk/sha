@@ -2,7 +2,7 @@ package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"net/http"
 	pathlib "path"
 	"strings"
@@ -37,7 +37,7 @@ func fileSystemHandler(fs http.FileSystem, path string, autoIndex bool, middlewa
 		RequestHandlerFunc(
 			func(ctx *RequestCtx) {
 				filename, _ := ctx.PathParam(_filename)
-				serveFile(ctx, fs, pathlib.Clean(internal.S(filename)), autoIndex)
+				serveFile(ctx, fs, pathlib.Clean(utils.S(filename)), autoIndex)
 			},
 		),
 		middleware...,

@@ -2,7 +2,7 @@ package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"sort"
 	"strings"
 )
@@ -83,7 +83,7 @@ func (node *_RouteNode) _getChild(name []byte) *_RouteNode {
 	if node.sChild != nil {
 		return node.sChild
 	}
-	return node.getChild(internal.S(name))
+	return node.getChild(utils.S(name))
 }
 
 func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw string) *_RouteNode {
@@ -140,7 +140,7 @@ func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw st
 	return node.sChild.addHandler(nil, handler, raw)
 }
 
-func (node *_RouteNode) find(path []byte, kvs *internal.Kvs) (int, *_RouteNode) {
+func (node *_RouteNode) find(path []byte, kvs *utils.Kvs) (int, *_RouteNode) {
 	n := node
 	var temp []byte
 	var i int

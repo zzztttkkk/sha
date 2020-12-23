@@ -3,7 +3,7 @@ package sha
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/sha/validator"
 )
 
@@ -23,7 +23,7 @@ func (ctx *RequestCtx) Validate(dist interface{}) HttpError {
 }
 
 func (ctx *RequestCtx) ValidateJSON(dist interface{}) HttpError {
-	if !bytes.HasPrefix(ctx.Request.Header.ContentType(), internal.B(MIMEJson)) {
+	if !bytes.HasPrefix(ctx.Request.Header.ContentType(), utils.B(MIMEJson)) {
 		return StatusError(StatusBadRequest)
 	}
 	if err := json.Unmarshal(ctx.buf, dist); err != nil {

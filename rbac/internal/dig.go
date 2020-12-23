@@ -1,7 +1,9 @@
 package internal
 
-import "github.com/zzztttkkk/sha/internal"
+import (
+	"github.com/zzztttkkk/sha/utils"
+)
 
-var Dig = internal.NewDigContainer()
+var Dig = utils.NewDigContainer()
 
 type DaoOK int

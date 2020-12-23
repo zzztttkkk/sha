@@ -3,7 +3,7 @@ package sha
 import (
 	"context"
 	"errors"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"net"
 	"net/http"
 	"sync"
@@ -77,7 +77,7 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 	if !ok {
 		return ""
 	}
-	return internal.S(inplaceLowercase(v))
+	return utils.S(inplaceLowercase(v))
 }
 
 func (ctx *RequestCtx) Reset() {

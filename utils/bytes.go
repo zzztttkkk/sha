@@ -1,6 +1,6 @@
 // source https://github.com/savsgio/gotils/blob/master/conv.go
 
-package internal
+package utils
 
 import (
 	"reflect"

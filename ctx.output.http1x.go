@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"html/template"
 	"io"
 	"mime"
@@ -59,7 +59,7 @@ func (ctx *RequestCtx) writeHttp1xHeader() error {
 	res.headerBuf = append(res.headerBuf, EndLine...)
 
 	res.Header.EachItem(
-		func(item *internal.KvItem) bool {
+		func(item *utils.KvItem) bool {
 			res.headerBuf = append(res.headerBuf, item.Key...)
 			res.headerBuf = append(res.headerBuf, headerKVSep...)
 			encodeHeaderValue(item.Val, &res.headerBuf)
@@ -78,7 +78,7 @@ func (ctx *RequestCtx) Write(p []byte) (int, error) {
 }
 
 func (ctx *RequestCtx) WriteString(s string) (int, error) {
-	return ctx.Write(internal.B(s))
+	return ctx.Write(utils.B(s))
 }
 
 func (ctx *RequestCtx) WriteJSON(v interface{}) {

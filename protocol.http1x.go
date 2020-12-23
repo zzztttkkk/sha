@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"net"
 	"sync"
 	"time"
@@ -47,7 +48,7 @@ func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 		return false
 	}
 	connVal, _ = ctx.Request.Header.Get(HeaderConnection) // disable keep-alive by request
-	connValS := internal.S(connVal)
+	connValS := utils.S(connVal)
 	if connValS == closeStr {
 		return false
 	}
@@ -347,8 +348,8 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				}
 
 				ctx.Request.Header.AppendBytes(
-					internal.InplaceTrimAsciiSpace(ctx.currentHeaderKey),
-					decodeURI(internal.InplaceTrimAsciiSpace(ctx.buf)),
+					utils.InplaceTrimAsciiSpace(ctx.currentHeaderKey),
+					decodeURI(utils.InplaceTrimAsciiSpace(ctx.buf)),
 				)
 				ctx.currentHeaderKey = ctx.currentHeaderKey[:0]
 				ctx.buf = ctx.buf[:0]

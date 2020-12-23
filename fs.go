@@ -12,7 +12,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -60,9 +60,9 @@ func dirList(ctx *RequestCtx, f http.File) {
 		// part of the URL path, and not indicate the start of a query
 		// string or fragment.
 		url := url.URL{Path: name}
-		fmt.Fprintf(res, "<a href=\"%s\">%s</a>\n", url.String(), htmlReplacer.Replace(name))
+		_, _ = fmt.Fprintf(res, "<a href=\"%s\">%s</a>\n", url.String(), htmlReplacer.Replace(name))
 	}
-	fmt.Fprintf(res, "</pre>\n")
+	_, _ = fmt.Fprintf(res, "</pre>\n")
 }
 
 // errNoOverlap is returned by serveContent's parseRange if first-byte-pos of
@@ -110,7 +110,7 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, sizeFunc func
 		ranges, err := parseRange(rangeReq, size)
 		if err != nil {
 			if err == errNoOverlap {
-				w.Header.Set(HeaderContentRange, internal.B(fmt.Sprintf("bytes */%d", size)))
+				w.Header.Set(HeaderContentRange, utils.B(fmt.Sprintf("bytes */%d", size)))
 			}
 			w.statusCode = StatusRequestedRangeNotSatisfiable
 			return
@@ -149,7 +149,7 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, sizeFunc func
 
 			pr, pw := io.Pipe()
 			mw := multipart.NewWriter(pw)
-			w.Header.Set(HeaderContentType, internal.B("multipart/byteranges; boundary="+mw.Boundary()))
+			w.Header.Set(HeaderContentType, utils.B("multipart/byteranges; boundary="+mw.Boundary()))
 			sendContent = pr
 			defer pr.Close() // cause writing goroutine to fail and exit if CopyN doesn't finish.
 			go func() {
@@ -256,7 +256,7 @@ func checkIfMatch(w *Response, r *Request) condResult {
 		}
 
 		etagV, _ := w.Header.Get(HeaderETag)
-		if etagStrongMatch(etag, internal.S(etagV)) {
+		if etagStrongMatch(etag, utils.S(etagV)) {
 			return condTrue
 		}
 		im = remain
@@ -271,7 +271,7 @@ func checkIfUnmodifiedSince(r *Request, modtime time.Time) condResult {
 		return condNone
 	}
 
-	t, err := http.ParseTime(internal.S(ius))
+	t, err := http.ParseTime(utils.S(ius))
 	if err != nil {
 		return condNone
 	}
@@ -317,7 +317,7 @@ func checkIfNoneMatch(w *Response, r *Request) condResult {
 }
 
 func checkIfModifiedSince(r *Request, modtime time.Time) condResult {
-	m := internal.S(r.Method)
+	m := utils.S(r.Method)
 	if m != "GET" && m != "HEAD" {
 		return condNone
 	}
@@ -326,7 +326,7 @@ func checkIfModifiedSince(r *Request, modtime time.Time) condResult {
 	if len(ims) < 1 || isZeroTime(modtime) {
 		return condNone
 	}
-	t, err := http.ParseTime(internal.S(ims))
+	t, err := http.ParseTime(utils.S(ims))
 	if err != nil {
 		return condNone
 	}
@@ -340,7 +340,7 @@ func checkIfModifiedSince(r *Request, modtime time.Time) condResult {
 }
 
 func checkIfRange(w *Response, r *Request, modtime time.Time) condResult {
-	m := internal.S(r.Method)
+	m := utils.S(r.Method)
 	if m != "GET" && m != "HEAD" {
 		return condNone
 	}
@@ -384,7 +384,7 @@ const fsTimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 
 func setLastModified(w *Response, modtime time.Time) {
 	if !isZeroTime(modtime) {
-		w.Header.Set(HeaderLastModified, internal.B(modtime.UTC().Format(fsTimeFormat)))
+		w.Header.Set(HeaderLastModified, utils.B(modtime.UTC().Format(fsTimeFormat)))
 	}
 }
 
@@ -416,7 +416,7 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 		return true, ""
 	}
 
-	method := internal.S(r.Method)
+	method := utils.S(r.Method)
 
 	switch checkIfNoneMatch(w, r) {
 	case condFalse:
@@ -438,7 +438,7 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 	if len(rangeHeaderB) > 0 && checkIfRange(w, r, modtime) == condFalse {
 		rangeHeader = ""
 	} else {
-		rangeHeader = internal.S(rangeHeaderB)
+		rangeHeader = utils.S(rangeHeaderB)
 	}
 	return false, rangeHeader
 }
@@ -472,7 +472,7 @@ func serveFile(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
 	}
 
 	if d.IsDir() {
-		urlV := internal.S(r.Path)
+		urlV := utils.S(r.Path)
 		// redirect if the directory name doesn't end in a slash
 		if urlV == "" || urlV[len(urlV)-1] != '/' {
 			localRedirect(w, r, path.Base(urlV)+"/")
@@ -480,7 +480,7 @@ func serveFile(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
 		}
 
 		// use contents of index.html for directory, if present
-		index := strings.TrimSuffix(name, "/") + internal.S(indexPage)
+		index := strings.TrimSuffix(name, "/") + utils.S(indexPage)
 		ff, err := fs.Open(index)
 		if err == nil {
 			defer ff.Close()
@@ -532,10 +532,10 @@ func toHTTPError(err error) (httpStatus int) {
 // localRedirect gives a Moved Permanently response.
 // It does not convert relative paths to absolute paths like Redirect does.
 func localRedirect(w *Response, r *Request, newPath string) {
-	if q := internal.S(r.RawPath); len(q) > 0 {
+	if q := utils.S(r.RawPath); len(q) > 0 {
 		newPath += "?" + q
 	}
-	w.Header.Set(HeaderLocation, internal.B(newPath))
+	w.Header.Set(HeaderLocation, utils.B(newPath))
 	w.statusCode = StatusMovedPermanently
 }
 
@@ -545,12 +545,12 @@ type httpRange struct {
 }
 
 func (r httpRange) contentRange(size int64) []byte {
-	return internal.B(fmt.Sprintf("bytes %d-%d/%d", r.start, r.start+r.length-1, size))
+	return utils.B(fmt.Sprintf("bytes %d-%d/%d", r.start, r.start+r.length-1, size))
 }
 
 func (r httpRange) mimeHeader(contentType string, size int64) textproto.MIMEHeader {
 	return textproto.MIMEHeader{
-		"Content-Range": {internal.S(r.contentRange(size))},
+		"Content-Range": {utils.S(r.contentRange(size))},
 		"Content-Type":  {contentType},
 	}
 }

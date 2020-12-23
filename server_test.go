@@ -5,6 +5,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+	"github.com/zzztttkkk/sha/utils"
 	"net/http"
 	_ "net/http/pprof"
 	"regexp"
@@ -13,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/validator"
 	"github.com/zzztttkkk/websocket"
 )
@@ -28,7 +28,7 @@ func (ft *_CustomFormTime) FormValue(v []byte) bool {
 type _CustomFormInt int64
 
 func (fi *_CustomFormInt) FormValue(v []byte) bool {
-	i, e := strconv.ParseInt(internal.S(v), 10, 64)
+	i, e := strconv.ParseInt(utils.S(v), 10, 64)
 	if e != nil {
 		return false
 	}

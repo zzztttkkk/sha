@@ -3,7 +3,7 @@ package sha
 import (
 	"bytes"
 	"context"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/websocket"
 	"log"
 	"net/http"
@@ -45,7 +45,7 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 	if len(p.Subprotocols) > 0 {
 		hv, ok := ctx.Response.Header.Get(HeaderSecWebSocketProtocol)
 		if ok {
-			if _, ok := p.Subprotocols[internal.S(hv)]; ok {
+			if _, ok := p.Subprotocols[utils.S(hv)]; ok {
 				subprotocol = hv
 				ctx.Request.webSocketSubProtocolName = append(ctx.Request.webSocketSubProtocolName, hv...)
 			} else {
@@ -56,8 +56,8 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 			hv, ok = ctx.Request.Header.Get(HeaderSecWebSocketProtocol)
 			if ok && len(hv) > 0 {
 				for _, v := range bytes.Split(hv, []byte(",")) {
-					v = internal.InplaceTrimAsciiSpace(v)
-					if _, ok := p.Subprotocols[internal.S(v)]; ok {
+					v = utils.InplaceTrimAsciiSpace(v)
+					if _, ok := p.Subprotocols[utils.S(v)]; ok {
 						subprotocol = v
 						ctx.Request.webSocketSubProtocolName = append(ctx.Request.webSocketSubProtocolName, v...)
 						break
@@ -70,7 +70,7 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 	var compress bool
 	if p.EnableCompression {
 		for _, hv := range ctx.Response.Header.GetAll(HeaderSecWebSocketExtensions) {
-			if bytes.Contains(hv, internal.B(websocketExtCompress)) {
+			if bytes.Contains(hv, utils.B(websocketExtCompress)) {
 				compress = true
 				break
 			}
@@ -84,10 +84,10 @@ func (p *WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 	if len(subprotocol) > 0 {
 		res.Header.Append(HeaderSecWebSocketProtocol, subprotocol)
 	}
-	res.Header.Append(HeaderSecWebSocketAccept, internal.B(websocket.ComputeAcceptKey(internal.S(key))))
+	res.Header.Append(HeaderSecWebSocketAccept, utils.B(websocket.ComputeAcceptKey(utils.S(key))))
 	if compress {
 		ctx.Request.webSocketShouldDoCompression = true
-		res.Header.Append(HeaderSecWebSocketExtensions, internal.B(websocketExt))
+		res.Header.Append(HeaderSecWebSocketExtensions, utils.B(websocketExt))
 	}
 	_ = ctx.Send()
 	return true
@@ -132,6 +132,6 @@ func wshToHandler(wsh WebSocketHandlerFunc) RequestHandler {
 		if !wsp.Handshake(ctx) {
 			return
 		}
-		wsh(ctx, &ctx.Request, wsp.Hijack(ctx), internal.S(ctx.Request.webSocketSubProtocolName))
+		wsh(ctx, &ctx.Request, wsp.Hijack(ctx), utils.S(ctx.Request.webSocketSubProtocolName))
 	})
 }

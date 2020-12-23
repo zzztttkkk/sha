@@ -1,4 +1,4 @@
-package internal
+package utils
 
 import (
 	"go.uber.org/dig"
@@ -34,5 +34,3 @@ func (d *_Dig) Invoke() {
 		}
 	}
 }
-
-var RbacInited bool

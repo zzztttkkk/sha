@@ -2,7 +2,7 @@ package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"net/http"
 )
 
@@ -55,7 +55,7 @@ func (err *_RedirectError) Error() string { return "" }
 
 func (err *_RedirectError) StatusCode() int { return err.status }
 
-func (err *_RedirectError) Header(h *Header) { h.Set(HeaderLocation, internal.B(err.uri)) }
+func (err *_RedirectError) Header(h *Header) { h.Set(HeaderLocation, utils.B(err.uri)) }
 
 func (err *_RedirectError) Body() []byte { return nil }
 

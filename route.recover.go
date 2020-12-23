@@ -9,24 +9,12 @@ import (
 
 type ErrorHandler func(ctx *RequestCtx, v interface{})
 
-type _Recover struct {
-	typeMap map[reflect.Type]ErrorHandler
-	valMap  map[error]ErrorHandler
-}
+var errTypeMap = map[reflect.Type]ErrorHandler{}
+var errValMap = map[error]ErrorHandler{}
 
-func (r *_Recover) RecoverByType(t reflect.Type, fn ErrorHandler) {
-	if r.typeMap == nil {
-		r.typeMap = map[reflect.Type]ErrorHandler{}
-	}
-	r.typeMap[t] = fn
-}
+func RecoverByType(t reflect.Type, fn ErrorHandler) { errTypeMap[t] = fn }
 
-func (r *_Recover) RecoverByErr(v error, fn ErrorHandler) {
-	if r.valMap == nil {
-		r.valMap = map[error]ErrorHandler{}
-	}
-	r.valMap[v] = fn
-}
+func RecoverByErr(v error, fn ErrorHandler) { errValMap[v] = fn }
 
 var (
 	errType        = reflect.TypeOf((*error)(nil)).Elem()
@@ -34,7 +22,7 @@ var (
 	httpErrType    = reflect.TypeOf((*HttpError)(nil)).Elem()
 )
 
-func (r *_Recover) doRecover(ctx *RequestCtx) {
+func doRecover(ctx *RequestCtx) {
 	v := recover()
 	if v == nil {
 		return
@@ -45,15 +33,15 @@ func (r *_Recover) doRecover(ctx *RequestCtx) {
 	vt := reflect.TypeOf(v)
 
 	if vt.ConvertibleTo(errType) {
-		fn := r.valMap[v.(error)]
+		fn := errValMap[v.(error)]
 		if fn != nil {
 			fn(ctx, v)
 			return
 		}
 	}
 
-	if len(r.typeMap) > 0 {
-		fn := r.typeMap[vt]
+	if len(errTypeMap) > 0 {
+		fn := errTypeMap[vt]
 		if fn != nil {
 			fn(ctx, v)
 			return

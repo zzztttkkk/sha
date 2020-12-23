@@ -47,12 +47,12 @@ func init() {
 	prepareFunc = append(prepareFunc,
 		// setup recover
 		func(server *Server) {
-			mux, ok := server.Handler.(*Mux)
+			_, ok := server.Handler.(*Mux)
 			if !ok {
 				return
 			}
 			for k, v := range internal.ErrorStatusByValue {
-				mux.RecoverByErr(
+				RecoverByErr(
 					k,
 					func(sc int) ErrorHandler {
 						return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }

@@ -1,6 +1,8 @@
 package sha
 
-import "github.com/zzztttkkk/sha/internal"
+import (
+	"github.com/zzztttkkk/sha/utils"
+)
 
 const _QueryParsed = -2
 
@@ -13,9 +15,9 @@ type Request struct {
 	Path              []byte
 	questionMarkIndex int
 	gotQuestionMark   bool
-	Params            internal.Kvs
+	Params            utils.Kvs
 
-	cookies internal.Kvs
+	cookies utils.Kvs
 	query   Form
 	body    Form
 	files   FormFiles
@@ -65,7 +67,7 @@ func (req *Request) Cookie(key string) ([]byte, bool) {
 					key = append(key, buf...)
 					buf = buf[:0]
 				case ';':
-					req.cookies.Set(internal.S(decodeURI(key)), decodeURI(buf))
+					req.cookies.Set(utils.S(decodeURI(key)), decodeURI(buf))
 					key = key[:0]
 					buf = buf[:0]
 				case ' ':
@@ -74,7 +76,7 @@ func (req *Request) Cookie(key string) ([]byte, bool) {
 					buf = append(buf, b)
 				}
 			}
-			req.cookies.Set(internal.S(decodeURI(key)), decodeURI(buf))
+			req.cookies.Set(utils.S(decodeURI(key)), decodeURI(buf))
 		}
 		req.cookieParsed = true
 	}

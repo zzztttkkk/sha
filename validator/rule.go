@@ -3,7 +3,7 @@ package validator
 import (
 	"bytes"
 	"fmt"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"html"
 	"reflect"
 	"regexp"
@@ -105,7 +105,7 @@ func init() {
 	MarkdownTableHeader += "|\n"
 }
 
-var ruleFmt = internal.NewNamedFmt(
+var ruleFmt = utils.NewNamedFmt(
 	"|${name}|${type}|${required}|${lrange}|${vrange}|${srange}|${default}|${regexp}|${function}|${description}|",
 )
 
@@ -119,7 +119,7 @@ func (rule *Rule) String() string {
 			typeString = rule.fieldType.Name()
 		}
 	}
-	m := internal.M{
+	m := utils.M{
 		"type":     typeString,
 		"required": fmt.Sprintf("%v", rule.isRequired),
 	}
@@ -266,9 +266,9 @@ func (rule *Rule) toString(v []byte) (string, bool) {
 		return "", false
 	}
 	if rule.notEscapeHtml {
-		return internal.S(v), true
+		return utils.S(v), true
 	}
-	return internal.S(htmlEscape(v)), true
+	return utils.S(htmlEscape(v)), true
 }
 
 func (rule *Rule) toInt(v []byte) (int64, bool) {
@@ -278,7 +278,7 @@ func (rule *Rule) toInt(v []byte) (int64, bool) {
 		return 0, false
 	}
 
-	i, e := strconv.ParseInt(internal.S(v), 10, 64)
+	i, e := strconv.ParseInt(utils.S(v), 10, 64)
 	if e != nil {
 		return 0, false
 	}
@@ -301,7 +301,7 @@ func (rule *Rule) toUint(v []byte) (uint64, bool) {
 		return 0, false
 	}
 
-	i, e := strconv.ParseUint(internal.S(v), 10, 64)
+	i, e := strconv.ParseUint(utils.S(v), 10, 64)
 	if e != nil {
 		return 0, false
 	}
@@ -324,7 +324,7 @@ func (rule *Rule) toFloat(v []byte) (float64, bool) {
 		return 0, false
 	}
 
-	i, e := strconv.ParseFloat(internal.S(v), 64)
+	i, e := strconv.ParseFloat(utils.S(v), 64)
 	if e != nil {
 		return 0, false
 	}
@@ -352,7 +352,7 @@ func (rule *Rule) toBool(v []byte) (bool, bool) {
 	var b bool
 	var e error
 	if ParseBool == nil {
-		b, e = strconv.ParseBool(internal.S(v))
+		b, e = strconv.ParseBool(utils.S(v))
 	} else {
 		b, e = ParseBool(v)
 	}

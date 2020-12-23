@@ -4,7 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 )
 
 type JsonBytesString []byte
@@ -50,12 +50,12 @@ func (a *JsonArray) Scan(src interface{}) error {
 	var bytes []byte
 	switch v := src.(type) {
 	case string:
-		bytes = internal.B(v)
+		bytes = utils.B(v)
 	case []byte:
 		bytes = v
 	case *string:
 		if v != nil {
-			bytes = internal.B(*v)
+			bytes = utils.B(*v)
 		}
 	case *[]byte:
 		if v != nil {
@@ -82,12 +82,12 @@ func (f *JsonObject) Scan(src interface{}) error {
 	var bytes []byte
 	switch v := src.(type) {
 	case string:
-		bytes = internal.B(v)
+		bytes = utils.B(v)
 	case []byte:
 		bytes = v
 	case *string:
 		if v != nil {
-			bytes = internal.B(*v)
+			bytes = utils.B(*v)
 		}
 	case *[]byte:
 		if v != nil {

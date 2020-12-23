@@ -5,7 +5,7 @@ import (
 	"github.com/andybalholm/brotli"
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
-	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
 	"io"
 	"sync"
 )
@@ -104,7 +104,7 @@ func (ctx *RequestCtx) AutoCompress() {
 
 	for _, headerVal := range ctx.Request.Header.GetAll(HeaderAcceptEncoding) {
 		for _, v := range bytes.Split(headerVal, headerCompressValueSep) {
-			switch internal.S(v) {
+			switch utils.S(v) {
 			case "gzip":
 				acceptGzip = true
 			case "deflate":
