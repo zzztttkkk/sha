@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx/reflectx"
 	"github.com/zzztttkkk/sha/internal"
-	"log"
 	"reflect"
 	"strings"
 )
@@ -75,10 +74,6 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			rule.rtype = _CustomType
 			rule.indirectCustomField = true
 		} else {
-			log.Printf(
-				"sha.validator: number is non-64bit value or unsupported type, `%s:%s.%s`\n",
-				t.PkgPath(), t.Name(), f.Name,
-			)
 			return nil
 		}
 	}

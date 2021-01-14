@@ -7,4 +7,6 @@ const (
 	MIMEText      = "text/plain"
 	MIMEMarkdown  = "text/markdown"
 	MIMEHtml      = "text/html"
+	MIMEPng       = "image/png"
+	MIMEJpeg      = "image/jpeg"
 )

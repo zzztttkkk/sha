@@ -69,7 +69,12 @@ const (
 	_CookieSameSite = "Samesite="
 )
 
-func (res *Response) SetCookie(k, v string, options CookieOptions) {
+var defaultCookieOptions CookieOptions
+
+func (res *Response) SetCookie(k, v string, options *CookieOptions) {
+	if options == nil {
+		options = &defaultCookieOptions
+	}
 	item := res.Header.Append(HeaderSetCookie, nil)
 
 	item.Val = append(item.Val, utils.B(k)...)
@@ -93,7 +98,7 @@ func (res *Response) SetCookie(k, v string, options CookieOptions) {
 		item.Val = append(item.Val, _CookieExpires...)
 		item.Val = append(item.Val, utils.B(options.Expires.Format(time.RFC1123))...)
 		item.Val = append(item.Val, _CookieSep...)
-	} else {
+	} else if options.MaxAge > 0 {
 		item.Val = append(item.Val, _CookieMaxAge...)
 		item.Val = append(item.Val, utils.B(strconv.FormatInt(options.MaxAge, 10))...)
 		item.Val = append(item.Val, _CookieSep...)

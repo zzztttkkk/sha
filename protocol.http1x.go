@@ -139,7 +139,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			rctx.AutoCompress()
 		}
 
-		rctx.Context, cancelFn = context.WithCancel(ctx)
+		rctx.ctx, cancelFn = context.WithCancel(ctx)
 		protocol.handler.Handle(rctx)
 
 		if rctx.hijacked {

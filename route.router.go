@@ -20,10 +20,16 @@ type DocedRequestHandler interface {
 
 type Router interface {
 	HTTP(method, path string, handler RequestHandler)
-	WebSocket(path string, handler WebSocketHandlerFunc)
 	HTTPWithForm(method, path string, handler RequestHandler, form interface{})
+	HTTPWithMiddleware(method, path string, handler RequestHandler, middleware ...Middleware)
+	HTTPWithMiddlewareAndForm(method, path string, handler RequestHandler, form interface{}, middleware ...Middleware)
+
+	WebSocket(path string, handler WebSocketHandlerFunc)
+
 	FileSystem(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware)
+
 	AddBranch(prefix string, router Router)
+
 	Use(middleware ...Middleware)
 }
 

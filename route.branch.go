@@ -30,6 +30,14 @@ func (branch *_RouteBranch) HTTP(method, path string, handler RequestHandler) {
 	m[path] = handler
 }
 
+func (branch *_RouteBranch) HTTPWithMiddleware(method, path string, handler RequestHandler, middleware ...Middleware) {
+	branch.HTTP(method, path, handlerWithMiddleware(handler, middleware...))
+}
+
+func (branch *_RouteBranch) HTTPWithMiddlewareAndForm(method, path string, handler RequestHandler, form interface{}, middleware ...Middleware) {
+	branch.HTTPWithForm(method, path, handlerWithMiddleware(handler, middleware...), form)
+}
+
 func (branch *_RouteBranch) WebSocket(path string, wh WebSocketHandlerFunc) {
 	branch.HTTP("get", path, wshToHandler(wh))
 }

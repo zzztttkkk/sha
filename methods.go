@@ -27,12 +27,13 @@ const (
 	_MTrace
 )
 
-func (ctx *RequestCtx) IsGET() bool     { return ctx.Request._method == _MGet }
-func (ctx *RequestCtx) IsHEAD() bool    { return ctx.Request._method == _MHead }
-func (ctx *RequestCtx) IsPOST() bool    { return ctx.Request._method == _MPost }
-func (ctx *RequestCtx) IsPUT() bool     { return ctx.Request._method == _MPut }
-func (ctx *RequestCtx) IsPATCH() bool   { return ctx.Request._method == _MPatch }
-func (ctx *RequestCtx) IsDELETE() bool  { return ctx.Request._method == _MDelete }
-func (ctx *RequestCtx) IsCONNECT() bool { return ctx.Request._method == _MConnect }
-func (ctx *RequestCtx) IsOPTIONS() bool { return ctx.Request._method == _MOptions }
-func (ctx *RequestCtx) IsTRACE() bool   { return ctx.Request._method == _MTrace }
+func (ctx *RequestCtx) IsGET() bool          { return ctx.Request._method == _MGet }
+func (ctx *RequestCtx) IsHEAD() bool         { return ctx.Request._method == _MHead }
+func (ctx *RequestCtx) IsPOST() bool         { return ctx.Request._method == _MPost }
+func (ctx *RequestCtx) IsPUT() bool          { return ctx.Request._method == _MPut }
+func (ctx *RequestCtx) IsPATCH() bool        { return ctx.Request._method == _MPatch }
+func (ctx *RequestCtx) IsDELETE() bool       { return ctx.Request._method == _MDelete }
+func (ctx *RequestCtx) IsCONNECT() bool      { return ctx.Request._method == _MConnect }
+func (ctx *RequestCtx) IsOPTIONS() bool      { return ctx.Request._method == _MOptions }
+func (ctx *RequestCtx) IsTRACE() bool        { return ctx.Request._method == _MTrace }
+func (ctx *RequestCtx) IsCustomMethod() bool { return ctx.Request._method == _MCustom }

@@ -3,10 +3,10 @@ package sqlx
 import "github.com/jmoiron/sqlx"
 
 type Model struct {
-	ID      int64 `json:"id" db:"id"`
+	ID      int64 `json:"id" db:"id,g=info"`
 	Status  int   `json:"status" db:"status"`
-	Created int64 `json:"created" db:"created_at"`
-	Deleted int64 `json:"deleted" db:"deleted_at"`
+	Created int64 `json:"created" db:"created_at,g=info"`
+	Deleted int64 `json:"-" db:"deleted_at"`
 }
 
 func (Model) TableColumns(db *sqlx.DB) []string {

@@ -125,7 +125,7 @@ func TestServer_Run(t *testing.T) {
 		}),
 	)
 
-	mux.Print(false, false)
+	mux.Print()
 	server := Default(mux)
 	server.ListenAndServe()
 }

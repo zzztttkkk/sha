@@ -6,7 +6,6 @@ import (
 	"github.com/zzztttkkk/sha/auth"
 	"github.com/zzztttkkk/sha/rbac"
 	"github.com/zzztttkkk/sha/sqlx"
-	"net/url"
 	"testing"
 )
 
@@ -14,18 +13,24 @@ type _RbacUser int64
 
 func (u _RbacUser) GetID() int64 { return int64(u) }
 
-func (u _RbacUser) Info() interface{} { return nil }
+func (u _RbacUser) Info(ctx context.Context) interface{} {
+	if RCtx(ctx) == nil {
+		return "non-request"
+	}
+	return RCtx(ctx).RemoteAddr().String()
+}
 
 func init() {
 	sqlx.OpenWriteableDB(
 		"mysql",
-		"root:123456@/sha?autocommit=false&parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"),
+		"root:123456@/sha?autocommit=false",
 	)
 }
 
 func Test_Rbac(t *testing.T) {
 	mux := NewMux("", nil)
 	server := Default(mux)
+	server.Port = 8096
 	mux.HandleDoc("get", "/doc")
 
 	mux.HTTP(
@@ -43,6 +48,6 @@ func Test_Rbac(t *testing.T) {
 
 	mux.AddBranch("/rbac", branch)
 
-	mux.Print(false, false)
+	mux.Print()
 	server.ListenAndServe()
 }

@@ -30,7 +30,7 @@ func Test_Mux_AddHandler(t *testing.T) {
 	m.HTTP("GET", "/虎虎虎/", makeTestHandler(56))
 	m.HTTP("GET", "/qwer/:n/d/:m/sp:*", makeTestHandler(17))
 
-	m.Print(false, false)
+	m.Print()
 
 	s := Default(m)
 	s.ListenAndServe()

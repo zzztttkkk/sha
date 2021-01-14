@@ -14,5 +14,5 @@ func logging(ctx context.Context, name string, info sqlx.JsonObject) {
 		return
 	}
 	subject := auth.MustAuth(ctx)
-	internal.Logger.Printf("(%s) (%d %v) %v\n", name, subject.GetID(), subject.Info(), info)
+	internal.Logger.Printf("(%s) (%d %v) %v\n", name, subject.GetID(), subject.Info(ctx), info)
 }

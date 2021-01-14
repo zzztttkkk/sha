@@ -132,6 +132,6 @@ func wshToHandler(wsh WebSocketHandlerFunc) RequestHandler {
 		if !wsp.Handshake(ctx) {
 			return
 		}
-		wsh(ctx, &ctx.Request, wsp.Hijack(ctx), utils.S(ctx.Request.webSocketSubProtocolName))
+		wsh(ctx.ctx, &ctx.Request, wsp.Hijack(ctx), utils.S(ctx.Request.webSocketSubProtocolName))
 	})
 }

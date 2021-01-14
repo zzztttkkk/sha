@@ -9,7 +9,7 @@ import (
 
 type Subject interface {
 	GetID() int64
-	Info() interface{}
+	Info(ctx context.Context) interface{}
 }
 
 type Interface interface {

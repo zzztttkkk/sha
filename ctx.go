@@ -11,9 +11,10 @@ import (
 )
 
 type RequestCtx struct {
-	context.Context
+	ctx      context.Context
 	Request  Request
 	Response Response
+	ud       userData
 
 	protocol *Http1xProtocol
 
@@ -37,6 +38,28 @@ type RequestCtx struct {
 	headerKVSepRead  bool   // `:`
 	bodyRemain       int
 	bodySize         int
+}
+
+type _Key int
+
+const (
+	_RCtxKey = _Key(iota + 3)
+)
+
+func (ctx *RequestCtx) Context() context.Context { return context.WithValue(ctx.ctx, _RCtxKey, ctx) }
+
+func (ctx *RequestCtx) SetData(key string, value interface{}) { ctx.ud.Set(key, value) }
+
+func (ctx *RequestCtx) GetData(key string) interface{} { return ctx.ud.Get(key) }
+
+var ErrBadContext = errors.New("sha: bad context")
+
+func RCtx(ctx context.Context) *RequestCtx {
+	v := ctx.Value(_RCtxKey)
+	if v == nil {
+		panic(ErrBadContext)
+	}
+	return v.(*RequestCtx)
 }
 
 type MutexRequestCtx struct {
@@ -81,13 +104,14 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 }
 
 func (ctx *RequestCtx) Reset() {
-	if ctx.Context == nil {
+	if ctx.ctx == nil {
 		return
 	}
 
-	ctx.Context = nil
+	ctx.ctx = nil
 	ctx.Request.Reset()
 	ctx.Response.reset()
+	ctx.ud.Reset()
 
 	ctx.status = 0
 	ctx.firstLineStatus = 0

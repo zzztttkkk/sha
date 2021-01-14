@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
-	"runtime"
 	"sort"
 	"strings"
 )
@@ -45,94 +44,7 @@ func NewMux(prefix string, corsOptions *CorsOptions) *Mux {
 	return mux
 }
 
-type _NamedMiddleware struct {
-	Middleware
-	name string
-}
-
-//goland:noinspection GoExportedFuncWithUnexportedType
-func NamedMiddleware(name string, middleware Middleware) _NamedMiddleware {
-	return _NamedMiddleware{name: name, Middleware: middleware}
-}
-
-type _NamedRequestHandler struct {
-	RequestHandler
-	name string
-}
-
-//goland:noinspection GoExportedFuncWithUnexportedType
-func NamedRequestHandler(name string, handler RequestHandler) _NamedRequestHandler {
-	return _NamedRequestHandler{name: name, RequestHandler: handler}
-}
-
-func middlewareToString(m Middleware) string {
-	t := reflect.TypeOf(m)
-	if t.Kind() == reflect.Func {
-		return fmt.Sprintf("F %s", runtime.FuncForPC(reflect.ValueOf(m).Pointer()).Name())
-	}
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-
-	if t == namedMiddlewareType {
-		v := m.(_NamedMiddleware)
-		return fmt.Sprintf("%s Name %s", middlewareToString(v.Middleware), v.name)
-	}
-	return fmt.Sprintf("S %s.%s", t.PkgPath(), t.Name())
-}
-
-var mwType = reflect.TypeOf(_MiddlewareWrapper{})
-var fwType = reflect.TypeOf(_FormRequestHandler{})
-var namedMiddlewareType = reflect.TypeOf(_NamedMiddleware{})
-var namedRequestHandlerType = reflect.TypeOf(_NamedRequestHandler{})
-
-func handlerToString(h RequestHandler) string {
-	t := reflect.TypeOf(h)
-	if t.Kind() == reflect.Func {
-		return fmt.Sprintf("F %s", runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name())
-	}
-
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-
-	if t == mwType {
-		return handlerToString(h.(*_MiddlewareWrapper).raw)
-	}
-
-	if t == fwType {
-		return handlerToString(h.(*_FormRequestHandler).RequestHandler)
-	}
-
-	if t == namedRequestHandlerType {
-		v := h.(_NamedRequestHandler)
-		return fmt.Sprintf("%s Name %s", handlerToString(v.RequestHandler), v.name)
-	}
-	return fmt.Sprintf("S %s.%s", t.PkgPath(), t.Name())
-}
-
-func printRequestHandler(buf *strings.Builder, h RequestHandler, showMiddleware bool) {
-	if !showMiddleware {
-		buf.WriteString(" Handler: ")
-		buf.WriteString(handlerToString(h))
-		return
-	}
-
-	mw, ok := h.(*_MiddlewareWrapper)
-	if ok {
-		buf.WriteString("\n\t\tMiddleware:")
-		for _, m := range mw.middleware {
-			buf.WriteString("\n\t\t\t")
-			buf.WriteString(middlewareToString(m))
-		}
-		buf.WriteString("\n")
-	}
-
-	buf.WriteString("\t\tHandler: ")
-	buf.WriteString(handlerToString(h))
-}
-
-func (mux *Mux) Print(showHandler, showMiddleware bool) {
+func (mux *Mux) Print() {
 	type _M struct {
 		method string
 		m      map[string]RequestHandler
@@ -165,9 +77,6 @@ func (mux *Mux) Print(showHandler, showMiddleware bool) {
 		for _, h := range hs {
 			buf.WriteString("\tPath: ")
 			buf.WriteString(h.p)
-			if showHandler {
-				printRequestHandler(&buf, h.h, showMiddleware)
-			}
 			buf.WriteString("\n")
 		}
 	}
@@ -353,6 +262,14 @@ func (mux *Mux) HTTPWithForm(method, path string, handler RequestHandler, form i
 			Documenter:     validator.GetRules(reflect.TypeOf(form)),
 		},
 	)
+}
+
+func (mux *Mux) HTTPWithMiddleware(method, path string, handler RequestHandler, middleware ...Middleware) {
+	mux.HTTP(method, path, handlerWithMiddleware(handler, middleware...))
+}
+
+func (mux *Mux) HTTPWithMiddlewareAndForm(method, path string, handler RequestHandler, form interface{}, middleware ...Middleware) {
+	mux.HTTPWithForm(method, path, handlerWithMiddleware(handler, middleware...), form)
 }
 
 func (mux *Mux) Handle(ctx *RequestCtx) {
