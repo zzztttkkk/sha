@@ -40,26 +40,27 @@ type RequestCtx struct {
 	bodySize         int
 }
 
-type _Key int
+// context.Context
+func (ctx *RequestCtx) Deadline() (deadline time.Time, ok bool) { return ctx.ctx.Deadline() }
 
-const (
-	_RCtxKey = _Key(iota + 3)
-)
+func (ctx *RequestCtx) Done() <-chan struct{} { return ctx.ctx.Done() }
 
-func (ctx *RequestCtx) Context() context.Context { return context.WithValue(ctx.ctx, _RCtxKey, ctx) }
+func (ctx *RequestCtx) Err() error { return ctx.ctx.Err() }
 
-func (ctx *RequestCtx) SetData(key string, value interface{}) { ctx.ud.Set(key, value) }
+func (ctx *RequestCtx) Value(key interface{}) interface{} { return ctx.ctx.Value(key) }
 
-func (ctx *RequestCtx) GetData(key string) interface{} { return ctx.ud.Get(key) }
+func (ctx *RequestCtx) Set(key string, value interface{}) { ctx.ud.Set(key, value) }
+
+func (ctx *RequestCtx) Get(key string) interface{} { return ctx.ud.Get(key) }
 
 var ErrBadContext = errors.New("sha: bad context")
 
-func RCtx(ctx context.Context) *RequestCtx {
-	v := ctx.Value(_RCtxKey)
-	if v == nil {
-		panic(ErrBadContext)
+func MustToRCtx(ctx context.Context) *RequestCtx {
+	ret, ok := ctx.(*RequestCtx)
+	if ok {
+		return ret
 	}
-	return v.(*RequestCtx)
+	panic(ErrBadContext)
 }
 
 type MutexRequestCtx struct {

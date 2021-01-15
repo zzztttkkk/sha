@@ -17,9 +17,11 @@ func init() {
 		h.NewPrintMiddleware("a.m3"),
 	)
 
-	Branch.HTTP(
+	Branch.HTTPWithMiddleware(
 		"get",
 		"/",
 		h.NewPrintHandler("a.h"),
+		h.NewPrintMiddleware("a.s.m1"),
+		h.NewPrintMiddleware("a.s.m2"),
 	)
 }

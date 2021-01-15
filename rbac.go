@@ -16,7 +16,7 @@ func (r *_RbacRouterAdapter) HandleWithDoc(
 	r.Router.HTTPWithForm(
 		method,
 		path,
-		RequestHandlerFunc(func(ctx *RequestCtx) { handler(ctx.Context(), ctx) }),
+		RequestHandlerFunc(func(ctx *RequestCtx) { handler(ctx, ctx) }),
 		doc,
 	)
 }
@@ -28,7 +28,7 @@ func UseRBAC(router Router, options *rbac.Options) {
 func MustGrantedAll(permissions ...string) Middleware {
 	return MiddlewareFunc(
 		func(ctx *RequestCtx, next func()) {
-			err := rbac.GrantedAll(ctx.Context(), permissions...)
+			err := rbac.GrantedAll(ctx, permissions...)
 			if err != nil {
 				panic(err)
 			}
@@ -40,7 +40,7 @@ func MustGrantedAll(permissions ...string) Middleware {
 func MustGrantedAny(permissions ...string) Middleware {
 	return MiddlewareFunc(
 		func(ctx *RequestCtx, next func()) {
-			err := rbac.GrantedAny(ctx.Context(), permissions...)
+			err := rbac.GrantedAny(ctx, permissions...)
 			if err != nil {
 				panic(err)
 			}

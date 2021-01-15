@@ -1,12 +1,12 @@
-package sha
+package main
 
 import (
 	"context"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/zzztttkkk/sha"
 	"github.com/zzztttkkk/sha/auth"
 	"github.com/zzztttkkk/sha/rbac"
 	"github.com/zzztttkkk/sha/sqlx"
-	"testing"
 )
 
 type _RbacUser int64
@@ -14,10 +14,7 @@ type _RbacUser int64
 func (u _RbacUser) GetID() int64 { return int64(u) }
 
 func (u _RbacUser) Info(ctx context.Context) interface{} {
-	if RCtx(ctx) == nil {
-		return "non-request"
-	}
-	return RCtx(ctx).RemoteAddr().String()
+	return sha.MustToRCtx(ctx).RemoteAddr().String()
 }
 
 func init() {
@@ -27,22 +24,21 @@ func init() {
 	)
 }
 
-func Test_Rbac(t *testing.T) {
-	mux := NewMux("", nil)
-	server := Default(mux)
-	server.Port = 8096
+func main() {
+	mux := sha.NewMux("", nil)
+	server := sha.Default(mux)
 	mux.HandleDoc("get", "/doc")
 
 	mux.HTTP(
 		"get",
 		"/redirect",
-		RequestHandlerFunc(func(ctx *RequestCtx) { RedirectPermanently("https://google.com") }),
+		sha.RequestHandlerFunc(func(ctx *sha.RequestCtx) { sha.RedirectPermanently("https://google.com") }),
 	)
 
-	branch := NewBranch()
+	branch := sha.NewBranch()
 
 	auth.SetImplementation(auth.Func(func(ctx context.Context) (auth.Subject, error) { return _RbacUser(12), nil }))
-	UseRBAC(branch, nil)
+	sha.UseRBAC(branch, nil)
 
 	rbac.GrantRoot(12)
 

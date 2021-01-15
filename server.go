@@ -75,7 +75,7 @@ func init() {
 func Default(handler RequestHandler) *Server {
 	server := &Server{
 		Host:                   "127.0.0.1",
-		Port:                   8080,
+		Port:                   5986,
 		BaseCtx:                context.Background(),
 		Handler:                handler,
 		MaxConnectionKeepAlive: time.Minute * 3,
