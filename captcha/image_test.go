@@ -19,8 +19,7 @@ func TestNewImage(t *testing.T) {
 		"21598",
 		&Options{
 			OffsetX: 10, OffsetY: 10,
-			Points:  200,
-			Shuffle: false,
+			Points: 200,
 		},
 	)
 
@@ -32,8 +31,7 @@ func TestNewImage(t *testing.T) {
 		"我可以吞下玻璃而不伤身体",
 		&Options{
 			OffsetX: 10, OffsetY: 10,
-			Points:  200,
-			Shuffle: true,
+			Points: 200,
 		},
 	)
 

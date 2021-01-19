@@ -4,14 +4,25 @@ import (
 	"fmt"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
+	"golang.org/x/image/math/fixed"
+	"image"
 	"io/ioutil"
 	"math/rand"
+	"sync"
 )
 
 type _Face struct {
 	font.Face
 	size           int
 	asciiHalfWidth bool
+	sync.Mutex
+}
+
+func (f *_Face) Glyph(dot fixed.Point26_6, r rune) (dr image.Rectangle, mask image.Image, maskp image.Point, advance fixed.Int26_6, ok bool) {
+	f.Lock()
+	defer f.Unlock()
+
+	return f.Face.Glyph(dot, r)
 }
 
 type _FontCache struct {
@@ -50,7 +61,7 @@ func RegisterFont(name, file string, options *truetype.Options, asciiHalfWidth b
 
 func getFaceByName(name string) *_Face {
 	if name == "*" {
-		return fontCache.l[rand.Int()%len(fontCache.l)]
+		return fontCache.l[int(rand.Uint32())%len(fontCache.l)]
 	}
 	return fontCache.m[name]
 }
@@ -60,7 +71,7 @@ func getFaceByCount(i int) (l []*_Face) {
 		return fontCache.l
 	}
 	for ; i > 0; i-- {
-		l = append(l, fontCache.l[rand.Int()%len(fontCache.l)])
+		l = append(l, fontCache.l[int(rand.Uint32())%len(fontCache.l)])
 	}
 	return
 }

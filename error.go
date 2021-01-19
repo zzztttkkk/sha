@@ -13,7 +13,7 @@ type HttpError interface {
 
 type HttpResponseError interface {
 	HttpError
-	Header(*Header)
+	WriteHeader(*Header)
 	Body() []byte
 }
 
@@ -25,7 +25,7 @@ func (err StatusError) Error() string {
 
 func (err StatusError) StatusCode() int { return int(err) }
 
-func (err StatusError) Header(_ *Header) {}
+func (err StatusError) WriteHeader(_ *Header) {}
 
 func (err StatusError) Body() []byte {
 	i := int(err)
@@ -55,7 +55,7 @@ func (err *_RedirectError) Error() string { return "" }
 
 func (err *_RedirectError) StatusCode() int { return err.status }
 
-func (err *_RedirectError) Header(h *Header) { h.Set(HeaderLocation, utils.B(err.uri)) }
+func (err *_RedirectError) WriteHeader(h *Header) { h.Set(HeaderLocation, utils.B(err.uri)) }
 
 func (err *_RedirectError) Body() []byte { return nil }
 

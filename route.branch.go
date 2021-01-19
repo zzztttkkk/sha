@@ -3,7 +3,6 @@ package sha
 import (
 	"fmt"
 	"github.com/zzztttkkk/sha/validator"
-	"net/http"
 	"reflect"
 	"strings"
 )
@@ -57,11 +56,15 @@ func (branch *_RouteBranch) HTTPWithForm(method, path string, handler RequestHan
 	)
 }
 
-func (branch *_RouteBranch) FileSystem(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware) {
+func (branch *_RouteBranch) FilePath(filePath string, method, path string, autoIndex bool, middleware ...Middleware) {
 	branch.HTTP(
 		method, path,
-		fileSystemHandler(fs, path, autoIndex, middleware...),
+		makeFileSystemHandler(filePath, path, autoIndex, middleware...),
 	)
+}
+
+func (branch *_RouteBranch) File(filePath string, method, path string, middleware ...Middleware) {
+	branch.HTTP(method, path, makeFileHandler(filePath, middleware...))
 }
 
 func (branch *_RouteBranch) AddBranch(prefix string, router Router) {

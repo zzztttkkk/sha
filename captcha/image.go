@@ -19,7 +19,6 @@ type Options struct {
 	OffsetY int
 	Points  int
 	Color   color.Color
-	Shuffle bool
 }
 
 var defaultOption = &Options{}
@@ -29,7 +28,7 @@ func randFace(faces []*_Face) *_Face {
 	if l < 2 {
 		return faces[0]
 	}
-	return faces[rand.Int()%l]
+	return faces[int(rand.Uint32())%l]
 }
 
 func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image {
@@ -81,8 +80,8 @@ func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image
 
 	// points
 	for n := option.Points; n > 0; n-- {
-		a := rand.Int() % w
-		b := rand.Int() % h
+		a := int(rand.Uint32()) % w
+		b := int(rand.Uint32()) % h
 
 		img.Set(a, b, c)
 		a++
@@ -101,7 +100,7 @@ func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image
 	for _, r := range rfs {
 		dxV = r.dx
 		dyV = r.dy
-		v := fixed.P(rand.Int()%dxV, rand.Int()%dyV)
+		v := fixed.P(int(rand.Uint32())%dxV, int(rand.Uint32())%dyV)
 		if rand.Uint32()&1 == 0 {
 			v.X *= -1
 		}
@@ -116,7 +115,9 @@ func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image
 		if !ok {
 			continue
 		}
+
 		draw.DrawMask(img, dr, cursor, p, mask, maskp, draw.Over)
+
 		dot.X += advance
 
 		dot.X -= v.X
@@ -126,17 +127,9 @@ func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image
 }
 
 func RenderOneFont(fontname, txt string, option *Options) image.Image {
-	var rs = []rune(txt)
-	if option.Shuffle {
-		rand.Shuffle(len(rs), func(i, j int) { rs[i], rs[j] = rs[j], rs[i] })
-	}
-	return newImageWithString(rs, []*_Face{getFaceByName(fontname)}, option)
+	return newImageWithString([]rune(txt), []*_Face{getFaceByName(fontname)}, option)
 }
 
 func RenderSomeFonts(count int, txt string, option *Options) image.Image {
-	var rs = []rune(txt)
-	if option.Shuffle {
-		rand.Shuffle(len(rs), func(i, j int) { rs[i], rs[j] = rs[j], rs[i] })
-	}
-	return newImageWithString(rs, getFaceByCount(count), option)
+	return newImageWithString([]rune(txt), getFaceByCount(count), option)
 }

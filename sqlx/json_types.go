@@ -7,32 +7,6 @@ import (
 	"github.com/zzztttkkk/sha/utils"
 )
 
-type JsonBytesString []byte
-
-var emptyString = []byte("\"\"")
-
-func (u JsonBytesString) MarshalJSON() ([]byte, error) {
-	if u == nil {
-		return emptyString, nil
-	}
-
-	var ret []byte
-	ret = append(ret, '"')
-
-	for _, v := range u {
-		switch v {
-		case '"':
-			ret = append(ret, '\\', v)
-		case '\\':
-			ret = append(ret, '\\', '\\')
-		default:
-			ret = append(ret, v)
-		}
-	}
-	ret = append(ret, '"')
-	return ret, nil
-}
-
 type JsonArray []interface{}
 
 var emptyJsonArrayBytes = []byte("[]")

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	x "github.com/jmoiron/sqlx"
-	"math/rand"
-	"time"
+	"github.com/zzztttkkk/sha/utils"
+	mrandlib "math/rand"
 )
 
 var wdb *x.DB
@@ -54,11 +54,12 @@ func (re *RollbackError) Error() string {
 	return fmt.Sprintf("sha.sqlx: rollback failed, %s %v", re.Err, re.RecoverVal)
 }
 
+var ErrSubTx = errors.New("sha.sqlx: sub tx is invalid")
+
 // starts a transaction, return a sub context and a commit function
 func Tx(ctx context.Context) (nctx context.Context, committer func()) {
-	_tx := ctx.Value(txKey)
-	if _tx != nil {
-		panic(errors.New("sha.sqlx: sub tx is invalid"))
+	if ctx.Value(txKey) != nil {
+		panic(ErrSubTx)
 	}
 
 	tx := wdb.MustBegin()
@@ -80,10 +81,10 @@ func Tx(ctx context.Context) (nctx context.Context, committer func()) {
 }
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
+	utils.MathRandSeed()
 }
 
-var PickReadonlyDB = func(dbs []*x.DB) *x.DB { return dbs[rand.Int()%len(dbs)] }
+var PickReadonlyDB = func(dbs []*x.DB) *x.DB { return dbs[int(mrandlib.Uint32())%len(dbs)] }
 
 func Exe(ctx context.Context) W {
 	tx := ctx.Value(txKey)

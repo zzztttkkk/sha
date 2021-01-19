@@ -73,7 +73,7 @@ var errNoOverlap = errors.New("invalid range: failed to overlap")
 // if modtime.IsZero(), modtime is unknown.
 // content must be seeked to the beginning of the file.
 // The sizeFunc is called at most once. Its error, if any, is sent in the HTTP response.
-func serveContent(ctx *RequestCtx, name string, modtime time.Time, sizeFunc func() (int64, error), content io.ReadSeeker) {
+func serveContent(ctx *RequestCtx, name string, modtime time.Time, size int64, content io.ReadSeeker) {
 	w := &ctx.Response
 	r := &ctx.Request
 
@@ -90,17 +90,7 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, sizeFunc func
 	var ctype string
 	if !haveType {
 		ctype = mime.TypeByExtension(filepath.Ext(name))
-		if ctype != "" {
-			w.Header.SetContentType(ctype)
-		} else {
-			//todo guess
-		}
-	}
-
-	size, err := sizeFunc()
-	if err != nil {
-		w.statusCode = StatusInternalServerError
-		return
+		w.Header.SetContentType(ctype)
 	}
 
 	// handle Content-Range header.
@@ -230,7 +220,6 @@ const (
 	condTrue
 	condFalse
 )
-
 
 func checkIfMatch(w *Response, r *Request) condResult {
 	imb, _ := r.Header.Get(HeaderIfMatch)
@@ -508,9 +497,7 @@ func serveFile(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
 		return
 	}
 
-	// serveContent will check modification time
-	sizeFunc := func() (int64, error) { return d.Size(), nil }
-	serveContent(ctx, d.Name(), d.ModTime(), sizeFunc, f)
+	serveContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
 }
 
 // toHTTPError returns a non-specific HTTP error message and status code

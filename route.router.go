@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"net/http"
+	"os"
 	pathlib "path"
 	"strings"
 )
@@ -26,7 +27,8 @@ type Router interface {
 
 	WebSocket(path string, handler WebSocketHandlerFunc)
 
-	FileSystem(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware)
+	FilePath(fpath string, method, path string, autoIndex bool, middleware ...Middleware)
+	File(fpath string, method, path string, middleware ...Middleware)
 
 	AddBranch(prefix string, router Router)
 
@@ -35,7 +37,7 @@ type Router interface {
 
 const _filename = "filename"
 
-func fileSystemHandler(fs http.FileSystem, path string, autoIndex bool, middleware ...Middleware) RequestHandler {
+func makeFileSystemHandler(fpath string, path string, autoIndex bool, middleware ...Middleware) RequestHandler {
 	if !strings.HasSuffix(path, "/filename:*") {
 		panic(fmt.Errorf("sha.router: bad static path"))
 	}
@@ -43,9 +45,30 @@ func fileSystemHandler(fs http.FileSystem, path string, autoIndex bool, middlewa
 		RequestHandlerFunc(
 			func(ctx *RequestCtx) {
 				filename, _ := ctx.PathParam(_filename)
-				serveFile(ctx, fs, pathlib.Clean(utils.S(filename)), autoIndex)
+				serveFile(ctx, http.Dir(fpath), pathlib.Clean(utils.S(filename)), autoIndex)
 			},
 		),
+		middleware...,
+	)
+}
+
+func makeFileHandler(fpath string, middleware ...Middleware) RequestHandler {
+	return handlerWithMiddleware(
+		RequestHandlerFunc(func(ctx *RequestCtx) {
+			f, err := os.Open(fpath)
+			if err != nil {
+				ctx.SetStatus(toHTTPError(err))
+				return
+			}
+			defer f.Close()
+
+			d, err := f.Stat()
+			if err != nil {
+				ctx.SetStatus(toHTTPError(err))
+				return
+			}
+			serveContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
+		}),
 		middleware...,
 	)
 }

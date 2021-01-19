@@ -1,24 +1,22 @@
 package sha
 
 import (
-	"net/http"
 	"strconv"
 )
 
 type CorsOptions struct {
-	AllowMethods     string                   `json:"allow_methods" toml:"allow-methods"`
-	AllowHeaders     string                   `json:"allow_headers" toml:"allow-headers"`
-	ExposeHeaders    string                   `json:"expose_headers" toml:"expose-headers"`
-	AllowCredentials bool                     `json:"allow_credentials" toml:"allow-credentials"`
-	MaxAge           int64                    `json:"max_age" toml:"max-age"`
-	CheckOrigin      func(origin []byte) bool `json:"-" toml:"-"`
-	OnForbidden      func(ctx *RequestCtx)    `json:"-" toml:"-"`
+	AllowMethods     string
+	AllowHeaders     string
+	ExposeHeaders    string
+	AllowCredentials bool
+	MaxAge           int64
 
 	headerKeys []string
 	headerVals [][]byte
+	inited     bool
 }
 
-func (options *CorsOptions) init() {
+func (options *CorsOptions) Init() *CorsOptions {
 	if options.MaxAge > 0 {
 		options.headerKeys = append(options.headerKeys, HeaderAccessControlMaxAge)
 		options.headerVals = append(options.headerVals, []byte(strconv.FormatInt(options.MaxAge, 10)))
@@ -43,35 +41,13 @@ func (options *CorsOptions) init() {
 		options.headerKeys = append(options.headerKeys, HeaderAccessControlExposeHeaders)
 		options.headerVals = append(options.headerVals, []byte(options.ExposeHeaders))
 	}
-	if options.OnForbidden == nil {
-		options.OnForbidden = func(ctx *RequestCtx) { ctx.SetStatus(http.StatusForbidden) }
-	}
+	return options
 }
 
-func (options *CorsOptions) writeHeader(ctx *RequestCtx) {
+func (options *CorsOptions) writeHeader(ctx *RequestCtx, origin []byte) {
 	header := &ctx.Response.Header
+	header.Set(HeaderAccessControlAllowOrigin, origin)
 	for i := 0; i < len(options.headerKeys); i++ {
 		header.Append(options.headerKeys[i], options.headerVals[i])
 	}
-}
-
-func (options *CorsOptions) verify(ctx *RequestCtx) bool {
-	origin, ok := ctx.Request.Header.Get(HeaderOrigin)
-	if !ok || len(origin) < 1 { // same origin
-		return true
-	}
-	if !options.CheckOrigin(origin) {
-		return false
-	}
-	ctx.Response.Header.Set(HeaderAccessControlAllowOrigin, origin)
-	return true
-}
-
-func (options *CorsOptions) Process(ctx *RequestCtx, next func()) {
-	if !options.verify(ctx) {
-		options.OnForbidden(ctx)
-		return
-	}
-	options.writeHeader(ctx)
-	next()
 }

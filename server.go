@@ -178,6 +178,7 @@ func (s *Server) Serve(l net.Listener) {
 			continue
 		}
 		if s.OnConnectionAccepted != nil && !s.OnConnectionAccepted(conn) {
+			conn.Close()
 			continue
 		}
 

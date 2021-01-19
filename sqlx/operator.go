@@ -110,7 +110,7 @@ func (op *Operator) simpleSelect(group, cond string) string {
 		keys := op.info.groups[group]
 		lastInd := len(keys) - 1
 		if lastInd < 0 {
-			panic(fmt.Errorf("sha.sqlx: empty group `%s`", group))
+			panic(fmt.Errorf("sha.sqlx: empty key group `%s`", group))
 		}
 		i := 0
 		for v := range keys {

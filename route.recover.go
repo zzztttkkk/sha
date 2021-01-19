@@ -40,12 +40,9 @@ func doRecover(ctx *RequestCtx) {
 		}
 	}
 
-	if len(errTypeMap) > 0 {
-		fn := errTypeMap[vt]
-		if fn != nil {
-			fn(ctx, v)
-			return
-		}
+	if fn := errTypeMap[vt]; fn != nil {
+		fn(ctx, v)
+		return
 	}
 
 	logStack := true
@@ -56,7 +53,7 @@ func doRecover(ctx *RequestCtx) {
 			logStack = false
 		}
 		ctx.SetStatus(rv.StatusCode())
-		rv.Header(&ctx.Response.Header)
+		rv.WriteHeader(&ctx.Response.Header)
 		_, _ = ctx.Write(rv.Body())
 	} else if vt.ConvertibleTo(httpErrType) {
 		rv := v.(HttpError)

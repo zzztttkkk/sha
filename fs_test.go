@@ -1,7 +1,6 @@
 package sha
 
 import (
-	"net/http"
 	"testing"
 )
 
@@ -9,8 +8,8 @@ func TestFs(t *testing.T) {
 	server := Default(nil)
 	mux := NewMux("", nil)
 
-	mux.FileSystem(
-		http.Dir("./"),
+	mux.FilePath(
+		"./",
 		"get",
 		"/sha/filename:*",
 		true,

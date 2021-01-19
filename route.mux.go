@@ -22,24 +22,35 @@ type Mux struct {
 	// unlike "Cors", "AutoOptions" only runs when the request is same origin and method == "OPTIONS"
 	AutoOptions       bool
 	AutoSlashRedirect bool
-	cors              *CorsOptions
 	docs              map[string]map[string]string
 }
 
 var _ Router = (*Mux)(nil)
 
-func NewMux(prefix string, corsOptions *CorsOptions) *Mux {
+func NewMux(prefix string, checkOrigin func(origin []byte) *CorsOptions) *Mux {
 	mux := &Mux{
 		prefix:            prefix,
 		customMethodTrees: map[string]*_RouteNode{},
 		stdMethodTrees:    make([]*_RouteNode, 10),
 		rawMap:            map[string]map[string]RequestHandler{},
-		cors:              corsOptions,
 		docs:              map[string]map[string]string{},
 	}
 
-	if mux.cors != nil {
-		mux.Use(mux.cors)
+	if checkOrigin != nil {
+		mux.Use(MiddlewareFunc(func(ctx *RequestCtx, next func()) {
+			origin, ok := ctx.Request.Header.Get(HeaderOrigin)
+			if !ok {
+				next()
+				return
+			}
+
+			options := checkOrigin(origin)
+			if options == nil {
+				return
+			}
+			options.writeHeader(ctx, origin)
+			next()
+		}))
 	}
 	return mux
 }
@@ -357,9 +368,13 @@ func (mux *Mux) HandleDoc(method, path string, middleware ...Middleware) {
 	)
 }
 
-func (mux *Mux) FileSystem(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware) {
+func (mux *Mux) FilePath(filePath string, method, path string, autoIndex bool, middleware ...Middleware) {
 	mux.HTTP(
 		method, path,
-		fileSystemHandler(fs, path, autoIndex, middleware...),
+		makeFileSystemHandler(filePath, path, autoIndex, middleware...),
 	)
+}
+
+func (mux *Mux) File(filePath string, method, path string, middleware ...Middleware) {
+	mux.HTTP(method, path, makeFileHandler(filePath, middleware...))
 }

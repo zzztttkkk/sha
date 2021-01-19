@@ -30,3 +30,8 @@ func (Model) TableColumns(db *sqlx.DB) []string {
 	)
 	return s
 }
+
+type Modeler interface {
+	TableName() string
+	TableColumns(db *sqlx.DB) []string
+}
