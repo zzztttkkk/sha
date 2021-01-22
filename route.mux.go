@@ -27,7 +27,7 @@ type Mux struct {
 
 var _ Router = (*Mux)(nil)
 
-func NewMux(prefix string, checkOrigin func(origin []byte) *CorsOptions) *Mux {
+func NewMux(prefix string, checkOrigin CORSOriginChecker) *Mux {
 	mux := &Mux{
 		prefix:            prefix,
 		customMethodTrees: map[string]*_RouteNode{},
@@ -307,7 +307,11 @@ func (mux *Mux) Handle(ctx *RequestCtx) {
 	}
 
 	if len(n.wildcardName) > 0 {
-		req.Params.Append(n.wildcardName, path[i+1:])
+		if i+2 >= len(path) {
+			ctx.SetStatus(http.StatusNotFound)
+			return
+		}
+		req.Params.Append(n.wildcardName, path[i+2:])
 	} else if i < len(path)-2 {
 		ctx.SetStatus(http.StatusNotFound)
 		return

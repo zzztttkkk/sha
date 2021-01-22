@@ -4,44 +4,49 @@ import (
 	"strconv"
 )
 
-type CorsOptions struct {
-	AllowMethods     string
-	AllowHeaders     string
-	ExposeHeaders    string
-	AllowCredentials bool
-	MaxAge           int64
-
-	headerKeys []string
-	headerVals [][]byte
-	inited     bool
+type CorsConfig struct {
+	AllowMethods     string `json:"allow_methods" toml:"allow-methods"`
+	AllowHeaders     string `json:"allow_headers" toml:"allow-headers"`
+	ExposeHeaders    string `json:"expose_headers" toml:"expose-headers"`
+	AllowCredentials bool   `json:"allow_credentials" toml:"allow-credentials"`
+	MaxAge           int64  `json:"max_age" toml:"max-age"`
 }
 
-func (options *CorsOptions) Init() *CorsOptions {
-	if options.MaxAge > 0 {
-		options.headerKeys = append(options.headerKeys, HeaderAccessControlMaxAge)
-		options.headerVals = append(options.headerVals, []byte(strconv.FormatInt(options.MaxAge, 10)))
+type CorsOptions struct {
+	headerKeys []string
+	headerVals [][]byte
+}
+
+type CORSOriginChecker func(origin []byte) *CorsOptions
+
+func NewCorsOptions(cc *CorsConfig) *CorsOptions {
+	v := &CorsOptions{}
+
+	if cc.MaxAge > 0 {
+		v.headerKeys = append(v.headerKeys, HeaderAccessControlMaxAge)
+		v.headerVals = append(v.headerVals, []byte(strconv.FormatInt(cc.MaxAge, 10)))
 	}
 
-	if len(options.AllowMethods) < 1 {
-		options.AllowMethods = "GET, POST, OPTIONS"
+	if len(cc.AllowMethods) < 1 {
+		cc.AllowMethods = "GET, POST, OPTIONS"
 	}
 
-	options.headerKeys = append(options.headerKeys, HeaderAccessControlAllowMethods)
-	options.headerVals = append(options.headerVals, []byte(options.AllowMethods))
+	v.headerKeys = append(v.headerKeys, HeaderAccessControlAllowMethods)
+	v.headerVals = append(v.headerVals, []byte(cc.AllowMethods))
 
-	if len(options.AllowHeaders) > 0 {
-		options.headerKeys = append(options.headerKeys, HeaderAccessControlAllowHeaders)
-		options.headerVals = append(options.headerVals, []byte(options.AllowHeaders))
+	if len(cc.AllowHeaders) > 0 {
+		v.headerKeys = append(v.headerKeys, HeaderAccessControlAllowHeaders)
+		v.headerVals = append(v.headerVals, []byte(cc.AllowHeaders))
 	}
-	if options.AllowCredentials {
-		options.headerKeys = append(options.headerKeys, HeaderAccessControlAllowCredentials)
-		options.headerVals = append(options.headerVals, []byte("true"))
+	if cc.AllowCredentials {
+		v.headerKeys = append(v.headerKeys, HeaderAccessControlAllowCredentials)
+		v.headerVals = append(v.headerVals, []byte("true"))
 	}
-	if len(options.ExposeHeaders) > 0 {
-		options.headerKeys = append(options.headerKeys, HeaderAccessControlExposeHeaders)
-		options.headerVals = append(options.headerVals, []byte(options.ExposeHeaders))
+	if len(cc.ExposeHeaders) > 0 {
+		v.headerKeys = append(v.headerKeys, HeaderAccessControlExposeHeaders)
+		v.headerVals = append(v.headerVals, []byte(cc.ExposeHeaders))
 	}
-	return options
+	return v
 }
 
 func (options *CorsOptions) writeHeader(ctx *RequestCtx, origin []byte) {

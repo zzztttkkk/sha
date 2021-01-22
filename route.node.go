@@ -15,10 +15,11 @@ type _RouteNode struct {
 	parent       *_RouteNode
 	name         string
 
-	sChild      *_RouteNode
-	children    []*_RouteNode
-	childrenMap map[string]*_RouteNode
+	matcherChild *_RouteNode
+	children     []*_RouteNode
+	childrenMap  map[string]*_RouteNode
 
+	// for options request
 	methods     []byte
 	autoHandler bool
 }
@@ -80,8 +81,8 @@ func (node *_RouteNode) getChild(name string) *_RouteNode {
 }
 
 func (node *_RouteNode) _getChild(name []byte) *_RouteNode {
-	if node.sChild != nil {
-		return node.sChild
+	if node.matcherChild != nil {
+		return node.matcherChild
 	}
 	return node.getChild(utils.S(name))
 }
@@ -110,7 +111,7 @@ func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw st
 	p := path[0]
 	ind := strings.IndexByte(p, ':')
 	if ind < 0 { // normal part
-		if node.sChild != nil {
+		if node.matcherChild != nil {
 			panic(fmt.Errorf("sha.router: `/%s` conflict with others", raw))
 		}
 
@@ -126,8 +127,8 @@ func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw st
 		if len(node.children) != 0 {
 			panic(fmt.Errorf("sha.router: `/%s` conflict with others", raw))
 		}
-		node.sChild = &_RouteNode{param: []byte(p[1:])}
-		return node.sChild.addHandler(path[1:], handler, raw)
+		node.matcherChild = &_RouteNode{param: []byte(p[1:])}
+		return node.matcherChild.addHandler(path[1:], handler, raw)
 	}
 
 	if len(node.children) != 0 {
@@ -136,8 +137,8 @@ func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw st
 	if !strings.HasSuffix(p, ":*") || len(path) != 1 {
 		panic(fmt.Errorf("sha.router: bad path value `/%s`", raw))
 	}
-	node.sChild = &_RouteNode{wildcardName: p[:len(p)-2]}
-	return node.sChild.addHandler(nil, handler, raw)
+	node.matcherChild = &_RouteNode{wildcardName: p[:len(p)-2]}
+	return node.matcherChild.addHandler(nil, handler, raw)
 }
 
 func (node *_RouteNode) find(path []byte, kvs *utils.Kvs) (int, *_RouteNode) {
