@@ -144,22 +144,22 @@ func granted(ctx context.Context, policy _Policy, permissions ...string) error {
 	return ErrPermissionDenied
 }
 
-func GrantedAll(ctx context.Context, permissions ...string) error {
+func IsGrantedAll(ctx context.Context, permissions ...string) error {
 	return granted(ctx, all, permissions...)
 }
 
-func GrantedAny(ctx context.Context, permissions ...string) error {
+func IsGrantedAny(ctx context.Context, permissions ...string) error {
 	return granted(ctx, any, permissions...)
 }
 
 func MustGrantedAll(ctx context.Context, permissions ...string) {
-	if err := GrantedAll(ctx, permissions...); err != nil {
+	if err := IsGrantedAll(ctx, permissions...); err != nil {
 		panic(err)
 	}
 }
 
 func MustGrantedAny(ctx context.Context, permissions ...string) {
-	if err := GrantedAny(ctx, permissions...); err != nil {
+	if err := IsGrantedAny(ctx, permissions...); err != nil {
 		panic(err)
 	}
 }

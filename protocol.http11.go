@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
+	"github.com/imdario/mergo"
 	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
 	"net"
@@ -11,19 +13,33 @@ import (
 	"time"
 )
 
-type Http1xProtocol struct {
-	Version                  []byte
-	MaxRequestFirstLineSize  int
-	MaxRequestHeaderPartSize int // all header lines
-	MaxRequestBodySize       int
+type HTTPConf struct {
+	MaxRequestFirstLineSize       int  `json:"max_request_first_line_size" toml:"max-request-first-line-size"`
+	MaxRequestHeaderPartSize      int  `json:"max_request_header_part_size" toml:"max-request-header-part-size"`
+	MaxRequestBodySize            int  `json:"max_request_body_size" toml:"max-request-body-size"`
+	ReadBufferSize                int  `json:"read_buffer_size" toml:"read-buffer-size"`
+	MaxReadBufferSize             int  `json:"max_read_buffer_size" toml:"max-read-buffer-size"`
+	MaxResponseBodyBufferSize     int  `json:"max_response_body_buffer_size" toml:"max-response-body-buffer-size"`
+	DefaultResponseSendBufferSize int  `json:"default_response_send_buffer_size" toml:"default-response-send-buffer-size"`
+	AutoCompression               bool `json:"auto_compression" toml:"auto-compress"`
+}
 
-	OnParseError func(conn net.Conn, err HttpError) (shouldCloseConn bool) // close connection if return true
-	OnWriteError func(conn net.Conn, err error) (shouldCloseConn bool)     // close connection if return true
+var defaultHTTPConf = HTTPConf{
+	MaxRequestFirstLineSize:       4096,
+	MaxRequestHeaderPartSize:      4096,
+	MaxRequestBodySize:            4096,
+	ReadBufferSize:                4096,
+	MaxReadBufferSize:             4096,
+	MaxResponseBodyBufferSize:     4096,
+	DefaultResponseSendBufferSize: 4096,
+	AutoCompression:               false,
+}
 
-	ReadBufferSize                int
-	MaxReadBufferSize             int
-	MaxResponseBodyBufferSize     int
-	DefaultResponseSendBufferSize int
+type _Http11Protocol struct {
+	HTTPConf
+
+	OnParseError func(conn net.Conn, err HttpError) bool // close connection if return true
+	OnWriteError func(conn net.Conn, err error) bool     // close connection if return true
 
 	server  *Server
 	handler RequestHandler
@@ -35,6 +51,22 @@ type Http1xProtocol struct {
 
 var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
+var http11 = []byte("http/1.1")
+
+func NewHTTP11Protocol(conf *HTTPConf) HTTPProtocol {
+	v := &_Http11Protocol{}
+	if conf != nil {
+		v.HTTPConf = *conf
+	}
+	if err := mergo.Merge(&v.HTTPConf, &defaultHTTPConf); err != nil {
+		panic(err)
+	}
+
+	v.readBufferPool = internal.NewFixedSizeBufferPoll(v.ReadBufferSize, v.MaxReadBufferSize)
+	v.resBodyBufferPool = internal.NewBufferPoll(v.MaxReadBufferSize)
+	v.resSendBufferPool = &sync.Pool{New: func() interface{} { return nil }}
+	return v
+}
 
 const (
 	closeStr  = "close"
@@ -42,7 +74,7 @@ const (
 	keepAlive = "keep-alive"
 )
 
-func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
+func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx) bool {
 	connVal, _ := ctx.Response.Header.Get(HeaderConnection) // disable keep-alive by response
 	if string(inplaceLowercase(connVal)) == closeStr {
 		return false
@@ -60,7 +92,7 @@ func (protocol *Http1xProtocol) keepalive(ctx *RequestCtx) bool {
 
 var zeroTime time.Time
 
-func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
+func (protocol *_Http11Protocol) ServeHTTPConn(ctx context.Context, conn net.Conn) {
 	var err error
 	var n int
 	var keepAlive = true
@@ -87,12 +119,12 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 
 	rctx.conn = conn
 	rctx.connTime = time.Now()
-	rctx.protocol = protocol
 
-	idleTimeout := protocol.server.IdleTimeout
-	readTimeout := protocol.server.ReadTimeout
-	writeTimeout := protocol.server.WriteTimeout
-	autoCompression := protocol.server.AutoCompression
+	idleTimeout := protocol.server.conf.IdleTimeout.Duration
+	readTimeout := protocol.server.conf.ReadTimeout.Duration
+	writeTimeout := protocol.server.conf.WriteTimeout.Duration
+	autoCompression := protocol.AutoCompression
+	handler := protocol.server.Handler
 
 	inIdle := false
 
@@ -118,8 +150,9 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 
 		// consume all the buffered data
 		for offset != n {
-			offset, err = rctx.feedHttp1xReqData(readBuf.Data, offset, n)
+			offset, err = protocol.feedHttp1xReqData(rctx, readBuf.Data, offset, n)
 			if err != nil {
+				fmt.Println(offset, err)
 				if protocol.OnParseError != nil {
 					if protocol.OnParseError(conn, err.(HttpError)) {
 						return
@@ -140,7 +173,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 		}
 
 		rctx.ctx, cancelFn = context.WithCancel(ctx)
-		protocol.handler.Handle(rctx)
+		handler.Handle(rctx)
 
 		if rctx.hijacked {
 			cancelFn()
@@ -157,7 +190,7 @@ func (protocol *Http1xProtocol) Serve(ctx context.Context, conn net.Conn) {
 			keepAlive = false
 		}
 
-		if err := rctx.sendHttp1xResponseBuffer(); err != nil {
+		if err := protocol.sendResponseBuffer(rctx); err != nil {
 			cancelFn()
 			if protocol.OnWriteError != nil {
 				if protocol.OnWriteError(conn, err) {
@@ -207,7 +240,7 @@ func cleanPath(p []byte) []byte {
 	return p[:ind]
 }
 
-func (ctx *RequestCtx) initRequest() {
+func (protocol *_Http11Protocol) initRequest(ctx *RequestCtx) {
 	req := &ctx.Request
 
 	ctx.reqTime = time.Now()
@@ -266,7 +299,7 @@ func (ctx *RequestCtx) initRequest() {
 	}
 }
 
-func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, HttpError) {
+func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte, offset, end int) (int, HttpError) {
 	var v byte
 	req := &ctx.Request
 
@@ -276,7 +309,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			v = data[offset]
 			offset++
 			ctx.firstLineSize++
-			if ctx.firstLineSize > ctx.protocol.MaxRequestFirstLineSize {
+			if ctx.firstLineSize > protocol.MaxRequestFirstLineSize {
 				return 10001, ErrRequestUrlTooLong
 			}
 
@@ -327,7 +360,7 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 			v = data[offset]
 			offset++
 			ctx.headersSize++
-			if ctx.headersSize > ctx.protocol.MaxRequestHeaderPartSize {
+			if ctx.headersSize > protocol.MaxRequestHeaderPartSize {
 				return 10006, ErrRequestHeaderFieldsTooLarge
 			}
 
@@ -340,10 +373,10 @@ func (ctx *RequestCtx) feedHttp1xReqData(data []byte, offset, end int) (int, Htt
 				if len(ctx.currentHeaderKey) < 1 { // all header data read done
 					ctx.status++
 					ctx.bodySize = req.Header.ContentLength()
-					if ctx.bodySize > ctx.protocol.MaxRequestBodySize {
+					if ctx.bodySize > protocol.MaxRequestBodySize {
 						return 10008, ErrRequestEntityTooLarge
 					}
-					ctx.initRequest()
+					protocol.initRequest(ctx)
 					return offset, nil
 				}
 

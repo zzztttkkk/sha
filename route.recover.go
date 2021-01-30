@@ -16,6 +16,26 @@ func RecoverByType(t reflect.Type, fn ErrorHandler) { errTypeMap[t] = fn }
 
 func RecoverByErr(v error, fn ErrorHandler) { errValMap[v] = fn }
 
+func init() {
+	serverPrepareFunc = append(
+		serverPrepareFunc,
+		func(server *Server) {
+			_, ok := server.Handler.(*Mux)
+			if !ok {
+				return
+			}
+			for k, v := range internal.ErrorStatusByValue {
+				RecoverByErr(
+					k,
+					func(sc int) ErrorHandler {
+						return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }
+					}(v),
+				)
+			}
+		},
+	)
+}
+
 var (
 	errType        = reflect.TypeOf((*error)(nil)).Elem()
 	httpResErrType = reflect.TypeOf((*HttpResponseError)(nil)).Elem()

@@ -43,6 +43,7 @@ func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image
 		dy int
 	}
 
+	// color has not effect on the machine
 	c := option.Color
 	if c == nil {
 		c = color.RGBA{
@@ -116,7 +117,7 @@ func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image
 			continue
 		}
 
-		draw.DrawMask(img, dr, cursor, p, mask, maskp, draw.Over)
+		draw.DrawMask(img, dr, cursor, p, mask, maskp, draw.Src)
 
 		dot.X += advance
 

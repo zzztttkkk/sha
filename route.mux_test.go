@@ -14,9 +14,9 @@ func makeTestHandler(id int) RequestHandler {
 }
 
 func Test_Mux_AddHandler(t *testing.T) {
-	m := NewMux("", nil)
-	m.AutoOptions = true
-	m.AutoSlashRedirect = true
+	m := NewMux(nil, nil)
+	m.autoOptions = true
+	m.autoSlashRedirect = true
 
 	m.HTTP("GET", "/", makeTestHandler(0))
 	m.HTTP("GET", "/s/filename:*", makeTestHandler(2))

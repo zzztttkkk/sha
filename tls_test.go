@@ -5,7 +5,11 @@ import (
 )
 
 func TestServer_ListenAndServeTLS(t *testing.T) {
-	s := Default(nil)
+	conf := ServerConf{}
+	conf.Tls.Key = "./tls/sha.local-key.pem"
+	conf.Tls.Cert = "./tls/sha.local.pem"
+
+	s := New(nil, &conf, nil, nil)
 
 	s.Handler = RequestHandlerFunc(
 		func(ctx *RequestCtx) {
@@ -13,5 +17,5 @@ func TestServer_ListenAndServeTLS(t *testing.T) {
 		},
 	)
 
-	s.ListenAndServeTLS("./tls/ztk.local+3.pem", "./tls/ztk.local+3-key.pem")
+	s.ListenAndServe()
 }

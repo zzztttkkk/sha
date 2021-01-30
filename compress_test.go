@@ -9,7 +9,7 @@ import (
 func TestRequestCtx_AutoCompress(t *testing.T) {
 	s := Default(nil)
 
-	mux := NewMux("", nil)
+	mux := NewMux(nil, nil)
 	s.Handler = mux
 
 	mux.HTTP(

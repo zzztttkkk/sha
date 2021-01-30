@@ -12,11 +12,11 @@ import (
 )
 
 type TestModel struct {
-	Id        int64           `db:"id,g=login" json:"id"`
+	ID        int64           `db:"id,g=login" json:"id"`
 	CreatedAt time.Time       `db:"created_at" json:"created_at"`
 	DeletedAt *time.Time      `db:"deleted_at" json:"-"`
-	Name      JsonBytesString `db:"name,g=login" json:"name"`
-	Password  JsonBytesString `db:"password,g=login" json:"password"`
+	Name      string `db:"name,g=login" json:"name"`
+	Password  string `db:"password,g=login" json:"password"`
 }
 
 func (TestModel) TableColumns(db *sqlx.DB) []string {

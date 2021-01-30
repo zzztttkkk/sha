@@ -2,14 +2,27 @@ package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/sha/validator"
 	"log"
 	"net/http"
 	"net/url"
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/zzztttkkk/sha/validator"
 )
+
+type MuxConf struct {
+	Prefix            string `json:"prefix" toml:"prefix"`
+	AutoOptions       bool   `json:"auto_options" toml:"auto-options"`
+	AutoSlashRedirect bool   `json:"auto_slash_redirect" toml:"auto-slash-redirect"`
+}
+
+var defaultMuxConf = MuxConf{
+	Prefix:            "",
+	AutoOptions:       false,
+	AutoSlashRedirect: false,
+}
 
 type Mux struct {
 	_MiddlewareNode
@@ -19,33 +32,42 @@ type Mux struct {
 	stdMethodTrees    []*_RouteNode
 	rawMap            map[string]map[string]RequestHandler
 
-	// unlike "Cors", "AutoOptions" only runs when the request is same origin and method == "OPTIONS"
-	AutoOptions       bool
-	AutoSlashRedirect bool
+	// unlike "Cors", "autoOptions" only runs when the request is same origin and method == "OPTIONS"
+	autoOptions       bool
+	autoSlashRedirect bool
 	docs              map[string]map[string]string
+
+	NotFound RequestHandler
 }
 
 var _ Router = (*Mux)(nil)
 
-func NewMux(prefix string, checkOrigin CORSOriginChecker) *Mux {
+func NewMux(conf *MuxConf, checkOrigin CORSOriginChecker) *Mux {
+	if conf == nil {
+		conf = &defaultMuxConf
+	}
+
 	mux := &Mux{
-		prefix:            prefix,
+		prefix:            conf.Prefix,
 		customMethodTrees: map[string]*_RouteNode{},
 		stdMethodTrees:    make([]*_RouteNode, 10),
 		rawMap:            map[string]map[string]RequestHandler{},
 		docs:              map[string]map[string]string{},
+		autoOptions:       conf.AutoOptions,
+		autoSlashRedirect: conf.AutoSlashRedirect,
 	}
 
 	if checkOrigin != nil {
 		mux.Use(MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			origin, ok := ctx.Request.Header.Get(HeaderOrigin)
-			if !ok {
+			origin, _ := ctx.Request.Header.Get(HeaderOrigin)
+			if len(origin) < 1 {
 				next()
 				return
 			}
 
 			options := checkOrigin(origin)
 			if options == nil {
+				ctx.SetStatus(StatusForbidden)
 				return
 			}
 			options.writeHeader(ctx, origin)
@@ -129,11 +151,11 @@ func (mux *Mux) doAddHandler1(method, path string, handler RequestHandler, doWra
 	tree := mux.getOrNewTree(method)
 	newNode := tree.addHandler(strings.Split(path, "/"), handler, path)
 
-	if mux.AutoSlashRedirect && method != "OPTIONS" {
+	if mux.autoSlashRedirect && method != "OPTIONS" {
 		autoSlashRedirect(newNode)
 	}
 
-	if mux.AutoOptions && method != "OPTIONS" {
+	if mux.autoOptions && method != "OPTIONS" {
 		mux.doAutoOptions(method, path)
 	}
 
@@ -283,10 +305,16 @@ func (mux *Mux) HTTPWithMiddlewareAndForm(method, path string, handler RequestHa
 	mux.HTTPWithForm(method, path, handlerWithMiddleware(handler, middleware...), form)
 }
 
+var defaultNotFound = RequestHandlerFunc(func(ctx *RequestCtx) { ctx.SetStatus(StatusNotFound) })
+
 func (mux *Mux) Handle(ctx *RequestCtx) {
 	defer doRecover(ctx)
 
 	req := &ctx.Request
+	notfound := mux.NotFound
+	if notfound == nil {
+		notfound = defaultNotFound
+	}
 
 	var tree *_RouteNode
 	if req._method == _MCustom {
@@ -295,27 +323,33 @@ func (mux *Mux) Handle(ctx *RequestCtx) {
 		tree = mux.stdMethodTrees[req._method]
 	}
 	if tree == nil {
-		ctx.SetStatus(http.StatusNotFound)
+		notfound.Handle(ctx)
 		return
 	}
 
 	path := req.Path
 	i, n := tree.find(path[1:], &req.Params)
 	if n == nil || n.handler == nil {
-		ctx.SetStatus(http.StatusNotFound)
+		notfound.Handle(ctx)
 		return
 	}
 
 	if len(n.wildcardName) > 0 {
-		if i+2 >= len(path) {
-			ctx.SetStatus(http.StatusNotFound)
+		if i+1 >= len(path) {
+			notfound.Handle(ctx)
 			return
 		}
-		req.Params.Append(n.wildcardName, path[i+2:])
+
+		path = path[i+1:]
+		if path[0] == '/' {
+			path = path[1:]
+		}
+		req.Params.Append(n.wildcardName, path)
 	} else if i < len(path)-2 {
-		ctx.SetStatus(http.StatusNotFound)
+		notfound.Handle(ctx)
 		return
 	}
+
 	n.handler.Handle(ctx)
 }
 
@@ -372,13 +406,13 @@ func (mux *Mux) HandleDoc(method, path string, middleware ...Middleware) {
 	)
 }
 
-func (mux *Mux) FilePath(filePath string, method, path string, autoIndex bool, middleware ...Middleware) {
+func (mux *Mux) FilePath(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware) {
 	mux.HTTP(
 		method, path,
-		makeFileSystemHandler(filePath, path, autoIndex, middleware...),
+		makeFileSystemHandler(fs, path, autoIndex, middleware...),
 	)
 }
 
-func (mux *Mux) File(filePath string, method, path string, middleware ...Middleware) {
-	mux.HTTP(method, path, makeFileHandler(filePath, middleware...))
+func (mux *Mux) File(fs http.FileSystem, filename, method, path string, middleware ...Middleware) {
+	mux.HTTP(method, path, makeFileHandler(fs, filename, middleware...))
 }

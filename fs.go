@@ -65,15 +65,31 @@ func dirList(ctx *RequestCtx, f http.File) {
 	_, _ = fmt.Fprintf(res, "</pre>\n")
 }
 
-// errNoOverlap is returned by serveContent's parseRange if first-byte-pos of
+// errNoOverlap is returned by ServeFileContent's parseRange if first-byte-pos of
 // all of the byte-range-spec values is greater than the content size.
 var errNoOverlap = errors.New("invalid range: failed to overlap")
+
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
+var defaultMIMEMap = map[string]string{
+	".js":   "application/javascript",
+	".css":  "text/css",
+	".html": "text/html",
+
+	".apng": "image/apng",
+	".git":  "image/gif",
+	".jpg":  "image/jpeg",
+	".jpeg": "image/jpeg",
+	".png":  "image/png",
+	".svg":  "image/svg+xml",
+	".webp": "image/webp",
+	".ico":  "image/x-icon",
+}
 
 // if name is empty, filename is unknown. (used for mime type, before sniffing)
 // if modtime.IsZero(), modtime is unknown.
 // content must be seeked to the beginning of the file.
 // The sizeFunc is called at most once. Its error, if any, is sent in the HTTP response.
-func serveContent(ctx *RequestCtx, name string, modtime time.Time, size int64, content io.ReadSeeker) {
+func ServeFileContent(ctx *RequestCtx, name string, modtime time.Time, size int64, content io.ReadSeeker) {
 	w := &ctx.Response
 	r := &ctx.Request
 
@@ -89,7 +105,12 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, size int64, c
 	_, haveType := w.Header.Get(HeaderContentType)
 	var ctype string
 	if !haveType {
-		ctype = mime.TypeByExtension(filepath.Ext(name))
+		ext := strings.ToLower(filepath.Ext(name))
+		var ok bool
+		ctype, ok = defaultMIMEMap[ext]
+		if !ok {
+			ctype = mime.TypeByExtension(ext)
+		}
 		w.Header.SetContentType(ctype)
 	}
 
@@ -166,7 +187,6 @@ func serveContent(ctx *RequestCtx, name string, modtime time.Time, size int64, c
 	}
 
 	if string(r.Method) != "HEAD" {
-		w.Header.SetContentLength(sendSize)
 		_, _ = io.CopyN(ctx, sendContent, sendSize)
 	}
 }
@@ -435,13 +455,10 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 var indexPage = []byte("/index.html")
 
 // name is '/'-separated, not filepath.Separator.
-func serveFile(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
+func ServeFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
 	w := &ctx.Response
 	r := &ctx.Request
 
-	// redirect .../index.html to .../
-	// can't use Redirect() because that would make the path absolute,
-	// which would be a problem running under StripPrefix
 	if bytes.HasSuffix(r.Path, indexPage) {
 		localRedirect(w, r, "./")
 		return
@@ -497,7 +514,7 @@ func serveFile(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
 		return
 	}
 
-	serveContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
+	ServeFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
 }
 
 // toHTTPError returns a non-specific HTTP error message and status code

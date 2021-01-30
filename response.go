@@ -92,6 +92,10 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 		item.Val = append(item.Val, _CookiePath...)
 		item.Val = append(item.Val, utils.B(options.Path)...)
 		item.Val = append(item.Val, _CookieSep...)
+	} else {
+		item.Val = append(item.Val, _CookiePath...)
+		item.Val = append(item.Val, '/')
+		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if !options.Expires.IsZero() {

@@ -8,9 +8,9 @@
 <script>
     let url;
     if (location.protocol === "http:") {
-        url = 'ws://localhost:8080/ws';
+        url = 'ws://localhost:5986/ws';
     } else {
-        url = 'wss://localhost:8080/ws';
+        url = 'wss://sha.local:5986/ws';
     }
 
     window.onload = function () {

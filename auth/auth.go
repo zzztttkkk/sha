@@ -3,8 +3,9 @@ package auth
 import (
 	"context"
 	"errors"
-	"github.com/zzztttkkk/sha/internal"
 	"net/http"
+
+	"github.com/zzztttkkk/sha/internal"
 )
 
 type Subject interface {

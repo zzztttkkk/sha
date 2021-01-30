@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"net/http"
-	"os"
 	pathlib "path"
 	"strings"
 )
@@ -27,8 +26,8 @@ type Router interface {
 
 	WebSocket(path string, handler WebSocketHandlerFunc)
 
-	FilePath(fpath string, method, path string, autoIndex bool, middleware ...Middleware)
-	File(fpath string, method, path string, middleware ...Middleware)
+	FilePath(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware)
+	File(fs http.FileSystem, filename, method, path string, middleware ...Middleware)
 
 	AddBranch(prefix string, router Router)
 
@@ -37,7 +36,7 @@ type Router interface {
 
 const _filename = "filename"
 
-func makeFileSystemHandler(fpath string, path string, autoIndex bool, middleware ...Middleware) RequestHandler {
+func makeFileSystemHandler(fs http.FileSystem, path string, autoIndex bool, middleware ...Middleware) RequestHandler {
 	if !strings.HasSuffix(path, "/filename:*") {
 		panic(fmt.Errorf("sha.router: bad static path"))
 	}
@@ -45,17 +44,17 @@ func makeFileSystemHandler(fpath string, path string, autoIndex bool, middleware
 		RequestHandlerFunc(
 			func(ctx *RequestCtx) {
 				filename, _ := ctx.PathParam(_filename)
-				serveFile(ctx, http.Dir(fpath), pathlib.Clean(utils.S(filename)), autoIndex)
+				ServeFileSystem(ctx, fs, pathlib.Clean(utils.S(filename)), autoIndex)
 			},
 		),
 		middleware...,
 	)
 }
 
-func makeFileHandler(fpath string, middleware ...Middleware) RequestHandler {
+func makeFileHandler(fs http.FileSystem, filename string, middleware ...Middleware) RequestHandler {
 	return handlerWithMiddleware(
 		RequestHandlerFunc(func(ctx *RequestCtx) {
-			f, err := os.Open(fpath)
+			f, err := fs.Open(filename)
 			if err != nil {
 				ctx.SetStatus(toHTTPError(err))
 				return
@@ -67,7 +66,7 @@ func makeFileHandler(fpath string, middleware ...Middleware) RequestHandler {
 				ctx.SetStatus(toHTTPError(err))
 				return
 			}
-			serveContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
+			ServeFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
 		}),
 		middleware...,
 	)

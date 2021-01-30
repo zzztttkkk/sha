@@ -28,7 +28,7 @@ func UseRBAC(router Router, options *rbac.Options) {
 func MustGrantedAll(permissions ...string) Middleware {
 	return MiddlewareFunc(
 		func(ctx *RequestCtx, next func()) {
-			err := rbac.GrantedAll(ctx, permissions...)
+			err := rbac.IsGrantedAll(ctx, permissions...)
 			if err != nil {
 				panic(err)
 			}
@@ -40,7 +40,7 @@ func MustGrantedAll(permissions ...string) Middleware {
 func MustGrantedAny(permissions ...string) Middleware {
 	return MiddlewareFunc(
 		func(ctx *RequestCtx, next func()) {
-			err := rbac.GrantedAny(ctx, permissions...)
+			err := rbac.IsGrantedAny(ctx, permissions...)
 			if err != nil {
 				panic(err)
 			}

@@ -14,7 +14,7 @@ import (
 var mux *Mux
 
 func init() {
-	mux = NewMux("", nil)
+	mux = NewMux(nil, nil)
 	mux.HTTP(
 		MethodGet,
 		"/",
@@ -59,6 +59,10 @@ func TestWebSocketProtocol_Serve(t *testing.T) {
 }
 
 func TestWebSocketProtocol_ServeTLS(t *testing.T) {
-	s := Default(mux)
-	s.ListenAndServeTLS("./tls/ztk.local+3.pem", "./tls/ztk.local+3-key.pem")
+	conf := ServerConf{}
+	conf.Tls.Key = "./tls/sha.local-key.pem"
+	conf.Tls.Cert = "./tls/sha.local.pem"
+	s := New(nil, &conf, nil, nil)
+	s.Handler = mux
+	s.ListenAndServe()
 }

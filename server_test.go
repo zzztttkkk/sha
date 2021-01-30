@@ -48,9 +48,9 @@ func (pwd *Sha5256Hash) FormValue(v []byte) bool {
 }
 
 func TestServer_Run(t *testing.T) {
-	mux := NewMux("", nil)
-	mux.AutoOptions = true
-	mux.AutoSlashRedirect = true
+	mux := NewMux(nil, nil)
+	mux.autoOptions = true
+	mux.autoSlashRedirect = true
 	mux.HTTP(
 		"get",
 		"/compress",
@@ -158,7 +158,7 @@ func TestServer_RunPrintRequest(t *testing.T) {
 func TestServer_RunTimeout(t *testing.T) {
 	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("hello world") }))
 	var fn func()
-	server.BaseCtx, fn = context.WithTimeout(context.Background(), time.Second)
+	server.baseCtx, fn = context.WithTimeout(context.Background(), time.Second)
 	defer fn()
 	server.ListenAndServe()
 }

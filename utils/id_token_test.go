@@ -8,5 +8,5 @@ import (
 
 func TestEncodeID(t *testing.T) {
 	g := NewIDTokenGenerator(NewHashPoll(sha256.New, []byte("AAA")))
-	fmt.Println(g.DecodeID(g.EncodeID(126, 10)))
+	fmt.Println(g.DecodeID(g.EncodeID(126)))
 }

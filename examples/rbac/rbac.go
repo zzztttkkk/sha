@@ -25,7 +25,7 @@ func init() {
 }
 
 func main() {
-	mux := sha.NewMux("", nil)
+	mux := sha.NewMux(nil, nil)
 	server := sha.Default(mux)
 	mux.HandleDoc("get", "/doc")
 

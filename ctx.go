@@ -2,8 +2,12 @@ package sha
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/zzztttkkk/sha/utils"
+	"html/template"
+	"io"
+	"mime"
 	"net"
 	"net/http"
 	"sync"
@@ -15,8 +19,6 @@ type RequestCtx struct {
 	Request  Request
 	Response Response
 	ud       userData
-
-	protocol *Http1xProtocol
 
 	// time
 	connTime time.Time
@@ -146,4 +148,62 @@ type RequestHandlerFunc func(ctx *RequestCtx)
 
 func (fn RequestHandlerFunc) Handle(ctx *RequestCtx) {
 	fn(ctx)
+}
+
+func (ctx *RequestCtx) Write(p []byte) (int, error) {
+	return ctx.Response.Write(p)
+}
+
+func (ctx *RequestCtx) WriteString(s string) (int, error) {
+	return ctx.Write(utils.B(s))
+}
+
+func (ctx *RequestCtx) WriteJSON(v interface{}) {
+	ctx.Response.Header.SetContentType(MIMEJson)
+
+	encoder := json.NewEncoder(ctx)
+	err := encoder.Encode(v)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (ctx *RequestCtx) WriteHTML(v []byte) {
+	ctx.Response.Header.SetContentType(MIMEHtml)
+	_, e := ctx.Write(v)
+	if e != nil {
+		panic(e)
+	}
+}
+
+func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
+	ctx.Response.Header.SetContentType(mime.TypeByExtension(ext))
+
+	buf := make([]byte, 512, 512)
+	for {
+		l, e := f.Read(buf)
+		if e != nil {
+			panic(e)
+		}
+		_, e = ctx.Write(buf[:l])
+		if e != nil {
+			panic(e)
+		}
+	}
+}
+
+func (ctx *RequestCtx) WriteTemplate(t *template.Template, data interface{}) {
+	ctx.Response.Header.SetContentType(MIMEHtml)
+	e := t.Execute(ctx, data)
+	if e != nil {
+		panic(e)
+	}
+}
+
+func (ctx *RequestCtx) SetStatus(status int) {
+	ctx.Response.statusCode = status
+}
+
+func (ctx *RequestCtx) GetStatus() int {
+	return ctx.Response.statusCode
 }

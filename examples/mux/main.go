@@ -7,9 +7,12 @@ import (
 )
 
 func main() {
-	mux := sha.NewMux("", nil)
-	mux.AutoSlashRedirect = true
-	mux.AutoOptions = true
+	conf := sha.MuxConf{
+		AutoSlashRedirect: true,
+		AutoOptions:       true,
+	}
+
+	mux := sha.NewMux(&conf, nil)
 
 	mux.Use(
 		h.NewPrintMiddleware("g.m1"),
