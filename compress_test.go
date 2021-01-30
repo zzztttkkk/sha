@@ -8,6 +8,7 @@ import (
 
 func TestRequestCtx_AutoCompress(t *testing.T) {
 	s := Default(nil)
+	s.conf.MaxConnectionKeepAlive.Duration = 0
 
 	mux := NewMux(nil, nil)
 	s.Handler = mux
@@ -17,9 +18,10 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 		"/",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
+			fmt.Println(&ctx.Response.Header)
 			_, _ = ctx.WriteString(strings.Repeat("Hello!", 100))
 			fmt.Printf("%p %p %p\n", ctx, ctx.Response.compressWriter, ctx.Response.compressWriterPool)
-			ctx.Response.Header.Set("Connection", []byte("close"))
+			ctx.Close()
 		}),
 	)
 

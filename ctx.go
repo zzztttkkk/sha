@@ -55,6 +55,8 @@ func (ctx *RequestCtx) Set(key string, value interface{}) { ctx.ud.Set(key, valu
 
 func (ctx *RequestCtx) Get(key string) interface{} { return ctx.ud.Get(key) }
 
+func (ctx *RequestCtx) Close() { ctx.Response.Header.Set(HeaderConnection, []byte("close")) }
+
 var ErrBadContext = errors.New("sha: bad context")
 
 func MustToRCtx(ctx context.Context) *RequestCtx {

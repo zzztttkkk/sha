@@ -32,10 +32,7 @@ type ServerConf struct {
 var defaultServerConf = ServerConf{
 	Host:                   "127.0.0.1",
 	Port:                   5986,
-	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 3},
-	ReadTimeout:            utils.TomlDuration{Duration: time.Second * 15},
-	IdleTimeout:            utils.TomlDuration{Duration: time.Second * 15},
-	WriteTimeout:           utils.TomlDuration{Duration: time.Second * 15},
+	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
 }
 
 type Server struct {

@@ -9,7 +9,10 @@ import (
 func (protocol *_Http11Protocol) sendResponseBuffer(ctx *RequestCtx) error {
 	res := &ctx.Response
 	if res.compressWriter != nil {
-		_ = res.compressWriter.Flush()
+		err := res.compressWriter.Flush()
+		if err != nil {
+			return err
+		}
 	}
 
 	size := int64(len(res.bodyBuf.Data))

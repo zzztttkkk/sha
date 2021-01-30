@@ -21,6 +21,7 @@ type HTTPConf struct {
 	MaxReadBufferSize             int  `json:"max_read_buffer_size" toml:"max-read-buffer-size"`
 	MaxResponseBodyBufferSize     int  `json:"max_response_body_buffer_size" toml:"max-response-body-buffer-size"`
 	DefaultResponseSendBufferSize int  `json:"default_response_send_buffer_size" toml:"default-response-send-buffer-size"`
+	ASCIIHeader                   bool `json:"ascii_header" toml:"ascii-header"`
 	AutoCompression               bool `json:"auto_compression" toml:"auto-compress"`
 }
 
@@ -51,7 +52,7 @@ type _Http11Protocol struct {
 
 var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
-var http11 = []byte("http/1.1")
+var http11 = []byte("HTTP/1.1")
 
 func NewHTTP11Protocol(conf *HTTPConf) HTTPProtocol {
 	v := &_Http11Protocol{}
@@ -365,9 +366,9 @@ func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte,
 			}
 
 			// ascii
-			//if v > 127 {
-			//	return 10007, ErrBadConnection
-			//}
+			if protocol.ASCIIHeader && v > 127 {
+				return 10007, ErrBadConnection
+			}
 
 			if v == '\n' {
 				if len(ctx.currentHeaderKey) < 1 { // all header data read done
