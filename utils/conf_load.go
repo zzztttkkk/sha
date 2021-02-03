@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/imdario/mergo"
+	"github.com/zzztttkkk/sha/internal"
 	"io/ioutil"
 	"log"
 	"os"
@@ -21,8 +22,12 @@ type TomlDuration struct {
 
 func (d *TomlDuration) UnmarshalText(text []byte) error {
 	var err error
-	d.Duration, err = time.ParseDuration(string(text))
+	d.Duration, err = internal.ParseDuration(string(text))
 	return err
+}
+
+func (d *TomlDuration) UnmarshalJSON(text []byte) error {
+	return d.UnmarshalText(text)
 }
 
 func confFromTomlBytes(conf interface{}, data []byte) error {
@@ -95,7 +100,11 @@ func confReflectMap(filePath string, value reflect.Value, path []string) {
 	}
 }
 
-func LoadConfFromFile(conf interface{}, fp string) error {
+type _ConfNamespace struct{}
+
+var Conf _ConfNamespace
+
+func (_ConfNamespace) LoadFromFile(conf interface{}, fp string) error {
 	f, e := os.Open(fp)
 	if e != nil {
 		panic(e)
@@ -126,7 +135,7 @@ func LoadConfFromFile(conf interface{}, fp string) error {
 	return nil
 }
 
-func LoadConfFromFiles(dist interface{}, fps ...string) {
+func (cn _ConfNamespace) LoadFromFiles(dist interface{}, fps ...string) {
 	if reflect.TypeOf(dist).Kind() != reflect.Ptr || dist == nil || reflect.ValueOf(dist).IsNil() {
 		panic(fmt.Errorf("sha.utils.config: bad dist value, `%v`\n", dist))
 	}
@@ -140,7 +149,7 @@ func LoadConfFromFiles(dist interface{}, fps ...string) {
 
 	for _, fp := range fps {
 		ele := reflect.New(ct).Interface()
-		if err := LoadConfFromFile(ele, fp); err != nil {
+		if err := cn.LoadFromFile(ele, fp); err != nil {
 			panic(err)
 		}
 
