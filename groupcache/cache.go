@@ -47,37 +47,40 @@ type Group struct {
 }
 
 func New(name string, expires *Expires, maxWait int32) *Group {
-	ret := &Group{
-		name:    name,
-		loads:   map[string]DataLoader{},
-		storage: nil,
-		sf:      internal.NewSingleflightGroup(maxWait),
-	}
-
-	if expires == nil {
-		expires = &defaultExpires
-	}
-	ret.expires = *expires
+	ret := Simple()
+	ret.Init(name, expires, maxWait)
 	return ret
 }
 
-func (t *Group) SetStoragePrefix(prefix string) *Group {
-	t.prefix = prefix
-	return t
+func Simple() *Group { return &Group{loads: map[string]DataLoader{}} }
+
+func (g *Group) Init(name string, expires *Expires, maxWait int32) *Group {
+	g.name = name
+	if expires == nil {
+		expires = &defaultExpires
+	}
+	g.expires = *expires
+	g.sf = internal.NewSingleflightGroup(maxWait)
+	return g
 }
 
-func (t *Group) SetStorage(s Storage) *Group {
-	t.storage = s
-	return t
+func (g *Group) SetStoragePrefix(prefix string) *Group {
+	g.prefix = prefix
+	return g
 }
 
-func (t *Group) SetRedisStorage(r redis.Cmdable) *Group {
-	return t.SetStorage(RedisStorage(r))
+func (g *Group) SetStorage(s Storage) *Group {
+	g.storage = s
+	return g
 }
 
-func (t *Group) Append(name string, loader DataLoader) *Group {
-	t.loads[name] = loader
-	return t
+func (g *Group) SetRedisStorage(r redis.Cmdable) *Group {
+	return g.SetStorage(RedisStorage(r))
+}
+
+func (g *Group) Append(name string, loader DataLoader) *Group {
+	g.loads[name] = loader
+	return g
 }
 
 var emptyVal = []byte("")
@@ -86,15 +89,19 @@ var ErrEmpty = errors.New("sha.groupcache: empty")
 var ErrBadCacheValue = errors.New("sha.groupcache: bad cache")
 var ErrRetryAfter = internal.ErrRetryAfter
 
-func (t *Group) makeKey(loaderName, argsName string) string {
-	if len(t.prefix) < 1 {
-		return fmt.Sprintf("groupcache:%s:%s:%s", t.name, loaderName, argsName)
+func (g *Group) MakeKey(loaderName, argsName string) string {
+	if len(g.prefix) < 1 {
+		return fmt.Sprintf("groupcache:%s:%s:%s", g.name, loaderName, argsName)
 	}
-	return fmt.Sprintf("%s:%s:%s:%s", t.prefix, t.name, loaderName, argsName)
+	return fmt.Sprintf("%s:%s:%s:%s", g.prefix, g.name, loaderName, argsName)
 }
 
-func (t *Group) randExpires() time.Duration {
-	return t.expires.Default.Duration + time.Duration(rand.Int63()%t.expires.Rand)*time.Second
+// avoid many key expired at the same time
+func (g *Group) rand(d time.Duration) time.Duration {
+	if g.expires.Rand < 1 {
+		return d
+	}
+	return time.Duration(rand.Int63n(g.expires.Rand))*time.Second + d
 }
 
 func init() {
@@ -102,9 +109,9 @@ func init() {
 }
 
 // dist must be a pointer
-func (t *Group) Do(ctx context.Context, loaderName string, dist interface{}, args NamedArgs) error {
-	key := t.makeKey(loaderName, args.Name())
-	v, found := t.storage.Get(ctx, key)
+func (g *Group) Do(ctx context.Context, loaderName string, dist interface{}, args NamedArgs) error {
+	key := g.MakeKey(loaderName, args.Name())
+	v, found := g.storage.Get(ctx, key)
 	if found {
 		if len(v) == 0 { // empty cache
 			return ErrEmpty
@@ -112,19 +119,19 @@ func (t *Group) Do(ctx context.Context, loaderName string, dist interface{}, arg
 
 		err := json.Unmarshal(v, dist)
 		if err != nil { // bad groupcache
-			t.storage.Del(ctx, key)
+			g.storage.Del(ctx, key)
 			return ErrBadCacheValue
 		} else {
 			return nil
 		}
 	}
 
-	ret, e := t.sf.Do(
+	ret, e := g.sf.Do(
 		args.Name(),
 		func() (interface{}, error) {
-			fn := t.loads[loaderName]
+			fn := g.loads[loaderName]
 			if fn == nil {
-				panic(fmt.Errorf("sha.groupcache: name `%s` is not exists in group `%s`", loaderName, t.name))
+				panic(fmt.Errorf("sha.groupcache: name `%s` is not exists in group `%s`", loaderName, g.name))
 			}
 
 			_v, e := fn(ctx, args)
@@ -133,7 +140,7 @@ func (t *Group) Do(ctx context.Context, loaderName string, dist interface{}, arg
 			}
 
 			if _v == nil {
-				t.storage.Set(ctx, key, emptyVal, t.expires.Missing.Duration)
+				g.storage.Set(ctx, key, emptyVal, g.rand(g.expires.Missing.Duration))
 				return nil, ErrEmpty
 			}
 
@@ -141,7 +148,7 @@ func (t *Group) Do(ctx context.Context, loaderName string, dist interface{}, arg
 			if e != nil {
 				panic(e)
 			}
-			t.storage.Set(ctx, key, _b, t.randExpires())
+			g.storage.Set(ctx, key, _b, g.rand(g.expires.Default.Duration))
 			return _v, nil
 		},
 	)
