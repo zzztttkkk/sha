@@ -13,7 +13,7 @@ type Form struct {
 
 func (form *Form) onItem(k []byte, v []byte) { form.AppendBytes(decodeURIFormed(k), decodeURIFormed(v)) }
 
-func (form *Form) ParseUrlEncoded(p []byte) {
+func (form *Form) FromUrlEncoded(p []byte) {
 	var key []byte
 	var val []byte
 	var f bool
@@ -84,7 +84,7 @@ func (req *Request) parseQuery() {
 		req.questionMarkIndex = _QueryParsed
 		return
 	}
-	req.query.ParseUrlEncoded(req.RawPath[req.questionMarkIndex+1:])
+	req.query.FromUrlEncoded(req.RawPath[req.questionMarkIndex+1:])
 	req.questionMarkIndex = _QueryParsed
 }
 
@@ -170,7 +170,7 @@ func (p *_MultiPartParser) appendLine() {
 	p.current.buf = append(p.current.buf, p.line...)
 }
 
-var formdataStr = []byte("form-data;")
+var formDataStr = []byte("form-data;")
 var headerValueAttrsSep = []byte(";")
 var nameStr = []byte("name=")
 var filenameStr = []byte("filename=")
@@ -180,7 +180,7 @@ func (p *_MultiPartParser) onFieldOk() bool {
 	if !ok || len(disposition) < 1 {
 		return false
 	}
-	if !bytes.HasPrefix(disposition, formdataStr) {
+	if !bytes.HasPrefix(disposition, formDataStr) {
 		return false
 	}
 
@@ -290,7 +290,7 @@ func (req *Request) parseBodyBuf() {
 	}
 
 	if bytes.HasPrefix(typeValue, utils.B(MIMEForm)) {
-		req.body.ParseUrlEncoded(buf)
+		req.body.FromUrlEncoded(buf)
 		req.bodyStatus = _BodyOK
 		return
 	}

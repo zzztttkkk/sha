@@ -4,7 +4,7 @@ import (
 	"strconv"
 )
 
-type CorsConfig struct {
+type CorsOption struct {
 	AllowMethods     string `json:"allow_methods" toml:"allow-methods"`
 	AllowHeaders     string `json:"allow_headers" toml:"allow-headers"`
 	ExposeHeaders    string `json:"expose_headers" toml:"expose-headers"`
@@ -19,7 +19,7 @@ type CorsOptions struct {
 
 type CORSOriginChecker func(origin []byte) *CorsOptions
 
-func NewCorsOptions(cc *CorsConfig) *CorsOptions {
+func NewCorsOptions(cc *CorsOption) *CorsOptions {
 	v := &CorsOptions{}
 
 	if cc.MaxAge > 0 {

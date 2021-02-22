@@ -96,12 +96,19 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			if rule.reg == nil {
 				panic(fmt.Errorf("sha.validator: unregistered regexp `%s`", val))
 			}
-		case "F", "f", "filter":
-			rule.fn = bytesFilterMap[val]
-			rule.fnName = val
-			if rule.fn == nil {
-				panic(fmt.Errorf("sha.validator: unregistered bytes filter `%s`", val))
+		case "F", "f", "filters":
+			for _, n := range strings.Split(val, "|") {
+				n = strings.TrimSpace(n)
+				if len(n) < 1 {
+					continue
+				}
+				f := bytesFilterMap[n]
+				if f == nil {
+					panic(fmt.Errorf("sha.validator: unregistered bytes filter `%s`", n))
+				}
+				rule.fns = append(rule.fns, f)
 			}
+			rule.fnNames = val
 		case "L", "l", "length":
 			rule.fLR = true
 			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)

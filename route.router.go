@@ -12,12 +12,6 @@ type Documenter interface {
 	Document() string
 }
 
-// request Handler with document
-type DocedRequestHandler interface {
-	Documenter
-	RequestHandler
-}
-
 type Router interface {
 	HTTP(method, path string, handler RequestHandler)
 	HTTPWithForm(method, path string, handler RequestHandler, form interface{})

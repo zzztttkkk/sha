@@ -9,19 +9,18 @@ import (
 	mrandlib "math/rand"
 )
 
-var wdb *x.DB
-var rdbs []*x.DB
+var writableDb *x.DB
+var readonlyDbs []*x.DB
 
-func OpenWriteableDB(drivername, uri string) {
-	if wdb != nil {
-		panic("sha.sqlx: `wdb` is not nil")
+func OpenWriteableDB(driverName, uri string) {
+	if writableDb != nil {
+		return
 	}
-
-	wdb = x.MustOpen(drivername, uri)
+	writableDb = x.MustOpen(driverName, uri)
 }
 
 func OpenReadableDB(drivername, uri string) {
-	rdbs = append(rdbs, x.MustOpen(drivername, uri))
+	readonlyDbs = append(readonlyDbs, x.MustOpen(drivername, uri))
 }
 
 type Executor interface {
@@ -62,7 +61,7 @@ func Tx(ctx context.Context) (nctx context.Context, committer func()) {
 		panic(ErrSubTx)
 	}
 
-	tx := wdb.MustBegin()
+	tx := writableDb.MustBegin()
 	return context.WithValue(ctx, txKey, tx), func() {
 		recv := recover()
 		if recv == nil {
@@ -92,19 +91,19 @@ func Exe(ctx context.Context) W {
 		return W{tx.(*x.Tx)}
 	}
 	if ctx.Value(justWDBKey) != nil {
-		return W{wdb}
+		return W{writableDb}
 	}
-	if len(rdbs) < 1 {
-		return W{wdb}
+	if len(readonlyDbs) < 1 {
+		return W{writableDb}
 	}
-	return W{PickReadonlyDB(rdbs)}
+	return W{PickReadonlyDB(readonlyDbs)}
 }
 
 func db(ctx context.Context) *x.DB {
-	exe := Exe(ctx).Exe
+	exe := Exe(ctx).Raw
 	if d, ok := exe.(*x.DB); ok {
 		return d
 	}
 	// tx
-	return wdb
+	return writableDb
 }

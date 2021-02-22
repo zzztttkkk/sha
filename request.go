@@ -54,7 +54,7 @@ func (req *Request) Reset() {
 	req.webSocketShouldDoCompression = false
 }
 
-func (req *Request) Cookie(key string) ([]byte, bool) {
+func (req *Request) CookieValue(key string) ([]byte, bool) {
 	if !req.cookieParsed {
 		v, ok := req.Header.Get(HeaderCookie)
 		if ok {
@@ -83,4 +83,8 @@ func (req *Request) Cookie(key string) ([]byte, bool) {
 	return req.cookies.Get(key)
 }
 
-func (ctx *RequestCtx) Cookie(key string) ([]byte, bool) { return ctx.Request.Cookie(key) }
+func (ctx *RequestCtx) CookieValue(key string) ([]byte, bool) { return ctx.Request.CookieValue(key) }
+
+func (req *Request) HeaderValue(key string) ([]byte, bool) { return req.Header.Get(key) }
+
+func (ctx *RequestCtx) HeaderValue(key string) ([]byte, bool) { return ctx.Request.Header.Get(key) }

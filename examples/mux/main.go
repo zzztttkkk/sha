@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	conf := sha.MuxConf{
+	conf := sha.MuxOption{
 		AutoSlashRedirect: true,
 		AutoOptions:       true,
 	}

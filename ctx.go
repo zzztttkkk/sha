@@ -40,6 +40,9 @@ type RequestCtx struct {
 	headerKVSepRead  bool   // `:`
 	bodyRemain       int
 	bodySize         int
+
+	// hook
+	onReset []func(ctx *RequestCtx)
 }
 
 // context.Context
@@ -51,32 +54,17 @@ func (ctx *RequestCtx) Err() error { return ctx.ctx.Err() }
 
 func (ctx *RequestCtx) Value(key interface{}) interface{} { return ctx.ctx.Value(key) }
 
-func (ctx *RequestCtx) Set(key string, value interface{}) { ctx.ud.Set(key, value) }
+// custom data
+func (ctx *RequestCtx) SetCustomData(key string, value interface{}) { ctx.ud.Set(key, value) }
 
-func (ctx *RequestCtx) Get(key string) interface{} { return ctx.ud.Get(key) }
+func (ctx *RequestCtx) GetCustomData(key string) interface{} { return ctx.ud.Get(key) }
 
+// http connection
 func (ctx *RequestCtx) Close() { ctx.Response.Header.Set(HeaderConnection, []byte("close")) }
-
-var ErrBadContext = errors.New("sha: bad context")
-
-func MustToRCtx(ctx context.Context) *RequestCtx {
-	ret, ok := ctx.(*RequestCtx)
-	if ok {
-		return ret
-	}
-	panic(ErrBadContext)
-}
-
-type MutexRequestCtx struct {
-	sync.Mutex
-	*RequestCtx
-}
 
 func (ctx *RequestCtx) IsTLS() bool { return ctx.isTLS }
 
-func (ctx *RequestCtx) RemoteAddr() net.Addr {
-	return ctx.conn.RemoteAddr()
-}
+func (ctx *RequestCtx) RemoteAddr() net.Addr { return ctx.conn.RemoteAddr() }
 
 var ErrRequestHijacked = errors.New("sha: request is already hijacked")
 
@@ -98,20 +86,30 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 	if !ok {
 		return ""
 	}
-	if string(inplaceLowercase(v)) != lowerUpgradeHeader {
+	if string(inPlaceLowercase(v)) != lowerUpgradeHeader {
 		return ""
 	}
 	v, ok = ctx.Request.Header.Get(HeaderUpgrade)
 	if !ok {
 		return ""
 	}
-	return utils.S(inplaceLowercase(v))
+	return utils.S(inPlaceLowercase(v))
+}
+
+func (ctx *RequestCtx) OnReset(fn func(ctx *RequestCtx)) {
+	ctx.onReset = append(ctx.onReset, fn)
 }
 
 func (ctx *RequestCtx) Reset() {
 	if ctx.ctx == nil {
 		return
 	}
+
+	for _, fn := range ctx.onReset {
+		fn(ctx)
+	}
+
+	ctx.onReset = ctx.onReset[:0]
 
 	ctx.ctx = nil
 	ctx.Request.Reset()
@@ -202,10 +200,6 @@ func (ctx *RequestCtx) WriteTemplate(t *template.Template, data interface{}) {
 	}
 }
 
-func (ctx *RequestCtx) SetStatus(status int) {
-	ctx.Response.statusCode = status
-}
+func (ctx *RequestCtx) SetStatus(status int) { ctx.Response.statusCode = status }
 
-func (ctx *RequestCtx) GetStatus() int {
-	return ctx.Response.statusCode
-}
+func (ctx *RequestCtx) GetStatus() int { return ctx.Response.statusCode }

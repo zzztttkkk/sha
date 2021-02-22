@@ -8,7 +8,7 @@ import (
 )
 
 type W struct {
-	Exe Executor
+	Raw Executor
 }
 
 var logging = false
@@ -19,8 +19,8 @@ func EnableLogging() {
 
 // scan
 func (w W) Row(ctx context.Context, q string, namedargs interface{}, dist ...interface{}) error {
-	q, a := bindNamedargs(w.Exe, q, namedargs)
-	row := w.Exe.QueryRowxContext(ctx, q, a...)
+	q, a := bindNamedargs(w.Raw, q, namedargs)
+	row := w.Raw.QueryRowxContext(ctx, q, a...)
 	if err := row.Err(); err != nil {
 		return err
 	}
@@ -45,6 +45,8 @@ func bindNamedargs(exe Executor, q string, namedargs interface{}) (string, []int
 		switch rv := namedargs.(type) {
 		case Data:
 			qs, args, err = exe.BindNamed(q, (map[string]interface{})(rv))
+		case map[string]interface{}:
+			qs, args, err = exe.BindNamed(q, rv)
 		default:
 			qs, args, err = exe.BindNamed(q, namedargs)
 		}
@@ -61,14 +63,14 @@ func bindNamedargs(exe Executor, q string, namedargs interface{}) (string, []int
 }
 
 func (w W) Rows(ctx context.Context, q string, namedargs interface{}, dist interface{}) error {
-	q, a := bindNamedargs(w.Exe, q, namedargs)
-	return Exe(ctx).Exe.SelectContext(ctx, dist, q, a...)
+	q, a := bindNamedargs(w.Raw, q, namedargs)
+	return Exe(ctx).Raw.SelectContext(ctx, dist, q, a...)
 }
 
 func (w W) RowStruct(ctx context.Context, q string, namedargs interface{}, dist interface{}) error {
-	q, a := bindNamedargs(w.Exe, q, namedargs)
+	q, a := bindNamedargs(w.Raw, q, namedargs)
 
-	row := w.Exe.QueryRowxContext(ctx, q, a...)
+	row := w.Raw.QueryRowxContext(ctx, q, a...)
 	if err := row.Err(); err != nil {
 		return err
 	}
@@ -76,15 +78,15 @@ func (w W) RowStruct(ctx context.Context, q string, namedargs interface{}, dist 
 }
 
 func (w W) RowsStruct(ctx context.Context, q string, namedargs interface{}, dist interface{}) error {
-	q, a := bindNamedargs(w.Exe, q, namedargs)
+	q, a := bindNamedargs(w.Raw, q, namedargs)
 
-	return w.Exe.SelectContext(ctx, dist, q, a...)
+	return w.Raw.SelectContext(ctx, dist, q, a...)
 }
 
 func (w W) RowsScan(ctx context.Context, q string, namedargs interface{}, scanner Scanner) error {
-	q, a := bindNamedargs(w.Exe, q, namedargs)
+	q, a := bindNamedargs(w.Raw, q, namedargs)
 
-	rows, err := w.Exe.QueryxContext(ctx, q, a...)
+	rows, err := w.Raw.QueryxContext(ctx, q, a...)
 	if err != nil {
 		return err
 	}
@@ -94,8 +96,8 @@ func (w W) RowsScan(ctx context.Context, q string, namedargs interface{}, scanne
 
 // exec
 func (w W) Exec(ctx context.Context, q string, namedargs interface{}) sql.Result {
-	q, a := bindNamedargs(w.Exe, q, namedargs)
-	r, err := w.Exe.ExecContext(ctx, q, a...)
+	q, a := bindNamedargs(w.Raw, q, namedargs)
+	r, err := w.Raw.ExecContext(ctx, q, a...)
 	if err != nil {
 		panic(err)
 	}

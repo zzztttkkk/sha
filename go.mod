@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/RoaringBitmap/roaring v0.5.5
 	github.com/andybalholm/brotli v1.0.1
-	github.com/go-redis/redis/v8 v8.4.11 // indirect
+	github.com/go-redis/redis/v8 v8.4.11
 	github.com/go-sql-driver/mysql v1.4.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e

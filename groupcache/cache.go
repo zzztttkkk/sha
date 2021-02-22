@@ -8,7 +8,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
-	"math/rand"
 	"reflect"
 	"time"
 )
@@ -28,13 +27,11 @@ type Storage interface {
 type Expires struct {
 	Default utils.TomlDuration `json:"default" toml:"default"`
 	Missing utils.TomlDuration `json:"missing" toml:"missing"`
-	Rand    int64              `json:"rand" toml:"rand"`
 }
 
 var defaultExpires = Expires{
 	Default: utils.TomlDuration{Duration: time.Hour * 5},
 	Missing: utils.TomlDuration{Duration: time.Minute * 2},
-	Rand:    500,
 }
 
 type Group struct {
@@ -96,20 +93,12 @@ func (g *Group) MakeKey(loaderName, argsName string) string {
 	return fmt.Sprintf("%s:%s:%s:%s", g.prefix, g.name, loaderName, argsName)
 }
 
-// avoid many key expired at the same time
-func (g *Group) rand(d time.Duration) time.Duration {
-	if g.expires.Rand < 1 {
-		return d
-	}
-	return time.Duration(rand.Int63n(g.expires.Rand))*time.Second + d
-}
-
-func init() {
-	utils.MathRandSeed()
-}
-
 // dist must be a pointer
-func (g *Group) Do(ctx context.Context, loaderName string, dist interface{}, args NamedArgs) error {
+func (g *Group) DoWithExpires(ctx context.Context, loaderName string, dist interface{}, args NamedArgs, expires *Expires) error {
+	if expires == nil {
+		expires = &g.expires
+	}
+
 	key := g.MakeKey(loaderName, args.Name())
 	v, found := g.storage.Get(ctx, key)
 	if found {
@@ -140,7 +129,7 @@ func (g *Group) Do(ctx context.Context, loaderName string, dist interface{}, arg
 			}
 
 			if _v == nil {
-				g.storage.Set(ctx, key, emptyVal, g.rand(g.expires.Missing.Duration))
+				g.storage.Set(ctx, key, emptyVal, expires.Missing.Duration)
 				return nil, ErrEmpty
 			}
 
@@ -148,7 +137,7 @@ func (g *Group) Do(ctx context.Context, loaderName string, dist interface{}, arg
 			if e != nil {
 				panic(e)
 			}
-			g.storage.Set(ctx, key, _b, g.rand(g.expires.Default.Duration))
+			g.storage.Set(ctx, key, _b, expires.Default.Duration)
 			return _v, nil
 		},
 	)
@@ -157,6 +146,10 @@ func (g *Group) Do(ctx context.Context, loaderName string, dist interface{}, arg
 		_copy(dist, ret)
 	}
 	return e
+}
+
+func (g *Group) Do(ctx context.Context, loaderName string, dist interface{}, args NamedArgs) error {
+	return g.DoWithExpires(ctx, loaderName, dist, args, nil)
 }
 
 // dist must be a pointer

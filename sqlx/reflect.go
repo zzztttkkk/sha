@@ -7,7 +7,8 @@ import (
 )
 
 type _StructInfo struct {
-	groups map[string]map[string]struct{}
+	groups  map[string]map[string]struct{}
+	mutable map[string]struct{}
 }
 
 var reflectMapper = reflectx.NewMapper("db")
@@ -22,6 +23,7 @@ func getStructInfo(t reflect.Type) *_StructInfo {
 	ret = &_StructInfo{}
 	ret.groups = map[string]map[string]struct{}{}
 	ret.groups["*"] = map[string]struct{}{}
+	ret.mutable = map[string]struct{}{}
 
 	fmap := reflectMapper.TypeMap(t)
 	for _, f := range fmap.Index {
@@ -37,6 +39,8 @@ func getStructInfo(t reflect.Type) *_StructInfo {
 					}
 					m[f.Name] = struct{}{}
 				}
+			case "M", "m", "mut", "mutable":
+				ret.mutable[f.Name] = struct{}{}
 			}
 		}
 	}

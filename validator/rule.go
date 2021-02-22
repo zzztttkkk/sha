@@ -94,8 +94,8 @@ type Rule struct {
 	reg     *regexp.Regexp
 	regName string
 
-	fn     func([]byte) ([]byte, bool)
-	fnName string
+	fns     []func([]byte) ([]byte, bool)
+	fnNames string
 }
 
 var MarkdownTableHeader = "\n|name|type|required|string length range|int value range|list size range|default|regexp|function|description|\n"
@@ -216,11 +216,10 @@ func (rule *Rule) String() string {
 		m["default"] = "/"
 	}
 
-	if rule.fnName != "" {
+	if rule.fnNames != "" {
 		m["function"] = fmt.Sprintf(
-			`<code class="function" descp="%s">%s</code>`,
-			html.EscapeString(bytesFilterDescriptionMap[rule.fnName]),
-			html.EscapeString(rule.fnName),
+			`<code class="function">%s</code>`,
+			html.EscapeString(rule.fnNames),
 		)
 	} else {
 		m["function"] = "/"
@@ -250,9 +249,9 @@ func (rule *Rule) toBytes(v []byte) ([]byte, bool) {
 		}
 	}
 
-	if rule.fn != nil {
-		var ok bool
-		v, ok = rule.fn(v)
+	var ok bool
+	for _, f := range rule.fns {
+		v, ok = f(v)
 		if !ok {
 			return nil, false
 		}

@@ -59,7 +59,7 @@ func TestWebSocketProtocol_Serve(t *testing.T) {
 }
 
 func TestWebSocketProtocol_ServeTLS(t *testing.T) {
-	conf := ServerConf{}
+	conf := ServerOption{}
 	conf.Tls.Key = "./tls/sha.local-key.pem"
 	conf.Tls.Cert = "./tls/sha.local.pem"
 	s := New(nil, &conf, nil, nil)

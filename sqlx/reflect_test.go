@@ -12,11 +12,11 @@ import (
 )
 
 type TestModel struct {
-	ID        int64           `db:"id,g=login" json:"id"`
-	CreatedAt time.Time       `db:"created_at" json:"created_at"`
-	DeletedAt *time.Time      `db:"deleted_at" json:"-"`
-	Name      string `db:"name,g=login" json:"name"`
-	Password  string `db:"password,g=login" json:"password"`
+	ID        int64      `db:"id,g=login" json:"id"`
+	CreatedAt time.Time  `db:"created_at" json:"created_at"`
+	DeletedAt *time.Time `db:"deleted_at" json:"-"`
+	Name      string     `db:"name,g=login" json:"name"`
+	Password  string     `db:"password,g=login" json:"password"`
 }
 
 func (TestModel) TableColumns(db *sqlx.DB) []string {
@@ -36,7 +36,7 @@ func init() {
 	EnableLogging()
 
 	TestModelOperator = NewOperator(TestModel{})
-	TestModelOperator.CreateTable(true)
+	TestModelOperator.CreateTable()
 }
 
 func Test_XWrapper_Exe(t *testing.T) {

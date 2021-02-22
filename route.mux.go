@@ -12,13 +12,13 @@ import (
 	"github.com/zzztttkkk/sha/validator"
 )
 
-type MuxConf struct {
+type MuxOption struct {
 	Prefix            string `json:"prefix" toml:"prefix"`
 	AutoOptions       bool   `json:"auto_options" toml:"auto-options"`
 	AutoSlashRedirect bool   `json:"auto_slash_redirect" toml:"auto-slash-redirect"`
 }
 
-var defaultMuxConf = MuxConf{
+var defaultMuxOption = MuxOption{
 	Prefix:            "",
 	AutoOptions:       false,
 	AutoSlashRedirect: false,
@@ -42,19 +42,19 @@ type Mux struct {
 
 var _ Router = (*Mux)(nil)
 
-func NewMux(conf *MuxConf, checkOrigin CORSOriginChecker) *Mux {
-	if conf == nil {
-		conf = &defaultMuxConf
+func NewMux(option *MuxOption, checkOrigin CORSOriginChecker) *Mux {
+	if option == nil {
+		option = &defaultMuxOption
 	}
 
 	mux := &Mux{
-		prefix:            conf.Prefix,
+		prefix:            option.Prefix,
 		customMethodTrees: map[string]*_RouteNode{},
 		stdMethodTrees:    make([]*_RouteNode, 10),
 		rawMap:            map[string]map[string]RequestHandler{},
 		docs:              map[string]map[string]string{},
-		autoOptions:       conf.AutoOptions,
-		autoSlashRedirect: conf.AutoSlashRedirect,
+		autoOptions:       option.AutoOptions,
+		autoSlashRedirect: option.AutoSlashRedirect,
 	}
 
 	if checkOrigin != nil {

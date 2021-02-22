@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type ServerConf struct {
+type ServerOption struct {
 	Host string `json:"host" toml:"host"`
 	Port int    `json:"port" toml:"host"`
 	Tls  struct {
@@ -29,14 +29,14 @@ type ServerConf struct {
 	WriteTimeout           utils.TomlDuration `json:"write_timeout" toml:"write-timeout"`
 }
 
-var defaultServerConf = ServerConf{
+var defaultServerOption = ServerOption{
 	Host:                   "127.0.0.1",
 	Port:                   5986,
 	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
 }
 
 type Server struct {
-	conf        ServerConf
+	option      ServerOption
 	readTimeout time.Duration
 
 	OnConnectionAccepted func(conn net.Conn) bool
@@ -83,7 +83,7 @@ func init() {
 	)
 }
 
-func New(ctx context.Context, conf *ServerConf, httpProtocol HTTPProtocol, webSocketProtocol WebSocketProtocol) *Server {
+func New(ctx context.Context, opt *ServerOption, httpProtocol HTTPProtocol, webSocketProtocol WebSocketProtocol) *Server {
 	if httpProtocol == nil {
 		log.Println("sha: nil HTTPProtocol, use default")
 		httpProtocol = NewHTTP11Protocol(nil)
@@ -99,15 +99,15 @@ func New(ctx context.Context, conf *ServerConf, httpProtocol HTTPProtocol, webSo
 	}
 
 	server := &Server{httpProtocol: httpProtocol, websocketProtocol: webSocketProtocol, baseCtx: ctx}
-	if conf != nil {
-		server.conf = *conf
+	if opt != nil {
+		server.option = *opt
 	}
 
-	if err := mergo.Merge(&server.conf, &defaultServerConf); err != nil {
+	if err := mergo.Merge(&server.option, &defaultServerOption); err != nil {
 		panic(err)
 	}
 
-	server.readTimeout = server.conf.ReadTimeout.Duration
+	server.readTimeout = server.option.ReadTimeout.Duration
 	return server
 }
 
@@ -122,7 +122,7 @@ func (s *Server) BeforeAccept(fn func(s *Server)) {
 }
 
 func (s *Server) doListen() net.Listener {
-	addr := fmt.Sprintf("%s:%d", s.conf.Host, s.conf.Port)
+	addr := fmt.Sprintf("%s:%d", s.option.Host, s.option.Port)
 	log.Printf("sha: listening at `%s`\n", addr)
 
 	listener, err := net.Listen("tcp4", addr)
@@ -183,7 +183,7 @@ func (s *Server) serve(l net.Listener) {
 		}
 	}()
 
-	maxKeepAlive := s.conf.MaxConnectionKeepAlive.Duration
+	maxKeepAlive := s.option.MaxConnectionKeepAlive.Duration
 
 	for going {
 		conn, err := l.Accept()
@@ -215,15 +215,15 @@ func (s *Server) serve(l net.Listener) {
 }
 
 func (s *Server) ListenAndServe() {
-	if len(s.conf.Tls.AutoCertDomains) > 0 {
+	if len(s.option.Tls.AutoCertDomains) > 0 {
 		s.isTls = true
-		s.serve(autocert.NewListener(s.conf.Tls.AutoCertDomains...))
+		s.serve(autocert.NewListener(s.option.Tls.AutoCertDomains...))
 		return
 	}
 
-	if len(s.conf.Tls.Cert) > 0 {
+	if len(s.option.Tls.Cert) > 0 {
 		s.isTls = true
-		s.serve(s.enableTls(s.doListen(), s.conf.Tls.Cert, s.conf.Tls.Key))
+		s.serve(s.enableTls(s.doListen(), s.option.Tls.Cert, s.option.Tls.Key))
 		return
 	}
 

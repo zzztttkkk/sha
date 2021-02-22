@@ -11,31 +11,31 @@ import (
 	"sync"
 )
 
-type WebSocketProtocolConf struct {
+type WebSocketProtocolOption struct {
 	ReadBufferSize  int      `json:"read_buffer_size" toml:"read-buffer-size"`
 	WriteBufferSize int      `json:"write_buffer_size" toml:"write-buffer-size"`
 	Subprotocols    []string `json:"subprotocols" toml:"subprotocols"`
 	Compression     bool     `json:"compression" toml:"compression"`
 }
 
-var defaultWebSocketProtocolConf = WebSocketProtocolConf{
+var defaultWebSocketProtocolOption = WebSocketProtocolOption{
 	ReadBufferSize:  2048,
 	WriteBufferSize: 2048,
 	Compression:     false,
 }
 
 type _WebSocketProtocol struct {
-	conf  WebSocketProtocolConf
+	conf  WebSocketProtocolOption
 	subPM map[string]struct{}
 	hp    *_Http11Protocol
 }
 
-func NewWebSocketProtocol(conf *WebSocketProtocolConf) WebSocketProtocol {
+func NewWebSocketProtocol(option *WebSocketProtocolOption) WebSocketProtocol {
 	v := &_WebSocketProtocol{subPM: map[string]struct{}{}}
-	if conf != nil {
-		v.conf = *conf
+	if option != nil {
+		v.conf = *option
 	}
-	if err := mergo.Merge(&v.conf, &defaultWebSocketProtocolConf); err != nil {
+	if err := mergo.Merge(&v.conf, &defaultWebSocketProtocolOption); err != nil {
 		panic(err)
 	}
 	for _, sp := range v.conf.Subprotocols {

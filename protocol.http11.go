@@ -6,14 +6,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/imdario/mergo"
-	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
 	"net"
 	"sync"
 	"time"
 )
 
-type HTTPConf struct {
+type HTTPOption struct {
 	MaxRequestFirstLineSize       int  `json:"max_request_first_line_size" toml:"max-request-first-line-size"`
 	MaxRequestHeaderPartSize      int  `json:"max_request_header_part_size" toml:"max-request-header-part-size"`
 	MaxRequestBodySize            int  `json:"max_request_body_size" toml:"max-request-body-size"`
@@ -25,7 +24,7 @@ type HTTPConf struct {
 	AutoCompression               bool `json:"auto_compression" toml:"auto-compress"`
 }
 
-var defaultHTTPConf = HTTPConf{
+var defaultHTTPOption = HTTPOption{
 	MaxRequestFirstLineSize:       4096,
 	MaxRequestHeaderPartSize:      4096,
 	MaxRequestBodySize:            4096,
@@ -37,7 +36,7 @@ var defaultHTTPConf = HTTPConf{
 }
 
 type _Http11Protocol struct {
-	HTTPConf
+	HTTPOption
 
 	OnParseError func(conn net.Conn, err HttpError) bool // close connection if return true
 	OnWriteError func(conn net.Conn, err error) bool     // close connection if return true
@@ -45,8 +44,8 @@ type _Http11Protocol struct {
 	server  *Server
 	handler RequestHandler
 
-	readBufferPool    *internal.FixedSizeBufferPool
-	resBodyBufferPool *internal.BufferPool
+	readBufferPool    *utils.FixedSizeBufferPool
+	resBodyBufferPool *utils.BufferPool
 	resSendBufferPool *sync.Pool
 }
 
@@ -54,17 +53,17 @@ var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
 var http11 = []byte("HTTP/1.1")
 
-func NewHTTP11Protocol(conf *HTTPConf) HTTPProtocol {
+func NewHTTP11Protocol(option *HTTPOption) HTTPProtocol {
 	v := &_Http11Protocol{}
-	if conf != nil {
-		v.HTTPConf = *conf
+	if option != nil {
+		v.HTTPOption = *option
 	}
-	if err := mergo.Merge(&v.HTTPConf, &defaultHTTPConf); err != nil {
+	if err := mergo.Merge(&v.HTTPOption, &defaultHTTPOption); err != nil {
 		panic(err)
 	}
 
-	v.readBufferPool = internal.NewFixedSizeBufferPoll(v.ReadBufferSize, v.MaxReadBufferSize)
-	v.resBodyBufferPool = internal.NewBufferPoll(v.MaxReadBufferSize)
+	v.readBufferPool = utils.NewFixedSizeBufferPoll(v.ReadBufferSize, v.MaxReadBufferSize)
+	v.resBodyBufferPool = utils.NewBufferPoll(v.MaxReadBufferSize)
 	v.resSendBufferPool = &sync.Pool{New: func() interface{} { return nil }}
 	return v
 }
@@ -77,7 +76,7 @@ const (
 
 func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx) bool {
 	connVal, _ := ctx.Response.Header.Get(HeaderConnection) // disable keep-alive by response
-	if string(inplaceLowercase(connVal)) == closeStr {
+	if string(inPlaceLowercase(connVal)) == closeStr {
 		return false
 	}
 	connVal, _ = ctx.Request.Header.Get(HeaderConnection) // disable keep-alive by request
@@ -121,9 +120,9 @@ func (protocol *_Http11Protocol) ServeHTTPConn(ctx context.Context, conn net.Con
 	rctx.conn = conn
 	rctx.connTime = time.Now()
 
-	idleTimeout := protocol.server.conf.IdleTimeout.Duration
-	readTimeout := protocol.server.conf.ReadTimeout.Duration
-	writeTimeout := protocol.server.conf.WriteTimeout.Duration
+	idleTimeout := protocol.server.option.IdleTimeout.Duration
+	readTimeout := protocol.server.option.ReadTimeout.Duration
+	writeTimeout := protocol.server.option.WriteTimeout.Duration
 	autoCompression := protocol.AutoCompression
 	handler := protocol.server.Handler
 

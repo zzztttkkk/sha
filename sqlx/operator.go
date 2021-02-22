@@ -24,6 +24,29 @@ func NewOperator(ele interface{}) *Operator {
 	return op
 }
 
+func (op *Operator) IsMutableField(f string) bool {
+	_, ok := op.info.mutable[f]
+	return ok
+}
+
+func (op *Operator) IsMutableFieldsData(data Data) bool {
+	for k, _ := range data {
+		if !op.IsMutableField(k) {
+			return false
+		}
+	}
+	return true
+}
+
+var ErrImmutableField = errors.New("sha.sqlx: immutable field")
+var ErrEmptyConditionOrEmptyData = errors.New("sha.sqlx: empty condition or empty data")
+
+func (op *Operator) MustMutableFieldsData(data Data) {
+	if !op.IsMutableFieldsData(data) {
+		panic(ErrImmutableField)
+	}
+}
+
 func (op *Operator) GroupColumns(name string) []string {
 	m := op.info.groups[name]
 	if len(m) < 1 {
@@ -81,7 +104,7 @@ func doCreate(db *sqlx.DB, name string, fnV reflect.Value) {
 	db.MustExec(q)
 }
 
-func (op *Operator) CreateTable(forEveryDB bool) {
+func (op *Operator) CreateTable() {
 	fnV := op.ele.MethodByName("TableColumns")
 	if !fnV.IsValid() {
 		panic(
@@ -93,12 +116,7 @@ func (op *Operator) CreateTable(forEveryDB bool) {
 		)
 	}
 
-	doCreate(wdb, op.TableName(), fnV)
-	if forEveryDB {
-		for _, d := range rdbs {
-			doCreate(d, op.TableName(), fnV)
-		}
-	}
+	doCreate(writableDb, op.TableName(), fnV)
 }
 
 func (op *Operator) simpleSelect(group, cond string) string {
@@ -131,6 +149,10 @@ func (op *Operator) simpleSelect(group, cond string) string {
 }
 
 func (op *Operator) simpleUpdate(cond string, m Data) (string, Data) {
+	if len(cond) < 1 || len(m) < 1 {
+		panic(ErrEmptyConditionOrEmptyData)
+	}
+
 	buf := strings.Builder{}
 	buf.WriteString("UPDATE ")
 	buf.WriteString(op.TableName())
@@ -242,6 +264,10 @@ func (op *Operator) Update(ctx context.Context, data Data, condition string, nam
 }
 
 func (op *Operator) simpleInsert(data Data, returning string) (string, Data) {
+	if len(data) < 1 {
+		panic(ErrEmptyConditionOrEmptyData)
+	}
+
 	buf := strings.Builder{}
 	buf.WriteString("INSERT INTO ")
 	buf.WriteString(op.TableName())

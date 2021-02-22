@@ -2,7 +2,6 @@ package sha
 
 import (
 	"bufio"
-	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
 	"sync"
@@ -15,7 +14,7 @@ type Response struct {
 
 	headerBuf          []byte
 	sendBuf            *bufio.Writer
-	bodyBuf            *internal.Buf
+	bodyBuf            *utils.Buf
 	compressWriter     _CompressionWriter
 	compressWriterPool *sync.Pool
 }
@@ -77,20 +76,20 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 	}
 	item := res.Header.Append(HeaderSetCookie, nil)
 
-	item.Val = append(item.Val, utils.B(k)...)
+	item.Val = append(item.Val, k...)
 	item.Val = append(item.Val, '=')
-	item.Val = append(item.Val, utils.B(v)...)
+	item.Val = append(item.Val, v...)
 	item.Val = append(item.Val, _CookieSep...)
 
 	if len(options.Domain) > 0 {
 		item.Val = append(item.Val, _CookieDomain...)
-		item.Val = append(item.Val, utils.B(options.Domain)...)
+		item.Val = append(item.Val, options.Domain...)
 		item.Val = append(item.Val, _CookieSep...)
 	}
 
 	if len(options.Path) > 0 {
 		item.Val = append(item.Val, _CookiePath...)
-		item.Val = append(item.Val, utils.B(options.Path)...)
+		item.Val = append(item.Val, options.Path...)
 		item.Val = append(item.Val, _CookieSep...)
 	} else {
 		item.Val = append(item.Val, _CookiePath...)
@@ -100,16 +99,11 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 
 	if !options.Expires.IsZero() {
 		item.Val = append(item.Val, _CookieExpires...)
-		item.Val = append(item.Val, utils.B(options.Expires.Format(time.RFC1123))...)
+		item.Val = append(item.Val, options.Expires.Format(time.RFC1123)...)
 		item.Val = append(item.Val, _CookieSep...)
-	} else if options.MaxAge > 0 {
+	} else {
 		item.Val = append(item.Val, _CookieMaxAge...)
-		item.Val = append(item.Val, utils.B(strconv.FormatInt(options.MaxAge, 10))...)
-		item.Val = append(item.Val, _CookieSep...)
-	}
-
-	if options.Secure {
-		item.Val = append(item.Val, _CookieSecure...)
+		item.Val = append(item.Val, strconv.FormatInt(options.MaxAge, 10)...)
 		item.Val = append(item.Val, _CookieSep...)
 	}
 
@@ -120,6 +114,16 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 
 	if len(options.SameSite) > 0 {
 		item.Val = append(item.Val, _CookieSameSite...)
+		item.Val = append(item.Val, options.SameSite...)
+
+		if options.SameSite == CookieSameSizeNone {
+			options.Secure = true
+		}
+	}
+
+	if options.Secure {
+		item.Val = append(item.Val, _CookieSecure...)
+		item.Val = append(item.Val, _CookieSep...)
 	}
 }
 
