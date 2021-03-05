@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/imdario/mergo"
 	"github.com/zzztttkkk/sha/utils"
 	"net"
@@ -51,7 +50,10 @@ type _Http11Protocol struct {
 
 var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
-var http11 = []byte("HTTP/1.1")
+
+const (
+	http11  = "HTTP/1.1 "
+)
 
 func NewHTTP11Protocol(option *HTTPOption) HTTPProtocol {
 	v := &_Http11Protocol{}
@@ -145,14 +147,15 @@ func (protocol *_Http11Protocol) ServeHTTPConn(ctx context.Context, conn net.Con
 
 		if inIdle { // got data, stop idle, reset ReadTimeout
 			inIdle = false
-			_ = conn.SetReadDeadline(time.Now().Add(readTimeout))
+			if readTimeout > 0 {
+				_ = conn.SetReadDeadline(time.Now().Add(readTimeout))
+			}
 		}
 
 		// consume all the buffered data
 		for offset != n {
 			offset, err = protocol.feedHttp1xReqData(rctx, readBuf.Data, offset, n)
 			if err != nil {
-				fmt.Println(offset, err)
 				if protocol.OnParseError != nil {
 					if protocol.OnParseError(conn, err.(HttpError)) {
 						return
@@ -310,23 +313,23 @@ func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte,
 			offset++
 			ctx.firstLineSize++
 			if ctx.firstLineSize > protocol.MaxRequestFirstLineSize {
-				return 10001, ErrRequestUrlTooLong
+				return -1, ErrRequestUrlTooLong
 			}
 
 			// ascii
 			if v > 127 {
-				return 10002, ErrBadConnection
+				return -2, ErrBadConnection
 			}
 
 			if v == '\n' { // end of first line
 				ctx.status++
 				ctx.buf = ctx.buf[:0]
 				if len(req.RawPath) < 1 { // empty path
-					return 10003, ErrBadConnection
+					return -3, ErrBadConnection
 				}
 
 				if len(req.version) < 8 && !bytes.HasPrefix(req.version, httpVersion) { // http version
-					return 10004, ErrBadConnection
+					return -4, ErrBadConnection
 				}
 				return offset, nil
 			}
@@ -351,7 +354,7 @@ func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte,
 				case 2:
 					req.version = append(req.version, toUpperTable[v])
 				default:
-					return 10005, ErrBadConnection
+					return -5, ErrBadConnection
 				}
 			}
 		}
@@ -361,12 +364,12 @@ func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte,
 			offset++
 			ctx.headersSize++
 			if ctx.headersSize > protocol.MaxRequestHeaderPartSize {
-				return 10006, ErrRequestHeaderFieldsTooLarge
+				return -6, ErrRequestHeaderFieldsTooLarge
 			}
 
 			// ascii
 			if protocol.ASCIIHeader && v > 127 {
-				return 10007, ErrBadConnection
+				return -7, ErrBadConnection
 			}
 
 			if v == '\n' {

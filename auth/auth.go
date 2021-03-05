@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 
 	"github.com/zzztttkkk/sha/internal"
 )
@@ -13,20 +14,15 @@ type Subject interface {
 	Info(ctx context.Context) interface{}
 }
 
-type Interface interface {
+type Manager interface {
 	Auth(ctx context.Context) (Subject, error)
 }
 
-var impl Interface
+var implOnce sync.Once
+var impl Manager
 
 func Auth(ctx context.Context) (Subject, error) {
 	return impl.Auth(ctx)
-}
-
-type Func func(ctx context.Context) (Subject, error)
-
-func (fn Func) Auth(ctx context.Context) (Subject, error) {
-	return fn(ctx)
 }
 
 var ErrUnauthenticatedOperation = errors.New("sha.rbac: unauthenticated operation")
@@ -43,6 +39,6 @@ func MustAuth(ctx context.Context) Subject {
 	return s
 }
 
-func SetImplementation(authenticator Interface) {
-	impl = authenticator
+func SetImplementation(manager Manager) {
+	implOnce.Do(func() { impl = manager })
 }

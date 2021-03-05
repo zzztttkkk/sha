@@ -50,7 +50,6 @@ func (protocol *_Http11Protocol) writeHeader(ctx *RequestCtx) error {
 	}
 
 	res.headerBuf = append(res.headerBuf, http11...)
-	res.headerBuf = append(res.headerBuf, ' ')
 	res.headerBuf = append(res.headerBuf, strconv.FormatInt(int64(res.statusCode), 10)...)
 	res.headerBuf = append(res.headerBuf, ' ')
 	res.headerBuf = append(res.headerBuf, statusTxt...)

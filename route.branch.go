@@ -30,11 +30,11 @@ func (branch *_RouteBranch) HTTP(method, path string, handler RequestHandler) {
 	m[path] = handler
 }
 
-func (branch *_RouteBranch) HTTPWithMiddleware(method, path string, handler RequestHandler, middleware ...Middleware) {
+func (branch *_RouteBranch) HTTPWithMiddleware(middleware []Middleware, method, path string, handler RequestHandler) {
 	branch.HTTP(method, path, handlerWithMiddleware(handler, middleware...))
 }
 
-func (branch *_RouteBranch) HTTPWithMiddlewareAndForm(method, path string, handler RequestHandler, form interface{}, middleware ...Middleware) {
+func (branch *_RouteBranch) HTTPWithMiddlewareAndForm(middleware []Middleware, method, path string, handler RequestHandler, form interface{}) {
 	branch.HTTPWithForm(method, path, handlerWithMiddleware(handler, middleware...), form)
 }
 

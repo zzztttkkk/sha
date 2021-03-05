@@ -18,6 +18,19 @@ type NamedArgs interface {
 
 type DataLoader func(ctx context.Context, args NamedArgs) (ret interface{}, err error)
 
+type Convertor interface {
+	Encode(v interface{}) ([]byte, error)
+	Decode(v []byte, dist interface{}) error
+}
+
+type _StdJsonConvertor struct{}
+
+func (_StdJsonConvertor) Encode(v interface{}) ([]byte, error) { return json.Marshal(v) }
+
+func (_StdJsonConvertor) Decode(v []byte, dist interface{}) error { return json.Unmarshal(v, dist) }
+
+var StdJsonConvertor = _StdJsonConvertor{}
+
 type Storage interface {
 	Set(ctx context.Context, k string, v []byte, expires time.Duration)
 	Get(ctx context.Context, k string) ([]byte, bool)
@@ -41,17 +54,18 @@ type Group struct {
 	sf      *internal.SingleflightGroup
 	loads   map[string]DataLoader
 	storage Storage
+	conv    Convertor
 }
 
 func New(name string, expires *Expires, maxWait int32) *Group {
 	ret := Simple()
-	ret.Init(name, expires, maxWait)
+	ret.Configure(name, expires, maxWait)
 	return ret
 }
 
 func Simple() *Group { return &Group{loads: map[string]DataLoader{}} }
 
-func (g *Group) Init(name string, expires *Expires, maxWait int32) *Group {
+func (g *Group) Configure(name string, expires *Expires, maxWait int32) *Group {
 	g.name = name
 	if expires == nil {
 		expires = &defaultExpires
@@ -75,7 +89,12 @@ func (g *Group) SetRedisStorage(r redis.Cmdable) *Group {
 	return g.SetStorage(RedisStorage(r))
 }
 
-func (g *Group) Append(name string, loader DataLoader) *Group {
+func (g *Group) SetConvertor(c Convertor) *Group {
+	g.conv = c
+	return g
+}
+
+func (g *Group) Register(name string, loader DataLoader) *Group {
 	g.loads[name] = loader
 	return g
 }
@@ -99,6 +118,11 @@ func (g *Group) DoWithExpires(ctx context.Context, loaderName string, dist inter
 		expires = &g.expires
 	}
 
+	conv := g.conv
+	if conv == nil {
+		conv = StdJsonConvertor
+	}
+
 	key := g.MakeKey(loaderName, args.Name())
 	v, found := g.storage.Get(ctx, key)
 	if found {
@@ -106,7 +130,7 @@ func (g *Group) DoWithExpires(ctx context.Context, loaderName string, dist inter
 			return ErrEmpty
 		}
 
-		err := json.Unmarshal(v, dist)
+		err := conv.Decode(v, dist)
 		if err != nil { // bad groupcache
 			g.storage.Del(ctx, key)
 			return ErrBadCacheValue
@@ -133,7 +157,7 @@ func (g *Group) DoWithExpires(ctx context.Context, loaderName string, dist inter
 				return nil, ErrEmpty
 			}
 
-			_b, e := json.Marshal(_v)
+			_b, e := conv.Encode(_v)
 			if e != nil {
 				panic(e)
 			}

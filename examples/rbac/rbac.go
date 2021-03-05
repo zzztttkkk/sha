@@ -37,7 +37,7 @@ func main() {
 
 	branch := sha.NewBranch()
 
-	auth.SetImplementation(auth.Func(func(ctx context.Context) (auth.Subject, error) { return _RbacUser(12), nil }))
+	auth.SetImplementation(auth.ManageFunc(func(ctx context.Context) (auth.Subject, error) { return _RbacUser(12), nil }))
 	sha.UseRBAC(branch, nil)
 
 	rbac.GrantRoot(12)

@@ -25,16 +25,16 @@ func init() {
 	internal.Dig.Provide(
 		func(_ _PermOk) internal.DaoOK {
 			roleOp = sqlx.NewOperator(model.Role{})
-			roleOp.CreateTable(true)
+			roleOp.CreateTable()
 
 			roleWithPermOp = sqlx.NewOperator(model.RoleWithPermissions{})
-			roleWithPermOp.CreateTable(true)
+			roleWithPermOp.CreateTable()
 
 			roleWithInhOp = sqlx.NewOperator(model.RoleWithInheritances{})
-			roleWithInhOp.CreateTable(true)
+			roleWithInhOp.CreateTable()
 
 			subjectWithRoleOp = sqlx.NewOperator(model.SubjectWithRoles{})
-			subjectWithRoleOp.CreateTable(true)
+			subjectWithRoleOp.CreateTable()
 
 			rolePermsSql = fmt.Sprintf(rolePermsSql, permOp.TableName(), roleWithPermOp.TableName())
 			return 0

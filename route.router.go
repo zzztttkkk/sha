@@ -15,8 +15,8 @@ type Documenter interface {
 type Router interface {
 	HTTP(method, path string, handler RequestHandler)
 	HTTPWithForm(method, path string, handler RequestHandler, form interface{})
-	HTTPWithMiddleware(method, path string, handler RequestHandler, middleware ...Middleware)
-	HTTPWithMiddlewareAndForm(method, path string, handler RequestHandler, form interface{}, middleware ...Middleware)
+	HTTPWithMiddleware(middleware []Middleware, method, path string, handler RequestHandler)
+	HTTPWithMiddlewareAndForm(middleware []Middleware, method, path string, handler RequestHandler, form interface{})
 
 	WebSocket(path string, handler WebSocketHandlerFunc)
 

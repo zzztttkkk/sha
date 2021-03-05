@@ -23,7 +23,7 @@ func (a *_AddArgs) Name() string {
 	return fmt.Sprintf(f, a.A, a.B)
 }
 
-var c = New("test", nil, 10).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7})).Append(
+var c = New("test", nil, 10).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7})).Register(
 	"add-return-value",
 	func(ctx context.Context, args NamedArgs) (ret interface{}, err error) {
 		v := args.(*_AddArgs)
@@ -31,7 +31,7 @@ var c = New("test", nil, 10).SetRedisStorage(redis.NewClient(&redis.Options{DB: 
 		fmt.Printf("Calc: %d %d\n", v.A, v.B)
 		return v.A + v.B, err
 	},
-).Append(
+).Register(
 	"add-return-pointer",
 	func(ctx context.Context, args NamedArgs) (ret interface{}, err error) {
 		v := args.(*_AddArgs)

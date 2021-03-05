@@ -297,11 +297,11 @@ func (mux *Mux) HTTPWithForm(method, path string, handler RequestHandler, form i
 	)
 }
 
-func (mux *Mux) HTTPWithMiddleware(method, path string, handler RequestHandler, middleware ...Middleware) {
+func (mux *Mux) HTTPWithMiddleware(middleware []Middleware, method, path string, handler RequestHandler) {
 	mux.HTTP(method, path, handlerWithMiddleware(handler, middleware...))
 }
 
-func (mux *Mux) HTTPWithMiddlewareAndForm(method, path string, handler RequestHandler, form interface{}, middleware ...Middleware) {
+func (mux *Mux) HTTPWithMiddlewareAndForm(middleware []Middleware, method, path string, handler RequestHandler, form interface{}) {
 	mux.HTTPWithForm(method, path, handlerWithMiddleware(handler, middleware...), form)
 }
 
@@ -317,10 +317,10 @@ func (mux *Mux) Handle(ctx *RequestCtx) {
 	}
 
 	var tree *_RouteNode
-	if req._method == _MCustom {
-		tree = mux.customMethodTrees[string(req.Method)]
-	} else {
+	if req._method != _MCustom {
 		tree = mux.stdMethodTrees[req._method]
+	} else {
+		tree = mux.customMethodTrees[string(req.Method)]
 	}
 	if tree == nil {
 		notfound.Handle(ctx)
