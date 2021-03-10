@@ -8,8 +8,9 @@ import (
 func makeTestHandler(id int) RequestHandler {
 	return RequestHandlerFunc(
 		func(ctx *RequestCtx) {
-			ctx.AutoCompress()
-			fmt.Println(id, string(ctx.Request.Path), &ctx.Request.Params)
+			//ctx.AutoCompress()
+			fmt.Println(id, string(ctx.Request.Path), &ctx.Request.URLParams)
+			_, _ = ctx.WriteString("Hello World")
 		},
 	)
 }

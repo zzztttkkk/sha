@@ -328,7 +328,7 @@ func (mux *Mux) Handle(ctx *RequestCtx) {
 	}
 
 	path := req.Path
-	i, n := tree.find(path[1:], &req.Params)
+	i, n := tree.find(path[1:], &req.URLParams)
 	if n == nil || n.handler == nil {
 		notfound.Handle(ctx)
 		return
@@ -344,7 +344,7 @@ func (mux *Mux) Handle(ctx *RequestCtx) {
 		if path[0] == '/' {
 			path = path[1:]
 		}
-		req.Params.Append(n.wildcardName, path)
+		req.URLParams.Append(n.wildcardName, path)
 	} else if i < len(path)-2 {
 		notfound.Handle(ctx)
 		return

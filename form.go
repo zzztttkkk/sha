@@ -368,7 +368,7 @@ func (ctx *RequestCtx) FormValues(name string) [][]byte {
 }
 
 func (ctx *RequestCtx) PathParam(name string) ([]byte, bool) {
-	return ctx.Request.Params.Get(name)
+	return ctx.Request.URLParams.Get(name)
 }
 
 func (ctx *RequestCtx) File(name []byte) *FormFile {

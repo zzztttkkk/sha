@@ -172,12 +172,12 @@ func (s *Server) serve(l net.Listener) {
 		serveFunc = s.serveTLS
 	}
 
-	going := true
+	f := true
 	go func() {
 		for {
 			select {
 			case <-s.baseCtx.Done():
-				going = false
+				f = false
 				_ = l.Close()
 			}
 		}
@@ -185,7 +185,7 @@ func (s *Server) serve(l net.Listener) {
 
 	maxKeepAlive := s.option.MaxConnectionKeepAlive.Duration
 
-	for going {
+	for f {
 		conn, err := l.Accept()
 		if err != nil {
 			log.Printf("sha.server: bad connection: %s\n", err.Error())
@@ -203,7 +203,7 @@ func (s *Server) serve(l net.Listener) {
 			continue
 		}
 		if s.OnConnectionAccepted != nil && !s.OnConnectionAccepted(conn) {
-			conn.Close()
+			_ = conn.Close()
 			continue
 		}
 

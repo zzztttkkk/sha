@@ -2,9 +2,26 @@ package sha
 
 import (
 	"github.com/zzztttkkk/sha/utils"
+	"strconv"
 )
 
 const _QueryParsed = -2
+
+type URLParams struct {
+	utils.Kvs
+}
+
+func (up *URLParams) GetInt(name string, base int) (int64, bool) {
+	v, ok := up.Get(name)
+	if !ok {
+		return 0, false
+	}
+	ret, err := strconv.ParseInt(utils.S(v), base, 64)
+	if err != nil {
+		return 0, false
+	}
+	return ret, true
+}
 
 type Request struct {
 	Header  Header
@@ -15,7 +32,7 @@ type Request struct {
 	Path              []byte
 	questionMarkIndex int
 	gotQuestionMark   bool
-	Params            utils.Kvs
+	URLParams         URLParams
 
 	cookies utils.Kvs
 	query   Form
@@ -38,7 +55,7 @@ func (req *Request) Reset() {
 	req.questionMarkIndex = 0
 	req.gotQuestionMark = false
 	req.Path = req.Path[:0]
-	req.Params.Reset()
+	req.URLParams.Reset()
 
 	req.cookies.Reset()
 	req.query.Reset()

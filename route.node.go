@@ -52,6 +52,14 @@ func (node *_RouteNode) getChild(name string) *_RouteNode {
 		return nil
 	}
 
+	if len(name) == 0 {
+		fn := node.children[0]
+		if len(fn.name) == 0 {
+			return fn
+		}
+		return nil
+	}
+
 	if j < 6 {
 		for _, n := range node.children {
 			if n.name == name {
@@ -141,13 +149,21 @@ func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw st
 	return node.matcherChild.addHandler(nil, handler, raw)
 }
 
-func (node *_RouteNode) find(path []byte, kvs *utils.Kvs) (int, *_RouteNode) {
+func (node *_RouteNode) find(path []byte, kvs *URLParams) (int, *_RouteNode) {
 	n := node
 	var temp []byte
-	var i int
 	var b byte
-	for i, b = range path {
-		if b == '/' {
+	var f bool
+	end := len(path)
+	var i int
+	for ; i <= end; i++ {
+		if i >= end {
+			f = true
+		} else {
+			b = path[i]
+			f = b == '/'
+		}
+		if f {
 			n = n._getChild(temp)
 			if n == nil {
 				return 0, nil
@@ -162,21 +178,9 @@ func (node *_RouteNode) find(path []byte, kvs *utils.Kvs) (int, *_RouteNode) {
 			}
 			temp = temp[:0]
 			continue
+		} else {
+			temp = append(temp, b)
 		}
-		temp = append(temp, b)
-	}
-	n = n._getChild(temp)
-	if n == nil {
-		return 0, nil
-	}
-	if len(n.param) > 0 {
-		if len(temp) < 1 {
-			return 0, nil
-		}
-		kvs.AppendBytes(n.param, temp)
-	}
-	if len(n.wildcardName) > 0 {
-		return i - len(temp), n
 	}
 	return i, n
 }
