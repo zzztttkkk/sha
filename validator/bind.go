@@ -10,9 +10,20 @@ import (
 )
 
 type Former interface {
-	PathParam(name string) ([]byte, bool)
+	URLParam(name string) ([]byte, bool)
+
+	QueryValue(name string) ([]byte, bool)
+	QueryValues(name string) [][]byte
+
+	BodyValue(name string) ([]byte, bool)
+	BodyValues(name string) [][]byte
+
 	FormValue(name string) ([]byte, bool)
 	FormValues(name string) [][]byte
+
+	HeaderValue(name string) ([]byte, bool)
+	HeaderValues(name string) [][]byte
+	CookieValue(name string) ([]byte, bool)
 }
 
 type _FormErrorType int
@@ -75,22 +86,12 @@ func htmlEscape(p []byte) []byte {
 	return ret
 }
 
-func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError {
-	var fv []byte
-	var ok bool
-	if len(rule.pathParamsName) > 0 {
-		fv, ok = former.PathParam(rule.pathParamsName)
-		if !ok {
-			return &FormError{
-				FormName: fmt.Sprintf("path param: %s", rule.pathParamsName),
-				Type:     MissingRequired,
-			}
-		}
-	} else {
-		fv, ok = former.FormValue(rule.formName)
-		if !ok {
-			if rule.defaultVal != nil {
-				filed.Set(reflect.ValueOf(rule.defaultVal))
+func (rule *Rule) bindOne(former Former, filed *reflect.Value) *FormError {
+	fv, ok := rule.peekOne(former, rule.formName)
+	if !ok {
+		if rule.where != _WhereURLParams {
+			if rule.defaultFunc != nil {
+				filed.Set(reflect.ValueOf(rule.defaultFunc()))
 				return nil
 			} else {
 				if rule.isRequired {
@@ -99,6 +100,8 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 					return nil
 				}
 			}
+		} else {
+			return &FormError{FormName: rule.formName, Type: MissingRequired}
 		}
 	}
 
@@ -144,13 +147,13 @@ func (rule *Rule) bindInterface(former Former, filed *reflect.Value) *FormError 
 	return &FormError{FormName: rule.formName, Type: BadValue}
 }
 
-func (rule *Rule) bindSlice(former Former, field *reflect.Value) *FormError {
+func (rule *Rule) bindMany(former Former, field *reflect.Value) *FormError {
 	var ret interface{}
-	formVals := former.FormValues(rule.formName)
+	formVals := rule.peekAll(former, rule.formName)
 	if len(formVals) < 1 {
 		if rule.isRequired {
-			if rule.defaultVal != nil {
-				field.Set(reflect.ValueOf(rule.defaultVal))
+			if rule.defaultFunc != nil {
+				field.Set(reflect.ValueOf(rule.defaultFunc()))
 				return nil
 			}
 			return &FormError{FormName: rule.formName, Type: MissingRequired}
@@ -260,9 +263,9 @@ func Validate(former Former, dist interface{}) (err *FormError, isNil bool) {
 			field = field.Field(index)
 		}
 		if rule.isSlice {
-			err = rule.bindSlice(former, &field)
+			err = rule.bindMany(former, &field)
 		} else {
-			err = rule.bindInterface(former, &field)
+			err = rule.bindOne(former, &field)
 		}
 		if err != nil {
 			return err, false

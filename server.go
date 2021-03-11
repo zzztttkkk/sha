@@ -3,7 +3,6 @@ package sha
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"github.com/imdario/mergo"
 	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
@@ -16,8 +15,7 @@ import (
 )
 
 type ServerOption struct {
-	Host string `json:"host" toml:"host"`
-	Port int    `json:"port" toml:"host"`
+	Addr string `json:"addr" toml:"addr"`
 	Tls  struct {
 		AutoCertDomains []string `json:"auto_cert_domains" toml:"auto-cert-domains"`
 		Key             string   `json:"key" toml:"key"`
@@ -30,8 +28,7 @@ type ServerOption struct {
 }
 
 var defaultServerOption = ServerOption{
-	Host:                   "127.0.0.1",
-	Port:                   5986,
+	Addr:                   "127.0.0.1:5986",
 	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
 }
 
@@ -122,10 +119,9 @@ func (s *Server) BeforeAccept(fn func(s *Server)) {
 }
 
 func (s *Server) doListen() net.Listener {
-	addr := fmt.Sprintf("%s:%d", s.option.Host, s.option.Port)
-	log.Printf("sha: listening at `%s`\n", addr)
+	log.Printf("sha: listening at `%s`\n", s.option.Addr)
 
-	listener, err := net.Listen("tcp4", addr)
+	listener, err := net.Listen("tcp4", s.option.Addr)
 	if err != nil {
 		panic(err)
 	}
@@ -275,4 +271,10 @@ func (s *Server) serveTLS(conn net.Conn) {
 func (s *Server) serveConn(conn net.Conn) {
 	defer conn.Close()
 	s.httpProtocol.ServeHTTPConn(context.WithValue(s.baseCtx, CtxKeyConnection, conn), conn)
+}
+
+func ListenAndServe(addr string, handler RequestHandler) {
+	server := Default(handler)
+	server.option.Addr = addr
+	server.ListenAndServe()
 }

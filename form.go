@@ -351,32 +351,3 @@ func (req *Request) BodyRaw() []byte {
 	}
 	return *req.bodyBufferPtr
 }
-
-// ctx
-func (ctx *RequestCtx) FormValue(name string) ([]byte, bool) {
-	v, ok := ctx.Request.QueryValue(name)
-	if ok {
-		return v, true
-	}
-	return ctx.Request.BodyFormValue(name)
-}
-
-func (ctx *RequestCtx) FormValues(name string) [][]byte {
-	v := ctx.Request.QueryValues(name)
-	v = append(v, ctx.Request.BodyFormValues(name)...)
-	return v
-}
-
-func (ctx *RequestCtx) PathParam(name string) ([]byte, bool) {
-	return ctx.Request.URLParams.Get(name)
-}
-
-func (ctx *RequestCtx) File(name []byte) *FormFile {
-	return ctx.Request.Files().Get(name)
-}
-
-func (ctx *RequestCtx) Files(name []byte) []*FormFile {
-	return ctx.Request.Files().GetAll(name)
-}
-
-func (ctx *RequestCtx) BodyRaw() []byte { return ctx.buf }

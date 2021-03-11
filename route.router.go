@@ -37,7 +37,7 @@ func makeFileSystemHandler(fs http.FileSystem, path string, autoIndex bool, midd
 	return handlerWithMiddleware(
 		RequestHandlerFunc(
 			func(ctx *RequestCtx) {
-				filename, _ := ctx.PathParam(_filename)
+				filename, _ := ctx.URLParam(_filename)
 				ServeFileSystem(ctx, fs, pathlib.Clean(utils.S(filename)), autoIndex)
 			},
 		),

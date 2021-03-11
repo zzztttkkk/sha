@@ -127,8 +127,8 @@ func TestServer_Run(t *testing.T) {
 	)
 
 	mux.Print()
-	server := Default(mux)
-	server.ListenAndServe()
+
+	ListenAndServe("127.0.0.1:5986", mux)
 }
 
 func TestServer_RunSimple(t *testing.T) {

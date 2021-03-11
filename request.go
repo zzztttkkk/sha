@@ -100,8 +100,4 @@ func (req *Request) CookieValue(key string) ([]byte, bool) {
 	return req.cookies.Get(key)
 }
 
-func (ctx *RequestCtx) CookieValue(key string) ([]byte, bool) { return ctx.Request.CookieValue(key) }
-
 func (req *Request) HeaderValue(key string) ([]byte, bool) { return req.Header.Get(key) }
-
-func (ctx *RequestCtx) HeaderValue(key string) ([]byte, bool) { return ctx.Request.Header.Get(key) }

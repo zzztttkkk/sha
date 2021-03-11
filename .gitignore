@@ -5,6 +5,5 @@
 /router
 /sqls
 *.pem
-*.sum
 /tls
 *.png

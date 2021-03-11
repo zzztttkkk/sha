@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"html"
@@ -51,7 +52,7 @@ var typeNames = []string{
 
 const (
 	_WhereForm = iota
-	_WhereParams
+	_WhereURLParams
 	_WhereQuery
 	_WhereBody
 	_WhereCookie
@@ -63,9 +64,12 @@ type Rule struct {
 	fieldType           reflect.Type
 	indirectCustomField bool
 
-	formName       string
-	pathParamsName string
-	rtype          _RuleType
+	// where
+	formName string
+	rtype    _RuleType
+	where    int
+	peekOne  func(former Former, name string) ([]byte, bool)
+	peekAll  func(former Former, name string) [][]byte
 
 	isRequired  bool
 	description string
@@ -89,7 +93,7 @@ type Rule struct {
 	minLV         *int
 	maxLV         *int
 
-	defaultVal interface{}
+	defaultFunc func() interface{}
 
 	reg     *regexp.Regexp
 	regName string
@@ -130,9 +134,19 @@ func (rule *Rule) String() string {
 		m["description"] = "/"
 	}
 
-	m["name"] = string(rule.formName)
-	if len(rule.pathParamsName) > 0 {
-		m["name"] = fmt.Sprintf("PathParam: %s", rule.pathParamsName)
+	switch rule.where {
+	case _WhereForm:
+		m["name"] = fmt.Sprintf("Form<%s>", rule.formName)
+	case _WhereCookie:
+		m["name"] = fmt.Sprintf("Cookie<%s>", rule.formName)
+	case _WhereHeader:
+		m["name"] = fmt.Sprintf("Header<%s>", rule.formName)
+	case _WhereBody:
+		m["name"] = fmt.Sprintf("Body<%s>", rule.formName)
+	case _WhereQuery:
+		m["name"] = fmt.Sprintf("Query<%s>", rule.formName)
+	case _WhereURLParams:
+		m["name"] = fmt.Sprintf("URLParams<%s>", rule.formName)
 	}
 
 	if rule.fLR {
@@ -210,8 +224,9 @@ func (rule *Rule) String() string {
 		m["regexp"] = "/"
 	}
 
-	if rule.defaultVal != nil {
-		m["default"] = html.EscapeString(fmt.Sprintf("%v", rule.defaultVal))
+	if rule.defaultFunc != nil {
+		v, _ := json.Marshal(rule.defaultFunc())
+		m["default"] = html.EscapeString(fmt.Sprintf("%v", string(v)))
 	} else {
 		m["default"] = "/"
 	}

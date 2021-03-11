@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx/reflectx"
 	"github.com/zzztttkkk/sha/internal"
@@ -18,7 +19,9 @@ type Defaulter interface {
 
 var customFieldType = reflect.TypeOf((*CustomField)(nil)).Elem()
 
-func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string2 string) interface{}) *Rule {
+var ErrPeekManyValuesFromURLParamsOrCookie = errors.New("sha.validator: peek many values from URLParams or cookie")
+
+func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() interface{}) *Rule {
 	rule := &Rule{
 		fieldIndex: f.Index,
 		fieldType:  f.Field.Type,
@@ -30,7 +33,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 	}
 
 	if defaultF != nil {
-		rule.defaultVal = defaultF(f.Field.Name)
+		rule.defaultFunc = defaultF
 	}
 
 	elePtr := reflect.New(f.Field.Type)
@@ -79,24 +82,54 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 	}
 
 	for key, val := range f.Options {
-		switch key {
-		case "P", "p", "params":
-			rule.pathParamsName = val
+		switch strings.ToLower(key) {
+		case "w", "where":
+			switch strings.ToLower(val) {
+			case "query":
+				rule.where = _WhereQuery
+				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.QueryValue(name) }
+				rule.peekAll = func(former Former, name string) [][]byte { return former.QueryValues(name) }
+			case "body":
+				rule.where = _WhereBody
+				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.BodyValue(name) }
+				rule.peekAll = func(former Former, name string) [][]byte { return former.BodyValues(name) }
+			case "form":
+				rule.where = _WhereForm
+			case "url", "urlparams", "url-params", "urlparam", "url-param":
+				rule.where = _WhereURLParams
+				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.URLParam(name) }
+				rule.peekAll = func(former Former, name string) [][]byte { panic(ErrPeekManyValuesFromURLParamsOrCookie) }
+			case "header":
+				rule.where = _WhereHeader
+				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.HeaderValue(name) }
+				rule.peekAll = func(former Former, name string) [][]byte { return former.HeaderValues(name) }
+			case "cookie":
+				rule.where = _WhereCookie
+				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.CookieValue(name) }
+				rule.peekAll = func(former Former, name string) [][]byte { panic(ErrPeekManyValuesFromURLParamsOrCookie) }
+			default:
+				panic(
+					fmt.Errorf(
+						"sha.validator: bad where value, field: `%s:%s.%s`, tag value: `%s`",
+						t.PkgPath(), t.Name(), f.Field.Name, val,
+					),
+				)
+			}
 		case "optional":
 			rule.isRequired = false
-		case "disabletrimspace":
+		case "disabletrimspace", "disable-trim-space", "notrim", "no-trim":
 			rule.notTrimSpace = true
-		case "disableescapehtml":
+		case "disableescapehtml", "disable-escape-html", "noescape", "no-escape":
 			rule.notEscapeHtml = true
 		case "description":
 			rule.description = val
-		case "R", "r", "regexp":
+		case "r", "regexp":
 			rule.reg = regexpMap[val]
 			rule.regName = val
 			if rule.reg == nil {
 				panic(fmt.Errorf("sha.validator: unregistered regexp `%s`", val))
 			}
-		case "F", "f", "filters":
+		case "f", "filters", "filter":
 			for _, n := range strings.Split(val, "|") {
 				n = strings.TrimSpace(n)
 				if len(n) < 1 {
@@ -109,7 +142,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 				rule.fns = append(rule.fns, f)
 			}
 			rule.fnNames = val
-		case "L", "l", "length":
+		case "l", "length", "len":
 			rule.fLR = true
 			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 			if minVF {
@@ -128,7 +161,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 					),
 				)
 			}
-		case "V", "v", "value":
+		case "v", "value", "val":
 			rule.fVR = true
 			var err bool
 			switch rule.rtype {
@@ -165,16 +198,18 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 					*rule.maxDV = maxV
 				}
 				err = rule.minDV == nil && rule.maxDV == nil
+			default:
+				err = true
 			}
 			if err {
 				panic(
 					fmt.Errorf(
-						"sha.validator: bad value range value, field: `%s:%s.%s`, tag value: `%s`",
+						"sha.validator: bad number value range or value range on non-numberic filed, field: `%s:%s.%s`, tag value: `%s`",
 						t.PkgPath(), t.Name(), f.Field.Name, val,
 					),
 				)
 			}
-		case "S", "s", "size":
+		case "s", "size":
 			rule.fSSR = true
 			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 			if minVF {
@@ -188,7 +223,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 			if rule.minSSV == nil && rule.maxSSV == nil {
 				panic(
 					fmt.Errorf(
-						"sha.validator: bad slice size range value, field: `%s:%s.%s`, tag value: `%s`",
+						"sha.validator: bad slice size range, field: `%s:%s.%s`, tag value: `%s`",
 						t.PkgPath(), t.Name(), f.Field.Name, val,
 					),
 				)
@@ -196,7 +231,23 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func(string
 		}
 	}
 
+	if rule.where == _WhereForm {
+		rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.FormValue(name) }
+		rule.peekAll = func(former Former, name string) [][]byte { return former.FormValues(name) }
+	}
 	return rule
+}
+
+func getDefaultFunc(ele reflect.Value, name string) func() interface{} {
+	fnV := ele.MethodByName(fmt.Sprintf("Default%s", name))
+	if fnV.IsValid() {
+		ret, ok := fnV.Interface().(func() interface{})
+		if ok {
+			fmt.Println(fmt.Sprintf("Default%s", name))
+			return ret
+		}
+	}
+	return nil
 }
 
 func GetRules(t reflect.Type) Rules {
@@ -205,17 +256,12 @@ func GetRules(t reflect.Type) Rules {
 		return v
 	}
 
-	ele := reflect.New(t).Elem().Interface()
-	var d Defaulter
-	var fn func(string) interface{}
-	if d, ok = ele.(Defaulter); ok {
-		fn = d.Default
-	}
+	ele := reflect.New(t)
 
 	var rules Rules
 	fmap := reflectMapper.TypeMap(t)
 	for _, f := range fmap.Index {
-		rule := fieldInfoToRule(t, f, fn)
+		rule := fieldInfoToRule(t, f, getDefaultFunc(ele, f.Field.Name))
 		if rule != nil {
 			rules = append(rules, rule)
 		}
