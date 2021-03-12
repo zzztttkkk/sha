@@ -1,19 +1,27 @@
 package validator
 
-import "reflect"
+import (
+	"reflect"
+)
 
-type CustomField interface {
+type Field interface {
 	FormValue(data []byte) bool
 }
 
-func (rule *Rule) toCustomField(data []byte) (interface{}, bool) {
-	if rule.indirectCustomField {
-		ele := reflect.New(rule.fieldType)
-		ok := ele.Interface().(CustomField).FormValue(data)
-		return ele.Elem().Interface(), ok
+func (rule *_Rule) toCustomField(f *reflect.Value, data []byte) bool {
+	t := rule.fieldType
+	if rule.isPtr {
+		t = t.Elem()
 	}
 
-	ele := reflect.New(rule.fieldType.Elem()).Interface()
-	ok := ele.(CustomField).FormValue(data)
-	return ele, ok
+	ptr := reflect.New(t)
+	if ptr.Interface().(Field).FormValue(data) {
+		if rule.isPtr {
+			f.Set(ptr)
+		} else {
+			f.Set(ptr.Elem())
+		}
+		return true
+	}
+	return false
 }

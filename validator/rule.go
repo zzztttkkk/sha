@@ -59,10 +59,10 @@ const (
 	_WhereHeader
 )
 
-type Rule struct {
-	fieldIndex          []int
-	fieldType           reflect.Type
-	indirectCustomField bool
+type _Rule struct {
+	fieldIndex []int
+	fieldType  reflect.Type
+	isPtr      bool
 
 	// where
 	formName string
@@ -74,24 +74,21 @@ type Rule struct {
 	isRequired  bool
 	description string
 
-	fVR   bool // int value range flag
-	minIV *int64
-	maxIV *int64
-	minUV *uint64
-	maxUV *uint64
-	minDV *float64
-	maxDV *float64
+	checkNumRange bool // int value range flag
+	minIV         *int64
+	maxIV         *int64
+	minUV         *uint64
+	maxUV         *uint64
+	minDV         *float64
+	maxDV         *float64
 
-	isSlice bool
-	fSSR    bool // slice size range flag
-	minSSV  *int
-	maxSSV  *int
+	isSlice       bool
+	checkListSize bool // slice size range flag
+	minSSV        *int
+	maxSSV        *int
 
 	notEscapeHtml bool
 	notTrimSpace  bool
-	fLR           bool // bytes size range flag
-	minLV         *int
-	maxLV         *int
 
 	defaultFunc func() interface{}
 
@@ -102,22 +99,22 @@ type Rule struct {
 	fnNames string
 }
 
-var MarkdownTableHeader = "\n|name|type|required|string length range|int value range|list size range|default|regexp|function|description|\n"
+var MarkdownTableHeader = "\n|name|type|required|int value range|list size range|default|regexp|function|description|\n"
 
 func init() {
-	MarkdownTableHeader += strings.Repeat("|:---:", 10)
+	MarkdownTableHeader += strings.Repeat("|:---:", 9)
 	MarkdownTableHeader += "|\n"
 }
 
 var ruleFmt = utils.NewNamedFmt(
-	"|${name}|${type}|${required}|${lrange}|${vrange}|${srange}|${default}|${regexp}|${function}|${description}|",
+	"|${name}|${type}|${required}|${vrange}|${srange}|${default}|${regexp}|${function}|${description}|",
 )
 
 // markdown table row
-func (rule *Rule) String() string {
+func (rule *_Rule) String() string {
 	typeString := typeNames[rule.rtype]
 	if rule.rtype == _CustomType {
-		if rule.indirectCustomField {
+		if rule.isPtr {
 			typeString = reflect.New(rule.fieldType).Type().Elem().Name()
 		} else {
 			typeString = rule.fieldType.Name()
@@ -149,21 +146,7 @@ func (rule *Rule) String() string {
 		m["name"] = fmt.Sprintf("URLParams<%s>", rule.formName)
 	}
 
-	if rule.fLR {
-		if rule.minLV != nil && rule.maxLV != nil {
-			m["lrange"] = fmt.Sprintf("%d-%d", *rule.minLV, *rule.maxLV)
-		} else if rule.minLV != nil {
-			m["lrange"] = fmt.Sprintf("%d-", *rule.minLV)
-		} else if rule.maxLV != nil {
-			m["lrange"] = fmt.Sprintf("-%d", *rule.maxLV)
-		} else {
-			m["lrange"] = "/"
-		}
-	} else {
-		m["lrange"] = "/"
-	}
-
-	if rule.fSSR {
+	if rule.checkListSize {
 		if rule.minSSV != nil && rule.maxSSV != nil {
 			m["srange"] = fmt.Sprintf("%d-%d", *rule.minSSV, *rule.maxSSV)
 		} else if rule.minSSV != nil {
@@ -177,7 +160,7 @@ func (rule *Rule) String() string {
 		m["srange"] = "/"
 	}
 
-	if rule.fVR {
+	if rule.checkNumRange {
 		switch rule.rtype {
 		case _Int64, _IntSlice:
 			if rule.minIV != nil && rule.maxIV != nil {
@@ -243,19 +226,9 @@ func (rule *Rule) String() string {
 	return ruleFmt.Render(m)
 }
 
-func (rule *Rule) toBytes(v []byte) ([]byte, bool) {
+func (rule *_Rule) toBytes(v []byte) ([]byte, bool) {
 	if !rule.notTrimSpace {
 		v = bytes.TrimSpace(v)
-	}
-
-	if rule.fLR {
-		l := len(v)
-		if rule.minLV != nil && l < *rule.minLV {
-			return nil, false
-		}
-		if rule.maxLV != nil && l > *rule.maxLV {
-			return nil, false
-		}
 	}
 
 	if rule.reg != nil {
@@ -274,7 +247,7 @@ func (rule *Rule) toBytes(v []byte) ([]byte, bool) {
 	return v, true
 }
 
-func (rule *Rule) toString(v []byte) (string, bool) {
+func (rule *_Rule) toString(v []byte) (string, bool) {
 	v, ok := rule.toBytes(v)
 	if !ok {
 		return "", false
@@ -285,7 +258,7 @@ func (rule *Rule) toString(v []byte) (string, bool) {
 	return utils.S(htmlEscape(v)), true
 }
 
-func (rule *Rule) toInt(v []byte) (int64, bool) {
+func (rule *_Rule) toInt(v []byte) (int64, bool) {
 	var ok bool
 	v, ok = rule.toBytes(v)
 	if !ok {
@@ -297,7 +270,7 @@ func (rule *Rule) toInt(v []byte) (int64, bool) {
 		return 0, false
 	}
 
-	if rule.fVR {
+	if rule.checkNumRange {
 		if rule.minIV != nil && i < *rule.minIV {
 			return 0, false
 		}
@@ -308,7 +281,7 @@ func (rule *Rule) toInt(v []byte) (int64, bool) {
 	return i, true
 }
 
-func (rule *Rule) toUint(v []byte) (uint64, bool) {
+func (rule *_Rule) toUint(v []byte) (uint64, bool) {
 	var ok bool
 	v, ok = rule.toBytes(v)
 	if !ok {
@@ -320,7 +293,7 @@ func (rule *Rule) toUint(v []byte) (uint64, bool) {
 		return 0, false
 	}
 
-	if rule.fVR {
+	if rule.checkNumRange {
 		if rule.minUV != nil && i < *rule.minUV {
 			return 0, false
 		}
@@ -331,7 +304,7 @@ func (rule *Rule) toUint(v []byte) (uint64, bool) {
 	return i, true
 }
 
-func (rule *Rule) toFloat(v []byte) (float64, bool) {
+func (rule *_Rule) toFloat(v []byte) (float64, bool) {
 	var ok bool
 	v, ok = rule.toBytes(v)
 	if !ok {
@@ -343,7 +316,7 @@ func (rule *Rule) toFloat(v []byte) (float64, bool) {
 		return 0, false
 	}
 
-	if rule.fVR {
+	if rule.checkNumRange {
 		if rule.minDV != nil && i < *rule.minDV {
 			return 0, false
 		}
@@ -356,27 +329,27 @@ func (rule *Rule) toFloat(v []byte) (float64, bool) {
 
 var ParseBool func(v []byte) (bool, error)
 
-func (rule *Rule) toBool(v []byte) (bool, bool) {
+func init() {
+	ParseBool = func(v []byte) (bool, error) {
+		return strconv.ParseBool(utils.S(v))
+	}
+}
+
+func (rule *_Rule) toBool(v []byte) (bool, bool) {
 	var ok bool
 	v, ok = rule.toBytes(v)
 	if !ok {
 		return false, false
 	}
 
-	var b bool
-	var e error
-	if ParseBool == nil {
-		b, e = strconv.ParseBool(utils.S(v))
-	} else {
-		b, e = ParseBool(v)
-	}
+	b, e := ParseBool(v)
 	if e != nil {
 		return false, false
 	}
 	return b, true
 }
 
-type Rules []*Rule
+type Rules []*_Rule
 
 func (rules Rules) String() string {
 	buf := strings.Builder{}

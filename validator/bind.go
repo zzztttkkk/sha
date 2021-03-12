@@ -86,7 +86,7 @@ func htmlEscape(p []byte) []byte {
 	return ret
 }
 
-func (rule *Rule) bindOne(former Former, filed *reflect.Value) *FormError {
+func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *FormError {
 	fv, ok := rule.peekOne(former, rule.formName)
 	if !ok {
 		if rule.where != _WhereURLParams {
@@ -135,19 +135,29 @@ func (rule *Rule) bindOne(former Former, filed *reflect.Value) *FormError {
 		var data []byte
 		data, ok = rule.toBytes(fv)
 		if ok {
-			ret, ok = rule.toCustomField(data)
+			if rule.toCustomField(filed, data) {
+				return nil
+			}
+			return &FormError{FormName: rule.formName, Type: BadValue}
 		}
 	default:
 		panic(fmt.Errorf("sha.validator: unexpected rule type"))
 	}
 	if ok {
-		filed.Set(reflect.ValueOf(ret))
+		if rule.isPtr {
+			dist := reflect.New(rule.fieldType.Elem())
+			dist.Elem().Set(reflect.ValueOf(ret))
+			filed.Set(dist)
+		} else {
+			filed.Set(reflect.ValueOf(ret))
+		}
+
 		return nil
 	}
 	return &FormError{FormName: rule.formName, Type: BadValue}
 }
 
-func (rule *Rule) bindMany(former Former, field *reflect.Value) *FormError {
+func (rule *_Rule) bindMany(former Former, field *reflect.Value) *FormError {
 	var ret interface{}
 	formVals := rule.peekAll(former, rule.formName)
 	if len(formVals) < 1 {
@@ -233,7 +243,7 @@ func (rule *Rule) bindMany(former Former, field *reflect.Value) *FormError {
 
 	v := reflect.ValueOf(ret)
 	// check slice size
-	if rule.fSSR {
+	if rule.checkListSize {
 		if v.IsNil() {
 			if rule.isRequired {
 				return &FormError{FormName: rule.formName, Type: MissingRequired}
@@ -249,7 +259,13 @@ func (rule *Rule) bindMany(former Former, field *reflect.Value) *FormError {
 		}
 	}
 
-	field.Set(v)
+	if rule.isPtr {
+		dist := reflect.New(rule.fieldType.Elem())
+		dist.Elem().Set(v)
+		field.Set(dist)
+	} else {
+		field.Set(v)
+	}
 	return nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/zzztttkkk/sha/internal"
 	"reflect"
 	"strings"
+	"unicode"
 )
 
 // all validate type should be prepared before use
@@ -17,26 +18,12 @@ type Defaulter interface {
 	Default(fieldName string) interface{}
 }
 
-var customFieldType = reflect.TypeOf((*CustomField)(nil)).Elem()
+var customFieldType = reflect.TypeOf((*Field)(nil)).Elem()
 
 var ErrPeekManyValuesFromURLParamsOrCookie = errors.New("sha.validator: peek many values from URLParams or cookie")
 
-func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() interface{}) *Rule {
-	rule := &Rule{
-		fieldIndex: f.Index,
-		fieldType:  f.Field.Type,
-		formName:   f.Name,
-		isRequired: true,
-	}
-	if len(rule.formName) < 1 {
-		rule.formName = strings.ToLower(f.Field.Name)
-	}
-
-	if defaultF != nil {
-		rule.defaultFunc = defaultF
-	}
-
-	elePtr := reflect.New(f.Field.Type)
+func setType(rule *_Rule, t reflect.Type) bool {
+	elePtr := reflect.New(t)
 	ele := elePtr.Elem()
 
 	switch ele.Interface().(type) {
@@ -70,13 +57,76 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 	case []float64:
 		rule.rtype = _FloatSlice
 		rule.isSlice = true
-	case CustomField:
-		rule.rtype = _CustomType
 	default:
-		if elePtr.Type().ConvertibleTo(customFieldType) {
+		return false
+	}
+	return true
+}
+
+var NameCast func(fieldName string) string
+
+func init() {
+	NameCast = func(fieldName string) string {
+		var sb strings.Builder
+		doSep := false
+
+		for _, r := range fieldName {
+			if unicode.IsUpper(r) {
+				if doSep {
+					sb.WriteByte('_')
+					doSep = false
+				}
+				sb.WriteRune(unicode.ToLower(r))
+			} else {
+				doSep = true
+				sb.WriteRune(r)
+			}
+		}
+		return sb.String()
+	}
+}
+
+func isCustomField(rule *_Rule, t reflect.Type) {
+	// type AField **
+
+	if t.Kind() == reflect.Ptr { // *AField
+		if t.ConvertibleTo(customFieldType) {
+			rule.isPtr = true
 			rule.rtype = _CustomType
-			rule.indirectCustomField = true
-		} else {
+		}
+		return
+	}
+
+	ele := reflect.New(t)
+	if ele.Type().ConvertibleTo(customFieldType) {
+		rule.rtype = _CustomType
+	}
+}
+
+func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() interface{}) *_Rule {
+	rule := &_Rule{
+		fieldIndex: f.Index,
+		fieldType:  f.Field.Type,
+		formName:   f.Name,
+		isRequired: true,
+	}
+
+	if len(rule.formName) < 1 || len(f.Options) == 0 {
+		rule.formName = NameCast(f.Field.Name)
+	}
+
+	if defaultF != nil {
+		rule.defaultFunc = defaultF
+	}
+
+	ft := f.Field.Type
+	isCustomField(rule, ft)
+	if rule.rtype != _CustomType {
+		if ft.Kind() == reflect.Ptr {
+			ft = ft.Elem()
+			rule.isPtr = true
+		}
+		if !setType(rule, ft) {
 			return nil
 		}
 	}
@@ -142,27 +192,8 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 				rule.fns = append(rule.fns, f)
 			}
 			rule.fnNames = val
-		case "l", "length", "len":
-			rule.fLR = true
-			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
-			if minVF {
-				rule.minLV = new(int)
-				*rule.minLV = int(minV)
-			}
-			if maxVF {
-				rule.maxLV = new(int)
-				*rule.maxLV = int(maxV)
-			}
-			if rule.minLV == nil && rule.maxLV == nil {
-				panic(
-					fmt.Errorf(
-						"sha.validator: bad length range value, field: `%s:%s.%s`, tag value: `%s`",
-						t.PkgPath(), t.Name(), f.Field.Name, val,
-					),
-				)
-			}
 		case "v", "value", "val":
-			rule.fVR = true
+			rule.checkNumRange = true
 			var err bool
 			switch rule.rtype {
 			case _Int64, _IntSlice:
@@ -210,7 +241,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 				)
 			}
 		case "s", "size":
-			rule.fSSR = true
+			rule.checkListSize = true
 			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 			if minVF {
 				rule.minSSV = new(int)
@@ -243,7 +274,6 @@ func getDefaultFunc(ele reflect.Value, name string) func() interface{} {
 	if fnV.IsValid() {
 		ret, ok := fnV.Interface().(func() interface{})
 		if ok {
-			fmt.Println(fmt.Sprintf("Default%s", name))
 			return ret
 		}
 	}
