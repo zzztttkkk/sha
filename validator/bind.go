@@ -120,15 +120,7 @@ func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *FormError {
 	case _Float64:
 		ret, ok = rule.toFloat(fv)
 	case _Bytes:
-		if rule.notEscapeHtml {
-			ret, ok = rule.toBytes(fv)
-		} else {
-			var p []byte
-			p, ok = rule.toBytes(fv)
-			if ok {
-				ret = htmlEscape(p)
-			}
-		}
+		ret, ok = rule.toBytes(fv)
 	case _String:
 		ret, ok = rule.toString(fv)
 	case _CustomType:
@@ -230,11 +222,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *FormError {
 			if !ok {
 				return &FormError{FormName: rule.formName, Type: BadValue}
 			}
-			if rule.notEscapeHtml {
-				lst = append(lst, a)
-			} else {
-				lst = append(lst, htmlEscape(a))
-			}
+			lst = append(lst, a)
 		}
 		ret = lst
 	default:

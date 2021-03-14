@@ -18,10 +18,12 @@ func init() {
 	)
 
 	Branch.HTTPWithMiddleware(
+		[]sha.Middleware{
+			h.NewPrintMiddleware("a.s.m1"),
+			h.NewPrintMiddleware("a.s.m2"),
+		},
 		"get",
 		"/",
 		h.NewPrintHandler("a.h"),
-		h.NewPrintMiddleware("a.s.m1"),
-		h.NewPrintMiddleware("a.s.m2"),
 	)
 }

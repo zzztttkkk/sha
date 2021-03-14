@@ -11,8 +11,8 @@ import (
 
 type Options struct {
 	TableNamePrefix  string
-	LogReadOperation bool
 	Logger           *log.Logger
+	LogReadOperation bool
 }
 
 func Init(router Router, options *Options) {

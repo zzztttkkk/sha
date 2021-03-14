@@ -83,7 +83,7 @@ func TestServer_Run(t *testing.T) {
 		Password Sha5256Hash     `validator:"pwd,R=password"`
 	}
 
-	mux.HTTPWithForm(
+	mux.HTTPWithDocument(
 		"post",
 		"/form",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
@@ -98,7 +98,7 @@ func TestServer_Run(t *testing.T) {
 			}
 			_, _ = ctx.WriteString("Hello World!")
 		}),
-		Form{},
+		validator.NewMarkdownDocument(Form{}, validator.Undefined),
 	)
 
 	mux.WebSocket(

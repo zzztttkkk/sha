@@ -13,16 +13,15 @@ type _RbacUser int64
 
 func (u _RbacUser) GetID() int64 { return int64(u) }
 
-func (u _RbacUser) Info(ctx context.Context) interface{} {
-	return sha.MustToRCtx(ctx).RemoteAddr().String()
-}
+func (u _RbacUser) Info(ctx context.Context) interface{} { return nil }
 
 func init() {
-	sqlx.OpenWriteableDB(
-		"mysql",
-		"root:123456@/sha?autocommit=false",
-	)
+	sqlx.OpenWriteableDB("mysql", "root:123456@/sha?autocommit=false")
 }
+
+type ManagerFunc func(ctx context.Context) (auth.Subject, error)
+
+func (f ManagerFunc) Auth(ctx context.Context) (auth.Subject, error) { return f(ctx) }
 
 func main() {
 	mux := sha.NewMux(nil, nil)
@@ -37,7 +36,21 @@ func main() {
 
 	branch := sha.NewBranch()
 
-	auth.SetImplementation(auth.ManageFunc(func(ctx context.Context) (auth.Subject, error) { return _RbacUser(12), nil }))
+	auth.Use(ManagerFunc(func(ctx context.Context) (auth.Subject, error) {
+		ctx = rbac.UnwrapRequestCtx(ctx)
+		if ctx == nil {
+			return nil, sha.StatusError(sha.StatusUnauthorized)
+		}
+
+		rctx := ctx.(*sha.RequestCtx)
+		pwd, _ := rctx.Request.Header.Get("RBAC-Password")
+		name, _ := rctx.Request.Header.Get("RBAC-Name")
+
+		if string(pwd) == "123456" && string(name) == "root-12" {
+			return _RbacUser(12), nil
+		}
+		return nil, sha.StatusError(sha.StatusUnauthorized)
+	}))
 	sha.UseRBAC(branch, nil)
 
 	rbac.GrantRoot(12)

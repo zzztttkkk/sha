@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/sha/validator"
 	"net/http"
-	"reflect"
 	"strings"
 )
 
+type _BranchNode struct {
+	h RequestHandler
+	d validator.Document
+}
+
 type _RouteBranch struct {
 	_MiddlewareNode
-	allHandlers map[string]map[string]RequestHandler
+	allHandlers map[string]map[string]_BranchNode
 
 	root         *Mux
 	parentRouter *_RouteBranch
@@ -20,41 +24,30 @@ type _RouteBranch struct {
 
 var _ Router = (*_RouteBranch)(nil)
 
-func (branch *_RouteBranch) HTTP(method, path string, handler RequestHandler) {
+func (branch *_RouteBranch) HTTPWithDocument(method, path string, handler RequestHandler, doc validator.Document) {
 	method = strings.ToUpper(method)
 	m := branch.allHandlers[method]
 	if m == nil {
-		m = map[string]RequestHandler{}
+		m = map[string]_BranchNode{}
 		branch.allHandlers[method] = m
 	}
-	m[path] = handler
+	m[path] = _BranchNode{h: handler, d: doc}
+}
+
+func (branch *_RouteBranch) HTTP(method, path string, handler RequestHandler) {
+	branch.HTTPWithDocument(method, path, handler, nil)
 }
 
 func (branch *_RouteBranch) HTTPWithMiddleware(middleware []Middleware, method, path string, handler RequestHandler) {
 	branch.HTTP(method, path, handlerWithMiddleware(handler, middleware...))
 }
 
-func (branch *_RouteBranch) HTTPWithMiddlewareAndForm(middleware []Middleware, method, path string, handler RequestHandler, form interface{}) {
-	branch.HTTPWithForm(method, path, handlerWithMiddleware(handler, middleware...), form)
+func (branch *_RouteBranch) HTTPWithMiddlewareAndDocument(middleware []Middleware, method, path string, handler RequestHandler, doc validator.Document) {
+	branch.HTTPWithDocument(method, path, handlerWithMiddleware(handler, middleware...), doc)
 }
 
 func (branch *_RouteBranch) WebSocket(path string, wh WebSocketHandlerFunc) {
 	branch.HTTP("get", path, wshToHandler(wh))
-}
-
-func (branch *_RouteBranch) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
-	if form == nil {
-		branch.HTTP(method, path, handler)
-		return
-	}
-
-	branch.HTTP(
-		method, path,
-		&_FormRequestHandler{
-			RequestHandler: handler,
-			Documenter:     validator.GetRules(reflect.TypeOf(form)),
-		},
-	)
 }
 
 func (branch *_RouteBranch) FilePath(fs http.FileSystem, method, path string, autoIndex bool, middleware ...Middleware) {
@@ -85,23 +78,23 @@ func (branch *_RouteBranch) goDown() {
 	}
 
 	for a, b := range branch.allHandlers {
-		for p, h := range b {
-			branch.goUp(a, p, branch.wrap(h))
+		for p, n := range b {
+			branch.goUp(a, p, branch.wrap(n.h), n.d)
 		}
 	}
 }
 
-func (branch *_RouteBranch) goUp(method, path string, handler RequestHandler) {
+func (branch *_RouteBranch) goUp(method, path string, handler RequestHandler, doc validator.Document) {
 	if branch.parentRouter != nil {
-		branch.parentRouter.goUp(method, branch.prefix+path, handler)
+		branch.parentRouter.goUp(method, branch.prefix+path, handler, doc)
 	} else {
-		branch.root.doAddHandler(method, branch.prefix+path, handler)
+		branch.root.doAddHandler(method, branch.prefix+path, handler, false, doc)
 	}
 }
 
 func NewBranch() Router {
 	return &_RouteBranch{
-		allHandlers: map[string]map[string]RequestHandler{},
+		allHandlers: map[string]map[string]_BranchNode{},
 		children:    map[string]*_RouteBranch{},
 	}
 }

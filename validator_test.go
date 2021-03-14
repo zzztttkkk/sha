@@ -1,6 +1,7 @@
 package sha
 
 import (
+	"github.com/zzztttkkk/sha/validator"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestRequestCtx_Validate(t *testing.T) {
 	mux := NewMux(nil, nil)
 	server := Default(mux)
 
-	mux.HTTPWithForm(
+	mux.HTTPWithDocument(
 		"get",
 		"/",
 		RequestHandlerFunc(
@@ -31,7 +32,7 @@ func TestRequestCtx_Validate(t *testing.T) {
 				_, _ = ctx.WriteString("OK")
 			},
 		),
-		TestForm{},
+		validator.NewMarkdownDocument(TestForm{}, validator.Undefined),
 	)
 
 	mux.HandleDoc("get", "/doc")

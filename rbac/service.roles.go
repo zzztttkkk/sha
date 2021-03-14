@@ -1,10 +1,10 @@
 package rbac
 
 import (
-	"context"
 	"github.com/zzztttkkk/sha/rbac/dao"
 	"github.com/zzztttkkk/sha/rbac/internal"
 	"github.com/zzztttkkk/sha/sqlx"
+	"github.com/zzztttkkk/sha/validator"
 	"net/http"
 )
 
@@ -17,14 +17,14 @@ func init() {
 	register(
 		"POST",
 		"/roles",
-		func(rctx context.Context, rw ReqWriter) {
-			ctx, committer := sqlx.Tx(rctx)
+		func(rctx RCtx) {
+			ctx, committer := sqlx.Tx(wrapCtx(rctx))
 			defer committer()
 
 			MustGrantedAll(ctx, PermRoleCreate)
 
 			var form Form
-			rw.MustValidate(&form)
+			rctx.MustValidate(&form)
 			dao.NewRole(ctx, form.Name, form.Desc)
 		},
 		Form{},
@@ -35,7 +35,7 @@ func init() {
 	register(
 		"GET",
 		"/roles",
-		func(rctx context.Context, rw ReqWriter) {
+		func(rctx RCtx) {
 			MustGrantedAll(rctx, PermRoleListAll)
 
 			lst := dao.Roles(rctx)
@@ -43,7 +43,7 @@ func init() {
 				r.Permissions = dao.RolePerms(rctx, r.ID)
 			}
 
-			rw.WriteJSON(lst)
+			rctx.WriteJSON(lst)
 		},
 		nil,
 	)
@@ -57,21 +57,21 @@ func init() {
 	register(
 		"GET",
 		"/role/:rname",
-		func(ctx context.Context, rw ReqWriter) {
+		func(rctx RCtx) {
 			var form Form
-			rw.MustValidate(&form)
+			rctx.MustValidate(&form)
 
-			MustGrantedAny(ctx, "rbac.roles.listAll", "rbac.role."+form.RoleName+".read")
+			MustGrantedAny(rctx, "rbac.roles.listAll", "rbac.role."+form.RoleName+".read")
 
-			role := dao.RoleByName(ctx, form.RoleName)
+			role := dao.RoleByName(rctx, form.RoleName)
 
 			if role == nil {
-				rw.SetStatus(http.StatusNotFound)
+				rctx.SetStatus(http.StatusNotFound)
 				return
 			}
 
-			role.Permissions = dao.RolePerms(ctx, role.ID)
-			rw.WriteJSON(role)
+			role.Permissions = dao.RolePerms(rctx, role.ID)
+			rctx.WriteJSON(role)
 		},
 		nil,
 	)
@@ -89,17 +89,17 @@ func init() {
 			router.HandleWithDoc(
 				"POST",
 				"/role/:rname/perms",
-				func(rctx context.Context, rw ReqWriter) {
-					ctx, committer := sqlx.Tx(rctx)
+				func(rctx RCtx) {
+					ctx, committer := sqlx.Tx(wrapCtx(rctx))
 					defer committer()
 
 					MustGrantedAll(ctx, "rbac.roles.create")
 
 					var form Form
-					rw.MustValidate(&form)
+					rctx.MustValidate(&form)
 					dao.RoleAddPerm(ctx, form.RoleName, form.Name)
 				},
-				Form{},
+				validator.NewMarkdownDocument(Form{}, validator.Undefined),
 			)
 		},
 	)
@@ -117,18 +117,18 @@ func init() {
 			router.HandleWithDoc(
 				"DELETE",
 				"/role/:rname/perms/:pname",
-				func(rctx context.Context, rw ReqWriter) {
-					ctx, committer := sqlx.Tx(rctx)
+				func(rctx RCtx) {
+					ctx, committer := sqlx.Tx(wrapCtx(rctx))
 					defer committer()
 
 					MustGrantedAll(ctx, "rbac.roles.delete")
 
 					var form Form
-					rw.MustValidate(&form)
+					rctx.MustValidate(&form)
 
 					dao.RoleDelPerm(ctx, form.RoleName, form.PermName)
 				},
-				Form{},
+				validator.NewMarkdownDocument(Form{}, validator.Undefined),
 			)
 		},
 	)

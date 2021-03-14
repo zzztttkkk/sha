@@ -4,10 +4,12 @@ import (
 	"context"
 	"github.com/zzztttkkk/sha/rbac/dao"
 	"github.com/zzztttkkk/sha/rbac/internal"
+	"github.com/zzztttkkk/sha/validator"
 	"html/template"
 )
 
-type ReqWriter interface {
+type RCtx interface {
+	context.Context
 	MustValidate(dist interface{})
 	SetStatus(v int)
 	Write(p []byte) (int, error)
@@ -16,14 +18,10 @@ type ReqWriter interface {
 	WriteTemplate(t *template.Template, data interface{})
 }
 
-type HandlerFunc func(rctx context.Context, rw ReqWriter)
+type HandlerFunc func(rctx RCtx)
 
 type Router interface {
-	HandleWithDoc(
-		method string, path string,
-		handler HandlerFunc,
-		doc interface{},
-	)
+	HandleWithDoc(method string, path string, handler HandlerFunc, doc validator.Document)
 }
 
 const (

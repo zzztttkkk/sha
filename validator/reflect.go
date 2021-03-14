@@ -6,11 +6,11 @@ import (
 	"github.com/jmoiron/sqlx/reflectx"
 	"github.com/zzztttkkk/sha/internal"
 	"reflect"
+	"sort"
 	"strings"
 	"unicode"
 )
 
-// all validate type should be prepared before use
 var cacheMap = map[reflect.Type]Rules{}
 var reflectMapper = reflectx.NewMapper("validator")
 
@@ -296,6 +296,8 @@ func GetRules(t reflect.Type) Rules {
 			rules = append(rules, rule)
 		}
 	}
+	sort.Sort(rules)
+
 	cacheMap[t] = rules
 	return rules
 }

@@ -1,24 +1,24 @@
 package rbac
 
 import (
-	"context"
 	"database/sql"
 	"github.com/zzztttkkk/sha/auth"
 	"github.com/zzztttkkk/sha/rbac/dao"
 	"github.com/zzztttkkk/sha/rbac/internal"
 	"github.com/zzztttkkk/sha/sqlx"
+	"github.com/zzztttkkk/sha/validator"
 	"net/http"
 )
 
 func register(method, path string, fn HandlerFunc, form interface{}) {
 	internal.Dig.Append(
 		func(router Router, _ _PermOK) {
-			router.HandleWithDoc(method, path, fn, form)
+			router.HandleWithDoc(method, path, fn, validator.NewMarkdownDocument(form, validator.Undefined))
 		},
 	)
 }
 
-func Recover(rw ReqWriter) {
+func Recover(rctx RCtx) {
 	v := recover()
 	if v == nil {
 		return
@@ -28,16 +28,16 @@ func Recover(rw ReqWriter) {
 	case error:
 		switch tv {
 		case auth.ErrUnauthenticatedOperation:
-			rw.SetStatus(http.StatusUnauthorized)
+			rctx.SetStatus(http.StatusUnauthorized)
 			return
 		case ErrPermissionDenied:
-			rw.SetStatus(http.StatusForbidden)
+			rctx.SetStatus(http.StatusForbidden)
 			return
 		case ErrUnknownPermission, sql.ErrNoRows:
-			rw.SetStatus(http.StatusNotFound)
+			rctx.SetStatus(http.StatusNotFound)
 			return
 		case ErrUnknownRole, dao.ErrCircularReference:
-			rw.SetStatus(http.StatusInternalServerError)
+			rctx.SetStatus(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -54,14 +54,14 @@ func init() {
 	register(
 		"POST",
 		"/perms",
-		func(rctx context.Context, rw ReqWriter) {
-			ctx, committer := sqlx.Tx(rctx)
+		func(rctx RCtx) {
+			ctx, committer := sqlx.Tx(wrapCtx(rctx))
 			defer committer()
 
 			MustGrantedAll(ctx, PermPermissionCreate)
 
 			var form Form
-			rw.MustValidate(&form)
+			rctx.MustValidate(&form)
 			dao.NewPerm(ctx, form.Name, form.Desc)
 		},
 		Form{},
@@ -72,10 +72,10 @@ func init() {
 	register(
 		"GET",
 		"/perms",
-		func(rctx context.Context, rw ReqWriter) {
+		func(rctx RCtx) {
 			MustGrantedAll(rctx, PermPermissionListAll)
 			ret := dao.Perms(rctx)
-			rw.WriteJSON(ret)
+			rctx.WriteJSON(ret)
 		},
 		nil,
 	)
@@ -89,14 +89,14 @@ func init() {
 	register(
 		"DELETE",
 		"/perm/:name",
-		func(rctx context.Context, rw ReqWriter) {
-			ctx, committer := sqlx.Tx(rctx)
+		func(rctx RCtx) {
+			ctx, committer := sqlx.Tx(wrapCtx(rctx))
 			defer committer()
 
 			MustGrantedAll(ctx, PermPermissionDelete)
 
 			var form Form
-			rw.MustValidate(&form)
+			rctx.MustValidate(&form)
 			dao.DelPerm(ctx, form.Name)
 		},
 		Form{},

@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"reflect"
 	"sort"
 	"strings"
 
@@ -35,7 +34,7 @@ type Mux struct {
 	// unlike "Cors", "autoOptions" only runs when the request is same origin and method == "OPTIONS"
 	autoOptions       bool
 	autoSlashRedirect bool
-	docs              map[string]map[string]string
+	docs              map[string]map[string]validator.Document
 
 	NotFound RequestHandler
 }
@@ -52,7 +51,6 @@ func NewMux(option *MuxOption, checkOrigin CORSOriginChecker) *Mux {
 		customMethodTrees: map[string]*_RouteNode{},
 		stdMethodTrees:    make([]*_RouteNode, 10),
 		rawMap:            map[string]map[string]RequestHandler{},
-		docs:              map[string]map[string]string{},
 		autoOptions:       option.AutoOptions,
 		autoSlashRedirect: option.AutoSlashRedirect,
 	}
@@ -117,10 +115,6 @@ func (mux *Mux) Print() {
 	log.Print(buf.String())
 }
 
-func (mux *Mux) doAddHandler(method, path string, handler RequestHandler) {
-	mux.doAddHandler1(method, path, handler, false)
-}
-
 func (mux *Mux) addToRawMap(method, path string, handler RequestHandler) {
 	m := mux.rawMap[method]
 	if len(m) < 1 {
@@ -130,7 +124,9 @@ func (mux *Mux) addToRawMap(method, path string, handler RequestHandler) {
 	m[path] = handler
 }
 
-func (mux *Mux) doAddHandler1(method, path string, handler RequestHandler, doWrap bool) {
+func (mux *Mux) doAddHandler(method, path string, handler RequestHandler, doWrap bool, doc validator.Document) {
+	method = strings.ToUpper(method)
+
 	u, e := url.Parse(path)
 	if e != nil ||
 		len(u.RawQuery) != 0 ||
@@ -159,16 +155,14 @@ func (mux *Mux) doAddHandler1(method, path string, handler RequestHandler, doWra
 		mux.doAutoOptions(method, path)
 	}
 
-	path = "/" + path
-	dh, ok := handler.(Documenter)
-	if ok {
+	if doc != nil {
+		path = "/" + path
 		dm := mux.docs[path]
 		if dm == nil {
-			dm = map[string]string{}
+			dm = map[string]validator.Document{}
 			mux.docs[path] = dm
 		}
-
-		dm[method] = dh.Document()
+		dm[method] = doc
 	}
 }
 
@@ -183,14 +177,12 @@ func (mux *Mux) doAutoOptions(method, path string) {
 
 func (mux *Mux) AddBranch(prefix string, router Router) {
 	v, ok := router.(*_RouteBranch)
-	if !ok {
-		panic(fmt.Errorf("sha.router: `%v` is not a branch", router))
+	if ok {
+		v.prefix = prefix
+		v.root = mux
+		v._MiddlewareNode.parentMwNode = &mux._MiddlewareNode
+		v.goDown()
 	}
-	v.prefix = prefix
-	v.root = mux
-	v._MiddlewareNode.parentMwNode = &mux._MiddlewareNode
-
-	v.goDown()
 }
 
 func (mux *Mux) getOrNewTree(method string) *_RouteNode {
@@ -269,40 +261,23 @@ func autoSlashRedirect(newNode *_RouteNode) {
 }
 
 func (mux *Mux) HTTP(method, path string, handler RequestHandler) {
-	method = strings.ToUpper(method)
-	mux.doAddHandler1(method, path, handler, true)
+	mux.doAddHandler(method, path, handler, true, nil)
 }
 
 func (mux *Mux) WebSocket(path string, wh WebSocketHandlerFunc) {
 	mux.HTTP("get", path, wshToHandler(wh))
 }
 
-type _FormRequestHandler struct {
-	RequestHandler
-	Documenter
-}
-
-func (mux *Mux) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
-	if form == nil {
-		mux.HTTP(method, path, handler)
-		return
-	}
-
-	mux.HTTP(
-		method, path,
-		&_FormRequestHandler{
-			RequestHandler: handler,
-			Documenter:     validator.GetRules(reflect.TypeOf(form)),
-		},
-	)
+func (mux *Mux) HTTPWithDocument(method, path string, handler RequestHandler, doc validator.Document) {
+	mux.doAddHandler(method, path, handler, true, doc)
 }
 
 func (mux *Mux) HTTPWithMiddleware(middleware []Middleware, method, path string, handler RequestHandler) {
-	mux.HTTP(method, path, handlerWithMiddleware(handler, middleware...))
+	mux.doAddHandler(method, path, handlerWithMiddleware(handler, middleware...), true, nil)
 }
 
-func (mux *Mux) HTTPWithMiddlewareAndForm(middleware []Middleware, method, path string, handler RequestHandler, form interface{}) {
-	mux.HTTPWithForm(method, path, handlerWithMiddleware(handler, middleware...), form)
+func (mux *Mux) HTTPWithMiddlewareAndDocument(middleware []Middleware, method, path string, handler RequestHandler, doc validator.Document) {
+	mux.HTTPWithDocument(method, path, handlerWithMiddleware(handler, middleware...), doc)
 }
 
 var defaultNotFound = RequestHandlerFunc(func(ctx *RequestCtx) { ctx.SetStatus(StatusNotFound) })
@@ -367,7 +342,7 @@ func (mux *Mux) HandleDoc(method, path string, middleware ...Middleware) {
 			panic(err)
 		}
 
-		var m = map[string]map[string]string{}
+		var m = map[string]map[string]validator.Document{}
 		for k, v := range mux.docs {
 			if strings.HasPrefix(k, form.Prefix) {
 				m[k] = v
@@ -391,7 +366,11 @@ func (mux *Mux) HandleDoc(method, path string, middleware ...Middleware) {
 			sort.Strings(methods)
 			for _, method := range methods {
 				buf.WriteString(fmt.Sprintf("### method: %s\n\n", method))
-				buf.WriteString(mmap[method])
+				d := mmap[method]
+				buf.WriteString(fmt.Sprintf(
+					"### input: \n%s\n### output: \n%s\n",
+					d.Input(), d.Output(),
+				))
 				buf.WriteString("\n")
 			}
 		}
@@ -399,10 +378,10 @@ func (mux *Mux) HandleDoc(method, path string, middleware ...Middleware) {
 		_, _ = ctx.WriteString(buf.String())
 	}
 
-	mux.HTTPWithForm(
+	mux.HTTPWithDocument(
 		method, path,
 		handlerWithMiddleware(RequestHandlerFunc(handler), middleware...),
-		Form{},
+		nil,
 	)
 }
 

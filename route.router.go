@@ -3,6 +3,7 @@ package sha
 import (
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
+	"github.com/zzztttkkk/sha/validator"
 	"net/http"
 	pathlib "path"
 	"strings"
@@ -14,9 +15,9 @@ type Documenter interface {
 
 type Router interface {
 	HTTP(method, path string, handler RequestHandler)
-	HTTPWithForm(method, path string, handler RequestHandler, form interface{})
+	HTTPWithDocument(method, path string, handler RequestHandler, doc validator.Document)
 	HTTPWithMiddleware(middleware []Middleware, method, path string, handler RequestHandler)
-	HTTPWithMiddlewareAndForm(middleware []Middleware, method, path string, handler RequestHandler, form interface{})
+	HTTPWithMiddlewareAndDocument(middleware []Middleware, method, path string, handler RequestHandler, doc validator.Document)
 
 	WebSocket(path string, handler WebSocketHandlerFunc)
 
