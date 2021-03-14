@@ -61,6 +61,14 @@ func (d *userData) GetBytes(key []byte) interface{} {
 	return d.Get(utils.S(key))
 }
 
+func (d *userData) Visit(fn func(k []byte, v interface{}) bool) {
+	for _, item := range *d {
+		if !fn(item.key, item.value) {
+			break
+		}
+	}
+}
+
 func (d *userData) Reset() {
 	args := *d
 	n := len(args)

@@ -297,7 +297,7 @@ func (protocol *_Http11Protocol) initRequest(ctx *RequestCtx) {
 			req.Path = append(req.Path, '/')
 		}
 
-		req.Path = decodeURI(cleanPath(req.Path))
+		req.Path = utils.DecodeURI(cleanPath(req.Path))
 		req.bodyBufferPtr = &ctx.buf
 	}
 }
@@ -385,7 +385,7 @@ func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte,
 
 				ctx.Request.Header.AppendBytes(
 					utils.InplaceTrimAsciiSpace(ctx.currentHeaderKey),
-					decodeURI(utils.InplaceTrimAsciiSpace(ctx.buf)),
+					utils.DecodeURI(utils.InplaceTrimAsciiSpace(ctx.buf)),
 				)
 				ctx.currentHeaderKey = ctx.currentHeaderKey[:0]
 				ctx.buf = ctx.buf[:0]

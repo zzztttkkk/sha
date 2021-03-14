@@ -14,13 +14,7 @@ func (ctx *RequestCtx) MustValidate(dist interface{}) {
 	}
 }
 
-func (ctx *RequestCtx) Validate(dist interface{}) HttpError {
-	e, isNil := validator.Validate(ctx, dist)
-	if isNil {
-		return nil
-	}
-	return e
-}
+func (ctx *RequestCtx) Validate(dist interface{}) HttpError { return validator.Validate(ctx, dist) }
 
 func (ctx *RequestCtx) ValidateJSON(dist interface{}) HttpError {
 	if !bytes.HasPrefix(ctx.Request.Header.ContentType(), utils.B(MIMEJson)) {

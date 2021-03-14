@@ -258,7 +258,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *FormError {
 }
 
 // return value is a ptr, not an interface.
-func Validate(former Former, dist interface{}) (err *FormError, isNil bool) {
+func Validate(former Former, dist interface{}) (err *FormError) {
 	v := reflect.ValueOf(dist).Elem()
 	var field reflect.Value
 	for _, rule := range GetRules(v.Type()) {
@@ -272,8 +272,8 @@ func Validate(former Former, dist interface{}) (err *FormError, isNil bool) {
 			err = rule.bindOne(former, &field)
 		}
 		if err != nil {
-			return err, false
+			return err
 		}
 	}
-	return nil, true
+	return nil
 }

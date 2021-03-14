@@ -84,7 +84,7 @@ func (req *Request) CookieValue(key string) ([]byte, bool) {
 					key = append(key, buf...)
 					buf = buf[:0]
 				case ';':
-					req.cookies.Set(utils.S(decodeURI(key)), decodeURI(buf))
+					req.cookies.Set(utils.S(utils.DecodeURI(key)), utils.DecodeURI(buf))
 					key = key[:0]
 					buf = buf[:0]
 				case ' ':
@@ -93,7 +93,7 @@ func (req *Request) CookieValue(key string) ([]byte, bool) {
 					buf = append(buf, b)
 				}
 			}
-			req.cookies.Set(utils.S(decodeURI(key)), decodeURI(buf))
+			req.cookies.Set(utils.S(utils.DecodeURI(key)), utils.DecodeURI(buf))
 		}
 		req.cookieParsed = true
 	}

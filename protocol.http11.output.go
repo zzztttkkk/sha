@@ -59,7 +59,7 @@ func (protocol *_Http11Protocol) writeHeader(ctx *RequestCtx) error {
 		func(item *utils.KvItem) bool {
 			res.headerBuf = append(res.headerBuf, item.Key...)
 			res.headerBuf = append(res.headerBuf, headerKVSep...)
-			encodeHeaderValue(item.Val, &res.headerBuf)
+			utils.EncodeHeaderValue(item.Val, &res.headerBuf)
 			res.headerBuf = append(res.headerBuf, EndLine...)
 			return true
 		},

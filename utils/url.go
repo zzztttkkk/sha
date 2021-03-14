@@ -1,9 +1,9 @@
-package sha
+package utils
 
 // https://github.com/valyala/fasthttp/blob/c2542e5acf973cb1a2ab82d74dcb66f7afcb968b/args.go#L527
 const hex2intTable = "\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x00\x01\x02\x03\x04\x05\x06\a\b\t\x10\x10\x10\x10\x10\x10\x10\n\v\f\r\x0e\x0f\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\n\v\f\r\x0e\x0f\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10"
 
-func decodeURI(src []byte) []byte {
+func DecodeURI(src []byte) []byte {
 	cursor := 0
 	var end = len(src)
 	for i := 0; i < len(src); i++ {
@@ -35,7 +35,7 @@ func decodeURI(src []byte) []byte {
 	return src[:end]
 }
 
-func decodeURIFormed(src []byte) []byte {
+func DecodeURIFormed(src []byte) []byte {
 	cursor := 0
 	var end = len(src)
 	for i := 0; i < len(src); i++ {
@@ -82,7 +82,7 @@ func init() {
 	for b := '0'; b <= '9'; b++ {
 		noEscapedURI[b] = true
 	}
-	for _, b := range ";,/?:@&=+$-_.!~*'()#" {
+	for _, b := range "!*'();:@&=+$,/?#[]-_.~" {
 		noEscapedURI[b] = true
 	}
 
@@ -92,7 +92,7 @@ func init() {
 	noEscapedHeaderValue[' '] = true
 }
 
-func encodeURI(v []byte, buf *[]byte) {
+func EncodeURI(v []byte, buf *[]byte) {
 	for _, b := range v {
 		if noEscapedURI[b] {
 			*buf = append(*buf, b)
@@ -102,7 +102,7 @@ func encodeURI(v []byte, buf *[]byte) {
 	}
 }
 
-func encodeHeaderValue(v []byte, buf *[]byte) {
+func EncodeHeaderValue(v []byte, buf *[]byte) {
 	for _, b := range v {
 		if noEscapedHeaderValue[b] {
 			*buf = append(*buf, b)
@@ -126,7 +126,7 @@ func init() {
 	}
 }
 
-func encodeURIComponent(v []byte, buf *[]byte) {
+func EncodeURIComponent(v []byte, buf *[]byte) {
 	for _, b := range v {
 		if noEscapedURIComponent[b] {
 			*buf = append(*buf, b)

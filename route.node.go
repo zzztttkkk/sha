@@ -101,14 +101,10 @@ func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw st
 			return node
 		}
 
-		if node.handler != nil {
-			if node.autoHandler {
-				node.handler = handler
-				node.autoHandler = false
-			} else {
-				panic(fmt.Errorf("sha.router: `/%s` conflict with `%s`", raw, node.raw))
-			}
-			return node
+		if node.handler != nil && node.autoHandler {
+			node.autoHandler = false
+		} else {
+			panic(fmt.Errorf("sha.router: `/%s` conflict with `%s`", raw, node.raw))
 		}
 
 		node.handler = handler
@@ -120,7 +116,7 @@ func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw st
 	ind := strings.IndexByte(p, ':')
 	if ind < 0 { // normal part
 		if node.matcherChild != nil {
-			panic(fmt.Errorf("sha.router: `/%s` conflict with others", raw))
+			panic(fmt.Errorf("sha.router: `/%s` conflict with others, 1", raw))
 		}
 
 		sn := node.getChild(p)
@@ -132,15 +128,15 @@ func (node *_RouteNode) addHandler(path []string, handler RequestHandler, raw st
 	}
 
 	if ind == 0 { // param part
-		if len(node.children) != 0 {
-			panic(fmt.Errorf("sha.router: `/%s` conflict with others", raw))
+		if len(node.children) != 0 || node.matcherChild != nil {
+			panic(fmt.Errorf("sha.router: `/%s` conflict with others, 2", raw))
 		}
 		node.matcherChild = &_RouteNode{param: []byte(p[1:])}
 		return node.matcherChild.addHandler(path[1:], handler, raw)
 	}
 
-	if len(node.children) != 0 {
-		panic(fmt.Errorf("sha.router: `/%s` conflict with others", raw))
+	if len(node.children) != 0 || node.matcherChild != nil {
+		panic(fmt.Errorf("sha.router: `/%s` conflict with others, 3", raw))
 	}
 	if !strings.HasSuffix(p, ":*") || len(path) != 1 {
 		panic(fmt.Errorf("sha.router: bad path value `/%s`", raw))

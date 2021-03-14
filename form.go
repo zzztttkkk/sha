@@ -11,7 +11,9 @@ type Form struct {
 	utils.Kvs
 }
 
-func (form *Form) onItem(k []byte, v []byte) { form.AppendBytes(decodeURIFormed(k), decodeURIFormed(v)) }
+func (form *Form) onItem(k []byte, v []byte) {
+	form.AppendBytes(utils.DecodeURIFormed(k), utils.DecodeURIFormed(v))
+}
 
 func (form *Form) FromUrlEncoded(p []byte) {
 	var key []byte
@@ -191,11 +193,11 @@ func (p *_MultiPartParser) onFieldOk() bool {
 		v = utils.InplaceTrimAsciiSpace(v)
 
 		if bytes.HasPrefix(v, nameStr) {
-			name = decodeURI(v[6 : len(v)-1])
+			name = utils.DecodeURI(v[6 : len(v)-1])
 			continue
 		}
 		if bytes.HasPrefix(v, filenameStr) {
-			filename = decodeURI(v[10 : len(v)-1])
+			filename = utils.DecodeURI(v[10 : len(v)-1])
 		}
 	}
 

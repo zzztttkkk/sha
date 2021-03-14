@@ -59,6 +59,8 @@ func (ctx *RequestCtx) SetCustomData(key string, value interface{}) { ctx.ud.Set
 
 func (ctx *RequestCtx) GetCustomData(key string) interface{} { return ctx.ud.Get(key) }
 
+func (ctx *RequestCtx) VisitCustomData(fn func(key []byte, v interface{}) bool) { ctx.ud.Visit(fn) }
+
 // http connection
 func (ctx *RequestCtx) Close() { ctx.Response.Header.Set(HeaderConnection, []byte("close")) }
 
@@ -96,20 +98,19 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 	return utils.S(inPlaceLowercase(v))
 }
 
-func (ctx *RequestCtx) OnReset(fn func(ctx *RequestCtx)) {
-	ctx.onReset = append(ctx.onReset, fn)
-}
+func (ctx *RequestCtx) OnReset(fn func(ctx *RequestCtx)) { ctx.onReset = append(ctx.onReset, fn) }
 
 func (ctx *RequestCtx) Reset() {
 	if ctx.ctx == nil {
 		return
 	}
 
-	for _, fn := range ctx.onReset {
-		fn(ctx)
+	if len(ctx.onReset) > 0 {
+		for _, fn := range ctx.onReset {
+			fn(ctx)
+		}
+		ctx.onReset = ctx.onReset[:0]
 	}
-
-	ctx.onReset = ctx.onReset[:0]
 
 	ctx.ctx = nil
 	ctx.Request.Reset()
