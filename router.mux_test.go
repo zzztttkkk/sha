@@ -62,5 +62,6 @@ func TestMux(t *testing.T) {
 	groupA.HTTP("get", "/", makeHandler(6))
 	groupA.HTTP("get", "/files/{filename:*}", makeHandler(7))
 
+	fmt.Print(mux)
 	ListenAndServe("", mux)
 }

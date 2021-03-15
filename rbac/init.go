@@ -15,10 +15,14 @@ type Options struct {
 	LogReadOperation bool
 }
 
-func Init(router Router, options *Options) {
+var gAdapter CtxAdapter
+
+func Init(router Router, adapter CtxAdapter, options *Options) {
 	if options == nil {
 		options = &Options{}
 	}
+
+	gAdapter = adapter
 
 	if len(options.TableNamePrefix) > 0 {
 		model.TablenamePrefix = options.TableNamePrefix

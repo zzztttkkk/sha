@@ -43,6 +43,9 @@ type RequestCtx struct {
 
 	// hook
 	onReset []func(ctx *RequestCtx)
+
+	// err
+	err interface{}
 }
 
 // context.Context
@@ -53,6 +56,28 @@ func (ctx *RequestCtx) Done() <-chan struct{} { return ctx.ctx.Done() }
 func (ctx *RequestCtx) Err() error { return ctx.ctx.Err() }
 
 func (ctx *RequestCtx) Value(key interface{}) interface{} { return ctx.ctx.Value(key) }
+
+func (ctx *RequestCtx) Error(v interface{}) { ctx.err = v }
+
+type _RCtxKeyT int
+
+const (
+	_RCtxKey = _RCtxKeyT(iota)
+)
+
+func Wrap(ctx *RequestCtx) context.Context { return context.WithValue(ctx, _RCtxKey, ctx) }
+
+func Unwrap(ctx context.Context) *RequestCtx {
+	c, ok := ctx.(*RequestCtx)
+	if ok {
+		return c
+	}
+	v := ctx.Value(_RCtxKey)
+	if v != nil {
+		return v.(*RequestCtx)
+	}
+	return nil
+}
 
 // custom data
 func (ctx *RequestCtx) SetCustomData(key string, value interface{}) { ctx.ud.Set(key, value) }

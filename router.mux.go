@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -63,6 +64,16 @@ func (m *Mux) HTTP(method, path string, handler RequestHandler) {
 
 var _ Router = (*Mux)(nil)
 
+func isFileSystemHandler(h RequestHandler) bool {
+	_, ok := h.(*_FileSystemHandler)
+	return ok
+}
+
+func isFileContentHandler(h RequestHandler) bool {
+	_, ok := h.(*_FileContentHandler)
+	return ok
+}
+
 func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler RequestHandler) {
 	var middlewares []Middleware
 	var document validator.Document
@@ -110,6 +121,8 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 		}
 	}
 
+	rawHandler := handler
+
 	if !isAutoOptionsHandler(handler) {
 		var ms []Middleware
 		ms = append(ms, m._MiddlewareNode.local...)
@@ -136,80 +149,93 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 
 		m1[method] = document
 	}
+
+	if isAutoOptionsHandler(rawHandler) {
+		return
+	}
+
+	m2 := m.all[path]
+	if m2 == nil {
+		m2 = map[string]string{}
+		m.all[path] = m2
+	}
+
+	handlerDesc := ""
+	if isFileSystemHandler(rawHandler) {
+		handlerDesc = fmt.Sprintf("FileSystem %s, auto_index=%v", rawHandler.(*_FileSystemHandler).fs, rawHandler.(*_FileSystemHandler).autoIndex)
+	} else if isFileContentHandler(rawHandler) {
+		handlerDesc = fmt.Sprintf("FileContent %s", rawHandler.(*_FileContentHandler).fp)
+	}
+	m2[method] = handlerDesc
 }
 
 func (m *Mux) NewGroup(prefix string) Router {
 	return &_MuxGroup{
-		prefix: prefix,
+		prefix: checkPrefix(prefix),
 		mux:    m,
 	}
 }
 
-func (m *Mux) Websocket(path string, handlerFunc WebSocketHandlerFunc, opt *HandlerOptions) {
+func (m *Mux) Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions) {
 	m.HTTPWithOptions(opt, "get", path, wshToHandler(handlerFunc))
 }
 
-func makeFileSystemHandler(fs http.FileSystem, autoIndex bool) RequestHandler {
-	return RequestHandlerFunc(func(ctx *RequestCtx) {
-		fp, _ := ctx.URLParam("filepath")
-		serveFileSystem(ctx, fs, filepath.Clean(utils.S(fp)), autoIndex)
-	})
+type _FileSystemHandler struct {
+	fs        http.FileSystem
+	autoIndex bool
 }
 
-func (m *Mux) FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool) {
+func (fh *_FileSystemHandler) Handle(ctx *RequestCtx) {
+	fp, _ := ctx.URLParam("filepath")
+	serveFileSystem(ctx, fh.fs, filepath.Clean(utils.S(fp)), fh.autoIndex)
+}
+
+func makeFileSystemHandler(path string, fs http.FileSystem, autoIndex bool) RequestHandler {
 	if !strings.HasSuffix(path, "/{filepath:*}") {
 		panic(fmt.Errorf("sha.mux: path must endswith `/{filepath:*}`"))
 	}
+	return &_FileSystemHandler{autoIndex: autoIndex, fs: fs}
+}
+
+func (m *Mux) FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool) {
 	m.HTTPWithOptions(
 		opt,
 		method, path,
-		makeFileSystemHandler(fs, autoIndex),
+		makeFileSystemHandler(path, fs, autoIndex),
 	)
 }
 
-func makeFileContentHandler(filepath string) RequestHandler {
-	return RequestHandlerFunc(func(ctx *RequestCtx) {
-		f, e := os.Open(filepath)
-		if e != nil {
-			ctx.SetStatus(toHTTPError(e))
-			return
-		}
-		defer f.Close()
-		d, err := f.Stat()
-		if err != nil {
-			ctx.SetStatus(toHTTPError(err))
-			return
-		}
-		serveFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
-	})
+type _FileContentHandler struct {
+	fp string
 }
 
-func (m *Mux) FileContent(opt *HandlerOptions, method, path, filepath string) {
+func (fh *_FileContentHandler) Handle(ctx *RequestCtx) {
+	f, e := os.Open(fh.fp)
+	if e != nil {
+		ctx.SetStatus(toHTTPError(e))
+		return
+	}
+	defer f.Close()
+	d, err := f.Stat()
+	if err != nil {
+		ctx.SetStatus(toHTTPError(err))
+		return
+	}
+	serveFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
+}
+
+func makeFileContentHandler(path, filepath string) RequestHandler {
 	if strings.Contains(path, "{") {
 		panic(fmt.Errorf("sha.mux: path can not contains `{.*}`"))
 	}
-	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(filepath))
+	return &_FileContentHandler{fp: filepath}
 }
 
-func (m *Mux) Handle(ctx *RequestCtx) {
-	defer func() {
-		v := recover()
-		if v == nil {
-			return
-		}
+func (m *Mux) FileContent(opt *HandlerOptions, method, path, filepath string) {
+	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(path, filepath))
+}
 
-		if m.recover != nil {
-			m.recover(ctx, v)
-			return
-		}
-
-		log.Printf("sha.error: %v\n", v)
-
-		ctx.Response.statusCode = StatusInternalServerError
-		ctx.Response.ResetBodyBuffer()
-		ctx.Response.Header.Reset()
-	}()
-
+func (m *Mux) getTree(ctx *RequestCtx) *_RadixTree {
 	var tree *_RadixTree
 	if ctx.Request._method != 0 {
 		tree = m.stdTrees[ctx.Request._method]
@@ -225,6 +251,35 @@ func (m *Mux) Handle(ctx *RequestCtx) {
 		} else {
 			ctx.Response.statusCode = StatusNotFound
 		}
+		return nil
+	}
+	return tree
+}
+
+func (m *Mux) Handle(ctx *RequestCtx) {
+	defer func() {
+		v := recover()
+		if v == nil {
+			v = ctx.err
+			if v == nil {
+				return
+			}
+		}
+
+		if m.recover != nil {
+			m.recover(ctx, v)
+			return
+		}
+
+		log.Printf("sha.error: %v\n", v)
+
+		ctx.Response.statusCode = StatusInternalServerError
+		ctx.Response.ResetBodyBuffer()
+		ctx.Response.Header.Reset()
+	}()
+
+	tree := m.getTree(ctx)
+	if tree == nil {
 		return
 	}
 
@@ -252,8 +307,46 @@ func (m *Mux) Handle(ctx *RequestCtx) {
 	h.Handle(ctx)
 }
 
-func (m *Mux) Print() {
+func (m *Mux) String() string {
+	var buf strings.Builder
+	var ps []string
+	for p := range m.all {
+		ps = append(ps, p)
+	}
+	sort.Slice(ps, func(i, j int) bool { return strings.ToUpper(ps[i]) < strings.ToUpper(ps[j]) })
 
+	for _, p := range ps {
+		pm := m.all[p]
+
+		buf.WriteString(fmt.Sprintf("Path: %s\n", p))
+
+		var ms []string
+		for me := range pm {
+			ms = append(ms, me)
+		}
+		sort.Slice(ms, func(i, j int) bool { return ms[i] < ms[j] })
+
+		if len(ms) > 0 {
+			buf.WriteByte('\t')
+		}
+
+		for i, me := range ms {
+			h := pm[me]
+			buf.WriteString(me)
+			if len(h) > 0 {
+				buf.WriteString("(")
+				buf.WriteString(h)
+				buf.WriteString(")")
+			}
+			if i < len(ms)-1 {
+				buf.WriteString(", ")
+			}
+		}
+
+		buf.WriteByte('\n')
+	}
+
+	return buf.String()
 }
 
 func NewMux(opt *MuxOptions) *Mux {
@@ -262,9 +355,10 @@ func NewMux(opt *MuxOptions) *Mux {
 	}
 
 	mux := &Mux{
-		prefix:      opt.Prefix,
+		prefix:      checkPrefix(opt.Prefix),
 		documents:   map[string]map[string]validator.Document{},
 		customTrees: map[string]*_RadixTree{},
+		all:         map[string]map[string]string{},
 
 		doTrailingSlashRedirect: opt.DoTrailingSlashRedirect,
 		methodNotAllowed:        opt.MethodNotAllowed,

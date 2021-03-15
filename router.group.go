@@ -3,7 +3,7 @@ package sha
 import (
 	"fmt"
 	"net/http"
-	"strings"
+	"regexp"
 )
 
 type _MuxGroup struct {
@@ -14,22 +14,16 @@ type _MuxGroup struct {
 	mux    *Mux
 }
 
-func (m *_MuxGroup) Websocket(path string, handlerFunc WebSocketHandlerFunc, opt *HandlerOptions) {
+func (m *_MuxGroup) Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions) {
 	m.HTTPWithOptions(opt, "get", path, wshToHandler(handlerFunc))
 }
 
 func (m *_MuxGroup) FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool) {
-	if !strings.HasSuffix(path, "/{filepath:*}") {
-		panic(fmt.Errorf("sha.mux: path must endswith `/{filepath:*}`"))
-	}
-	m.HTTPWithOptions(opt, method, path, makeFileSystemHandler(fs, autoIndex))
+	m.HTTPWithOptions(opt, method, path, makeFileSystemHandler(path, fs, autoIndex))
 }
 
 func (m *_MuxGroup) FileContent(opt *HandlerOptions, method, path, filepath string) {
-	if strings.Contains(path, "{") {
-		panic(fmt.Errorf("sha.mux: path can not contains `{.*}`"))
-	}
-	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(filepath))
+	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(path, filepath))
 }
 
 func (m *_MuxGroup) HTTP(method, path string, handler RequestHandler) {
@@ -69,9 +63,21 @@ func (m *_MuxGroup) add(childMiddlewares []Middleware, method, path string, hand
 	m.mux.HTTPWithOptions(opt, method, path, handler)
 }
 
+var prefixReg = regexp.MustCompile("/[a-zA-Z_]*")
+
+func checkPrefix(v string) string {
+	if len(v) == 0 {
+		return v
+	}
+	if !prefixReg.MatchString(v) {
+		panic(fmt.Errorf("sha.router: bad prefix `%s`", v))
+	}
+	return v
+}
+
 func (m *_MuxGroup) NewGroup(prefix string) Router {
 	return &_MuxGroup{
-		prefix: prefix,
+		prefix: checkPrefix(prefix),
 		parent: m,
 		mux:    m.mux,
 	}

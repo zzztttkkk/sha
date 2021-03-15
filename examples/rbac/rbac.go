@@ -24,25 +24,17 @@ type ManagerFunc func(ctx context.Context) (auth.Subject, error)
 func (f ManagerFunc) Auth(ctx context.Context) (auth.Subject, error) { return f(ctx) }
 
 func main() {
-	mux := sha.NewMux(nil, nil)
+	mux := sha.NewMux(nil)
 	server := sha.Default(mux)
-	mux.HandleDoc("get", "/doc")
+	//mux.HandleDoc("get", "/doc")
 
-	mux.HTTPWithOptions(
-		"get",
-		"/redirect",
-		sha.RequestHandlerFunc(func(ctx *sha.RequestCtx) { sha.RedirectPermanently("https://google.com") }),
-	)
-
-	branch := sha.NewBranch()
+	rbacGroup := mux.NewGroup("/rbac")
 
 	auth.Use(ManagerFunc(func(ctx context.Context) (auth.Subject, error) {
-		ctx = rbac.UnwrapRequestCtx(ctx)
-		if ctx == nil {
+		rctx := sha.Unwrap(ctx)
+		if rctx == nil {
 			return nil, sha.StatusError(sha.StatusUnauthorized)
 		}
-
-		rctx := ctx.(*sha.RequestCtx)
 		pwd, _ := rctx.Request.Header.Get("RBAC-Password")
 		name, _ := rctx.Request.Header.Get("RBAC-Name")
 
@@ -51,11 +43,9 @@ func main() {
 		}
 		return nil, sha.StatusError(sha.StatusUnauthorized)
 	}))
-	sha.UseRBAC(branch, nil)
+	sha.UseRBAC(rbacGroup, nil)
 
 	rbac.GrantRoot(12)
-
-	mux.AddBranch("/rbac", branch)
 
 	mux.Print()
 	server.ListenAndServe()

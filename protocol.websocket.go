@@ -135,10 +135,14 @@ func (p *_WebSocketProtocol) Hijack(ctx *RequestCtx) *websocket.Conn {
 	)
 }
 
-type WebSocketHandlerFunc func(ctx context.Context, req *Request, conn *websocket.Conn, subProtocolName string)
+type WebsocketHandlerFunc func(ctx context.Context, req *Request, conn *websocket.Conn, subProtocolName string)
 
-func wshToHandler(wsh WebSocketHandlerFunc) RequestHandler {
-	return RequestHandlerFunc(func(ctx *RequestCtx) {
+type _WebsocketHandler func(ctx *RequestCtx)
+
+func (w _WebsocketHandler) Handle(ctx *RequestCtx) { w(ctx) }
+
+func wshToHandler(wsh WebsocketHandlerFunc) RequestHandler {
+	return _WebsocketHandler(func(ctx *RequestCtx) {
 		p := ctx.UpgradeProtocol()
 		if p != "websocket" {
 			ctx.SetStatus(StatusBadRequest)

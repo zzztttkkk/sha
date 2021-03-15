@@ -5,23 +5,20 @@ import (
 	"github.com/zzztttkkk/sha/rbac/dao"
 	"github.com/zzztttkkk/sha/rbac/internal"
 	"github.com/zzztttkkk/sha/validator"
-	"html/template"
 )
 
-type RCtx interface {
-	context.Context
-	MustValidate(dist interface{})
-	SetStatus(v int)
-	Write(p []byte) (int, error)
-	WriteHTML(f []byte)
-	WriteJSON(v interface{})
-	WriteTemplate(t *template.Template, data interface{})
-}
-
-type HandlerFunc func(rctx RCtx)
+type HandlerFunc func(ctx context.Context)
 
 type Router interface {
-	HandleWithDoc(method string, path string, handler HandlerFunc, doc validator.Document)
+	HTTP(method string, path string, handler HandlerFunc, doc validator.Document)
+}
+
+type CtxAdapter interface {
+	ValidateForm(ctx context.Context, dist interface{}) error
+	SetResponseStatus(ctx context.Context, v int)
+	Write(ctx context.Context, p []byte) (int, error)
+	WriteJSON(ctx context.Context, v interface{})
+	SetError(ctx context.Context, v interface{})
 }
 
 const (

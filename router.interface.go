@@ -23,7 +23,7 @@ type HandlerOptions struct {
 type Router interface {
 	HTTPWithOptions(opt *HandlerOptions, method, path string, handler RequestHandler)
 	HTTP(method, path string, handler RequestHandler)
-	Websocket(path string, handlerFunc WebSocketHandlerFunc, opt *HandlerOptions)
+	Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions)
 	FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool)
 	FileContent(opt *HandlerOptions, method, path, filepath string)
 
@@ -34,12 +34,11 @@ type Router interface {
 func middlewaresWrap(middlewares []Middleware, h RequestHandler) RequestHandler {
 	return RequestHandlerFunc(func(ctx *RequestCtx) {
 		cursor := -1
-		stop := false
 
 		var next func()
 
 		next = func() {
-			if stop {
+			if ctx.err != nil {
 				return
 			}
 
