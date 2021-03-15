@@ -28,7 +28,7 @@ func main() {
 	server := sha.Default(mux)
 	mux.HandleDoc("get", "/doc")
 
-	mux.HTTP(
+	mux.HTTPWithOptions(
 		"get",
 		"/redirect",
 		sha.RequestHandlerFunc(func(ctx *sha.RequestCtx) { sha.RedirectPermanently("https://google.com") }),

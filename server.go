@@ -274,6 +274,10 @@ func (s *Server) serveConn(conn net.Conn) {
 }
 
 func ListenAndServe(addr string, handler RequestHandler) {
+	if addr == "" {
+		addr = "127.0.0.1:5986"
+	}
+
 	server := Default(handler)
 	server.option.Addr = addr
 	server.ListenAndServe()

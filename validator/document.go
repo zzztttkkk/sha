@@ -1,6 +1,8 @@
 package validator
 
 type Document interface {
+	Tags() []string
+	Description() string
 	Input() string
 	Output() string
 }

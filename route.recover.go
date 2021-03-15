@@ -42,12 +42,7 @@ var (
 	httpErrType    = reflect.TypeOf((*HttpError)(nil)).Elem()
 )
 
-func doRecover(ctx *RequestCtx) {
-	v := recover()
-	if v == nil {
-		return
-	}
-
+func doRecover(ctx *RequestCtx, v interface{}) {
 	ctx.Response.ResetBodyBuffer()
 
 	vt := reflect.TypeOf(v)

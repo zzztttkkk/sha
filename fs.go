@@ -65,7 +65,7 @@ func dirList(ctx *RequestCtx, f http.File) {
 	_, _ = fmt.Fprintf(res, "</pre>\n")
 }
 
-// errNoOverlap is returned by ServeFileContent's parseRange if first-byte-pos of
+// errNoOverlap is returned by serveFileContent's parseRange if first-byte-pos of
 // all of the byte-range-spec values is greater than the content size.
 var errNoOverlap = errors.New("invalid range: failed to overlap")
 
@@ -89,7 +89,7 @@ var defaultMIMEMap = map[string]string{
 // if modtime.IsZero(), modtime is unknown.
 // content must be seeked to the beginning of the file.
 // The sizeFunc is called at most once. Its error, if any, is sent in the HTTP response.
-func ServeFileContent(ctx *RequestCtx, name string, modtime time.Time, size int64, content io.ReadSeeker) {
+func serveFileContent(ctx *RequestCtx, name string, modtime time.Time, size int64, content io.ReadSeeker) {
 	w := &ctx.Response
 	r := &ctx.Request
 
@@ -455,7 +455,7 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 var indexPage = []byte("/index.html")
 
 // name is '/'-separated, not filepath.Separator.
-func ServeFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
+func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
 	w := &ctx.Response
 	r := &ctx.Request
 
@@ -514,7 +514,7 @@ func ServeFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, index boo
 		return
 	}
 
-	ServeFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
+	serveFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
 }
 
 // toHTTPError returns a non-specific HTTP error message and status code

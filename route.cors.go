@@ -4,7 +4,8 @@ import (
 	"strconv"
 )
 
-type CorsOption struct {
+type CorsOptions struct {
+	Name             string `json:"name" toml:"name"`
 	AllowMethods     string `json:"allow_methods" toml:"allow-methods"`
 	AllowHeaders     string `json:"allow_headers" toml:"allow-headers"`
 	ExposeHeaders    string `json:"expose_headers" toml:"expose-headers"`
@@ -12,15 +13,15 @@ type CorsOption struct {
 	MaxAge           int64  `json:"max_age" toml:"max-age"`
 }
 
-type CorsOptions struct {
+type _CorsOptions struct {
 	headerKeys []string
 	headerVals [][]byte
 }
 
-type CORSOriginChecker func(origin []byte) *CorsOptions
+type OriginToName func(origin []byte) string
 
-func NewCorsOptions(cc *CorsOption) *CorsOptions {
-	v := &CorsOptions{}
+func newCorsOptions(cc *CorsOptions) *_CorsOptions {
+	v := &_CorsOptions{}
 
 	if cc.MaxAge > 0 {
 		v.headerKeys = append(v.headerKeys, HeaderAccessControlMaxAge)
@@ -49,7 +50,7 @@ func NewCorsOptions(cc *CorsOption) *CorsOptions {
 	return v
 }
 
-func (options *CorsOptions) writeHeader(ctx *RequestCtx, origin []byte) {
+func (options *_CorsOptions) writeHeader(ctx *RequestCtx, origin []byte) {
 	header := &ctx.Response.Header
 	header.Set(HeaderAccessControlAllowOrigin, origin)
 	for i := 0; i < len(options.headerKeys); i++ {

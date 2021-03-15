@@ -13,6 +13,19 @@ func (b *Buf) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+func (b *Buf) WriteString(v string) {
+	b.Data = append(b.Data, v...)
+}
+
+func (b *Buf) WriteByte(v byte) error {
+	b.Data = append(b.Data, v)
+	return nil
+}
+
+func (b *Buf) Reset() {
+	b.Data = b.Data[:0]
+}
+
 type BufferPool struct {
 	sync.Pool
 	maxSize int

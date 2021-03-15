@@ -60,9 +60,25 @@ func (kvs *Kvs) AppendBytes(k, v []byte) *KvItem {
 	return item
 }
 
-func (kvs *Kvs) Set(k string, v []byte) {
+func (kvs *Kvs) AppendString(k, v string) *KvItem {
+	var item *KvItem
+
+	s := len(kvs.lst)
+	if cap(kvs.lst) > s {
+		kvs.lst = kvs.lst[:s+1]
+	} else {
+		kvs.lst = append(kvs.lst, KvItem{})
+	}
+	item = &(kvs.lst[len(kvs.lst)-1])
+	item.invalid = false
+	item.Key = append(item.Key, k...)
+	item.Val = append(item.Val, v...)
+	return item
+}
+
+func (kvs *Kvs) Set(k string, v []byte) *KvItem {
 	kvs.Del(k)
-	kvs.Append(k, v)
+	return kvs.Append(k, v)
 }
 
 func (kvs *Kvs) Del(k string) {
