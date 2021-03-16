@@ -65,7 +65,9 @@ const (
 	_RCtxKey = _RCtxKeyT(iota)
 )
 
-func Wrap(ctx *RequestCtx) context.Context { return context.WithValue(ctx, _RCtxKey, ctx) }
+func Wrap(ctx *RequestCtx) context.Context {
+	return context.WithValue(ctx, _RCtxKey, ctx)
+}
 
 func Unwrap(ctx context.Context) *RequestCtx {
 	c, ok := ctx.(*RequestCtx)

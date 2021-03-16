@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"net/http"
@@ -103,10 +102,6 @@ func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *FormError {
 		} else {
 			return &FormError{FormName: rule.formName, Type: MissingRequired}
 		}
-	}
-
-	if !rule.notTrimSpace {
-		fv = bytes.TrimSpace(fv)
 	}
 
 	var ret interface{}

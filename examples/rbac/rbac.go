@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/zzztttkkk/sha"
 	"github.com/zzztttkkk/sha/auth"
@@ -30,23 +31,25 @@ func main() {
 
 	rbacGroup := mux.NewGroup("/rbac")
 
-	auth.Use(ManagerFunc(func(ctx context.Context) (auth.Subject, error) {
-		rctx := sha.Unwrap(ctx)
-		if rctx == nil {
-			return nil, sha.StatusError(sha.StatusUnauthorized)
-		}
-		pwd, _ := rctx.Request.Header.Get("RBAC-Password")
-		name, _ := rctx.Request.Header.Get("RBAC-Name")
+	auth.Use(
+		ManagerFunc(func(ctx context.Context) (auth.Subject, error) {
+			rctx := sha.Unwrap(ctx)
+			if rctx == nil {
+				return nil, sha.StatusError(sha.StatusUnauthorized)
+			}
+			pwd, _ := rctx.Request.Header.Get("RBAC-Password")
+			name, _ := rctx.Request.Header.Get("RBAC-Name")
 
-		if string(pwd) == "123456" && string(name) == "root-12" {
-			return _RbacUser(12), nil
-		}
-		return nil, sha.StatusError(sha.StatusUnauthorized)
-	}))
+			if string(pwd) == "123456" && string(name) == "root-12" {
+				return _RbacUser(12), nil
+			}
+			return nil, sha.StatusError(sha.StatusUnauthorized)
+		}),
+	)
 	sha.UseRBAC(rbacGroup, nil)
 
-	rbac.GrantRoot(12)
+	rbac.GrantRoot(12, "init-root")
 
-	mux.Print()
+	fmt.Print(mux)
 	server.ListenAndServe()
 }

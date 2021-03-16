@@ -13,6 +13,19 @@ func logging(ctx context.Context, name string, info sqlx.JsonObject) {
 	if name[0] == 'r' && !LogReadOperation {
 		return
 	}
-	subject := auth.MustAuth(ctx)
-	internal.Logger.Printf("(%s) (%d %v) %v\n", name, subject.GetID(), subject.Info(ctx), info)
+
+	var id int64
+	var sinfo interface{}
+
+	if v := ctx.Value(internal.RootCtxKey); v != nil {
+		rootCtx := v.(*internal.RootCtx)
+		id = rootCtx.Uid
+		sinfo = rootCtx.Info
+	} else {
+		subject := auth.MustAuth(ctx)
+		id = subject.GetID()
+		sinfo = subject.Info(ctx)
+	}
+
+	internal.Logger.Printf("(%s) (%d %v) %v\n", name, id, sinfo, info)
 }

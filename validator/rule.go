@@ -231,10 +231,8 @@ func (rule *_Rule) toBytes(v []byte) ([]byte, bool) {
 		v = bytes.TrimSpace(v)
 	}
 
-	if rule.reg != nil {
-		if !rule.reg.Match(v) {
-			return nil, false
-		}
+	if rule.reg != nil && !rule.reg.Match(v) {
+		return nil, false
 	}
 
 	var ok bool
@@ -259,12 +257,6 @@ func (rule *_Rule) toString(v []byte) (string, bool) {
 }
 
 func (rule *_Rule) toInt(v []byte) (int64, bool) {
-	var ok bool
-	v, ok = rule.toBytes(v)
-	if !ok {
-		return 0, false
-	}
-
 	i, e := strconv.ParseInt(utils.S(v), 10, 64)
 	if e != nil {
 		return 0, false
@@ -282,12 +274,6 @@ func (rule *_Rule) toInt(v []byte) (int64, bool) {
 }
 
 func (rule *_Rule) toUint(v []byte) (uint64, bool) {
-	var ok bool
-	v, ok = rule.toBytes(v)
-	if !ok {
-		return 0, false
-	}
-
 	i, e := strconv.ParseUint(utils.S(v), 10, 64)
 	if e != nil {
 		return 0, false
@@ -305,12 +291,6 @@ func (rule *_Rule) toUint(v []byte) (uint64, bool) {
 }
 
 func (rule *_Rule) toFloat(v []byte) (float64, bool) {
-	var ok bool
-	v, ok = rule.toBytes(v)
-	if !ok {
-		return 0, false
-	}
-
 	i, e := strconv.ParseFloat(utils.S(v), 64)
 	if e != nil {
 		return 0, false
@@ -336,12 +316,6 @@ func init() {
 }
 
 func (rule *_Rule) toBool(v []byte) (bool, bool) {
-	var ok bool
-	v, ok = rule.toBytes(v)
-	if !ok {
-		return false, false
-	}
-
 	b, e := ParseBool(v)
 	if e != nil {
 		return false, false

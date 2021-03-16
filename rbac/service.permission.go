@@ -48,8 +48,8 @@ func Recover(ctx context.Context) {
 
 func init() {
 	type Form struct {
-		Name string `validate:"name,l=1-512"`
-		Desc string `validate:"desc,optional"`
+		Name string `validator:"name,l=1-512,r=rbacname"`
+		Desc string `validator:"desc,optional"`
 	}
 
 	register(
@@ -87,12 +87,12 @@ func init() {
 
 func init() {
 	type Form struct {
-		Name string `validate:",L=1-512,P=name"`
+		Name string `validator:"name,L=1-512,where=url,r=rbacname"`
 	}
 
 	register(
 		"DELETE",
-		"/perm/:name",
+		"/perm/{name}",
 		func(ctx context.Context) {
 			ctx, committer := sqlx.Tx(ctx)
 			defer committer()

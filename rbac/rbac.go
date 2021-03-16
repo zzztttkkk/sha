@@ -118,12 +118,19 @@ func granted(ctx context.Context, policy _Policy, permissions ...string) error {
 	for _, pn := range permissions {
 		pi, ok := perms[pn]
 		if !ok {
-			g.RUnlock()
-			return ErrUnknownPermission
+			if policy == all {
+				g.RUnlock()
+				return ErrUnknownPermission
+			}
+			continue
 		}
 		ps = append(ps, pi)
 	}
 	g.RUnlock()
+
+	if len(ps) < 1 {
+		return ErrUnknownPermission
+	}
 
 	bitmap := getBitmap(ctx, subject)
 

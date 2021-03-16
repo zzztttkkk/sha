@@ -1,7 +1,6 @@
 package rbac
 
 import (
-	"context"
 	shainternal "github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/rbac/dao"
 	"github.com/zzztttkkk/sha/rbac/internal"
@@ -10,8 +9,8 @@ import (
 
 const root = "rbac.root"
 
-func grantRoot(subjectID int64) {
-	ctx, committer := sqlx.Tx(context.Background())
+func grantRoot(rootId int64, rootInfo interface{}) {
+	ctx, committer := sqlx.Tx(internal.NewRootContext(rootId, rootInfo))
 	defer committer()
 
 	// create root role
@@ -27,13 +26,13 @@ func grantRoot(subjectID int64) {
 	}
 
 	// grant role
-	shainternal.Silence(func() { dao.GrantRole(ctx, root, subjectID) })
+	shainternal.Silence(func() { dao.GrantRole(ctx, root, rootId) })
 }
 
-func GrantRoot(subjectID int64) {
+func GrantRoot(rootId int64, rootInfo interface{}) {
 	if shainternal.RbacInited {
-		grantRoot(subjectID)
+		grantRoot(rootId, rootInfo)
 		return
 	}
-	internal.Dig.Append(func(_ _PermOK) { grantRoot(subjectID) })
+	internal.Dig.Append(func(_ _PermOK) { grantRoot(rootId, rootInfo) })
 }

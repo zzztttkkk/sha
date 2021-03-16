@@ -6,7 +6,9 @@ import (
 	"github.com/zzztttkkk/sha/rbac/dao"
 	"github.com/zzztttkkk/sha/rbac/internal"
 	"github.com/zzztttkkk/sha/rbac/model"
+	"github.com/zzztttkkk/sha/validator"
 	"log"
+	"regexp"
 )
 
 type Options struct {
@@ -15,9 +17,13 @@ type Options struct {
 	LogReadOperation bool
 }
 
+var nameRegexp = regexp.MustCompile("^[a-zA-Z0-9_]+(\\.[a-zA-Z0-9_]+)*$")
+
 var gAdapter CtxAdapter
 
 func Init(router Router, adapter CtxAdapter, options *Options) {
+	validator.RegisterRegexp("rbacname", nameRegexp)
+
 	if options == nil {
 		options = &Options{}
 	}
