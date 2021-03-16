@@ -6,34 +6,34 @@ import (
 	"regexp"
 )
 
-type nodeType uint8
+type _NodeType uint8
 
-type nodeWildcard struct {
+type _NodeWildcard struct {
 	path     string
 	paramKey string
 	handler  RequestHandler
 }
 
-type node struct {
-	nType nodeType
+type _Node struct {
+	nType _NodeType
 
 	path         string
 	tsr          bool
 	handler      RequestHandler
 	hasWildChild bool
-	children     []*node
-	wildcard     *nodeWildcard
+	children     []*_Node
+	wildcard     *_NodeWildcard
 
 	paramKeys  []string
 	paramRegex *regexp.Regexp
 }
 
-type wildPath struct {
+type _WildPath struct {
 	path  string
 	keys  []string
 	start int
 	end   int
-	pType nodeType
+	pType _NodeType
 
 	pattern string
 	regex   *regexp.Regexp
@@ -41,7 +41,7 @@ type wildPath struct {
 
 // _RadixTree is a routes storage
 type _RadixTree struct {
-	root *node
+	root *_Node
 
 	// If enabled, the node handler could be updated
 	Mutable bool

@@ -8,38 +8,38 @@ import (
 	"strings"
 )
 
-func newNode(path string) *node {
-	return &node{
+func newNode(path string) *_Node {
+	return &_Node{
 		nType: static,
 		path:  path,
 	}
 }
 
 // conflict raises a panic with some details
-func (n *nodeWildcard) conflict(path, fullPath string) error {
+func (n *_NodeWildcard) conflict(path, fullPath string) error {
 	prefix := fullPath[:strings.LastIndex(fullPath, path)] + n.path
 
 	return newRadixError(errWildcardConflict, path, fullPath, n.path, prefix)
 }
 
 // wildPathConflict raises a panic with some details
-func (n *node) wildPathConflict(path, fullPath string) error {
+func (n *_Node) wildPathConflict(path, fullPath string) error {
 	pathSeg := strings.SplitN(path, "/", 2)[0]
 	prefix := fullPath[:strings.LastIndex(fullPath, path)] + n.path
 
 	return newRadixError(errWildPathConflict, pathSeg, fullPath, n.path, prefix)
 }
 
-// clone clones the current node in a new pointer
-func (n node) clone() *node {
-	cloneNode := new(node)
+// clone clones the current _Node in a new pointer
+func (n _Node) clone() *_Node {
+	cloneNode := new(_Node)
 	cloneNode.nType = n.nType
 	cloneNode.path = n.path
 	cloneNode.tsr = n.tsr
 	cloneNode.handler = n.handler
 
 	if len(n.children) > 0 {
-		cloneNode.children = make([]*node, len(n.children))
+		cloneNode.children = make([]*_Node, len(n.children))
 
 		for i, child := range n.children {
 			cloneNode.children[i] = child.clone()
@@ -47,7 +47,7 @@ func (n node) clone() *node {
 	}
 
 	if n.wildcard != nil {
-		cloneNode.wildcard = &nodeWildcard{
+		cloneNode.wildcard = &_NodeWildcard{
 			path:     n.wildcard.path,
 			paramKey: n.wildcard.paramKey,
 			handler:  n.wildcard.handler,
@@ -64,7 +64,7 @@ func (n node) clone() *node {
 	return cloneNode
 }
 
-func (n *node) split(i int) {
+func (n *_Node) split(i int) {
 	cloneChild := n.clone()
 	cloneChild.nType = static
 	cloneChild.path = cloneChild.path[i:]
@@ -78,7 +78,7 @@ func (n *node) split(i int) {
 	n.children = append(n.children[:0], cloneChild)
 }
 
-func (n *node) findEndIndexAndValues(path string) (int, []string) {
+func (n *_Node) findEndIndexAndValues(path string) (int, []string) {
 	index := n.paramRegex.FindStringSubmatchIndex(path)
 	if len(index) == 0 {
 		return -1, nil
@@ -124,7 +124,7 @@ func isAutoOptionsHandler(h RequestHandler) bool {
 	return ok
 }
 
-func (n *node) setHandler(handler RequestHandler, fullPath string) (*node, error) {
+func (n *_Node) setHandler(handler RequestHandler, fullPath string) (*_Node, error) {
 	if n.handler != nil || n.tsr {
 		oAoh, oAohOk := n.handler.(*_AutoOptions)
 		nAoh, nAohOk := handler.(*_AutoOptions)
@@ -173,7 +173,7 @@ func (n *node) setHandler(handler RequestHandler, fullPath string) (*node, error
 	return n, nil
 }
 
-func (n *node) insert(path, fullPath string, handler RequestHandler) (*node, error) {
+func (n *_Node) insert(path, fullPath string, handler RequestHandler) (*_Node, error) {
 	end := segmentEndIndex(path, true)
 	child := newNode(path)
 
@@ -221,7 +221,7 @@ func (n *node) insert(path, fullPath string, handler RequestHandler) (*node, err
 				return nil, n.wildcard.conflict(path, fullPath)
 			}
 
-			n.wildcard = &nodeWildcard{
+			n.wildcard = &_NodeWildcard{
 				path:     wp.path,
 				paramKey: wp.keys[0],
 				handler:  handler,
@@ -257,8 +257,8 @@ func (n *node) insert(path, fullPath string, handler RequestHandler) (*node, err
 	return child, nil
 }
 
-// add adds the handler to node for the given path
-func (n *node) add(path, fullPath string, handler RequestHandler) (*node, error) {
+// add adds the handler to _Node for the given path
+func (n *_Node) add(path, fullPath string, handler RequestHandler) (*_Node, error) {
 	if len(path) == 0 {
 		return n.setHandler(handler, fullPath)
 	}
@@ -312,8 +312,8 @@ func (n *node) add(path, fullPath string, handler RequestHandler) (*node, error)
 	return n.insert(path, fullPath, handler)
 }
 
-func (n *node) getFromChild(path string, ctx *RequestCtx) (RequestHandler, bool) {
-	var parent *node
+func (n *_Node) getFromChild(path string, ctx *RequestCtx) (RequestHandler, bool) {
+	var parent *_Node
 
 	parentIndex, childIndex := 0, 0
 
@@ -437,7 +437,7 @@ walk:
 	}
 }
 
-func (n *node) find(path string, buf *utils.Buf) (bool, bool) {
+func (n *_Node) find(path string, buf *utils.Buf) (bool, bool) {
 	if len(path) > len(n.path) {
 		if !strings.EqualFold(path[:len(n.path)], n.path) {
 			return false, false
@@ -472,7 +472,7 @@ func (n *node) find(path string, buf *utils.Buf) (bool, bool) {
 	return false, false
 }
 
-func (n *node) findFromChild(path string, buf *utils.Buf) (bool, bool) {
+func (n *_Node) findFromChild(path string, buf *utils.Buf) (bool, bool) {
 	for _, child := range n.children {
 		switch child.nType {
 		case static:
@@ -525,8 +525,8 @@ func (n *node) findFromChild(path string, buf *utils.Buf) (bool, bool) {
 	return false, false
 }
 
-// sort sorts the current node and their children
-func (n *node) sort() {
+// sort sorts the current _Node and their children
+func (n *_Node) sort() {
 	for _, child := range n.children {
 		child.sort()
 	}
@@ -535,17 +535,17 @@ func (n *node) sort() {
 }
 
 // Len returns the total number of children the node has
-func (n *node) Len() int {
+func (n *_Node) Len() int {
 	return len(n.children)
 }
 
 // Swap swaps the order of children nodes
-func (n *node) Swap(i, j int) {
+func (n *_Node) Swap(i, j int) {
 	n.children[i], n.children[j] = n.children[j], n.children[i]
 }
 
 // Less checks if the node 'i' has less priority than the node 'j'
-func (n *node) Less(i, j int) bool {
+func (n *_Node) Less(i, j int) bool {
 	if n.children[i].nType < n.children[j].nType {
 		return true
 	} else if n.children[i].nType > n.children[j].nType {

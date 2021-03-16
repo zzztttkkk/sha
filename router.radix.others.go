@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	root nodeType = iota
+	root _NodeType = iota
 	static
 	param
 	wildcard
@@ -101,7 +101,7 @@ func segmentEndIndex(path string, includeTSR bool) int {
 
 // findWildPath search for a wild path segment and check the name for invalid characters.
 // Returns -1 as index, if no param/wildcard was found.
-func findWildPath(path string, fullPath string) *wildPath {
+func findWildPath(path string, fullPath string) *_WildPath {
 	// Find start
 	for start, c := range []byte(path) {
 		// A wildcard starts with ':' (param) or '*' (wildcard)
@@ -122,7 +122,7 @@ func findWildPath(path string, fullPath string) *wildPath {
 				}
 
 				end := start + end + 2
-				wp := &wildPath{
+				wp := &_WildPath{
 					path:  path[start:end],
 					keys:  []string{path[start+1 : end-1]},
 					start: start,

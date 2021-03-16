@@ -10,7 +10,7 @@ import (
 // New returns an empty routes storage
 func newRadixTree() *_RadixTree {
 	return &_RadixTree{
-		root: &node{
+		root: &_Node{
 			nType: root,
 		},
 	}
