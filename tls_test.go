@@ -6,8 +6,8 @@ import (
 
 func TestServer_ListenAndServeTLS(t *testing.T) {
 	conf := ServerOption{}
-	conf.Tls.Key = "./tls/sha.local-key.pem"
-	conf.Tls.Cert = "./tls/sha.local.pem"
+	conf.TLS.Key = "./tls/sha.local-key.pem"
+	conf.TLS.Cert = "./tls/sha.local.pem"
 
 	s := New(nil, &conf, nil, nil)
 

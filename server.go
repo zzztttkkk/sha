@@ -16,7 +16,7 @@ import (
 
 type ServerOption struct {
 	Addr string `json:"addr" toml:"addr"`
-	Tls  struct {
+	TLS  struct {
 		AutoCertDomains []string `json:"auto_cert_domains" toml:"auto-cert-domains"`
 		Key             string   `json:"key" toml:"key"`
 		Cert            string   `json:"cert" toml:"cert"`
@@ -44,11 +44,11 @@ type Server struct {
 	websocketProtocol WebSocketProtocol
 
 	tls          *tls.Config
-	isTls        bool
+	isTLS        bool
 	beforeAccept []func(s *Server)
 }
 
-func (s *Server) IsTLS() bool { return s.isTls }
+func (s *Server) IsTLS() bool { return s.isTLS }
 
 type HTTPProtocol interface {
 	ServeHTTPConn(ctx context.Context, conn net.Conn)
@@ -128,7 +128,7 @@ func (s *Server) doListen() net.Listener {
 	return listener
 }
 
-func (s *Server) enableTls(l net.Listener, certFile, keyFile string) net.Listener {
+func (s *Server) enableTLS(l net.Listener, certFile, keyFile string) net.Listener {
 	if certFile == "" || keyFile == "" {
 		panic("sha: empty tls file")
 	}
@@ -164,7 +164,7 @@ func (s *Server) serve(l net.Listener) {
 	var tempDelay time.Duration
 	var serveFunc func(conn net.Conn)
 	serveFunc = s.serveConn
-	if s.isTls {
+	if s.isTLS {
 		serveFunc = s.serveTLS
 	}
 
@@ -211,15 +211,15 @@ func (s *Server) serve(l net.Listener) {
 }
 
 func (s *Server) ListenAndServe() {
-	if len(s.option.Tls.AutoCertDomains) > 0 {
-		s.isTls = true
-		s.serve(autocert.NewListener(s.option.Tls.AutoCertDomains...))
+	if len(s.option.TLS.AutoCertDomains) > 0 {
+		s.isTLS = true
+		s.serve(autocert.NewListener(s.option.TLS.AutoCertDomains...))
 		return
 	}
 
-	if len(s.option.Tls.Cert) > 0 {
-		s.isTls = true
-		s.serve(s.enableTls(s.doListen(), s.option.Tls.Cert, s.option.Tls.Key))
+	if len(s.option.TLS.Cert) > 0 {
+		s.isTLS = true
+		s.serve(s.enableTLS(s.doListen(), s.option.TLS.Cert, s.option.TLS.Key))
 		return
 	}
 

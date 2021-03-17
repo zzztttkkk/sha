@@ -53,7 +53,7 @@ type CookieOptions struct {
 	MaxAge   int64
 	Expires  time.Time
 	Secure   bool
-	HttpOnly bool
+	HTTPOnly bool
 	SameSite _SameSiteVal
 }
 
@@ -64,7 +64,7 @@ const (
 	_CookieExpires  = "Expires="
 	_CookieMaxAge   = "Max-Age="
 	_CookieSecure   = "Secure"
-	_CookieHttpOnly = "Httponly"
+	_CookieHTTPOnly = "HTTPOnly"
 	_CookieSameSite = "Samesite="
 )
 
@@ -107,8 +107,8 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 		item.Val = append(item.Val, _CookieSep...)
 	}
 
-	if options.HttpOnly {
-		item.Val = append(item.Val, _CookieHttpOnly...)
+	if options.HTTPOnly {
+		item.Val = append(item.Val, _CookieHTTPOnly...)
 		item.Val = append(item.Val, _CookieSep...)
 	}
 

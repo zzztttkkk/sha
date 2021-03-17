@@ -6,13 +6,13 @@ import (
 	"net/http"
 )
 
-type HttpError interface {
+type HTTPError interface {
 	Error() string
 	StatusCode() int
 }
 
-type HttpResponseError interface {
-	HttpError
+type HTTPResponseError interface {
+	HTTPError
 	WriteHeader(*Header)
 	Body() []byte
 }
@@ -41,7 +41,7 @@ func (err StatusError) Body() []byte {
 
 var (
 	ErrBadConnection               = StatusError(http.StatusBadRequest)
-	ErrRequestUrlTooLong           = StatusError(http.StatusRequestURITooLong)
+	ErrRequestURLTooLong           = StatusError(http.StatusRequestURITooLong)
 	ErrRequestHeaderFieldsTooLarge = StatusError(http.StatusRequestHeaderFieldsTooLarge)
 	ErrRequestEntityTooLarge       = StatusError(http.StatusRequestEntityTooLarge)
 )

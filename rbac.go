@@ -22,23 +22,23 @@ func (r *_RbacRouterAdapter) HTTP(method string, path string, handler rbac.Handl
 
 type _CtxAdapter struct{}
 
-func (_ _CtxAdapter) ValidateForm(ctx context.Context, dist interface{}) error {
+func (_CtxAdapter) ValidateForm(ctx context.Context, dist interface{}) error {
 	return Unwrap(ctx).Validate(dist)
 }
 
-func (_ _CtxAdapter) SetResponseStatus(ctx context.Context, v int) {
+func (_CtxAdapter) SetResponseStatus(ctx context.Context, v int) {
 	Unwrap(ctx).Response.statusCode = v
 }
 
-func (_ _CtxAdapter) Write(ctx context.Context, p []byte) (int, error) {
+func (_CtxAdapter) Write(ctx context.Context, p []byte) (int, error) {
 	return Unwrap(ctx).Response.Write(p)
 }
 
-func (_ _CtxAdapter) WriteJSON(ctx context.Context, v interface{}) {
+func (_CtxAdapter) WriteJSON(ctx context.Context, v interface{}) {
 	Unwrap(ctx).WriteJSON(v)
 }
 
-func (_ _CtxAdapter) SetError(ctx context.Context, v interface{}) {
+func (_CtxAdapter) SetError(ctx context.Context, v interface{}) {
 	Unwrap(ctx).err = v
 }
 

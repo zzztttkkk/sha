@@ -139,8 +139,8 @@ func (n *_Node) setHandler(handler RequestHandler, fullPath string) (*_Node, err
 			handler = n.handler
 		}
 
-		if oAohOk && !nAohOk {
-		}
+		//if oAohOk && !nAohOk {
+		//}
 
 		if !oAohOk && nAohOk {
 			handler = n.handler

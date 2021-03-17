@@ -65,6 +65,12 @@ func dirList(ctx *RequestCtx, f http.File) {
 	_, _ = fmt.Fprintf(res, "</pre>\n")
 }
 
+var DirList func(ctx *RequestCtx, f http.File)
+
+func init() {
+	DirList = dirList
+}
+
 // errNoOverlap is returned by serveFileContent's parseRange if first-byte-pos of
 // all of the byte-range-spec values is greater than the content size.
 var errNoOverlap = errors.New("invalid range: failed to overlap")
@@ -363,9 +369,8 @@ func checkIfRange(w *Response, r *Request, modtime time.Time) condResult {
 		etagV, _ := w.Header.Get(HeaderETag)
 		if etagStrongMatch(etag, string(etagV)) {
 			return condTrue
-		} else {
-			return condFalse
 		}
+		return condFalse
 	}
 	// The If-Range value is typically the ETag value, but it may also be
 	// the modtime date. See golang.org/issue/8367.
@@ -432,10 +437,9 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 		if method == "GET" || method == "HEAD" {
 			writeNotModified(w)
 			return true, ""
-		} else {
-			w.statusCode = StatusPreconditionFailed
-			return true, ""
 		}
+		w.statusCode = StatusPreconditionFailed
+		return true, ""
 	case condNone:
 		if checkIfModifiedSince(r, modtime) == condFalse {
 			writeNotModified(w)
@@ -455,7 +459,7 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 var indexPage = []byte("/index.html")
 
 // name is '/'-separated, not filepath.Separator.
-func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, index bool) {
+func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, doIndex bool) {
 	w := &ctx.Response
 	r := &ctx.Request
 
@@ -501,13 +505,13 @@ func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, index boo
 
 	// Still a directory? (we didn't find an index.html file)
 	if d.IsDir() {
-		if index {
+		if doIndex {
 			if checkIfModifiedSince(r, d.ModTime()) == condFalse {
 				writeNotModified(w)
 				return
 			}
 			setLastModified(w, d.ModTime())
-			dirList(ctx, f)
+			DirList(ctx, f)
 			return
 		}
 		ctx.SetStatus(StatusNotFound)

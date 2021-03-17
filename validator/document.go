@@ -7,16 +7,17 @@ type Document interface {
 	Output() string
 }
 
-type _MarkdownDocument struct {
-	input  string
-	output string
+type _SimpleDocument struct {
+	description string
+	input       string
+	output      string
 }
 
-func (m *_MarkdownDocument) Input() string {
+func (m *_SimpleDocument) Input() string {
 	return m.input
 }
 
-func (m *_MarkdownDocument) Output() string {
+func (m *_SimpleDocument) Output() string {
 	return m.output
 }
 
@@ -24,6 +25,6 @@ type _undefined struct{}
 
 var Undefined = &_undefined{}
 
-func NewMarkdownDocument(input interface{}, output interface{}) Document {
+func NewDocument(  input interface{}, output interface{}) Document {
 	return nil
 }

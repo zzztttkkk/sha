@@ -15,7 +15,7 @@ func (form *Form) onItem(k []byte, v []byte) {
 	form.AppendBytes(utils.DecodeURIFormed(k), utils.DecodeURIFormed(v))
 }
 
-func (form *Form) FromUrlEncoded(p []byte) {
+func (form *Form) FromURLEncoded(p []byte) {
 	var key []byte
 	var val []byte
 	var f bool
@@ -86,7 +86,7 @@ func (req *Request) parseQuery() {
 		req.questionMarkIndex = _QueryParsed
 		return
 	}
-	req.query.FromUrlEncoded(req.RawPath[req.questionMarkIndex+1:])
+	req.query.FromURLEncoded(req.RawPath[req.questionMarkIndex+1:])
 	req.questionMarkIndex = _QueryParsed
 }
 
@@ -292,7 +292,7 @@ func (req *Request) parseBodyBuf() {
 	}
 
 	if bytes.HasPrefix(typeValue, utils.B(MIMEForm)) {
-		req.body.FromUrlEncoded(buf)
+		req.body.FromURLEncoded(buf)
 		req.bodyStatus = _BodyOK
 		return
 	}

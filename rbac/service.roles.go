@@ -109,7 +109,7 @@ func init() {
 
 					dao.RoleAddPerm(ctx, form.RoleName, form.Name)
 				},
-				validator.NewMarkdownDocument(Form{}, validator.Undefined),
+				validator.NewDocument(Form{}, validator.Undefined),
 			)
 		},
 	)
@@ -140,7 +140,7 @@ func init() {
 					}
 					dao.RoleDelPerm(ctx, form.RoleName, form.PermName)
 				},
-				validator.NewMarkdownDocument(Form{}, validator.Undefined),
+				validator.NewDocument(Form{}, validator.Undefined),
 			)
 		},
 	)

@@ -38,8 +38,8 @@ func init() {
 
 var (
 	errType        = reflect.TypeOf((*error)(nil)).Elem()
-	httpResErrType = reflect.TypeOf((*HttpResponseError)(nil)).Elem()
-	httpErrType    = reflect.TypeOf((*HttpError)(nil)).Elem()
+	httpResErrType = reflect.TypeOf((*HTTPResponseError)(nil)).Elem()
+	httpErrType    = reflect.TypeOf((*HTTPError)(nil)).Elem()
 )
 
 func doRecover(ctx *RequestCtx, v interface{}) {
@@ -63,7 +63,7 @@ func doRecover(ctx *RequestCtx, v interface{}) {
 	logStack := true
 
 	if vt.ConvertibleTo(httpResErrType) {
-		rv := v.(HttpResponseError)
+		rv := v.(HTTPResponseError)
 		if rv.StatusCode() < 500 {
 			logStack = false
 		}
@@ -71,7 +71,7 @@ func doRecover(ctx *RequestCtx, v interface{}) {
 		rv.WriteHeader(&ctx.Response.Header)
 		_, _ = ctx.Write(rv.Body())
 	} else if vt.ConvertibleTo(httpErrType) {
-		rv := v.(HttpError)
+		rv := v.(HTTPError)
 		if rv.StatusCode() < 500 {
 			logStack = false
 		}

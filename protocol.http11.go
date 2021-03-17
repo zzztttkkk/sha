@@ -37,7 +37,7 @@ var defaultHTTPOption = HTTPOption{
 type _Http11Protocol struct {
 	HTTPOption
 
-	OnParseError func(conn net.Conn, err HttpError) bool // close connection if return true
+	OnParseError func(conn net.Conn, err HTTPError) bool // close connection if return true
 	OnWriteError func(conn net.Conn, err error) bool     // close connection if return true
 
 	server  *Server
@@ -52,7 +52,7 @@ var upgradeStr = []byte("upgrade")
 var keepAliveStr = []byte("keep-alive")
 
 const (
-	http11  = "HTTP/1.1 "
+	http11 = "HTTP/1.1 "
 )
 
 func NewHTTP11Protocol(option *HTTPOption) HTTPProtocol {
@@ -101,7 +101,7 @@ func (protocol *_Http11Protocol) ServeHTTPConn(ctx context.Context, conn net.Con
 	var cancelFn func()
 
 	rctx := acquireRequestCtx()
-	rctx.isTLS = protocol.server.isTls
+	rctx.isTLS = protocol.server.isTLS
 	readBuf := protocol.readBufferPool.Get()
 	rctx.Response.bodyBuf = protocol.resBodyBufferPool.Get()
 	bufI := protocol.resSendBufferPool.Get()
@@ -154,10 +154,10 @@ func (protocol *_Http11Protocol) ServeHTTPConn(ctx context.Context, conn net.Con
 
 		// consume all the buffered data
 		for offset != n {
-			offset, err = protocol.feedHttp1xReqData(rctx, readBuf.Data, offset, n)
+			offset, err = protocol.feedHTTP1xReqData(rctx, readBuf.Data, offset, n)
 			if err != nil {
 				if protocol.OnParseError != nil {
-					if protocol.OnParseError(conn, err.(HttpError)) {
+					if protocol.OnParseError(conn, err.(HTTPError)) {
 						return
 					}
 				} else {
@@ -302,7 +302,7 @@ func (protocol *_Http11Protocol) initRequest(ctx *RequestCtx) {
 	}
 }
 
-func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte, offset, end int) (int, HttpError) {
+func (protocol *_Http11Protocol) feedHTTP1xReqData(ctx *RequestCtx, data []byte, offset, end int) (int, HTTPError) {
 	var v byte
 	req := &ctx.Request
 
@@ -313,7 +313,7 @@ func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte,
 			offset++
 			ctx.firstLineSize++
 			if ctx.firstLineSize > protocol.MaxRequestFirstLineSize {
-				return -1, ErrRequestUrlTooLong
+				return -1, ErrRequestURLTooLong
 			}
 
 			// ascii
@@ -338,7 +338,7 @@ func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte,
 			case '\r':
 				continue
 			case ' ':
-				ctx.firstLineStatus += 1
+				ctx.firstLineStatus++
 			default:
 				switch ctx.firstLineStatus {
 				case 0:
