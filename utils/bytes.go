@@ -34,7 +34,7 @@ func init() {
 	}
 }
 
-func InplaceTrimAsciiSpace(v []byte) []byte {
+func InPlaceTrimAsciiSpace(v []byte) []byte {
 	var left = 0
 	var right = len(v) - 1
 	for ; left <= right; left++ {

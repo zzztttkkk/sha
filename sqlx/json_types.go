@@ -2,8 +2,8 @@ package sqlx
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"errors"
+	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 )
 
@@ -17,7 +17,7 @@ func (a JsonArray) Value() (driver.Value, error) {
 	if len(a) == 0 {
 		return emptyJsonArrayBytes, nil
 	}
-	return json.Marshal(a)
+	return jsonx.Marshal(a)
 }
 
 func (a *JsonArray) Scan(src interface{}) error {
@@ -38,7 +38,7 @@ func (a *JsonArray) Scan(src interface{}) error {
 	default:
 		return ErrJsonValue
 	}
-	return json.Unmarshal(bytes, a)
+	return jsonx.Unmarshal(bytes, a)
 }
 
 type JsonObject map[string]interface{}
@@ -49,7 +49,7 @@ func (f JsonObject) Value() (driver.Value, error) {
 	if len(f) == 0 {
 		return emptyJsonObjBytes, nil
 	}
-	return json.Marshal(f)
+	return jsonx.Marshal(f)
 }
 
 func (f *JsonObject) Scan(src interface{}) error {
@@ -70,5 +70,5 @@ func (f *JsonObject) Scan(src interface{}) error {
 	default:
 		return ErrJsonValue
 	}
-	return json.Unmarshal(bytes, f)
+	return jsonx.Unmarshal(bytes, f)
 }

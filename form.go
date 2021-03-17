@@ -190,7 +190,7 @@ func (p *_MultiPartParser) onFieldOk() bool {
 	var filename []byte
 
 	for _, v := range bytes.Split(disposition[11:], headerValueAttrsSep) {
-		v = utils.InplaceTrimAsciiSpace(v)
+		v = utils.InPlaceTrimAsciiSpace(v)
 
 		if bytes.HasPrefix(v, nameStr) {
 			name = utils.DecodeURI(v[6 : len(v)-1])
@@ -226,7 +226,7 @@ func (req *Request) parseMultiPart(boundary []byte) bool {
 		if b == '\n' {
 			parser.line = append(parser.line, b)
 			if parser.inHeader { // is header line
-				parser.line = utils.InplaceTrimAsciiSpace(parser.line)
+				parser.line = utils.InPlaceTrimAsciiSpace(parser.line)
 				if len(parser.line) == 0 {
 					parser.inHeader = false
 				} else {

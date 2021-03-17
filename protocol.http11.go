@@ -384,8 +384,8 @@ func (protocol *_Http11Protocol) feedHttp1xReqData(ctx *RequestCtx, data []byte,
 				}
 
 				ctx.Request.Header.AppendBytes(
-					utils.InplaceTrimAsciiSpace(ctx.currentHeaderKey),
-					utils.DecodeURI(utils.InplaceTrimAsciiSpace(ctx.buf)),
+					utils.InPlaceTrimAsciiSpace(ctx.currentHeaderKey),
+					utils.DecodeURI(utils.InPlaceTrimAsciiSpace(ctx.buf)),
 				)
 				ctx.currentHeaderKey = ctx.currentHeaderKey[:0]
 				ctx.buf = ctx.buf[:0]

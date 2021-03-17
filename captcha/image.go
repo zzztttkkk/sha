@@ -23,7 +23,7 @@ type Options struct {
 
 var defaultOption = &Options{}
 
-func randFace(faces []*_Face) *_Face {
+func randFace(faces []*_SyncFace) *_SyncFace {
 	l := len(faces)
 	if l < 2 {
 		return faces[0]
@@ -31,14 +31,14 @@ func randFace(faces []*_Face) *_Face {
 	return faces[int(rand.Uint32())%l]
 }
 
-func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image {
+func newImageWithString(str []rune, faces []*_SyncFace, option *Options) image.Image {
 	if option == nil {
 		option = defaultOption
 	}
 
 	type RuneAndFace struct {
 		r  rune
-		f  *_Face
+		f  *_SyncFace
 		dx int
 		dy int
 	}
@@ -127,10 +127,10 @@ func newImageWithString(str []rune, faces []*_Face, option *Options) image.Image
 	return img
 }
 
-func RenderOneFont(fontname, txt string, option *Options) image.Image {
-	return newImageWithString([]rune(txt), []*_Face{getFaceByName(fontname)}, option)
+func RenderOneFont(fontname string, txt []rune, option *Options) image.Image {
+	return newImageWithString(txt, []*_SyncFace{getFaceByName(fontname)}, option)
 }
 
-func RenderSomeFonts(count int, txt string, option *Options) image.Image {
-	return newImageWithString([]rune(txt), getFaceByCount(count), option)
+func RenderSomeFonts(count int, txt []rune, option *Options) image.Image {
+	return newImageWithString(txt, getFaceByCount(count), option)
 }

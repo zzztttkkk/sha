@@ -2,10 +2,10 @@ package sqlx
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/zzztttkkk/sha/jsonx"
 	"net/url"
 	"testing"
 	"time"
@@ -45,7 +45,7 @@ func Test_XWrapper_Exe(t *testing.T) {
 	var m TestModel
 	_ = TestModelOperator.FetchOne(ctx, "*", "WHERE id=1", nil, &m)
 	fmt.Println(m, string(m.Name))
-	j, e := json.Marshal(&m)
+	j, e := jsonx.Marshal(&m)
 	fmt.Println(e, string(j), 111)
 
 	var name, password []byte

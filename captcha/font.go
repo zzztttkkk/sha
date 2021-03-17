@@ -11,14 +11,14 @@ import (
 	"sync"
 )
 
-type _Face struct {
+type _SyncFace struct {
 	font.Face
 	size           int
 	asciiHalfWidth bool
 	sync.Mutex
 }
 
-func (f *_Face) Glyph(dot fixed.Point26_6, r rune) (dr image.Rectangle, mask image.Image, maskp image.Point, advance fixed.Int26_6, ok bool) {
+func (f *_SyncFace) Glyph(dot fixed.Point26_6, r rune) (dr image.Rectangle, mask image.Image, maskp image.Point, advance fixed.Int26_6, ok bool) {
 	f.Lock()
 	defer f.Unlock()
 
@@ -26,14 +26,14 @@ func (f *_Face) Glyph(dot fixed.Point26_6, r rune) (dr image.Rectangle, mask ima
 }
 
 type _FontCache struct {
-	m map[string]*_Face
-	l []*_Face
+	m map[string]*_SyncFace
+	l []*_SyncFace
 }
 
 var fontCache _FontCache
 
 func init() {
-	fontCache.m = map[string]*_Face{}
+	fontCache.m = map[string]*_SyncFace{}
 }
 
 func RegisterFont(name, file string, options *truetype.Options, asciiHalfWidth bool) {
@@ -49,7 +49,7 @@ func RegisterFont(name, file string, options *truetype.Options, asciiHalfWidth b
 		panic(err)
 	}
 
-	face := &_Face{Face: truetype.NewFace(ttf, options), asciiHalfWidth: asciiHalfWidth}
+	face := &_SyncFace{Face: truetype.NewFace(ttf, options), asciiHalfWidth: asciiHalfWidth}
 	if options == nil {
 		face.size = 12
 	} else {
@@ -59,14 +59,14 @@ func RegisterFont(name, file string, options *truetype.Options, asciiHalfWidth b
 	fontCache.l = append(fontCache.l, face)
 }
 
-func getFaceByName(name string) *_Face {
+func getFaceByName(name string) *_SyncFace {
 	if name == "*" {
 		return fontCache.l[int(rand.Uint32())%len(fontCache.l)]
 	}
 	return fontCache.m[name]
 }
 
-func getFaceByCount(i int) (l []*_Face) {
+func getFaceByCount(i int) (l []*_SyncFace) {
 	if i < 0 || i >= len(fontCache.l) {
 		return fontCache.l
 	}

@@ -2,8 +2,8 @@ package validator
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
+	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"html"
 	"reflect"
@@ -208,7 +208,7 @@ func (rule *_Rule) String() string {
 	}
 
 	if rule.defaultFunc != nil {
-		v, _ := json.Marshal(rule.defaultFunc())
+		v, _ := jsonx.Marshal(rule.defaultFunc())
 		m["default"] = html.EscapeString(fmt.Sprintf("%v", string(v)))
 	} else {
 		m["default"] = "/"

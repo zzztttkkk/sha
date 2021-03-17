@@ -83,7 +83,7 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 			hv, ok = ctx.Request.Header.Get(HeaderSecWebSocketProtocol)
 			if ok && len(hv) > 0 {
 				for _, v := range bytes.Split(hv, []byte(",")) {
-					v = utils.InplaceTrimAsciiSpace(v)
+					v = utils.InPlaceTrimAsciiSpace(v)
 					if _, ok := p.subPM[utils.S(v)]; ok {
 						subprotocol = v
 						ctx.Request.webSocketSubProtocolName = append(ctx.Request.webSocketSubProtocolName, v...)

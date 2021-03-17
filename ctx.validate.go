@@ -2,7 +2,7 @@ package sha
 
 import (
 	"bytes"
-	"encoding/json"
+	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/sha/validator"
 )
@@ -25,7 +25,7 @@ func (ctx *RequestCtx) ValidateJSON(dist interface{}) HttpError {
 	if !bytes.HasPrefix(ctx.Request.Header.ContentType(), utils.B(MIMEJson)) {
 		return StatusError(StatusBadRequest)
 	}
-	if err := json.Unmarshal(ctx.buf, dist); err != nil {
+	if err := jsonx.Unmarshal(ctx.buf, dist); err != nil {
 		return StatusError(StatusBadRequest)
 	}
 	return nil

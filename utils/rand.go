@@ -21,6 +21,7 @@ func init() {
 }
 
 var defaultRandBytesPool = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var Base58BytesPool = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 
 func RandByte(pool []byte) byte {
 	if pool == nil {

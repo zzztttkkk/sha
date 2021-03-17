@@ -2,8 +2,8 @@ package sha
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"html/template"
 	"io"
@@ -189,7 +189,7 @@ func (ctx *RequestCtx) WriteString(s string) (int, error) {
 func (ctx *RequestCtx) WriteJSON(v interface{}) {
 	ctx.Response.Header.SetContentType(MIMEJson)
 
-	encoder := json.NewEncoder(ctx)
+	encoder := jsonx.NewEncoder(ctx)
 	err := encoder.Encode(v)
 	if err != nil {
 		panic(err)

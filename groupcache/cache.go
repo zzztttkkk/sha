@@ -2,11 +2,11 @@ package groupcache
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"reflect"
 	"time"
@@ -25,9 +25,9 @@ type Convertor interface {
 
 type _StdJsonConvertor struct{}
 
-func (_StdJsonConvertor) Encode(v interface{}) ([]byte, error) { return json.Marshal(v) }
+func (_StdJsonConvertor) Encode(v interface{}) ([]byte, error) { return jsonx.Marshal(v) }
 
-func (_StdJsonConvertor) Decode(v []byte, dist interface{}) error { return json.Unmarshal(v, dist) }
+func (_StdJsonConvertor) Decode(v []byte, dist interface{}) error { return jsonx.Unmarshal(v, dist) }
 
 var StdJsonConvertor = _StdJsonConvertor{}
 

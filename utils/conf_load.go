@@ -1,11 +1,11 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/imdario/mergo"
 	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/jsonx"
 	"io/ioutil"
 	"log"
 	"os"
@@ -119,7 +119,7 @@ func (_ConfNamespace) LoadFromFile(conf interface{}, fp string) error {
 	if strings.HasSuffix(fp, ".toml") {
 		e = confFromTomlBytes(conf, v)
 	} else {
-		e = json.Unmarshal(v, conf)
+		e = jsonx.Unmarshal(v, conf)
 	}
 
 	if e != nil {
