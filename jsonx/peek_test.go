@@ -46,3 +46,13 @@ func TestPeek(t *testing.T) {
 	fmt.Println(obj.IsNil("warning"))
 	fmt.Println(obj.IsNil("data", "origin", "translate"))
 }
+
+func TestUnmarshal(t *testing.T) {
+	type A struct {
+		S string
+	}
+
+	var a A
+	err := Unmarshal([]byte(`{"S":"<div></div>"}`), &a)
+	fmt.Println(a.S, err)
+}

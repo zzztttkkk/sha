@@ -199,36 +199,36 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 			case _Int64, _IntSlice:
 				minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 				if minVF {
-					rule.minIV = new(int64)
-					*rule.minIV = minV
+					rule.minIntVal = new(int64)
+					*rule.minIntVal = minV
 				}
 				if maxVF {
-					rule.maxIV = new(int64)
-					*rule.maxIV = maxV
+					rule.maxIntVal = new(int64)
+					*rule.maxIntVal = maxV
 				}
-				err = rule.minIV == nil && rule.maxIV == nil
+				err = rule.minIntVal == nil && rule.maxIntVal == nil
 			case _Uint64, _UintSlice:
 				minV, maxV, minVF, maxVF := internal.ParseUintRange(val)
 				if minVF {
-					rule.minUV = new(uint64)
-					*rule.minUV = minV
+					rule.minUintVal = new(uint64)
+					*rule.minUintVal = minV
 				}
 				if maxVF {
-					rule.maxUV = new(uint64)
-					*rule.maxUV = maxV
+					rule.maxUintVal = new(uint64)
+					*rule.maxUintVal = maxV
 				}
-				err = rule.minUV == nil && rule.maxUV == nil
+				err = rule.minUintVal == nil && rule.maxUintVal == nil
 			case _Float64, _FloatSlice:
 				minV, maxV, minVF, maxVF := internal.ParseFloatRange(val)
 				if minVF {
-					rule.minDV = new(float64)
-					*rule.minDV = minV
+					rule.minDoubleVal = new(float64)
+					*rule.minDoubleVal = minV
 				}
 				if maxVF {
-					rule.maxDV = new(float64)
-					*rule.maxDV = maxV
+					rule.maxDoubleVal = new(float64)
+					*rule.maxDoubleVal = maxV
 				}
-				err = rule.minDV == nil && rule.maxDV == nil
+				err = rule.minDoubleVal == nil && rule.maxDoubleVal == nil
 			default:
 				err = true
 			}
@@ -244,17 +244,36 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 			rule.checkListSize = true
 			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
 			if minVF {
-				rule.minSSV = new(int)
-				*rule.minSSV = int(minV)
+				rule.minSliceSize = new(int)
+				*rule.minSliceSize = int(minV)
 			}
 			if maxVF {
-				rule.maxSSV = new(int)
-				*rule.maxSSV = int(maxV)
+				rule.maxSliceSize = new(int)
+				*rule.maxSliceSize = int(maxV)
 			}
-			if rule.minSSV == nil && rule.maxSSV == nil {
+			if rule.minSliceSize == nil && rule.maxSliceSize == nil {
 				panic(
 					fmt.Errorf(
 						"sha.validator: bad slice size range, field: `%s:%s.%s`, tag value: `%s`",
+						t.PkgPath(), t.Name(), f.Field.Name, val,
+					),
+				)
+			}
+		case "l", "length", "len":
+			rule.checkFieldBytesSize = true
+			minV, maxV, minVF, maxVF := internal.ParseIntRange(val)
+			if minVF {
+				rule.minFieldBytesSize = new(int)
+				*rule.minFieldBytesSize = int(minV)
+			}
+			if maxVF {
+				rule.maxFieldBytesSize = new(int)
+				*rule.maxFieldBytesSize = int(maxV)
+			}
+			if rule.minFieldBytesSize == nil && rule.maxFieldBytesSize == nil {
+				panic(
+					fmt.Errorf(
+						"sha.validator: bad field bytes size range, field: `%s:%s.%s`, tag value: `%s`",
 						t.PkgPath(), t.Name(), f.Field.Name, val,
 					),
 				)

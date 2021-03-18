@@ -17,7 +17,7 @@ func (ctx *RequestCtx) MustValidate(dist interface{}) {
 // revive:disable
 // pointer -> interface
 func (ctx *RequestCtx) Validate(dist interface{}) HTTPError {
-	if err := validator.Validate(ctx, dist); err != nil {
+	if err := validator.BindAndValidateForm(ctx, dist); err != nil {
 		return err
 	}
 	return nil
@@ -31,6 +31,9 @@ func (ctx *RequestCtx) ValidateJSON(dist interface{}) HTTPError {
 	}
 	if err := jsonx.Unmarshal(ctx.buf, dist); err != nil {
 		return StatusError(StatusBadRequest)
+	}
+	if err := validator.ValidateStruct(dist); err != nil {
+		return err
 	}
 	return nil
 }

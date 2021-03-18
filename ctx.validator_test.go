@@ -3,6 +3,8 @@ package sha
 import (
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
+	"github.com/zzztttkkk/sha/validator"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -87,4 +89,22 @@ func TestValidator(t *testing.T) {
 			fmt.Print(&form)
 		}),
 	)
+}
+
+func TestRequestCtx_ValidateJSON(t *testing.T) {
+	validator.RegisterRegexp("name", regexp.MustCompile("\\w{5}"))
+
+	type Form struct {
+		Num  int64  `json:"num" validator:",v=10-50"`
+		Name string `json:"name" validator:",r=name"`
+	}
+
+	rctx := &RequestCtx{}
+	rctx.Request.Header.SetContentType(MIMEJson)
+	rctx.buf = []byte(`{"num":45, "name":"MOONLIGHT"}`)
+
+	var form Form
+	rctx.MustValidateJSON(&form)
+
+	fmt.Printf("%+v\n", &form)
 }

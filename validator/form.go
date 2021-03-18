@@ -234,10 +234,10 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *FormError {
 			return nil
 		}
 		s := v.Len()
-		if rule.minSSV != nil && s < *rule.minSSV {
+		if rule.minSliceSize != nil && s < *rule.minSliceSize {
 			return &FormError{FormName: rule.formName, Type: MissingRequired}
 		}
-		if rule.maxSSV != nil && s > *rule.maxSSV {
+		if rule.maxSliceSize != nil && s > *rule.maxSliceSize {
 			return &FormError{FormName: rule.formName, Type: MissingRequired}
 		}
 	}
@@ -253,7 +253,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *FormError {
 }
 
 // return value is a ptr, not an interface.
-func Validate(former Former, dist interface{}) (err *FormError) {
+func BindAndValidateForm(former Former, dist interface{}) (err *FormError) {
 	v := reflect.ValueOf(dist).Elem()
 	var field reflect.Value
 	for _, rule := range GetRules(v.Type()) {

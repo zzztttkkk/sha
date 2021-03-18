@@ -75,17 +75,21 @@ type _Rule struct {
 	description string
 
 	checkNumRange bool // int value range flag
-	minIV         *int64
-	maxIV         *int64
-	minUV         *uint64
-	maxUV         *uint64
-	minDV         *float64
-	maxDV         *float64
+	minIntVal     *int64
+	maxIntVal     *int64
+	minUintVal    *uint64
+	maxUintVal    *uint64
+	minDoubleVal  *float64
+	maxDoubleVal  *float64
 
 	isSlice       bool
 	checkListSize bool // slice size range flag
-	minSSV        *int
-	maxSSV        *int
+	minSliceSize  *int
+	maxSliceSize  *int
+
+	checkFieldBytesSize bool
+	minFieldBytesSize   *int
+	maxFieldBytesSize   *int
 
 	notEscapeHtml bool
 	notTrimSpace  bool
@@ -99,15 +103,15 @@ type _Rule struct {
 	fnNames string
 }
 
-var MarkdownTableHeader = "\n|name|type|required|int value range|list size range|default|regexp|function|description|\n"
+var MarkdownTableHeader = "\n|name|type|required|field bytes size|int value range|list size range|default|regexp|function|description|\n"
 
 func init() {
-	MarkdownTableHeader += strings.Repeat("|:---:", 9)
+	MarkdownTableHeader += strings.Repeat("|:---:", 10)
 	MarkdownTableHeader += "|\n"
 }
 
 var ruleFmt = utils.NewNamedFmt(
-	"|${name}|${type}|${required}|${vrange}|${srange}|${default}|${regexp}|${function}|${description}|",
+	"|${name}|${type}|${required}|${lrange}|${vrange}|${srange}|${default}|${regexp}|${function}|${description}|",
 )
 
 // markdown table row
@@ -147,12 +151,12 @@ func (rule *_Rule) String() string {
 	}
 
 	if rule.checkListSize {
-		if rule.minSSV != nil && rule.maxSSV != nil {
-			m["srange"] = fmt.Sprintf("%d-%d", *rule.minSSV, *rule.maxSSV)
-		} else if rule.minSSV != nil {
-			m["srange"] = fmt.Sprintf("%d-", *rule.minSSV)
-		} else if rule.maxSSV != nil {
-			m["srange"] = fmt.Sprintf("-%d", *rule.maxSSV)
+		if rule.minSliceSize != nil && rule.maxSliceSize != nil {
+			m["srange"] = fmt.Sprintf("%d-%d", *rule.minSliceSize, *rule.maxSliceSize)
+		} else if rule.minSliceSize != nil {
+			m["srange"] = fmt.Sprintf("%d-", *rule.minSliceSize)
+		} else if rule.maxSliceSize != nil {
+			m["srange"] = fmt.Sprintf("-%d", *rule.maxSliceSize)
 		} else {
 			m["srange"] = "/"
 		}
@@ -160,35 +164,49 @@ func (rule *_Rule) String() string {
 		m["srange"] = "/"
 	}
 
+	if rule.checkFieldBytesSize {
+		if rule.minFieldBytesSize != nil && rule.maxFieldBytesSize != nil {
+			m["lrange"] = fmt.Sprintf("%d-%d", *rule.minFieldBytesSize, *rule.maxFieldBytesSize)
+		} else if rule.minFieldBytesSize != nil {
+			m["lrange"] = fmt.Sprintf("%d-", *rule.minFieldBytesSize)
+		} else if rule.maxFieldBytesSize != nil {
+			m["lrange"] = fmt.Sprintf("-%d", *rule.maxFieldBytesSize)
+		} else {
+			m["lrange"] = "/"
+		}
+	} else {
+		m["lrange"] = "/"
+	}
+
 	if rule.checkNumRange {
 		switch rule.rtype {
 		case _Int64, _IntSlice:
-			if rule.minIV != nil && rule.maxIV != nil {
-				m["vrange"] = fmt.Sprintf("%d-%d", *rule.minIV, *rule.maxIV)
-			} else if rule.minIV != nil {
-				m["vrange"] = fmt.Sprintf("%d-", *rule.minIV)
-			} else if rule.maxIV != nil {
-				m["vrange"] = fmt.Sprintf("-%d", *rule.maxIV)
+			if rule.minIntVal != nil && rule.maxIntVal != nil {
+				m["vrange"] = fmt.Sprintf("%d-%d", *rule.minIntVal, *rule.maxIntVal)
+			} else if rule.minIntVal != nil {
+				m["vrange"] = fmt.Sprintf("%d-", *rule.minIntVal)
+			} else if rule.maxIntVal != nil {
+				m["vrange"] = fmt.Sprintf("-%d", *rule.maxIntVal)
 			} else {
 				m["vrange"] = "/"
 			}
 		case _Uint64, _UintSlice:
-			if rule.minUV != nil && rule.maxUV != nil {
-				m["vrange"] = fmt.Sprintf("%d-%d", *rule.minUV, *rule.maxUV)
-			} else if rule.minUV != nil {
-				m["vrange"] = fmt.Sprintf("%d-", *rule.minUV)
-			} else if rule.maxUV != nil {
-				m["vrange"] = fmt.Sprintf("-%d", *rule.maxUV)
+			if rule.minUintVal != nil && rule.maxUintVal != nil {
+				m["vrange"] = fmt.Sprintf("%d-%d", *rule.minUintVal, *rule.maxUintVal)
+			} else if rule.minUintVal != nil {
+				m["vrange"] = fmt.Sprintf("%d-", *rule.minUintVal)
+			} else if rule.maxUintVal != nil {
+				m["vrange"] = fmt.Sprintf("-%d", *rule.maxUintVal)
 			} else {
 				m["vrange"] = "/"
 			}
 		case _Float64, _FloatSlice:
-			if rule.minDV != nil && rule.maxDV != nil {
-				m["vrange"] = fmt.Sprintf("%f-%f", *rule.minDV, *rule.maxDV)
-			} else if rule.minDV != nil {
-				m["vrange"] = fmt.Sprintf("%f-", *rule.minDV)
-			} else if rule.maxDV != nil {
-				m["vrange"] = fmt.Sprintf("-%f", *rule.maxDV)
+			if rule.minDoubleVal != nil && rule.maxDoubleVal != nil {
+				m["vrange"] = fmt.Sprintf("%f-%f", *rule.minDoubleVal, *rule.maxDoubleVal)
+			} else if rule.minDoubleVal != nil {
+				m["vrange"] = fmt.Sprintf("%f-", *rule.minDoubleVal)
+			} else if rule.maxDoubleVal != nil {
+				m["vrange"] = fmt.Sprintf("-%f", *rule.maxDoubleVal)
 			} else {
 				m["vrange"] = "/"
 			}
@@ -227,6 +245,16 @@ func (rule *_Rule) String() string {
 }
 
 func (rule *_Rule) toBytes(v []byte) ([]byte, bool) {
+	if rule.checkFieldBytesSize {
+		i := len(v)
+		if rule.minFieldBytesSize != nil && i < *rule.minFieldBytesSize {
+			return nil, false
+		}
+		if rule.maxFieldBytesSize != nil && i > *rule.maxFieldBytesSize {
+			return nil, false
+		}
+	}
+
 	if !rule.notTrimSpace {
 		v = bytes.TrimSpace(v)
 	}
@@ -263,10 +291,10 @@ func (rule *_Rule) toInt(v []byte) (int64, bool) {
 	}
 
 	if rule.checkNumRange {
-		if rule.minIV != nil && i < *rule.minIV {
+		if rule.minIntVal != nil && i < *rule.minIntVal {
 			return 0, false
 		}
-		if rule.maxIV != nil && i > *rule.maxIV {
+		if rule.maxIntVal != nil && i > *rule.maxIntVal {
 			return 0, false
 		}
 	}
@@ -280,10 +308,10 @@ func (rule *_Rule) toUint(v []byte) (uint64, bool) {
 	}
 
 	if rule.checkNumRange {
-		if rule.minUV != nil && i < *rule.minUV {
+		if rule.minUintVal != nil && i < *rule.minUintVal {
 			return 0, false
 		}
-		if rule.maxUV != nil && i > *rule.maxUV {
+		if rule.maxUintVal != nil && i > *rule.maxUintVal {
 			return 0, false
 		}
 	}
@@ -297,10 +325,10 @@ func (rule *_Rule) toFloat(v []byte) (float64, bool) {
 	}
 
 	if rule.checkNumRange {
-		if rule.minDV != nil && i < *rule.minDV {
+		if rule.minDoubleVal != nil && i < *rule.minDoubleVal {
 			return 0, false
 		}
-		if rule.maxDV != nil && i > *rule.maxDV {
+		if rule.maxDoubleVal != nil && i > *rule.maxDoubleVal {
 			return 0, false
 		}
 	}
