@@ -25,6 +25,11 @@ type _undefined struct{}
 
 var Undefined = &_undefined{}
 
-func NewDocument(  input interface{}, output interface{}) Document {
+func NewDocument(input interface{}, output interface{}) Document {
+	return nil
+}
+
+func NewOpenAPI() Document {
+	// todo
 	return nil
 }

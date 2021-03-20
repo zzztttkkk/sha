@@ -31,7 +31,7 @@ func TestRequestCtx_Validate(t *testing.T) {
 		RequestHandlerFunc(
 			func(ctx *RequestCtx) {
 				form := TestForm{}
-				ctx.MustValidate(&form)
+				ctx.MustValidateForm(&form)
 				_, _ = ctx.WriteString("OK")
 			},
 		),

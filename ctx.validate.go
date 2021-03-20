@@ -7,23 +7,22 @@ import (
 	"github.com/zzztttkkk/sha/validator"
 )
 
-func (ctx *RequestCtx) MustValidate(dist interface{}) {
-	e := ctx.Validate(dist)
+func (ctx *RequestCtx) MustValidateForm(dist interface{}) {
+	e := ctx.ValidateForm(dist)
 	if e != nil {
 		panic(e)
 	}
 }
 
 // revive:disable
+
 // pointer -> interface
-func (ctx *RequestCtx) Validate(dist interface{}) HTTPError {
+func (ctx *RequestCtx) ValidateForm(dist interface{}) HTTPError {
 	if err := validator.BindAndValidateForm(ctx, dist); err != nil {
 		return err
 	}
 	return nil
 }
-
-//revive:enable
 
 func (ctx *RequestCtx) ValidateJSON(dist interface{}) HTTPError {
 	if !bytes.HasPrefix(ctx.Request.Header.ContentType(), utils.B(MIMEJson)) {
@@ -37,6 +36,8 @@ func (ctx *RequestCtx) ValidateJSON(dist interface{}) HTTPError {
 	}
 	return nil
 }
+
+//revive:enable
 
 func (ctx *RequestCtx) MustValidateJSON(dist interface{}) {
 	err := ctx.ValidateJSON(dist)

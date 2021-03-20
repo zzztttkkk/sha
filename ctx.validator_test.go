@@ -80,7 +80,7 @@ func TestValidator(t *testing.T) {
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			var form TV01Form
 
-			if err := ctx.Validate(&form); err != nil {
+			if err := ctx.ValidateForm(&form); err != nil {
 				ctx.SetStatus(err.StatusCode())
 				ctx.WriteString(err.Error())
 				return

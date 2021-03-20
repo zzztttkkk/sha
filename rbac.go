@@ -23,7 +23,7 @@ func (r *_RbacRouterAdapter) HTTP(method string, path string, handler rbac.Handl
 type _CtxAdapter struct{}
 
 func (_CtxAdapter) ValidateForm(ctx context.Context, dist interface{}) error {
-	return Unwrap(ctx).Validate(dist)
+	return Unwrap(ctx).ValidateForm(dist)
 }
 
 func (_CtxAdapter) SetResponseStatus(ctx context.Context, v int) {
