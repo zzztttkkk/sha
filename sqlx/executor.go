@@ -74,6 +74,7 @@ func Tx(ctx context.Context) (nctx context.Context, committer func()) {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			panic(&RollbackError{Err: rollbackErr, RecoverVal: recv})
+			return
 		}
 		panic(recv)
 	}

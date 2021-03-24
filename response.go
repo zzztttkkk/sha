@@ -2,6 +2,7 @@ package sha
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
 	"sync"
@@ -9,14 +10,46 @@ import (
 )
 
 type Response struct {
+	version    []byte
 	statusCode int
-	Header     Header
+	phrase     []byte
+
+	Header Header
 
 	headerBuf          []byte
 	sendBuf            *bufio.Writer
 	bodyBuf            *utils.Buf
 	compressWriter     _CompressionWriter
 	compressWriterPool *sync.Pool
+	parseStatus        int
+}
+
+func (res *Response) setVersion(v []byte) {
+	if res.version == nil {
+		res.version = make([]byte, 0, len(v))
+	} else {
+		res.version = res.phrase[:0]
+	}
+	res.version = append(res.version, v...)
+}
+
+func (res *Response) setPhrase(v []byte) {
+	if res.phrase == nil {
+		res.phrase = make([]byte, 0, len(v))
+	} else {
+		res.phrase = res.phrase[:0]
+	}
+	res.phrase = append(res.phrase, v...)
+}
+
+func (res *Response) StatusCode() int { return res.statusCode }
+
+func (res *Response) Phrase() string { return utils.S(res.phrase) }
+
+func (res *Response) ProtocolVersion() string { return utils.S(res.version) }
+
+func (res *Response) String() string {
+	return fmt.Sprintf("sha.Response<%d, %s>", res.statusCode, res.phrase)
 }
 
 func (res *Response) Write(p []byte) (int, error) {
@@ -129,7 +162,12 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 
 func (res *Response) reset() {
 	res.statusCode = 0
+	res.phrase = nil
+	res.version = nil
 	res.headerBuf = res.headerBuf[:0]
 	res.Header.Reset()
+	res.parseStatus = 0
 	res.ResetBodyBuffer()
 }
+
+func (res *Response) Body() []byte { return res.bodyBuf.Data }

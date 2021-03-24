@@ -96,7 +96,7 @@ func GetRoleIDByName(ctx context.Context, name string) (int64, error) {
 
 	var id int64
 	err := roleOp.RowColumns(
-		ctx, "id",
+		ctx, []string{"id"},
 		"where name=:name and deleted_at=0 and status>=0 limit 1",
 		Arg{Name: name},
 		&id,
@@ -184,7 +184,7 @@ func RolePerms(ctx context.Context, roleID int64) []*model.Permission {
 	type Arg struct {
 		RID int64 `db:"rid"`
 	}
-	err := sqlx.Exe(ctx).RowsStruct(ctx, rolePermsSql, Arg{RID: roleID}, &ret)
+	err := sqlx.Exe(ctx).Select(ctx, rolePermsSql, Arg{RID: roleID}, &ret)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return ret

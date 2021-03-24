@@ -20,7 +20,8 @@ func (TestForm) Default(fieldName string) interface{} {
 
 func TestRequestCtx_Validate(t *testing.T) {
 	mux := NewMux(nil)
-	server := Default(mux)
+	server := New(nil, nil)
+	server.Handler = mux
 
 	mux.HTTPWithOptions(
 		&HandlerOptions{

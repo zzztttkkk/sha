@@ -19,6 +19,8 @@ type TestModel struct {
 	Password  string     `db:"password,g=login" json:"password"`
 }
 
+func (TestModel) TableName() string { return "test_model" }
+
 func (TestModel) TableColumns(db *sqlx.DB) []string {
 	return []string{
 		"id bigint primary key auto_increment",
@@ -43,13 +45,17 @@ func Test_XWrapper_Exe(t *testing.T) {
 	ctx := context.Background()
 
 	var m TestModel
-	_ = TestModelOperator.FetchOne(ctx, "*", "WHERE id=1", nil, &m)
-	fmt.Println(m, string(m.Name))
+	type Arg struct {
+		UID int64 `db:"user_id"`
+	}
+
+	_ = TestModelOperator.FetchOne(ctx, "*", "WHERE id=:user_id", Arg{UID: 12}, &m)
+	fmt.Println(m, m.Name)
 	j, e := jsonx.Marshal(&m)
 	fmt.Println(e, string(j), 111)
 
 	var name, password []byte
-	_ = Exe(ctx).Row(ctx, "select name,password from test_model where id=1 and deleted_at is null", nil, &name, &password)
+	_ = Exe(ctx).ScanRow(ctx, "select name,password from test_model where id=1 and deleted_at is null", nil, &name, &password)
 	fmt.Println(string(name), string(password))
 
 	fmt.Println(TestModelOperator.GroupColumns("login"))

@@ -186,7 +186,7 @@ type _FileSystemHandler struct {
 }
 
 func (fh *_FileSystemHandler) Handle(ctx *RequestCtx) {
-	fp, _ := ctx.URLParam("filepath")
+	fp, _ := ctx.Request.URLParams.Get("filepath")
 	serveFileSystem(ctx, fh.fs, filepath.Clean(utils.S(fp)), fh.autoIndex)
 }
 

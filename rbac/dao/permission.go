@@ -111,7 +111,7 @@ func GetPermIDByName(ctx context.Context, name string) (int64, error) {
 	var id int64
 	err := permOp.RowColumns(
 		ctx,
-		"id",
+		[]string{"id"},
 		"where name=:name and deleted_at=0 and status>=0",
 		Arg{Name: name},
 		&id,

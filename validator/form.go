@@ -70,11 +70,15 @@ func htmlEscape(p []byte) []byte {
 	for _, r := range utils.S(p) {
 		switch r {
 		case '&':
-			ret = append(ret, '&', 'a', 'm', 'p')
+			ret = append(ret, '&', 'a', 'm', 'p', ';')
 		case '<':
-			ret = append(ret, '&', 'l', 't')
+			ret = append(ret, '&', 'l', 't', ';')
 		case '>':
-			ret = append(ret, '&', 'g', 't')
+			ret = append(ret, '&', 'g', 't', ';')
+		case '\'':
+			ret = append(ret, '&', '#', '3', '9', ';')
+		case '"':
+			ret = append(ret, '&', '#', '3', '4', ';')
 		default:
 			l := utf8.EncodeRune(temp, r)
 			for i := 0; i < l; i++ {

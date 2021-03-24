@@ -3,6 +3,7 @@ package sqlx
 import (
 	"context"
 	"database/sql"
+	"github.com/jmoiron/sqlx"
 	"log"
 	"os"
 )
@@ -17,16 +18,6 @@ func EnableLogging() {
 	logging = true
 }
 
-// scan
-func (w W) Row(ctx context.Context, q string, namedargs interface{}, dist ...interface{}) error {
-	q, a := bindNamedargs(w.Raw, q, namedargs)
-	row := w.Raw.QueryRowxContext(ctx, q, a...)
-	if err := row.Err(); err != nil {
-		return err
-	}
-	return row.Scan(dist...)
-}
-
 var logger *log.Logger
 
 func SetLogger(l *log.Logger) {
@@ -37,18 +28,46 @@ func init() {
 	logger = log.New(os.Stdout, "sha.sqlx ", log.LstdFlags)
 }
 
-func bindNamedargs(exe Executor, q string, namedargs interface{}) (string, []interface{}) {
+// scan
+func (w W) ScanRow(ctx context.Context, q string, namedargs interface{}, dist ...interface{}) error {
+	q, a := BindNamedArgs(w.Raw, q, namedargs)
+	row := w.Raw.QueryRowxContext(ctx, q, a...)
+	if err := row.Err(); err != nil {
+		return err
+	}
+	return row.Scan(dist...)
+}
+
+func (w W) ScanRows(ctx context.Context, q string, namedargs interface{}, scanner func(*sqlx.Rows) error) error {
+	q, a := BindNamedArgs(w.Raw, q, namedargs)
+
+	rows, err := w.Raw.QueryxContext(ctx, q, a...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = scanner(rows)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func BindNamedArgs(exe Executor, q string, namedArgs interface{}) (string, []interface{}) {
 	var qs string
 	var args []interface{}
 	var err error
-	if namedargs != nil {
-		switch rv := namedargs.(type) {
+	if namedArgs != nil {
+		switch rv := namedArgs.(type) {
 		case Data:
 			qs, args, err = exe.BindNamed(q, (map[string]interface{})(rv))
 		case map[string]interface{}:
 			qs, args, err = exe.BindNamed(q, rv)
 		default:
-			qs, args, err = exe.BindNamed(q, namedargs)
+			qs, args, err = exe.BindNamed(q, namedArgs)
 		}
 	} else {
 		qs = q
@@ -62,41 +81,19 @@ func bindNamedargs(exe Executor, q string, namedargs interface{}) (string, []int
 	return qs, args
 }
 
-func (w W) Rows(ctx context.Context, q string, namedargs interface{}, dist interface{}) error {
-	q, a := bindNamedargs(w.Raw, q, namedargs)
-	return Exe(ctx).Raw.SelectContext(ctx, dist, q, a...)
+func (w W) Select(ctx context.Context, q string, namedArgs interface{}, sliceDist interface{}) error {
+	q, a := BindNamedArgs(w.Raw, q, namedArgs)
+	return Exe(ctx).Raw.SelectContext(ctx, sliceDist, q, a...)
 }
 
-func (w W) RowStruct(ctx context.Context, q string, namedargs interface{}, dist interface{}) error {
-	q, a := bindNamedargs(w.Raw, q, namedargs)
-
-	row := w.Raw.QueryRowxContext(ctx, q, a...)
-	if err := row.Err(); err != nil {
-		return err
-	}
-	return row.StructScan(dist)
-}
-
-func (w W) RowsStruct(ctx context.Context, q string, namedargs interface{}, dist interface{}) error {
-	q, a := bindNamedargs(w.Raw, q, namedargs)
-
-	return w.Raw.SelectContext(ctx, dist, q, a...)
-}
-
-func (w W) RowsScan(ctx context.Context, q string, namedargs interface{}, scanner Scanner) error {
-	q, a := bindNamedargs(w.Raw, q, namedargs)
-
-	rows, err := w.Raw.QueryxContext(ctx, q, a...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	return scanner.Scan(rows)
+func (w W) Get(ctx context.Context, q string, namedArgs interface{}, dist interface{}) error {
+	q, a := BindNamedArgs(w.Raw, q, namedArgs)
+	return Exe(ctx).Raw.GetContext(ctx, dist, q, a...)
 }
 
 // exec
 func (w W) Exec(ctx context.Context, q string, namedargs interface{}) sql.Result {
-	q, a := bindNamedargs(w.Raw, q, namedargs)
+	q, a := BindNamedArgs(w.Raw, q, namedargs)
 	r, err := w.Raw.ExecContext(ctx, q, a...)
 	if err != nil {
 		panic(err)

@@ -9,17 +9,16 @@ import (
 	"github.com/jmoiron/sqlx/reflectx"
 	"reflect"
 	"strings"
-	"unicode"
 )
 
 type Operator struct {
 	tablename string
-	ele       reflect.Value
+	ele       Modeler
 	info      *_StructInfo
 }
 
-func NewOperator(ele interface{}) *Operator {
-	op := &Operator{ele: reflect.ValueOf(ele)}
+func NewOperator(ele Modeler) *Operator {
+	op := &Operator{ele: ele}
 	op.info = getStructInfo(reflect.TypeOf(ele))
 	return op
 }
@@ -59,30 +58,7 @@ func (op *Operator) GroupColumns(name string) []string {
 	return ret
 }
 
-func toTableName(v string) string {
-	var ret []rune
-	for i, r := range v {
-		if i == 0 {
-			ret = append(ret, unicode.ToLower(r))
-			continue
-		}
-
-		if unicode.IsUpper(r) {
-			ret = append(ret, '_', unicode.ToLower(r))
-		} else {
-			ret = append(ret, r)
-		}
-	}
-	return string(ret)
-}
-
-func getTableName(ele reflect.Value) string {
-	tablenameFn := ele.MethodByName("TableName")
-	if tablenameFn.IsValid() {
-		return (tablenameFn.Call(nil)[0]).Interface().(string)
-	}
-	return toTableName(ele.Type().Name())
-}
+func getTableName(ele Modeler) string { return ele.TableName() }
 
 func (op *Operator) TableName() string {
 	if len(op.tablename) < 1 {
@@ -91,10 +67,10 @@ func (op *Operator) TableName() string {
 	return op.tablename
 }
 
-func doCreate(db *sqlx.DB, name string, fnV reflect.Value) {
-	columns := fnV.Call([]reflect.Value{reflect.ValueOf(db)})[0].Interface().([]string)
+func doCreate(db *sqlx.DB, name string, v Modeler) {
+	columns := v.TableColumns(db)
 	q := fmt.Sprintf(
-		"create table if not exists %s (%s)",
+		"CREATE TABLE IF NOT EXISTS %s (%s)",
 		name,
 		strings.Join(columns, ","),
 	)
@@ -105,18 +81,7 @@ func doCreate(db *sqlx.DB, name string, fnV reflect.Value) {
 }
 
 func (op *Operator) CreateTable() {
-	fnV := op.ele.MethodByName("TableColumns")
-	if !fnV.IsValid() {
-		panic(
-			fmt.Errorf(
-				"sha.sqlx: `%s.%s` does not have a method named `TableColumns`",
-				op.ele.Type().PkgPath(),
-				op.ele.Type().Name(),
-			),
-		)
-	}
-
-	doCreate(writableDb, op.TableName(), fnV)
+	doCreate(writableDb, op.TableName(), op.ele)
 }
 
 func (op *Operator) simpleSelect(group, cond string) string {
@@ -186,25 +151,28 @@ func (op *Operator) simpleUpdate(cond string, m Data) (string, Data) {
 	return buf.String(), retM
 }
 
-var mType = reflect.TypeOf(Data{})
+var dataType = reflect.TypeOf(Data{})
+var mapType = reflect.TypeOf(map[string]interface{}{})
 
 func mergeMap(ctx context.Context, dist Data, src interface{}) interface{} {
 	if len(dist) < 1 {
 		return src
 	}
 
+	if src == nil {
+		return dist
+	}
+
 	t := reflect.TypeOf(src)
 	if t.Kind() == reflect.Map {
-		if t == mType {
-			for a, b := range src.(Data) {
+		if t == mapType || t == dataType {
+			for a, b := range src.(map[string]interface{}) {
 				dist[a] = b
 			}
 			return dist
+		} else {
+			panic(errors.New("sha.sqlx: bad data type"))
 		}
-		for a, b := range src.(map[string]interface{}) {
-			dist[a] = b
-		}
-		return dist
 	}
 
 	t = reflectx.Deref(t)
@@ -213,29 +181,31 @@ func mergeMap(ctx context.Context, dist Data, src interface{}) interface{} {
 		if val.Kind() == reflect.Ptr {
 			val = val.Elem()
 		}
-		structinfo := db(ctx).Mapper.TypeMap(t)
-		for _, f := range structinfo.Index {
+		structInfo := db(ctx).Mapper.TypeMap(t)
+		for _, f := range structInfo.Index {
 			dist[f.Name] = val.FieldByIndex(f.Index).Interface()
 		}
+	} else {
+		panic(errors.New("sha.sqlx: bad data type"))
 	}
 	return dist
 }
 
 func (op *Operator) FetchOne(ctx context.Context, keysGroup string, condition string, namedargs interface{}, dist interface{}) error {
-	return Exe(ctx).RowStruct(ctx, op.simpleSelect(keysGroup, condition), namedargs, dist)
+	return Exe(ctx).Get(ctx, op.simpleSelect(keysGroup, condition), namedargs, dist)
 }
 
-func (op *Operator) RowColumns(ctx context.Context, columns string, cond string, namedargs interface{}, dist ...interface{}) error {
+func (op *Operator) RowColumns(ctx context.Context, columns []string, cond string, namedargs interface{}, dist ...interface{}) error {
 	buf := strings.Builder{}
 	buf.WriteString("SELECT ")
-	buf.WriteString(columns)
+	buf.WriteString(strings.Join(columns, ", "))
 	buf.WriteString(" FROM ")
 	buf.WriteString(op.TableName())
 	buf.WriteRune(' ')
 	if len(cond) > 0 {
 		buf.WriteString(cond)
 	}
-	return Exe(ctx).Row(ctx, buf.String(), namedargs, dist...)
+	return Exe(ctx).ScanRow(ctx, buf.String(), namedargs, dist...)
 }
 
 func (op *Operator) RowsColumn(ctx context.Context, column string, cond string, namedargs interface{}, dist interface{}) error {
@@ -248,11 +218,11 @@ func (op *Operator) RowsColumn(ctx context.Context, column string, cond string, 
 	if len(cond) > 0 {
 		buf.WriteString(cond)
 	}
-	return Exe(ctx).Rows(ctx, buf.String(), namedargs, dist)
+	return Exe(ctx).Select(ctx, buf.String(), namedargs, dist)
 }
 
 func (op *Operator) FetchMany(ctx context.Context, keysGroup string, condition string, arg interface{}, dist interface{}) error {
-	return Exe(ctx).RowsStruct(ctx, op.simpleSelect(keysGroup, condition), arg, dist)
+	return Exe(ctx).Select(ctx, op.simpleSelect(keysGroup, condition), arg, dist)
 }
 
 type Raw string
@@ -317,7 +287,7 @@ func (op *Operator) Insert(ctx context.Context, data Data) int64 {
 
 func (op *Operator) InsertWithReturning(ctx context.Context, data Data, returning string, dist ...interface{}) {
 	s, m := op.simpleInsert(data, returning)
-	if err := Exe(ctx).Row(ctx, s, m, dist); err != nil {
+	if err := Exe(ctx).ScanRow(ctx, s, m, dist); err != nil {
 		panic(err)
 	}
 }
@@ -330,9 +300,10 @@ func (op *Operator) Delete(ctx context.Context, cond string, namedargs interface
 	}
 
 	var buf strings.Builder
-	buf.WriteString("delete from ")
+	buf.WriteString("DELETE FROM ")
 	buf.WriteString(op.TableName())
 	buf.WriteRune(' ')
+	buf.WriteString(cond)
 
 	return Exe(ctx).Exec(ctx, buf.String(), namedargs)
 }

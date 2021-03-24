@@ -18,7 +18,7 @@ func (ctx *RequestCtx) MustValidateForm(dist interface{}) {
 
 // pointer -> interface
 func (ctx *RequestCtx) ValidateForm(dist interface{}) HTTPError {
-	if err := validator.BindAndValidateForm(ctx, dist); err != nil {
+	if err := validator.BindAndValidateForm(_Former{&ctx.Request}, dist); err != nil {
 		return err
 	}
 	return nil

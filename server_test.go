@@ -128,39 +128,6 @@ func TestServer_Run(t *testing.T) {
 	ListenAndServe("127.0.0.1:8080", mux)
 }
 
-func TestServer_RunSimple(t *testing.T) {
-	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) {
-		_, _ = ctx.WriteString("hello world")
-	}))
-	server.ListenAndServe()
-}
-
-func TestServer_RunPrintRequest(t *testing.T) {
-	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) {
-		req := &ctx.Request
-
-		fmt.Printf(
-			"%s %s\n%s\n%s\n%s\n",
-			req.Method,
-			req.Path,
-			req.Query(),
-			&req.Header,
-			req.BodyForm(),
-		)
-
-		_, _ = ctx.WriteString("hello world")
-	}))
-	server.ListenAndServe()
-}
-
-func TestServer_RunTimeout(t *testing.T) {
-	server := Default(RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("hello world") }))
-	var fn func()
-	server.baseCtx, fn = context.WithTimeout(context.Background(), time.Second)
-	defer fn()
-	server.ListenAndServe()
-}
-
 func TestStdHttp(t *testing.T) {
 	s := &http.Server{
 		IdleTimeout: time.Second * 30,

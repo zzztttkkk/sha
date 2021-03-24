@@ -7,7 +7,7 @@ import (
 )
 
 func TestRequestCtx_AutoCompress(t *testing.T) {
-	s := Default(nil)
+	s := New(nil, nil)
 	s.option.MaxConnectionKeepAlive.Duration = 0
 
 	mux := NewMux(nil)

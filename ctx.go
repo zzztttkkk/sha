@@ -15,10 +15,14 @@ import (
 )
 
 type RequestCtx struct {
-	ctx      context.Context
-	Request  Request
+	ctx context.Context
+
+	Request Request
+
 	Response Response
-	ud       userData
+
+	// user data
+	ud userData
 
 	// time
 	connTime time.Time
@@ -49,6 +53,10 @@ type RequestCtx struct {
 }
 
 // context.Context
+func (ctx *RequestCtx) SetParentContext(pctx context.Context) {
+	ctx.ctx = pctx
+}
+
 func (ctx *RequestCtx) Deadline() (deadline time.Time, ok bool) { return ctx.ctx.Deadline() }
 
 func (ctx *RequestCtx) Done() <-chan struct{} { return ctx.ctx.Done() }

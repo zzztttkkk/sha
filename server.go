@@ -25,6 +25,9 @@ type ServerOption struct {
 	ReadTimeout            utils.TomlDuration `json:"read_timeout" toml:"read-timeout"`
 	IdleTimeout            utils.TomlDuration `json:"idle_timeout" toml:"idle-timeout"`
 	WriteTimeout           utils.TomlDuration `json:"write_timeout" toml:"write-timeout"`
+
+	HTTPProtocol      HTTPProtocol      `json:"-" toml:"-"`
+	WebsocketProtocol WebSocketProtocol `json:"-" toml:"-"`
 }
 
 var defaultServerOption = ServerOption{
@@ -80,25 +83,27 @@ func init() {
 	)
 }
 
-func New(ctx context.Context, opt *ServerOption, httpProtocol HTTPProtocol, webSocketProtocol WebSocketProtocol) *Server {
-	if httpProtocol == nil {
-		log.Println("sha: nil HTTPProtocol, use default")
-		httpProtocol = NewHTTP11Protocol(nil)
+func New(ctx context.Context, opt *ServerOption) *Server {
+	if opt == nil {
+		_v := &ServerOption{}
+		*_v = defaultServerOption
+		opt = _v
 	}
 
-	if webSocketProtocol == nil {
-		log.Println("sha: nil WebSocketProtocol, use default")
-		webSocketProtocol = NewWebSocketProtocol(nil)
+	if opt.HTTPProtocol == nil {
+		opt.HTTPProtocol = NewHTTP11Protocol(nil)
+	}
+
+	if opt.WebsocketProtocol == nil {
+		opt.WebsocketProtocol = NewWebSocketProtocol(nil)
 	}
 
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	server := &Server{httpProtocol: httpProtocol, websocketProtocol: webSocketProtocol, baseCtx: ctx}
-	if opt != nil {
-		server.option = *opt
-	}
+	server := &Server{httpProtocol: opt.HTTPProtocol, websocketProtocol: opt.WebsocketProtocol, baseCtx: ctx}
+	server.option = *opt
 
 	if err := mergo.Merge(&server.option, &defaultServerOption); err != nil {
 		panic(err)
@@ -106,12 +111,6 @@ func New(ctx context.Context, opt *ServerOption, httpProtocol HTTPProtocol, webS
 
 	server.readTimeout = server.option.ReadTimeout.Duration
 	return server
-}
-
-func Default(handler RequestHandler) *Server {
-	rv := New(context.Background(), nil, NewHTTP11Protocol(nil), NewWebSocketProtocol(nil))
-	rv.Handler = handler
-	return rv
 }
 
 func (s *Server) BeforeAccept(fn func(s *Server)) {
@@ -278,7 +277,8 @@ func ListenAndServe(addr string, handler RequestHandler) {
 		addr = "127.0.0.1:5986"
 	}
 
-	server := Default(handler)
+	server := New(context.Background(), nil)
 	server.option.Addr = addr
+	server.Handler = handler
 	server.ListenAndServe()
 }

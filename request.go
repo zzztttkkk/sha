@@ -1,6 +1,7 @@
 package sha
 
 import (
+	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
 )
@@ -101,3 +102,52 @@ func (req *Request) CookieValue(key string) ([]byte, bool) {
 }
 
 func (req *Request) HeaderValue(key string) ([]byte, bool) { return req.Header.Get(key) }
+
+func (req *Request) SetMethod(method string) *Request {
+	req.Method = utils.B(method)
+	return req
+}
+
+func (req *Request) SetPath(path []byte) *Request {
+	req.Path = path
+	return req
+}
+
+func (req *Request) SetPathString(path string) *Request {
+	req.Path = utils.B(path)
+	return req
+}
+
+func (req *Request) SetQuery(mvm MultiValueMap) *Request {
+	for k, vl := range mvm {
+		for _, v := range vl {
+			req.query.AppendString(k, v)
+		}
+	}
+	return req
+}
+
+func (req *Request) SetFormBody(mvm MultiValueMap) *Request {
+	for k, vl := range mvm {
+		for _, v := range vl {
+			req.body.AppendString(k, v)
+		}
+	}
+	req.Header.SetContentType(MIMEForm)
+	return req
+}
+
+func (req *Request) SetJSONBody(v interface{}) *Request {
+	req.Header.SetContentType(MIMEJson)
+	b, e := jsonx.Marshal(v)
+	if e != nil {
+		panic(e)
+	}
+	req.bodyBufferPtr = &b
+	return req
+}
+
+func (req *Request) SetRawBody(v []byte) *Request {
+	req.bodyBufferPtr = &v
+	return req
+}
