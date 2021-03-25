@@ -17,11 +17,12 @@ func (item *KvItem) makeInvalid() {
 }
 
 type Kvs struct {
-	lst []KvItem
+	lst  []KvItem
+	size int
 }
 
 func (kvs *Kvs) Size() int {
-	return len(kvs.lst)
+	return kvs.size
 }
 
 func (kvs *Kvs) String() string {
@@ -57,6 +58,7 @@ func (kvs *Kvs) AppendBytes(k, v []byte) *KvItem {
 	item.Key = append(item.Key, k...)
 	item.Val = append(item.Val, v...)
 
+	kvs.size++
 	return item
 }
 
@@ -73,12 +75,19 @@ func (kvs *Kvs) AppendString(k, v string) *KvItem {
 	item.invalid = false
 	item.Key = append(item.Key, k...)
 	item.Val = append(item.Val, v...)
+
+	kvs.size++
 	return item
 }
 
 func (kvs *Kvs) Set(k string, v []byte) *KvItem {
 	kvs.Del(k)
 	return kvs.Append(k, v)
+}
+
+func (kvs *Kvs) SetString(k, v string) *KvItem {
+	kvs.Del(k)
+	return kvs.AppendString(k, v)
 }
 
 func (kvs *Kvs) Del(k string) {
@@ -89,6 +98,7 @@ func (kvs *Kvs) Del(k string) {
 		}
 		if string(item.Key) == k {
 			item.makeInvalid()
+			kvs.size--
 		}
 	}
 }
@@ -122,6 +132,10 @@ func (kvs *Kvs) GetAll(k string) [][]byte {
 }
 
 func (kvs *Kvs) EachKey(visitor func(k []byte) bool) {
+	if kvs.size < 1 {
+		return
+	}
+
 	for i := 0; i < len(kvs.lst); i++ {
 		item := &(kvs.lst[i])
 		if item.invalid {
@@ -134,6 +148,9 @@ func (kvs *Kvs) EachKey(visitor func(k []byte) bool) {
 }
 
 func (kvs *Kvs) EachValue(visitor func(v []byte) bool) {
+	if kvs.size < 1 {
+		return
+	}
 	for i := 0; i < len(kvs.lst); i++ {
 		item := &(kvs.lst[i])
 		if item.invalid {
@@ -146,6 +163,9 @@ func (kvs *Kvs) EachValue(visitor func(v []byte) bool) {
 }
 
 func (kvs *Kvs) EachItem(visitor func(item *KvItem) bool) {
+	if kvs.size < 1 {
+		return
+	}
 	for i := 0; i < len(kvs.lst); i++ {
 		item := &(kvs.lst[i])
 		if item.invalid {
@@ -166,4 +186,5 @@ func (kvs *Kvs) Reset() {
 		item.makeInvalid()
 	}
 	kvs.lst = kvs.lst[:0]
+	kvs.size = 0
 }

@@ -26,7 +26,8 @@ func (f ManagerFunc) Auth(ctx context.Context) (auth.Subject, error) { return f(
 
 func main() {
 	mux := sha.NewMux(nil)
-	server := sha.Default(mux)
+	server := sha.New(nil, nil)
+	server.Handler = mux
 	//mux.HandleDoc("get", "/doc")
 
 	rbacGroup := mux.NewGroup("/rbac")
@@ -37,8 +38,8 @@ func main() {
 			if rctx == nil {
 				return nil, sha.StatusError(sha.StatusUnauthorized)
 			}
-			pwd, _ := rctx.Request.Header.Get("RBAC-Password")
-			name, _ := rctx.Request.Header.Get("RBAC-Name")
+			pwd, _ := rctx.Request.Header().Get("RBAC-Password")
+			name, _ := rctx.Request.Header().Get("RBAC-Name")
 
 			if string(pwd) == "123456" && string(name) == "root-12" {
 				return _RbacUser(12), nil

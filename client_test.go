@@ -15,8 +15,7 @@ var headers = MultiValueMap{
 }
 
 func printResponse(ctx *RequestCtx) {
-	fmt.Println(&ctx.Response)
-	ctx.Response.Header.EachItem(func(item *utils.KvItem) bool {
+	ctx.Response.Header().EachItem(func(item *utils.KvItem) bool {
 		fmt.Printf("%s: %s\n", item.Key, item.Val)
 		return true
 	})
@@ -26,7 +25,8 @@ func printResponse(ctx *RequestCtx) {
 func TestConnection_Send(t *testing.T) {
 	conn := NewConnection("baidu.com:80", &Environment{Header: headers})
 	var ctx RequestCtx
-	ctx.Request.SetMethod("GET").SetPathString("/s").SetQuery(MultiValueMap{"wd": []string{"qwer"}})
+	ctx.Request.SetMethod("GET").SetPathString("/s")
+	ctx.Request.Query().LoadMap(MultiValueMap{"wd": []string{"qwer"}})
 
 	err := conn.Send(&ctx)
 	if err != nil {
@@ -39,7 +39,8 @@ func TestConnection_Send(t *testing.T) {
 func TestConnection_TLS_Send(t *testing.T) {
 	conn := NewTLSConnection("baidu.com:443", nil, &Environment{Header: headers})
 	var ctx RequestCtx
-	ctx.Request.SetMethod("GET").SetPathString("/s").SetQuery(MultiValueMap{"wd": []string{"qwer"}})
+	ctx.Request.SetMethod("GET").SetPathString("/s")
+	ctx.Request.Query().LoadMap(MultiValueMap{"wd": []string{"qwer"}})
 
 	err := conn.Send(&ctx)
 	if err != nil {
@@ -52,7 +53,8 @@ func TestConnection_TLS_Send(t *testing.T) {
 func TestConnection_Send_Proxy(t *testing.T) {
 	conn := NewConnection("google.com:80", &Environment{Header: headers, HTTPProxy: HTTPProxy{Address: "127.0.0.1:56966"}})
 	var ctx RequestCtx
-	ctx.Request.SetMethod("GET").SetPathString("/s").SetQuery(MultiValueMap{"wd": []string{"qwer"}})
+	ctx.Request.SetMethod("GET").SetPathString("/s")
+	ctx.Request.Query().LoadMap(MultiValueMap{"wd": []string{"qwer"}})
 
 	err := conn.Send(&ctx)
 	if err != nil {
@@ -65,7 +67,8 @@ func TestConnection_Send_Proxy(t *testing.T) {
 func TestConnection_TLS_Send_Proxy(t *testing.T) {
 	conn := NewTLSConnection("google.com:443", nil, &Environment{Header: headers, HTTPProxy: HTTPProxy{Address: "127.0.0.1:56966"}})
 	var ctx RequestCtx
-	ctx.Request.SetMethod("GET").SetPathString("/s").SetQuery(MultiValueMap{"wd": []string{"qwer"}})
+	ctx.Request.SetMethod("GET").SetPathString("/s")
+	ctx.Request.Query().LoadMap(MultiValueMap{"wd": []string{"qwer"}})
 
 	err := conn.Send(&ctx)
 	if err != nil {

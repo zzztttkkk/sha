@@ -2,6 +2,7 @@ package sha
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/sha/validator"
@@ -25,10 +26,16 @@ func (ctx *RequestCtx) ValidateForm(dist interface{}) HTTPError {
 }
 
 func (ctx *RequestCtx) ValidateJSON(dist interface{}) HTTPError {
-	if !bytes.HasPrefix(ctx.Request.Header.ContentType(), utils.B(MIMEJson)) {
+	if !bytes.HasPrefix(ctx.Request.Header().ContentType(), utils.B(MIMEJson)) {
 		return StatusError(StatusBadRequest)
 	}
-	if err := jsonx.Unmarshal(ctx.buf, dist); err != nil {
+
+	body := ctx.Request._HTTPPocket.body
+	if body == nil {
+		return StatusError(StatusBadRequest)
+	}
+	fmt.Printf("%s\n", body.Bytes())
+	if err := jsonx.Unmarshal(body.Bytes(), dist); err != nil {
 		return StatusError(StatusBadRequest)
 	}
 	if err := validator.ValidateStruct(dist); err != nil {

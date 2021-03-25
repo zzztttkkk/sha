@@ -51,7 +51,7 @@ func newCorsOptions(cc *CorsOptions) *_CorsOptions {
 }
 
 func (options *_CorsOptions) writeHeader(ctx *RequestCtx, origin []byte) {
-	header := &ctx.Response.Header
+	header := ctx.Response.Header()
 	header.Set(HeaderAccessControlAllowOrigin, origin)
 	for i := 0; i < len(options.headerKeys); i++ {
 		header.Append(options.headerKeys[i], options.headerVals[i])

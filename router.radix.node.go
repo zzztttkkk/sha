@@ -109,7 +109,7 @@ type _AutoOptions struct {
 }
 
 func (a *_AutoOptions) Handle(ctx *RequestCtx) {
-	ctx.Response.Header.Set(HeaderAllow, a.m)
+	ctx.Response.Header().Set(HeaderAllow, a.m)
 }
 
 func newAutoOptions(method string) *_AutoOptions {

@@ -1,7 +1,7 @@
 package sha
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
@@ -10,65 +10,43 @@ import (
 )
 
 type Response struct {
-	version    []byte
+	_HTTPPocket
 	statusCode int
-	phrase     []byte
-
-	Header Header
-
-	headerBuf          []byte
-	sendBuf            *bufio.Writer
-	bodyBuf            *utils.Buf
-	compressWriter     _CompressionWriter
-	compressWriterPool *sync.Pool
-	parseStatus        int
-}
-
-func (res *Response) setVersion(v []byte) {
-	if res.version == nil {
-		res.version = make([]byte, 0, len(v))
-	} else {
-		res.version = res.phrase[:0]
-	}
-	res.version = append(res.version, v...)
-}
-
-func (res *Response) setPhrase(v []byte) {
-	if res.phrase == nil {
-		res.phrase = make([]byte, 0, len(v))
-	} else {
-		res.phrase = res.phrase[:0]
-	}
-	res.phrase = append(res.phrase, v...)
+	cw         _CompressionWriter
+	cwp        *sync.Pool
 }
 
 func (res *Response) StatusCode() int { return res.statusCode }
 
-func (res *Response) Phrase() string { return utils.S(res.phrase) }
+func (res *Response) Phrase() string { return utils.S(res.fl3) }
 
-func (res *Response) ProtocolVersion() string { return utils.S(res.version) }
+func (res *Response) HTTPVersion() string { return utils.S(res.fl1) }
 
-func (res *Response) String() string {
-	return fmt.Sprintf("sha.Response<%d, %s>", res.statusCode, res.phrase)
+func (res *Response) SetHTTPVersion(v string) *Response {
+	res.fl1 = res.fl1[:0]
+	res.fl1 = append(res.fl1, v...)
+	return res
 }
+
+var ErrUnknownResponseStatusCode = fmt.Errorf("sha: unknown response status code")
+
+func (res *Response) SetStatusCode(v int) *Response {
+	res.statusCode = v
+	res.fl3 = statusTextMap[v]
+	if len(res.fl3) < 1 {
+		panic(ErrUnknownResponseStatusCode)
+	}
+	res.fl2 = append(res.fl2, strconv.FormatInt(int64(v), 10)...)
+	return res
+}
+
+func (res *Response) Body() *bytes.Buffer { return res.body }
 
 func (res *Response) Write(p []byte) (int, error) {
-	if res.compressWriter != nil {
-		return res.compressWriter.Write(p)
+	if res.cw != nil {
+		return res.cw.Write(p)
 	}
-	res.bodyBuf.Data = append(res.bodyBuf.Data, p...)
-	return len(p), nil
-}
-
-func (res *Response) SetStatusCode(v int) {
-	res.statusCode = v
-}
-
-func (res *Response) ResetBodyBuffer() {
-	res.bodyBuf.Data = res.bodyBuf.Data[:0]
-	if res.compressWriter != nil {
-		res.compressWriter.Reset(res.bodyBuf)
-	}
+	return res.body.Write(p)
 }
 
 type _SameSiteVal string
@@ -107,7 +85,7 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 	if options == nil {
 		options = &defaultCookieOptions
 	}
-	item := res.Header.Append(HeaderSetCookie, nil)
+	item := res.Header().Append(HeaderSetCookie, nil)
 
 	item.Val = append(item.Val, k...)
 	item.Val = append(item.Val, '=')
@@ -161,13 +139,22 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 }
 
 func (res *Response) reset() {
-	res.statusCode = 0
-	res.phrase = nil
-	res.version = nil
-	res.headerBuf = res.headerBuf[:0]
-	res.Header.Reset()
+	res._HTTPPocket.reset()
 	res.parseStatus = 0
-	res.ResetBodyBuffer()
+	res.statusCode = 0
+	if res.cw != nil {
+		res.cw.Reset(nil)
+		res.cwp.Put(res.cw)
+		res.cw = nil
+		res.cwp = nil
+	}
 }
 
-func (res *Response) Body() []byte { return res.bodyBuf.Data }
+func (res *Response) ResetBody() {
+	if res.body != nil {
+		res.body.Reset()
+	}
+	if res.cw != nil {
+		res.cw.Reset(&res._HTTPPocket)
+	}
+}

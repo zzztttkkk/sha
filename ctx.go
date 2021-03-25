@@ -1,11 +1,11 @@
 package sha
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
-	"html/template"
 	"io"
 	"mime"
 	"net"
@@ -15,10 +15,15 @@ import (
 )
 
 type RequestCtx struct {
-	ctx context.Context
+	ctx        context.Context
+	cancelFunc func()
 
-	Request Request
+	readBuf []byte
+	conn    net.Conn
+	r       *bufio.Reader
+	w       *bufio.Writer
 
+	Request  Request
 	Response Response
 
 	// user data
@@ -26,24 +31,10 @@ type RequestCtx struct {
 
 	// time
 	connTime time.Time
-	reqTime  time.Time
 
-	// writer
-	isTLS    bool
-	conn     net.Conn
+	isTLS bool
+
 	hijacked bool
-
-	// parser
-	status           int
-	firstLineStatus  int
-	firstLineSize    int // first line size
-	headersSize      int // header lines size
-	buf              []byte
-	currentHeaderKey []byte // current header key
-	cHKeyDoUpper     bool   // prev byte is '-' or first byte
-	headerKVSepRead  bool   // `:`
-	bodyRemain       int
-	bodySize         int
 
 	// hook
 	onReset []func(ctx *RequestCtx)
@@ -97,7 +88,7 @@ func (ctx *RequestCtx) GetCustomData(key string) interface{} { return ctx.ud.Get
 func (ctx *RequestCtx) VisitCustomData(fn func(key []byte, v interface{}) bool) { ctx.ud.Visit(fn) }
 
 // http connection
-func (ctx *RequestCtx) Close() { ctx.Response.Header.Set(HeaderConnection, []byte("close")) }
+func (ctx *RequestCtx) Close() { ctx.Response.Header().Set(HeaderConnection, []byte("close")) }
 
 func (ctx *RequestCtx) IsTLS() bool { return ctx.isTLS }
 
@@ -116,17 +107,17 @@ func (ctx *RequestCtx) Hijack() net.Conn {
 const lowerUpgradeHeader = "upgrade"
 
 func (ctx *RequestCtx) UpgradeProtocol() string {
-	if string(ctx.Request.Method) != http.MethodGet {
+	if string(ctx.Request.Method()) != http.MethodGet {
 		return ""
 	}
-	v, ok := ctx.Request.Header.Get(HeaderConnection)
+	v, ok := ctx.Request.Header().Get(HeaderConnection)
 	if !ok {
 		return ""
 	}
 	if string(inPlaceLowercase(v)) != lowerUpgradeHeader {
 		return ""
 	}
-	v, ok = ctx.Request.Header.Get(HeaderUpgrade)
+	v, ok = ctx.Request.Header().Get(HeaderUpgrade)
 	if !ok {
 		return ""
 	}
@@ -135,44 +126,63 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 
 func (ctx *RequestCtx) OnReset(fn func(ctx *RequestCtx)) { ctx.onReset = append(ctx.onReset, fn) }
 
-func (ctx *RequestCtx) Reset() {
-	if ctx.ctx == nil {
-		return
-	}
-
+func (ctx *RequestCtx) prepareForNextRequest() {
 	if len(ctx.onReset) > 0 {
 		for _, fn := range ctx.onReset {
 			fn(ctx)
 		}
 		ctx.onReset = ctx.onReset[:0]
 	}
-
-	ctx.ctx = nil
 	ctx.Request.Reset()
 	ctx.Response.reset()
 	ctx.ud.Reset()
+}
 
-	ctx.status = 0
-	ctx.firstLineStatus = 0
-	ctx.firstLineSize = 0
-	ctx.headersSize = 0
-	ctx.buf = ctx.buf[:0]
-	ctx.currentHeaderKey = ctx.currentHeaderKey[:0]
-	ctx.cHKeyDoUpper = false
-	ctx.headerKVSepRead = false
-	ctx.bodySize = -1
-	ctx.bodyRemain = -1
+func (ctx *RequestCtx) Reset() {
+	if ctx.ctx == nil {
+		return
+	}
+
+	ctx.prepareForNextRequest()
+
+	ctx.ctx = nil
+	ctx.cancelFunc = nil
+	ctx.conn = nil
+	ctx.connTime = time.Time{}
+	ctx.r.Reset(nil)
+	ctx.w.Reset(nil)
+	ctx.Response.header.fromOutSide = false
+	ctx.Request.header.fromOutSide = false
 }
 
 var ctxPool = sync.Pool{New: func() interface{} { return &RequestCtx{} }}
 
-func acquireRequestCtx() *RequestCtx { return ctxPool.Get().(*RequestCtx) }
+func AcquireRequestCtxSize(conn net.Conn, readSize, writeSize int) *RequestCtx {
+	ctx := ctxPool.Get().(*RequestCtx)
+	if len(ctx.readBuf) != readSize {
+		ctx.readBuf = make([]byte, readSize)
+	}
+	if ctx.r == nil {
+		ctx.r = bufio.NewReaderSize(conn, readSize)
+	} else {
+		ctx.r.Reset(conn)
+	}
+	if ctx.w == nil {
+		ctx.w = bufio.NewWriterSize(conn, writeSize)
+	} else {
+		ctx.w.Reset(conn)
+	}
+	ctx.connTime = time.Now()
+	ctx.conn = conn
+	return ctx
+}
+
+func AcquireRequestCtx(conn net.Conn) *RequestCtx {
+	return AcquireRequestCtxSize(conn, 512, 4096)
+}
 
 func ReleaseRequestCtx(ctx *RequestCtx) {
 	ctx.Reset()
-	ctx.Response.freeWriter()
-	ctx.conn = nil
-	ctx.isTLS = false
 	ctxPool.Put(ctx)
 }
 
@@ -195,7 +205,7 @@ func (ctx *RequestCtx) WriteString(s string) (int, error) {
 }
 
 func (ctx *RequestCtx) WriteJSON(v interface{}) {
-	ctx.Response.Header.SetContentType(MIMEJson)
+	ctx.Response.Header().SetContentType(MIMEJson)
 
 	encoder := jsonx.NewEncoder(ctx)
 	err := encoder.Encode(v)
@@ -205,7 +215,7 @@ func (ctx *RequestCtx) WriteJSON(v interface{}) {
 }
 
 func (ctx *RequestCtx) WriteHTML(v []byte) {
-	ctx.Response.Header.SetContentType(MIMEHtml)
+	ctx.Response.Header().SetContentType(MIMEHtml)
 	_, e := ctx.Write(v)
 	if e != nil {
 		panic(e)
@@ -213,9 +223,9 @@ func (ctx *RequestCtx) WriteHTML(v []byte) {
 }
 
 func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
-	ctx.Response.Header.SetContentType(mime.TypeByExtension(ext))
+	ctx.Response.Header().SetContentType(mime.TypeByExtension(ext))
 
-	buf := make([]byte, 512, 512)
+	buf := ctx.readBuf
 	for {
 		l, e := f.Read(buf)
 		if e != nil {
@@ -228,14 +238,14 @@ func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
 	}
 }
 
-func (ctx *RequestCtx) WriteTemplate(t *template.Template, data interface{}) {
-	ctx.Response.Header.SetContentType(MIMEHtml)
+type Template interface {
+	Execute(ctx context.Context, v interface{}) error
+}
+
+func (ctx *RequestCtx) WriteTemplate(t Template, data interface{}) {
+	ctx.Response.Header().SetContentType(MIMEHtml)
 	e := t.Execute(ctx, data)
 	if e != nil {
 		panic(e)
 	}
 }
-
-func (ctx *RequestCtx) SetStatus(status int) { ctx.Response.statusCode = status }
-
-func (ctx *RequestCtx) GetStatus() int { return ctx.Response.statusCode }

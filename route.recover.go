@@ -28,7 +28,7 @@ func init() {
 				RecoverByErr(
 					k,
 					func(sc int) ErrorHandler {
-						return func(ctx *RequestCtx, _ interface{}) { ctx.SetStatus(sc) }
+						return func(ctx *RequestCtx, _ interface{}) { ctx.Response.SetStatusCode(sc) }
 					}(v),
 				)
 			}
@@ -43,7 +43,7 @@ var (
 )
 
 func doRecover(ctx *RequestCtx, v interface{}) {
-	ctx.Response.ResetBodyBuffer()
+	ctx.Response.ResetBody()
 
 	vt := reflect.TypeOf(v)
 
@@ -67,18 +67,18 @@ func doRecover(ctx *RequestCtx, v interface{}) {
 		if rv.StatusCode() < 500 {
 			logStack = false
 		}
-		ctx.SetStatus(rv.StatusCode())
-		rv.WriteHeader(&ctx.Response.Header)
+		ctx.Response.SetStatusCode(rv.StatusCode())
+		rv.WriteHeader(ctx.Response.Header())
 		_, _ = ctx.Write(rv.Body())
 	} else if vt.ConvertibleTo(httpErrType) {
 		rv := v.(HTTPError)
 		if rv.StatusCode() < 500 {
 			logStack = false
 		}
-		ctx.SetStatus(rv.StatusCode())
+		ctx.Response.SetStatusCode(rv.StatusCode())
 		_, _ = ctx.WriteString(rv.Error())
 	} else {
-		ctx.SetStatus(http.StatusInternalServerError)
+		ctx.Response.SetStatusCode(http.StatusInternalServerError)
 	}
 
 	if logStack {

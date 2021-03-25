@@ -44,25 +44,24 @@ func NewWebSocketProtocol(option *WebSocketProtocolOption) WebSocketProtocol {
 	return v
 }
 
-var websocketStr = []byte("websocket")
-
 const (
+	websocketStr         = "websocket"
 	websocketExtCompress = "permessage-deflate"
 	websocketExt         = "permessage-deflate; server_no_context_takeover; client_no_context_takeover"
 )
 
 func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
-	version, _ := ctx.Request.Header.Get(HeaderSecWebSocketVersion)
+	version, _ := ctx.Request.Header().Get(HeaderSecWebSocketVersion)
 	if len(version) != 2 || version[0] != '1' || version[1] != '3' {
 		ctx.Response.statusCode = http.StatusBadRequest
 		return false
 	}
-	if _, ok := ctx.Response.Header.Get(HeaderSecWebSocketExtensions); ok {
+	if _, ok := ctx.Response.Header().Get(HeaderSecWebSocketExtensions); ok {
 		log.Println("websocket: application specific 'Sec-WebSocket-Extensions' headers are unsupported")
 		ctx.Response.statusCode = http.StatusInternalServerError
 		return false
 	}
-	key, _ := ctx.Request.Header.Get(HeaderSecWebSocketKey)
+	key, _ := ctx.Request.Header().Get(HeaderSecWebSocketKey)
 	if len(key) < 1 {
 		ctx.Response.statusCode = http.StatusBadRequest
 		return false
@@ -70,7 +69,7 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 
 	var subprotocol []byte
 	if len(p.subPM) > 0 {
-		hv, ok := ctx.Response.Header.Get(HeaderSecWebSocketProtocol)
+		hv, ok := ctx.Response.Header().Get(HeaderSecWebSocketProtocol)
 		if ok {
 			if _, ok := p.subPM[utils.S(hv)]; ok {
 				subprotocol = hv
@@ -80,7 +79,7 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 				return false
 			}
 		} else {
-			hv, ok = ctx.Request.Header.Get(HeaderSecWebSocketProtocol)
+			hv, ok = ctx.Request.Header().Get(HeaderSecWebSocketProtocol)
 			if ok && len(hv) > 0 {
 				for _, v := range bytes.Split(hv, []byte(",")) {
 					v = utils.InPlaceTrimAsciiSpace(v)
@@ -96,7 +95,7 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 
 	var compress bool
 	if p.conf.Compression {
-		for _, hv := range ctx.Response.Header.GetAll(HeaderSecWebSocketExtensions) {
+		for _, hv := range ctx.Response.Header().GetAll(HeaderSecWebSocketExtensions) {
 			if bytes.Contains(hv, utils.B(websocketExtCompress)) {
 				compress = true
 				break
@@ -106,18 +105,18 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) bool {
 
 	res := &ctx.Response
 	res.statusCode = http.StatusSwitchingProtocols
-	res.Header.Append(HeaderConnection, upgradeStr)
-	res.Header.Append(HeaderUpgrade, websocketStr)
+	res.Header().AppendString(HeaderConnection, upgrade)
+	res.Header().AppendString(HeaderUpgrade, websocketStr)
 	if len(subprotocol) > 0 {
-		res.Header.Append(HeaderSecWebSocketProtocol, subprotocol)
+		res.Header().Append(HeaderSecWebSocketProtocol, subprotocol)
 	}
-	res.Header.Append(HeaderSecWebSocketAccept, utils.B(websocket.ComputeAcceptKey(utils.S(key))))
+	res.Header().Append(HeaderSecWebSocketAccept, utils.B(websocket.ComputeAcceptKey(utils.S(key))))
 	if compress {
 		ctx.Request.webSocketShouldDoCompression = true
-		res.Header.Append(HeaderSecWebSocketExtensions, utils.B(websocketExt))
+		res.Header().Append(HeaderSecWebSocketExtensions, utils.B(websocketExt))
 	}
 
-	if err := p.hp.sendResponseBuffer(ctx); err != nil {
+	if err := sendResponse(ctx.w, &ctx.Response); err != nil {
 		panic(err)
 	}
 	return true
@@ -145,7 +144,7 @@ func wshToHandler(wsh WebsocketHandlerFunc) RequestHandler {
 	return _WebsocketHandler(func(ctx *RequestCtx) {
 		p := ctx.UpgradeProtocol()
 		if p != "websocket" {
-			ctx.SetStatus(StatusBadRequest)
+			ctx.Response.SetStatusCode(StatusBadRequest)
 			return
 		}
 

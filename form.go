@@ -3,6 +3,7 @@ package sha
 import (
 	"bytes"
 	"github.com/zzztttkkk/sha/utils"
+	"io"
 	"os"
 	"sync"
 )
@@ -38,6 +39,39 @@ func (form *Form) FromURLEncoded(p []byte) {
 		}
 	}
 	form.onItem(key, val)
+}
+
+func (form *Form) LoadMap(m MultiValueMap) {
+	for k, vl := range m {
+		for _, v := range vl {
+			form.AppendString(k, v)
+		}
+	}
+}
+
+func (form *Form) LoadForm(f *Form) {
+	f.EachItem(func(item *utils.KvItem) bool {
+		form.AppendBytes(item.Key, item.Val)
+		return true
+	})
+}
+
+func (form *Form) EncodeToBuf(w interface {
+	io.ByteWriter
+	io.Writer
+}) {
+	ind := 0
+	qs := form.Size()
+	form.EachItem(func(item *utils.KvItem) bool {
+		ind++
+		_, _ = w.Write(item.Key)
+		_ = w.WriteByte('=')
+		utils.EncodeHeaderValueToBuf(item.Val, w)
+		if ind < qs {
+			_ = w.WriteByte('&')
+		}
+		return true
+	})
 }
 
 type FormFile struct {
@@ -82,18 +116,17 @@ func (files FormFiles) GetAll(name []byte) []*FormFile {
 }
 
 func (req *Request) parseQuery() {
-	if !req.gotQuestionMark {
-		req.questionMarkIndex = _QueryParsed
+	if !req.queryParsed {
 		return
 	}
-	req.query.FromURLEncoded(req.RawPath[req.questionMarkIndex+1:])
-	req.questionMarkIndex = _QueryParsed
+	req.queryParsed = true
+	if len(req.url.Query) > 0 {
+		req.query.FromURLEncoded(req.url.Query)
+	}
 }
 
 func (req *Request) Query() *Form {
-	if req.questionMarkIndex != _QueryParsed {
-		req.parseQuery()
-	}
+	req.parseQuery()
 	return &req.query
 }
 
@@ -141,7 +174,7 @@ var multiPartParserPool = sync.Pool{New: func() interface{} { return &_MultiPart
 func acquireMultiPartParser(request *Request) *_MultiPartParser {
 	v := multiPartParserPool.Get().(*_MultiPartParser)
 	v.files = &request.files
-	v.form = &request.body
+	v.form = &request.bodyForm
 	return v
 }
 
@@ -215,14 +248,14 @@ func (p *_MultiPartParser) onFieldOk() bool {
 }
 
 func (req *Request) parseMultiPart(boundary []byte) bool {
-	buf := *req.bodyBufferPtr
+	buf := req._HTTPPocket.body
 	parser := acquireMultiPartParser(req)
 	defer releaseMultiPartParser(parser)
 
 	parser.setBoundary(boundary)
 
 	begin := false
-	for _, b := range buf {
+	for _, b := range buf.Bytes() {
 		if b == '\n' {
 			parser.line = append(parser.line, b)
 			if parser.inHeader { // is header line
@@ -274,25 +307,24 @@ const (
 )
 
 func (req *Request) parseBodyBuf() {
-	if req.bodyBufferPtr == nil {
+	buf := req._HTTPPocket.body
+	if buf == nil {
+		req.bodyStatus = _BodyUnsupportedType
+		return
+	}
+	if buf.Len() < 1 {
 		req.bodyStatus = _BodyUnsupportedType
 		return
 	}
 
-	buf := *req.bodyBufferPtr
-	if len(buf) < 1 {
-		req.bodyStatus = _BodyUnsupportedType
-		return
-	}
-
-	typeValue := req.Header.ContentType()
+	typeValue := req.Header().ContentType()
 	if len(typeValue) < 1 {
 		req.bodyStatus = _BodyUnsupportedType
 		return
 	}
 
 	if bytes.HasPrefix(typeValue, utils.B(MIMEForm)) {
-		req.body.FromURLEncoded(buf)
+		req.bodyForm.FromURLEncoded(buf.Bytes())
 		req.bodyStatus = _BodyOK
 		return
 	}
@@ -318,7 +350,7 @@ func (req *Request) BodyForm() *Form {
 	if req.bodyStatus != _BodyOK {
 		return nil
 	}
-	return &req.body
+	return &req.bodyForm
 }
 
 func (req *Request) BodyFormValue(name string) ([]byte, bool) {
@@ -348,8 +380,8 @@ func (req *Request) Files() FormFiles {
 }
 
 func (req *Request) BodyRaw() []byte {
-	if req.bodyBufferPtr == nil {
+	if req._HTTPPocket.body == nil {
 		return nil
 	}
-	return *req.bodyBufferPtr
+	return req._HTTPPocket.body.Bytes()
 }

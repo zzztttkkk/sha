@@ -15,7 +15,8 @@ const (
 type _Method int
 
 const (
-	_MCustom = _Method(iota)
+	_MUnknown = _Method(iota)
+	_MCustom
 	_MGet
 	_MHead
 	_MPost

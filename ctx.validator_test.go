@@ -81,8 +81,8 @@ func TestValidator(t *testing.T) {
 			var form TV01Form
 
 			if err := ctx.ValidateForm(&form); err != nil {
-				ctx.SetStatus(err.StatusCode())
-				ctx.WriteString(err.Error())
+				ctx.Response.SetStatusCode(err.StatusCode())
+				_, _ = ctx.WriteString(err.Error())
 				return
 			}
 
@@ -100,8 +100,8 @@ func TestRequestCtx_ValidateJSON(t *testing.T) {
 	}
 
 	rctx := &RequestCtx{}
-	rctx.Request.Header.SetContentType(MIMEJson)
-	rctx.buf = []byte(`{"num":45, "name":"MOONLIGHT"}`)
+	rctx.Request.Header().SetContentType(MIMEJson)
+	_, _ = rctx.Request._HTTPPocket.Write([]byte(`{"num":45, "name":"MOON1"}`))
 
 	var form Form
 	rctx.MustValidateJSON(&form)

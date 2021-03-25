@@ -5,15 +5,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
-	"github.com/zzztttkkk/sha/utils"
-	"math"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 type Connection struct {
@@ -60,152 +55,6 @@ func NewTLSConnection(address string, tlsConf *tls.Config, env *Environment) *Co
 }
 
 func (s *Connection) Close() error { return s.conn.Close() }
-
-var clientBufPool = utils.NewBufferPoll(4096)
-var headerLineSep = []byte(": ")
-
-var ErrBadResponseContent = errors.New("sha.client: bad response content")
-var ErrRequestTimeout = errors.New("sha.client: timeout")
-var ErrBadRequest = errors.New("sha.client: bad request")
-
-func readResponse(ctx context.Context, reader *bufio.Reader, res *Response, rctx *RequestCtx) error {
-	var lineBuf bytes.Buffer
-	var line []byte
-	var resetBuf bool
-	var bodySize int
-	var bodyRemain int
-	var bodyReadBuf []byte
-	var deadline time.Time
-	var handleTimeout bool
-
-	if rctx != nil && rctx.ctx != nil {
-		deadline, handleTimeout = ctx.Deadline()
-	}
-
-	for {
-		if handleTimeout && time.Now().After(deadline) {
-			return ErrRequestTimeout
-		}
-
-		if res.parseStatus == 2 {
-			if bodySize < 1 {
-				bodySize = res.Header.ContentLength()
-				if bodySize < 1 {
-					res.parseStatus++
-					return nil
-				}
-				bodyRemain = bodySize
-			}
-
-			if bodyRemain == 0 {
-				res.parseStatus++
-				return nil
-			}
-
-			if len(bodyReadBuf) < 1 {
-				bodyReadBuf = make([]byte, 512)
-			}
-
-			l, e := reader.Read(bodyReadBuf)
-			if e != nil {
-				return e
-			}
-
-			if l == 0 {
-				continue
-			}
-
-			if rctx != nil {
-				if res.bodyBuf == nil {
-					res.bodyBuf = clientBufPool.Get()
-					rctx.onReset = append(
-						rctx.onReset,
-						func(ctx *RequestCtx) { clientBufPool.Put(ctx.Response.bodyBuf) },
-					)
-				}
-				_, _ = res.bodyBuf.Write(bodyReadBuf[:l])
-			}
-
-			bodyRemain -= l
-			if bodyRemain == 0 {
-				res.parseStatus++
-				return nil
-			}
-			if bodyRemain < 0 {
-				return ErrBadResponseContent
-			}
-			continue
-		}
-
-		linePart, isPrefix, err := reader.ReadLine()
-		if err != nil {
-			return err
-		}
-
-		if resetBuf {
-			lineBuf.Reset()
-		}
-
-		if isPrefix {
-			lineBuf.Write(linePart)
-			continue
-		}
-
-		if lineBuf.Len() > 0 {
-			lineBuf.Write(linePart)
-			line = lineBuf.Bytes()
-			resetBuf = true
-		} else {
-			line = linePart
-		}
-
-		switch res.parseStatus {
-		case 0:
-			fs := 0
-			status := make([]byte, 0, 10)
-			ind := 0
-			var b byte
-			for ind, b = range line {
-				if b == ' ' {
-					fs++
-					if fs == 2 {
-						break
-					}
-					continue
-				}
-				switch fs {
-				case 0:
-					res.version = append(res.version, b)
-				case 1:
-					status = append(status, b)
-				}
-			}
-
-			if fs != 2 {
-				return ErrBadResponseContent
-			}
-
-			res.setPhrase(line[ind:])
-			s, e := strconv.ParseInt(utils.S(status), 10, 64)
-			if e != nil || s < 0 || s > math.MaxInt32 {
-				return ErrBadResponseContent
-			}
-			res.statusCode = int(s)
-
-			res.parseStatus++
-		case 1:
-			if len(line) < 1 {
-				res.parseStatus++
-				continue
-			}
-			ind := bytes.Index(line, headerLineSep)
-			if ind < 1 {
-				return ErrBadResponseContent
-			}
-			res.Header.Set(utils.S(line[:ind]), line[ind+2:])
-		}
-	}
-}
 
 func (s *Connection) Reconnect() {
 	s.mutex.Lock()
@@ -288,12 +137,13 @@ func (s *Connection) openConn(ctx context.Context) error {
 		} else {
 			r.Reset(proxyC)
 		}
-		e = readResponse(ctx, r, &res, nil)
+
+		e = parseResponse(ctx, r, make([]byte, 128), &res)
 		if e != nil {
 			return e
 		}
 		if res.statusCode != StatusOK {
-			return fmt.Errorf("sha.clent: bad proxy response, %d %s", res.statusCode, res.phrase)
+			return fmt.Errorf("sha.clent: bad proxy response, %d %s", res.StatusCode(), res.Phrase())
 		}
 		if s.isTLS {
 			if s.tlsConfig == nil {
@@ -337,14 +187,22 @@ func (s *Connection) openConn(ctx context.Context) error {
 func (s *Connection) copyEnv(ctx *RequestCtx) {
 	for k, vl := range s.env.Header {
 		for _, v := range vl {
-			ctx.Request.Header.AppendString(k, v)
+			ctx.Request.Header().AppendString(k, v)
 		}
 	}
 }
 
-const _clientBufKey = "sha.client.buf"
-
 func (s *Connection) Send(ctx *RequestCtx) error {
+	s.copyEnv(ctx)
+
+	if ctx.ctx == nil {
+		ctx.ctx = context.Background()
+	}
+
+	if ctx.readBuf == nil {
+		ctx.readBuf = make([]byte, 512)
+	}
+
 	if err := s.openConn(ctx); err != nil {
 		return err
 	}
@@ -352,93 +210,8 @@ func (s *Connection) Send(ctx *RequestCtx) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	ctx.isTLS = s.isTLS
-	s.copyEnv(ctx)
-
-	sendBuf := clientBufPool.Get()
-	defer clientBufPool.Put(sendBuf)
-
-	req := &ctx.Request
-
-	_, _ = sendBuf.Write(req.Method)
-	_ = sendBuf.WriteByte(' ')
-	_, _ = sendBuf.Write(req.Path)
-	querySize := req.query.Size()
-	if querySize != 0 {
-		_ = sendBuf.WriteByte('?')
-		ind := 0
-		req.query.EachItem(func(item *utils.KvItem) bool {
-			utils.EncodeURIComponent(item.Key, &sendBuf.Data)
-			_ = sendBuf.WriteByte('=')
-			utils.EncodeURIComponent(item.Val, &sendBuf.Data)
-			ind++
-			if ind < querySize {
-				_ = sendBuf.WriteByte('&')
-			}
-			return true
-		})
-	}
-	sendBuf.WriteString(" HTTP/1.1")
-	sendBuf.WriteString("\r\n")
-
-	bodyFormSize := req.body.Size()
-	if bodyFormSize > 0 {
-		if req.bodyBufferPtr != nil {
-			return ErrBadRequest
-		}
-		buf := clientBufPool.Get()
-		ctx.ud.Set(_clientBufKey, buf)
-		ctx.onReset = append(
-			ctx.onReset,
-			func(_ctx *RequestCtx) {
-				v := _ctx.ud.Get(_clientBufKey)
-				if v != nil {
-					clientBufPool.Put(v.(*utils.Buf))
-				}
-			},
-		)
-
-		req.bodyBufferPtr = &buf.Data
-		ind := 0
-		req.body.EachItem(func(item *utils.KvItem) bool {
-			utils.EncodeURIComponent(item.Key, &buf.Data)
-			_ = buf.WriteByte('=')
-			utils.EncodeURIComponent(item.Val, &buf.Data)
-			ind++
-			if ind < bodyFormSize {
-				_ = sendBuf.WriteByte('&')
-			}
-			return true
-		})
-	}
-
-	var bodySize int
-	if req.bodyBufferPtr != nil {
-		bodySize = len(*req.bodyBufferPtr)
-		if bodySize > 0 {
-			req.Header.SetContentLength(int64(bodySize))
-		}
-	}
-
-	req.Header.EachItem(func(item *utils.KvItem) bool {
-		_, _ = sendBuf.Write(item.Key)
-		sendBuf.WriteString(": ")
-		_, _ = sendBuf.Write(item.Val)
-		sendBuf.WriteString("\r\n")
-		return true
-	})
-	sendBuf.WriteString("\r\n")
-	if bodySize > 0 {
-		_, _ = sendBuf.Write(*req.bodyBufferPtr)
-	}
-
-	_, err := s.w.Write(sendBuf.Data)
-	if err != nil {
+	if err := sendRequest(s.w, &ctx.Request); err != nil {
 		return err
 	}
-	err = s.w.Flush()
-	if err != nil {
-		return err
-	}
-	return readResponse(ctx, s.r, &ctx.Response, ctx)
+	return parseResponse(ctx, s.r, ctx.readBuf, &ctx.Response)
 }

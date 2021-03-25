@@ -54,7 +54,7 @@ type Server struct {
 func (s *Server) IsTLS() bool { return s.isTLS }
 
 type HTTPProtocol interface {
-	ServeHTTPConn(ctx context.Context, conn net.Conn)
+	ServeConn(ctx context.Context, conn net.Conn)
 }
 
 type WebSocketProtocol interface {
@@ -117,7 +117,7 @@ func (s *Server) BeforeAccept(fn func(s *Server)) {
 	s.beforeAccept = append(s.beforeAccept, fn)
 }
 
-func (s *Server) doListen() net.Listener {
+func (s *Server) Listen() net.Listener {
 	log.Printf("sha: listening at `%s`\n", s.option.Addr)
 
 	listener, err := net.Listen("tcp4", s.option.Addr)
@@ -151,7 +151,7 @@ func (s *Server) enableTLS(l net.Listener, certFile, keyFile string) net.Listene
 	return tls.NewListener(l, s.tls)
 }
 
-func (s *Server) serve(l net.Listener) {
+func (s *Server) Serve(l net.Listener) {
 	for _, fn := range serverPrepareFunc {
 		fn(s)
 	}
@@ -212,17 +212,17 @@ func (s *Server) serve(l net.Listener) {
 func (s *Server) ListenAndServe() {
 	if len(s.option.TLS.AutoCertDomains) > 0 {
 		s.isTLS = true
-		s.serve(autocert.NewListener(s.option.TLS.AutoCertDomains...))
+		s.Serve(autocert.NewListener(s.option.TLS.AutoCertDomains...))
 		return
 	}
 
 	if len(s.option.TLS.Cert) > 0 {
 		s.isTLS = true
-		s.serve(s.enableTLS(s.doListen(), s.option.TLS.Cert, s.option.TLS.Key))
+		s.Serve(s.enableTLS(s.Listen(), s.option.TLS.Cert, s.option.TLS.Key))
 		return
 	}
 
-	s.serve(s.doListen())
+	s.Serve(s.Listen())
 }
 
 var NonTLSRequestResponseMessage = `HTTP/1.0 400 Bad Request
@@ -262,14 +262,14 @@ func (s *Server) serveTLS(conn net.Conn) {
 	}
 
 	if s.readTimeout > 0 {
-		_ = conn.SetReadDeadline(zeroTime)
+		_ = conn.SetReadDeadline(time.Time{})
 	}
-	s.httpProtocol.ServeHTTPConn(context.WithValue(s.baseCtx, CtxKeyConnection, tlsConn), tlsConn)
+	s.httpProtocol.ServeConn(context.WithValue(s.baseCtx, CtxKeyConnection, tlsConn), tlsConn)
 }
 
 func (s *Server) serveConn(conn net.Conn) {
 	defer conn.Close()
-	s.httpProtocol.ServeHTTPConn(context.WithValue(s.baseCtx, CtxKeyConnection, conn), conn)
+	s.httpProtocol.ServeConn(context.WithValue(s.baseCtx, CtxKeyConnection, conn), conn)
 }
 
 func ListenAndServe(addr string, handler RequestHandler) {

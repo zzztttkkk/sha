@@ -63,7 +63,7 @@ func TestServer_Run(t *testing.T) {
 		"/close",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			_, _ = ctx.WriteString("Hello World!")
-			ctx.Response.Header.Set(HeaderConnection, []byte("close"))
+			ctx.Response.Header().Set(HeaderConnection, []byte("close"))
 		}),
 	)
 
@@ -85,7 +85,7 @@ func TestServer_Run(t *testing.T) {
 		"post",
 		"/form",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
-			ctx.Response.Header.SetContentType(MIMEText)
+			ctx.Response.Header().SetContentType(MIMEText)
 			var form Form
 			ctx.MustValidateForm(&form)
 			fmt.Printf("%s\n", form.Password)

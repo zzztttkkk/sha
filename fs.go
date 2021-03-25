@@ -49,7 +49,7 @@ func dirList(ctx *RequestCtx, f http.File) {
 	}
 	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Name() < dirs[j].Name() })
 
-	res.Header.SetContentType(MIMEHtml)
+	res.Header().SetContentType(MIMEHtml)
 	_, _ = fmt.Fprintf(res, "<pre>\n")
 	for _, d := range dirs {
 		name := d.Name()
@@ -102,13 +102,13 @@ func serveFileContent(ctx *RequestCtx, name string, modtime time.Time, size int6
 	setLastModified(w, modtime)
 	done, rangeReq := checkPreconditions(w, r, modtime)
 	if done {
-		w.Header.SetContentLength(0)
+		w.Header().SetContentLength(0)
 		return
 	}
 
 	// If Content-Type isn't set, use the file's extension to find it, but
 	// if the Content-Type is unset explicitly, do not sniff the type.
-	_, haveType := w.Header.Get(HeaderContentType)
+	_, haveType := w.Header().Get(HeaderContentType)
 	var ctype string
 	if !haveType {
 		ext := strings.ToLower(filepath.Ext(name))
@@ -117,17 +117,17 @@ func serveFileContent(ctx *RequestCtx, name string, modtime time.Time, size int6
 		if !ok {
 			ctype = mime.TypeByExtension(ext)
 		}
-		w.Header.SetContentType(ctype)
+		w.Header().SetContentType(ctype)
 	}
 
-	// handle Content-Range header.
+	// handle Content-Range Header().
 	sendSize := size
 	var sendContent io.Reader = content
 	if size >= 0 {
 		ranges, err := parseRange(rangeReq, size)
 		if err != nil {
 			if err == errNoOverlap {
-				w.Header.Set(HeaderContentRange, utils.B(fmt.Sprintf("bytes */%d", size)))
+				w.Header().Set(HeaderContentRange, utils.B(fmt.Sprintf("bytes */%d", size)))
 			}
 			w.statusCode = StatusRequestedRangeNotSatisfiable
 			return
@@ -159,14 +159,14 @@ func serveFileContent(ctx *RequestCtx, name string, modtime time.Time, size int6
 			}
 			sendSize = ra.length
 			w.statusCode = StatusPartialContent
-			w.Header.Set(HeaderContentRange, ra.contentRange(size))
+			w.Header().Set(HeaderContentRange, ra.contentRange(size))
 		case len(ranges) > 1:
 			sendSize = rangesMIMESize(ranges, ctype, size)
 			w.statusCode = StatusPartialContent
 
 			pr, pw := io.Pipe()
 			mw := multipart.NewWriter(pw)
-			w.Header.Set(HeaderContentType, utils.B("multipart/byteranges; boundary="+mw.Boundary()))
+			w.Header().Set(HeaderContentType, utils.B("multipart/byteranges; boundary="+mw.Boundary()))
 			sendContent = pr
 			defer pr.Close() // cause writing goroutine to fail and exit if CopyN doesn't finish.
 			go func() {
@@ -189,10 +189,10 @@ func serveFileContent(ctx *RequestCtx, name string, modtime time.Time, size int6
 				_ = pw.Close()
 			}()
 		}
-		w.Header.Set(HeaderAcceptRanges, []byte("bytes"))
+		w.Header().Set(HeaderAcceptRanges, []byte("bytes"))
 	}
 
-	if string(r.Method) != "HEAD" {
+	if r._method != _MHead {
 		_, _ = io.CopyN(ctx, sendContent, sendSize)
 	}
 }
@@ -248,7 +248,7 @@ const (
 )
 
 func checkIfMatch(w *Response, r *Request) condResult {
-	imb, _ := r.Header.Get(HeaderIfMatch)
+	imb, _ := r.Header().Get(HeaderIfMatch)
 	if len(imb) < 1 {
 		return condNone
 	}
@@ -270,7 +270,7 @@ func checkIfMatch(w *Response, r *Request) condResult {
 			break
 		}
 
-		etagV, _ := w.Header.Get(HeaderETag)
+		etagV, _ := w.Header().Get(HeaderETag)
 		if etagStrongMatch(etag, utils.S(etagV)) {
 			return condTrue
 		}
@@ -281,7 +281,7 @@ func checkIfMatch(w *Response, r *Request) condResult {
 }
 
 func checkIfUnmodifiedSince(r *Request, modtime time.Time) condResult {
-	ius, _ := r.Header.Get(HeaderIfUnmodifiedSince)
+	ius, _ := r.Header().Get(HeaderIfUnmodifiedSince)
 	if len(ius) < 1 || isZeroTime(modtime) {
 		return condNone
 	}
@@ -301,7 +301,7 @@ func checkIfUnmodifiedSince(r *Request, modtime time.Time) condResult {
 }
 
 func checkIfNoneMatch(w *Response, r *Request) condResult {
-	inmb, _ := r.Header.Get(HeaderIfNoneMatch)
+	inmb, _ := r.Header().Get(HeaderIfNoneMatch)
 	if len(inmb) < 1 {
 		return condNone
 	}
@@ -322,7 +322,7 @@ func checkIfNoneMatch(w *Response, r *Request) condResult {
 		if etag == "" {
 			break
 		}
-		etagV, _ := w.Header.Get(HeaderETag)
+		etagV, _ := w.Header().Get(HeaderETag)
 		if etagWeakMatch(etag, string(etagV)) {
 			return condFalse
 		}
@@ -332,12 +332,11 @@ func checkIfNoneMatch(w *Response, r *Request) condResult {
 }
 
 func checkIfModifiedSince(r *Request, modtime time.Time) condResult {
-	m := utils.S(r.Method)
-	if m != "GET" && m != "HEAD" {
+	if r._method != _MGet && r._method != _MHead {
 		return condNone
 	}
 
-	ims, _ := r.Header.Get(HeaderIfModifiedSince)
+	ims, _ := r.Header().Get(HeaderIfModifiedSince)
 	if len(ims) < 1 || isZeroTime(modtime) {
 		return condNone
 	}
@@ -355,18 +354,17 @@ func checkIfModifiedSince(r *Request, modtime time.Time) condResult {
 }
 
 func checkIfRange(w *Response, r *Request, modtime time.Time) condResult {
-	m := utils.S(r.Method)
-	if m != "GET" && m != "HEAD" {
+	if r._method != _MGet && r._method != _MHead {
 		return condNone
 	}
-	irb, _ := r.Header.Get(HeaderIfRange)
+	irb, _ := r.Header().Get(HeaderIfRange)
 	if len(irb) < 1 {
 		return condNone
 	}
 	ir := string(irb)
 	etag, _ := scanETag(ir)
 	if etag != "" {
-		etagV, _ := w.Header.Get(HeaderETag)
+		etagV, _ := w.Header().Get(HeaderETag)
 		if etagStrongMatch(etag, string(etagV)) {
 			return condTrue
 		}
@@ -398,7 +396,7 @@ const fsTimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 
 func setLastModified(w *Response, modtime time.Time) {
 	if !isZeroTime(modtime) {
-		w.Header.Set(HeaderLastModified, utils.B(modtime.UTC().Format(fsTimeFormat)))
+		w.Header().Set(HeaderLastModified, utils.B(modtime.UTC().Format(fsTimeFormat)))
 	}
 }
 
@@ -409,11 +407,11 @@ func writeNotModified(w *Response) {
 	// guiding groupcache updates (e.g., Last-Modified might be useful if the
 	// response does not have an ETag field).
 	w.statusCode = StatusNotModified
-	w.Header.Del(HeaderContentType)
-	w.Header.Del(HeaderContentLength)
-	etagV, _ := w.Header.Get(HeaderETag)
+	w.Header().Del(HeaderContentType)
+	w.Header().Del(HeaderContentLength)
+	etagV, _ := w.Header().Get(HeaderETag)
 	if len(etagV) > 0 {
-		w.Header.Del(HeaderLastModified)
+		w.Header().Del(HeaderLastModified)
 	}
 }
 
@@ -430,11 +428,9 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 		return true, ""
 	}
 
-	method := utils.S(r.Method)
-
 	switch checkIfNoneMatch(w, r) {
 	case condFalse:
-		if method == "GET" || method == "HEAD" {
+		if r._method == _MGet || r._method == _MHead {
 			writeNotModified(w)
 			return true, ""
 		}
@@ -447,7 +443,7 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 		}
 	}
 
-	rangeHeaderB, _ := r.Header.Get(HeaderRange)
+	rangeHeaderB, _ := r.Header().Get(HeaderRange)
 	if len(rangeHeaderB) > 0 && checkIfRange(w, r, modtime) == condFalse {
 		rangeHeader = ""
 	} else {
@@ -463,7 +459,7 @@ func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, doIndex b
 	w := &ctx.Response
 	r := &ctx.Request
 
-	if bytes.HasSuffix(r.Path, indexPage) {
+	if bytes.HasSuffix(r.RawPath(), indexPage) {
 		localRedirect(w, r, "./")
 		return
 	}
@@ -482,7 +478,7 @@ func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, doIndex b
 	}
 
 	if d.IsDir() {
-		urlV := utils.S(r.Path)
+		urlV := utils.S(r.RawPath())
 		// redirect if the directory name doesn't end in a slash
 		if urlV == "" || urlV[len(urlV)-1] != '/' {
 			localRedirect(w, r, path.Base(urlV)+"/")
@@ -514,7 +510,7 @@ func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, doIndex b
 			DirList(ctx, f)
 			return
 		}
-		ctx.SetStatus(StatusNotFound)
+		ctx.Response.SetStatusCode(StatusNotFound)
 		return
 	}
 
@@ -540,10 +536,10 @@ func toHTTPError(err error) (httpStatus int) {
 // localRedirect gives a Moved Permanently response.
 // It does not convert relative paths to absolute paths like Redirect does.
 func localRedirect(w *Response, r *Request, newPath string) {
-	if q := utils.S(r.RawPath); len(q) > 0 {
+	if q := utils.S(r.RawPath()); len(q) > 0 {
 		newPath += "?" + q
 	}
-	w.Header.Set(HeaderLocation, utils.B(newPath))
+	w.Header().Set(HeaderLocation, utils.B(newPath))
 	w.statusCode = StatusMovedPermanently
 }
 

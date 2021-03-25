@@ -27,8 +27,7 @@ var defaultMuxOption MuxOptions
 
 func init() {
 	defaultMuxOption.DoTrailingSlashRedirect = true
-	defaultMuxOption.NoFound = func(ctx *RequestCtx) { ctx.Response.statusCode = StatusNotFound }
-	defaultMuxOption.MethodNotAllowed = func(ctx *RequestCtx) { ctx.Response.statusCode = StatusMethodNotAllowed }
+	defaultMuxOption.NoFound = func(ctx *RequestCtx) { ctx.Response.SetStatusCode(StatusNotFound) }
 	defaultMuxOption.Recover = doRecover
 	defaultMuxOption.AutoHandleOptions = true
 }
@@ -99,6 +98,7 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 		ind = 6
 	case MethodConnect:
 		ind = 7
+		path = "/"
 	case MethodOptions:
 		ind = 8
 	case MethodTrace:
@@ -212,13 +212,13 @@ type _FileContentHandler struct {
 func (fh *_FileContentHandler) Handle(ctx *RequestCtx) {
 	f, e := os.Open(fh.fp)
 	if e != nil {
-		ctx.SetStatus(toHTTPError(e))
+		ctx.Response.SetStatusCode(toHTTPError(e))
 		return
 	}
 	defer f.Close()
 	d, err := f.Stat()
 	if err != nil {
-		ctx.SetStatus(toHTTPError(err))
+		ctx.Response.SetStatusCode(toHTTPError(err))
 		return
 	}
 	serveFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
@@ -237,23 +237,30 @@ func (m *Mux) FileContent(opt *HandlerOptions, method, path, filepath string) {
 
 func (m *Mux) getTree(ctx *RequestCtx) *_RadixTree {
 	var tree *_RadixTree
-	if ctx.Request._method != 0 {
-		tree = m.stdTrees[ctx.Request._method]
+	if ctx.Request._method > 1 {
+		tree = m.stdTrees[ctx.Request._method-1]
 	} else {
-		tree = m.customTrees[utils.S(ctx.Request.Method)]
-	}
-
-	if tree == nil {
-		if m.methodNotAllowed != nil {
-			m.methodNotAllowed(ctx)
-		} else if m.notFound != nil {
-			m.notFound(ctx)
-		} else {
-			ctx.Response.statusCode = StatusNotFound
-		}
-		return nil
+		tree = m.customTrees[utils.S(ctx.Request.Method())]
 	}
 	return tree
+}
+
+func (m *Mux) onNotFound(ctx *RequestCtx) {
+	if m.methodNotAllowed != nil {
+		optionsTree := m.stdTrees[_MOptions-1]
+		if optionsTree != nil {
+			h, _ := optionsTree.Get(utils.S(ctx.Request.Path()), ctx)
+			if h != nil {
+				m.methodNotAllowed(ctx)
+				return
+			}
+		}
+	}
+	if m.notFound != nil {
+		m.notFound(ctx)
+		return
+	}
+	ctx.Response.statusCode = StatusNotFound
 }
 
 func (m *Mux) Handle(ctx *RequestCtx) {
@@ -273,37 +280,38 @@ func (m *Mux) Handle(ctx *RequestCtx) {
 
 		log.Printf("sha.error: %v\n", v)
 
-		ctx.Response.statusCode = StatusInternalServerError
-		ctx.Response.ResetBodyBuffer()
-		ctx.Response.Header.Reset()
+		ctx.Response.SetStatusCode(StatusInternalServerError)
+		ctx.Response.ResetBody()
+		ctx.Response.Header().Reset()
 	}()
+
+	req := &ctx.Request
+	res := &ctx.Response
 
 	tree := m.getTree(ctx)
 	if tree == nil {
+		m.onNotFound(ctx)
 		return
 	}
 
-	h, tsr := tree.Get(utils.S(ctx.Request.Path), ctx)
+	path := req.Path()
+
+	h, tsr := tree.Get(utils.S(path), ctx)
 	if h == nil {
 		if tsr {
-			l := len(ctx.Request.Path)
-			if ctx.Request.Path[l-1] != '/' {
-				item := ctx.Response.Header.Set(HeaderLocation, ctx.Request.Path)
+			l := len(path)
+			if path[l-1] != '/' {
+				item := res.Header().Set(HeaderLocation, path)
 				item.Val = append(item.Val, '/')
 			} else {
-				ctx.Response.Header.Set(HeaderLocation, ctx.Request.Path[:l-1])
+				res.Header().Set(HeaderLocation, path[:l-1])
 			}
-			ctx.Response.statusCode = StatusFound
+			res.SetStatusCode(StatusFound)
 			return
 		}
-		if m.notFound != nil {
-			m.notFound(ctx)
-		} else {
-			ctx.Response.statusCode = StatusNotFound
-		}
+		m.onNotFound(ctx)
 		return
 	}
-
 	h.Handle(ctx)
 }
 
@@ -361,10 +369,10 @@ func NewMux(opt *MuxOptions) *Mux {
 		all:         map[string]map[string]string{},
 
 		doTrailingSlashRedirect: opt.DoTrailingSlashRedirect,
-		methodNotAllowed:        opt.MethodNotAllowed,
-		notFound:                opt.NoFound,
-		recover:                 opt.Recover,
-		autoHandleOptions:       opt.AutoHandleOptions,
+		//methodNotAllowed:        opt.MethodNotAllowed,
+		notFound:          opt.NoFound,
+		recover:           opt.Recover,
+		autoHandleOptions: opt.AutoHandleOptions,
 	}
 
 	if len(opt.CORS) > 0 {
@@ -378,7 +386,7 @@ func NewMux(opt *MuxOptions) *Mux {
 		}
 
 		mux.Use(MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			origin, _ := ctx.Request.Header.Get(HeaderOrigin)
+			origin, _ := ctx.Request.Header().Get(HeaderOrigin)
 			if len(origin) < 1 {
 				next()
 				return

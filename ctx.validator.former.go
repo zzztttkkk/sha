@@ -6,6 +6,8 @@ var _ validator.Former = _Former{}
 
 type _Former struct{ *Request }
 
+func (f _Former) HeaderValue(name string) ([]byte, bool) { return f.Request.header.Get(name) }
+
 func (f _Former) URLParam(name string) ([]byte, bool) { return f.Request.URLParams.Get(name) }
 
 func (f _Former) QueryValue(name string) ([]byte, bool) { return f.Request.QueryValue(name) }
@@ -30,4 +32,4 @@ func (f _Former) FormValues(name string) [][]byte {
 	return v
 }
 
-func (f _Former) HeaderValues(name string) [][]byte { return f.Request.Header.GetAll(name) }
+func (f _Former) HeaderValues(name string) [][]byte { return f.Request.Header().GetAll(name) }

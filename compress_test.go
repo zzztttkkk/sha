@@ -18,9 +18,9 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 		"/",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
-			fmt.Println(&ctx.Response.Header)
+			fmt.Println(ctx.Response.Header())
 			_, _ = ctx.WriteString(strings.Repeat("Hello!", 100))
-			fmt.Printf("%p %p %p\n", ctx, ctx.Response.compressWriter, ctx.Response.compressWriterPool)
+			fmt.Printf("%p %p %p\n", ctx, ctx.Response.cw, ctx.Response.cwp)
 			ctx.Close()
 		}),
 	)
@@ -31,7 +31,7 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 			_, _ = ctx.WriteString(strings.Repeat("Hello!", 100))
-			ctx.Response.ResetBodyBuffer()
+			ctx.Response.ResetBody()
 			_, _ = ctx.WriteString(strings.Repeat("World", 100))
 		}),
 	)

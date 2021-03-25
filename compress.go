@@ -30,60 +30,64 @@ type _CompressionWriter interface {
 var brWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressBrotli() {
-	ctx.Response.Header.Set(HeaderContentEncoding, brotliStr)
-	ctx.Response.compressWriterPool = &brWriterPool
-
+	ctx.Response.Header().Set(HeaderContentEncoding, brotliStr)
 	var cwr *brotli.Writer
 	brI := brWriterPool.Get()
+	w := &ctx.Response._HTTPPocket
+
 	if brI != nil {
 		cwr = brI.(*brotli.Writer)
-		cwr.Reset(ctx.Response.bodyBuf)
+		cwr.Reset(w)
 	} else {
-		cwr = brotli.NewWriterLevel(ctx.Response.bodyBuf, CompressLevelBrotli)
+		cwr = brotli.NewWriterLevel(w, CompressLevelBrotli)
 	}
-	ctx.Response.compressWriter = cwr
+	ctx.Response.cw = cwr
+	ctx.Response.cwp = &brWriterPool
 }
 
 var gzipWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressGzip() {
-	ctx.Response.Header.Set(HeaderContentEncoding, gzipStr)
-	ctx.Response.compressWriterPool = &gzipWriterPool
+	ctx.Response.Header().Set(HeaderContentEncoding, gzipStr)
 
 	var cwr *gzip.Writer
 	var err error
+	w := &ctx.Response._HTTPPocket
+
 	brI := gzipWriterPool.Get()
 	if brI != nil {
 		cwr = brI.(*gzip.Writer)
-		cwr.Reset(ctx.Response.bodyBuf)
+		cwr.Reset(w)
 	} else {
-		cwr, err = gzip.NewWriterLevel(ctx.Response.bodyBuf, CompressLevelGzip)
+		cwr, err = gzip.NewWriterLevel(w, CompressLevelGzip)
 		if err != nil {
 			panic(err)
 		}
 	}
-	ctx.Response.compressWriter = cwr
+	ctx.Response.cw = cwr
+	ctx.Response.cwp = &gzipWriterPool
 }
 
 var deflateWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressDeflate() {
-	ctx.Response.Header.Set(HeaderContentEncoding, deflateStr)
-	ctx.Response.compressWriterPool = &deflateWriterPool
+	ctx.Response.Header().Set(HeaderContentEncoding, deflateStr)
 
 	var cwr *flate.Writer
 	var err error
+	w := &ctx.Response._HTTPPocket
 	brI := deflateWriterPool.Get()
 	if brI != nil {
 		cwr = brI.(*flate.Writer)
-		cwr.Reset(ctx.Response.bodyBuf)
+		cwr.Reset(w)
 	} else {
-		cwr, err = flate.NewWriter(ctx.Response.bodyBuf, CompressLevelDeflate)
+		cwr, err = flate.NewWriter(w, CompressLevelDeflate)
 		if err != nil {
 			panic(err)
 		}
 	}
-	ctx.Response.compressWriter = cwr
+	ctx.Response.cw = cwr
+	ctx.Response.cwp = &deflateWriterPool
 }
 
 var disableCompress = false
@@ -102,7 +106,7 @@ func (ctx *RequestCtx) AutoCompress() {
 	acceptGzip := false
 	acceptDeflate := false
 
-	for _, headerVal := range ctx.Request.Header.GetAll(HeaderAcceptEncoding) {
+	for _, headerVal := range ctx.Request.Header().GetAll(HeaderAcceptEncoding) {
 		for _, v := range bytes.Split(headerVal, headerCompressValueSep) {
 			switch utils.S(v) {
 			case "gzip":
@@ -124,16 +128,4 @@ func (ctx *RequestCtx) AutoCompress() {
 	if acceptGzip {
 		ctx.CompressGzip()
 	}
-}
-
-func (res *Response) freeWriter() {
-	res.sendBuf = nil
-
-	if res.compressWriter == nil {
-		return
-	}
-	res.compressWriter.Reset(nil)
-	res.compressWriterPool.Put(res.compressWriter)
-	res.compressWriterPool = nil
-	res.compressWriter = nil
 }
