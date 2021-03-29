@@ -1,22 +1,31 @@
 package sha
 
-//func TestFs(t *testing.T) {
-//	server := Default(nil)
-//	mux := NewMux(nil, nil)
-//
-//	mux.FilePath(
-//		http.Dir("./"),
-//		"get",
-//		"/sha/filename:*",
-//		true,
-//		MiddlewareFunc(
-//			func(ctx *RequestCtx, next func()) {
-//				ctx.AutoCompress()
-//				next()
-//			},
-//		),
-//	)
-//
-//	server.Handler = mux
-//	server.ListenAndServe()
-//}
+import (
+	"embed"
+	"net/http"
+	"testing"
+	"time"
+)
+
+func TestFs(t *testing.T) {
+	server := Default()
+	mux := NewMux(nil)
+
+	mux.FileSystem(
+		nil,
+		"Get",
+		"/sha/src/",
+		http.Dir("./"),
+		true,
+	)
+
+	server.Handler = mux
+	server.ListenAndServe()
+}
+
+//go:embed *.go
+var ef embed.FS
+
+func TestNewEmbedFSHandler(t *testing.T) {
+	ListenAndServe("", NewEmbedFSHandler(&ef, time.Time{}, func(ctx *RequestCtx) string { return ctx.Request.Path()[1:] }))
+}

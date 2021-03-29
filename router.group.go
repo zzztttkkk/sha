@@ -22,7 +22,7 @@ func (m *_MuxGroup) FileSystem(opt *HandlerOptions, method, path string, fs http
 	m.HTTPWithOptions(opt, method, path, makeFileSystemHandler(path, fs, autoIndex))
 }
 
-func (m *_MuxGroup) FileContent(opt *HandlerOptions, method, path, filepath string) {
+func (m *_MuxGroup) File(opt *HandlerOptions, method, path, filepath string) {
 	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(path, filepath))
 }
 

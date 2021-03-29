@@ -25,7 +25,7 @@ type Router interface {
 	HTTP(method, path string, handler RequestHandler)
 	Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions)
 	FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool)
-	FileContent(opt *HandlerOptions, method, path, filepath string)
+	File(opt *HandlerOptions, method, path, filepath string)
 
 	Use(middlewares ...Middleware)
 	NewGroup(prefix string) Router

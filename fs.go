@@ -9,7 +9,6 @@ package sha
 // HTTP file system request Handler
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
@@ -20,7 +19,6 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -452,41 +450,41 @@ func checkPreconditions(w *Response, r *Request, modtime time.Time) (done bool, 
 	return false, rangeHeader
 }
 
-var indexPage = []byte("/index.html")
+const indexPage = "/index.html"
 
 // name is '/'-separated, not filepath.Separator.
-func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, doIndex bool) {
+func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, autoIndex bool) {
 	w := &ctx.Response
 	r := &ctx.Request
 
-	if bytes.HasSuffix(r.RawPath(), indexPage) {
+	if strings.HasSuffix(r.Path(), indexPage) {
 		localRedirect(w, r, "./")
 		return
 	}
 
 	f, err := fs.Open(name)
 	if err != nil {
-		w.statusCode = toHTTPError(err)
+		w.statusCode = _FSErrToHTTPError(err)
 		return
 	}
 	defer f.Close()
 
 	d, err := f.Stat()
 	if err != nil {
-		w.statusCode = toHTTPError(err)
+		w.statusCode = _FSErrToHTTPError(err)
 		return
 	}
 
 	if d.IsDir() {
-		urlV := utils.S(r.RawPath())
+		urlV := r.Path()
 		// redirect if the directory name doesn't end in a slash
 		if urlV == "" || urlV[len(urlV)-1] != '/' {
-			localRedirect(w, r, path.Base(urlV)+"/")
+			localRedirect(w, r, urlV+"/")
 			return
 		}
 
 		// use contents of index.html for directory, if present
-		index := strings.TrimSuffix(name, "/") + utils.S(indexPage)
+		index := strings.TrimSuffix(name, "/") + indexPage
 		ff, err := fs.Open(index)
 		if err == nil {
 			defer ff.Close()
@@ -501,7 +499,7 @@ func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, doIndex b
 
 	// Still a directory? (we didn't find an index.html file)
 	if d.IsDir() {
-		if doIndex {
+		if autoIndex {
 			if checkIfModifiedSince(r, d.ModTime()) == condFalse {
 				writeNotModified(w)
 				return
@@ -517,12 +515,12 @@ func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, doIndex b
 	serveFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
 }
 
-// toHTTPError returns a non-specific HTTP error message and status code
-// for a given non-nil error value. It's important that toHTTPError does not
+// _FSErrToHTTPError returns a non-specific HTTP error message and status code
+// for a given non-nil error value. It's important that _FSErrToHTTPError does not
 // actually return err.Error(), since msg and httpStatus are returned to users,
 // and historically Go's ServeContent always returned just "404 Not Found" for
 // all errors. We don't want to start leaking information in error messages.
-func toHTTPError(err error) (httpStatus int) {
+func _FSErrToHTTPError(err error) (httpStatus int) {
 	if os.IsNotExist(err) {
 		return StatusNotFound
 	}
@@ -536,10 +534,10 @@ func toHTTPError(err error) (httpStatus int) {
 // localRedirect gives a Moved Permanently response.
 // It does not convert relative paths to absolute paths like Redirect does.
 func localRedirect(w *Response, r *Request, newPath string) {
-	if q := utils.S(r.RawPath()); len(q) > 0 {
+	if q := r.Path(); len(q) > 0 {
 		newPath += "?" + q
 	}
-	w.Header().Set(HeaderLocation, utils.B(newPath))
+	w.Header().SetString(HeaderLocation, newPath)
 	w.statusCode = StatusMovedPermanently
 }
 

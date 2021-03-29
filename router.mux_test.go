@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func makeHandler(v int) RequestHandler {
@@ -44,8 +45,9 @@ func TestMux(t *testing.T) {
 		"get", "/foo", makeHandler(51),
 	)
 
-	mux.FileSystem(nil, "get", "/src/{filepath:*}", http.Dir("./"), true)
-	mux.FileContent(nil, "get", "/LICENSE.txt", "./LICENSE")
+	mux.FileSystem(nil, "get", "/os/src/{filepath:*}", http.Dir("./"), true)
+	mux.File(nil, "get", "/LICENSE.txt", "./LICENSE")
+	mux.HTTP("get", "/embed/src/{filepath:*}", NewEmbedFSHandler(&ef, time.Time{}, nil))
 
 	groupA := mux.NewGroup("/a")
 	groupA.Use(

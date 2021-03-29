@@ -164,7 +164,7 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 	if isFileSystemHandler(rawHandler) {
 		handlerDesc = fmt.Sprintf("FileSystem %s, auto_index=%v", rawHandler.(*_FileSystemHandler).fs, rawHandler.(*_FileSystemHandler).autoIndex)
 	} else if isFileContentHandler(rawHandler) {
-		handlerDesc = fmt.Sprintf("FileContent %s", rawHandler.(*_FileContentHandler).fp)
+		handlerDesc = fmt.Sprintf("File %s", rawHandler.(*_FileContentHandler).fp)
 	}
 	m2[method] = handlerDesc
 }
@@ -212,13 +212,13 @@ type _FileContentHandler struct {
 func (fh *_FileContentHandler) Handle(ctx *RequestCtx) {
 	f, e := os.Open(fh.fp)
 	if e != nil {
-		ctx.Response.SetStatusCode(toHTTPError(e))
+		ctx.Response.SetStatusCode(_FSErrToHTTPError(e))
 		return
 	}
 	defer f.Close()
 	d, err := f.Stat()
 	if err != nil {
-		ctx.Response.SetStatusCode(toHTTPError(err))
+		ctx.Response.SetStatusCode(_FSErrToHTTPError(err))
 		return
 	}
 	serveFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
@@ -231,7 +231,7 @@ func makeFileContentHandler(path, filepath string) RequestHandler {
 	return &_FileContentHandler{fp: filepath}
 }
 
-func (m *Mux) FileContent(opt *HandlerOptions, method, path, filepath string) {
+func (m *Mux) File(opt *HandlerOptions, method, path, filepath string) {
 	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(path, filepath))
 }
 

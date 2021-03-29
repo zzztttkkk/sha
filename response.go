@@ -45,7 +45,7 @@ func (res *Response) Write(p []byte) (int, error) {
 	if res.cw != nil {
 		return res.cw.Write(p)
 	}
-	return res.body.Write(p)
+	return res._HTTPPocket.Write(p)
 }
 
 func (res *Response) reset() {
