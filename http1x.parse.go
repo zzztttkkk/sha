@@ -2,11 +2,13 @@ package sha
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
 	"time"
+	"unicode"
 )
 
 var numMap []bool
@@ -21,7 +23,7 @@ func init() {
 var ErrBadHTTPPocketData = errors.New("sha.http: bad http pocket data")
 var ErrTimeout = errors.New("sha.http: timeout")
 
-func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pocket *_HTTPPocket) error {
+func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pocket *_HTTPPocket, opt *HTTPOption) error {
 	var (
 		skipNewLine bool
 		skipSpace   bool
@@ -29,25 +31,26 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 		keySep      bool
 		keyDone     bool
 		bodyRemain  int
-		deadline    time.Time
-		checkTime   bool
-	)
-	deadline, checkTime = ctx.Deadline()
+		parseStatus int
 
+		firstLineSize int
+		headerSize    int
+		b             byte
+		e             error
+	)
 	pocket.header.fromOutSide = true
 
 	for {
-		if checkTime && time.Now().After(deadline) {
-			return ErrTimeout
-		}
-
-		if pocket.parseStatus == 4 {
+		if parseStatus == 4 {
 			if bodyRemain == 0 {
 				contentLength := pocket.header.ContentLength()
 				if contentLength < 1 {
 					return nil
 				}
 				bodyRemain = contentLength
+				if opt.MaxBodySize > 0 && contentLength > opt.MaxBodySize {
+					return ErrBadHTTPPocketData
+				}
 			}
 
 			l, e := reader.Read(readBuf)
@@ -55,7 +58,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 				return e
 			}
 			if l == 0 {
-				continue
+				goto checkCtx
 			}
 
 			_, _ = pocket.Write(readBuf[:l])
@@ -67,10 +70,11 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 			if bodyRemain < 0 {
 				return ErrBadHTTPPocketData
 			}
-			continue
+
+			goto checkCtx
 		}
 
-		b, e := reader.ReadByte()
+		b, e = reader.ReadByte()
 		if e != nil {
 			return e
 		}
@@ -90,26 +94,27 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 			continue
 		}
 
-		switch pocket.parseStatus {
-		case 0:
+		switch parseStatus {
+		case 0: // req method or res version
 			if b == ' ' {
-				pocket.parseStatus++
+				parseStatus++
 				continue
 			}
 			pocket.fl1 = append(pocket.fl1, toUpperTable[b])
-		case 1:
+		case 1: // req path or res status code
 			if b == ' ' {
-				pocket.parseStatus++
+				parseStatus++
 				continue
 			}
 			pocket.fl2 = append(pocket.fl2, b)
-		case 2:
+		case 2: // req version or res status phrase
 			if b == '\r' {
 				skipNewLine = true
-				pocket.parseStatus++
-				continue
+				parseStatus++
+
+				goto checkCtx
 			}
-			pocket.fl3 = append(pocket.fl3, b)
+			pocket.fl3 = append(pocket.fl3, toUpperTable[b])
 		case 3:
 			if !keySep && b == ':' {
 				keySep = true
@@ -124,7 +129,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 				skipNewLine = true
 
 				if headerItem == nil {
-					pocket.parseStatus++
+					parseStatus++
 					b, e := reader.ReadByte()
 					if e != nil {
 						return e
@@ -132,9 +137,24 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 					if b != '\n' {
 						return ErrBadHTTPPocketData
 					}
+					continue
 				}
+
+				// change key to lower in the safe way
+				header := &pocket.header
+				header.buf.Reset()
+				key := utils.S(headerItem.Key)
+				for _, ru := range key {
+					if ru > 255 {
+						header.utf8Key = true
+					}
+					header.buf.WriteRune(unicode.ToLower(ru))
+				}
+				headerItem.Key = headerItem.Key[:0]
+				headerItem.Key = append(headerItem.Key, header.buf.String()...)
+
 				headerItem = nil
-				continue
+				goto checkCtx
 			}
 
 			if headerItem == nil {
@@ -144,23 +164,54 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 			if keyDone {
 				headerItem.Val = append(headerItem.Val, b)
 			} else {
-				headerItem.Key = append(headerItem.Key, toLowerTable[b])
+				headerItem.Key = append(headerItem.Key, b)
 			}
 		}
+
+		if opt.MaxFirstLineSize > 0 && parseStatus < 3 {
+			firstLineSize++
+			if firstLineSize > opt.MaxFirstLineSize {
+				return ErrBadHTTPPocketData
+			}
+		}
+
+		if opt.MaxHeaderPartSize > 0 && parseStatus == 3 {
+			headerSize++
+			if headerSize > opt.MaxHeaderPartSize {
+				return ErrBadHTTPPocketData
+			}
+		}
+
+	checkCtx:
+		select {
+		case <-ctx.Done():
+			return ErrTimeout
+		default:
+		}
 	}
+
 }
 
-func parseRequest(ctx context.Context, r *bufio.Reader, buf []byte, req *Request) error {
-	if err := parsePocket(ctx, r, buf, &req._HTTPPocket); err != nil {
+var httpVersionPrefix = []byte("HTTP/")
+
+func parseRequest(ctx context.Context, r *bufio.Reader, buf []byte, req *Request, opt *HTTPOption) error {
+	if err := parsePocket(ctx, r, buf, &req._HTTPPocket, opt); err != nil {
 		return err
+	}
+	if len(req.Method()) < 1 {
+		return ErrBadHTTPPocketData
+	}
+	if len(req.HTTPVersion()) != 8 || !bytes.HasPrefix(req.HTTPVersion(), httpVersionPrefix) {
+		return ErrBadHTTPPocketData
 	}
 	req.methodToEnum()
 	req.parsePath()
+	req.time = time.Now().UnixNano()
 	return nil
 }
 
-func parseResponse(ctx context.Context, r *bufio.Reader, buf []byte, res *Response) error {
-	if err := parsePocket(ctx, r, buf, &res._HTTPPocket); err != nil {
+func parseResponse(ctx context.Context, r *bufio.Reader, buf []byte, res *Response, opt *HTTPOption) error {
+	if err := parsePocket(ctx, r, buf, &res._HTTPPocket, opt); err != nil {
 		return err
 	}
 	sv, err := strconv.ParseInt(utils.S(res.fl2), 10, 64)
@@ -168,5 +219,13 @@ func parseResponse(ctx context.Context, r *bufio.Reader, buf []byte, res *Respon
 		return ErrBadHTTPPocketData
 	}
 	res.statusCode = int(sv)
+
+	if len(res.HTTPVersion()) != 8 || !bytes.HasPrefix(res.HTTPVersion(), httpVersionPrefix) {
+		return ErrBadHTTPPocketData
+	}
+	if len(res.Phrase()) < 1 {
+		return ErrBadHTTPPocketData
+	}
+	res.time = time.Now().UnixNano()
 	return nil
 }

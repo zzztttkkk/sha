@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
+	"time"
 )
 
 func sendPocket(buf *bufio.Writer, pocket *_HTTPPocket) error {
@@ -41,6 +42,7 @@ func sendResponse(w *bufio.Writer, res *Response) error {
 			return err
 		}
 	}
+	res.time = time.Now().UnixNano()
 
 	const (
 		endLine     = "\r\n"
@@ -88,6 +90,8 @@ func sendResponse(w *bufio.Writer, res *Response) error {
 }
 
 func sendRequest(w *bufio.Writer, req *Request) error {
+	req.time =  time.Now().UnixNano()
+
 	const (
 		endLine     = "\r\n"
 		httpVersion = "HTTP/1.1"

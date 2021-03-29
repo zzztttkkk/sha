@@ -8,7 +8,7 @@ import (
 
 func makeHandler(v int) RequestHandler {
 	return RequestHandlerFunc(func(ctx *RequestCtx) {
-		fmt.Println(v, &ctx.Request.URLParams)
+		fmt.Println(v, &ctx.Request.URL.Params)
 		_, _ = ctx.WriteString("Hello!")
 	})
 }

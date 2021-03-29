@@ -26,8 +26,8 @@ type ServerOption struct {
 	IdleTimeout            utils.TomlDuration `json:"idle_timeout" toml:"idle-timeout"`
 	WriteTimeout           utils.TomlDuration `json:"write_timeout" toml:"write-timeout"`
 
-	HTTPProtocol      HTTPProtocol      `json:"-" toml:"-"`
-	WebsocketProtocol WebSocketProtocol `json:"-" toml:"-"`
+	HTTPProtocol      HTTPServerProtocol `json:"-" toml:"-"`
+	WebsocketProtocol WebSocketProtocol  `json:"-" toml:"-"`
 }
 
 var defaultServerOption = ServerOption{
@@ -43,17 +43,19 @@ type Server struct {
 
 	baseCtx           context.Context
 	Handler           RequestHandler
-	httpProtocol      HTTPProtocol
+	httpProtocol      HTTPServerProtocol
 	websocketProtocol WebSocketProtocol
 
 	tls          *tls.Config
 	isTLS        bool
 	beforeAccept []func(s *Server)
+
+	pool *RequestCtxPool
 }
 
 func (s *Server) IsTLS() bool { return s.isTLS }
 
-type HTTPProtocol interface {
+type HTTPServerProtocol interface {
 	ServeConn(ctx context.Context, conn net.Conn)
 }
 
@@ -83,15 +85,19 @@ func init() {
 	)
 }
 
-func New(ctx context.Context, opt *ServerOption) *Server {
+func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOption) *Server {
 	if opt == nil {
 		_v := &ServerOption{}
 		*_v = defaultServerOption
 		opt = _v
 	}
 
+	if pool == nil {
+		pool = DefaultRequestCtxPool()
+	}
+
 	if opt.HTTPProtocol == nil {
-		opt.HTTPProtocol = NewHTTP11Protocol(nil)
+		opt.HTTPProtocol = newHTTP11Protocol(pool)
 	}
 
 	if opt.WebsocketProtocol == nil {
@@ -102,7 +108,12 @@ func New(ctx context.Context, opt *ServerOption) *Server {
 		ctx = context.Background()
 	}
 
-	server := &Server{httpProtocol: opt.HTTPProtocol, websocketProtocol: opt.WebsocketProtocol, baseCtx: ctx}
+	server := &Server{
+		httpProtocol:      opt.HTTPProtocol,
+		websocketProtocol: opt.WebsocketProtocol,
+		baseCtx:           ctx,
+		pool:              pool,
+	}
 	server.option = *opt
 
 	if err := mergo.Merge(&server.option, &defaultServerOption); err != nil {
@@ -113,11 +124,24 @@ func New(ctx context.Context, opt *ServerOption) *Server {
 	return server
 }
 
+func Default() *Server {
+	return New(nil, nil, nil)
+}
+
+func (s *Server) RequestCtxPool() *RequestCtxPool { return s.pool }
+
 func (s *Server) BeforeAccept(fn func(s *Server)) {
 	s.beforeAccept = append(s.beforeAccept, fn)
 }
 
 func (s *Server) Listen() net.Listener {
+	if s.option.Addr == "" {
+		s.option.Addr = "127.0.0.1:5986"
+	}
+	if s.Handler == nil {
+		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("Hello World!\n") })
+	}
+
 	log.Printf("sha: listening at `%s`\n", s.option.Addr)
 
 	listener, err := net.Listen("tcp4", s.option.Addr)
@@ -276,9 +300,7 @@ func ListenAndServe(addr string, handler RequestHandler) {
 	if addr == "" {
 		addr = "127.0.0.1:5986"
 	}
-
-	server := New(context.Background(), nil)
-	server.option.Addr = addr
+	server := Default()
 	server.Handler = handler
 	server.ListenAndServe()
 }

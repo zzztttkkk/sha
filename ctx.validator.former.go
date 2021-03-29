@@ -8,7 +8,7 @@ type _Former struct{ *Request }
 
 func (f _Former) HeaderValue(name string) ([]byte, bool) { return f.Request.header.Get(name) }
 
-func (f _Former) URLParam(name string) ([]byte, bool) { return f.Request.URLParams.Get(name) }
+func (f _Former) URLParam(name string) ([]byte, bool) { return f.Request.URL.Params.Get(name) }
 
 func (f _Former) QueryValue(name string) ([]byte, bool) { return f.Request.QueryValue(name) }
 

@@ -7,11 +7,7 @@ import (
 )
 
 func TestRequestCtx_AutoCompress(t *testing.T) {
-	s := New(nil, nil)
-	s.option.MaxConnectionKeepAlive.Duration = 0
-
 	mux := NewMux(nil)
-	s.Handler = mux
 
 	mux.HTTP(
 		"get",
@@ -36,5 +32,5 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 		}),
 	)
 
-	s.ListenAndServe()
+	ListenAndServe("", mux)
 }

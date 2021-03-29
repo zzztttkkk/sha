@@ -20,7 +20,7 @@ func (obj *JsonObj) String() string {
 	return fmt.Sprintf("JsonObj(%s)", obj.v)
 }
 
-func NewJsonObject(raw []byte) (*JsonObj, error) {
+func NewObject(raw []byte) (*JsonObj, error) {
 	var dist interface{}
 	if err := Unmarshal(raw, &dist); err != nil {
 		return nil, err
@@ -32,8 +32,7 @@ func NewJsonObject(raw []byte) (*JsonObj, error) {
 	return obj, nil
 }
 
-var ErrUnpeekableJsonObj = errors.New("sha.jsonx: this json object is not a collection")
-var ErrUnexpectedJson = errors.New("sha.jsonx: unexpected json structure")
+var ErrUnexpectedJSON = errors.New("sha.jsonx: unexpected json structure")
 
 const (
 	SliceRand = "rand"
@@ -46,7 +45,7 @@ func peek(v interface{}, key string) (interface{}, error) {
 		if ok {
 			return rv, nil
 		}
-		return nil, ErrUnexpectedJson
+		return nil, ErrUnexpectedJSON
 	case []interface{}:
 		var ind int
 		var l = len(tv)
@@ -55,19 +54,19 @@ func peek(v interface{}, key string) (interface{}, error) {
 		} else {
 			iV, err := strconv.ParseInt(key, 10, 64)
 			if err != nil || int(iV) > l {
-				return nil, ErrUnexpectedJson
+				return nil, ErrUnexpectedJSON
 			}
 			if iV < 0 {
 				iV = int64(l) + iV
 			}
 			if iV < 0 {
-				return nil, ErrUnexpectedJson
+				return nil, ErrUnexpectedJSON
 			}
 			ind = int(iV)
 		}
 		return tv[ind], nil
 	default:
-		return nil, ErrUnexpectedJson
+		return nil, ErrUnexpectedJSON
 	}
 }
 
@@ -76,7 +75,7 @@ func (obj *JsonObj) Peek(keys ...string) (interface{}, error) {
 		return obj.v, nil
 	}
 	if !obj.peekAble {
-		return nil, ErrUnpeekableJsonObj
+		return nil, ErrUnexpectedJSON
 	}
 
 	v := obj.v
@@ -90,6 +89,14 @@ func (obj *JsonObj) Peek(keys ...string) (interface{}, error) {
 	return v, nil
 }
 
+func (obj *JsonObj) PeekDefault(def interface{}, keys ...string) interface{} {
+	v, e := obj.Peek(keys...)
+	if e != nil {
+		return def
+	}
+	return v
+}
+
 func (obj *JsonObj) PeekInt(keys ...string) (int64, error) {
 	v, e := obj.Peek(keys...)
 	if e != nil {
@@ -100,11 +107,11 @@ func (obj *JsonObj) PeekInt(keys ...string) (int64, error) {
 	case float64:
 		return int64(tv), nil
 	default:
-		return 0, ErrUnpeekableJsonObj
+		return 0, ErrUnexpectedJSON
 	}
 }
 
-func (obj *JsonObj) PeekIntOr(def int64, keys ...string) int64 {
+func (obj *JsonObj) PeekIntDefault(def int64, keys ...string) int64 {
 	v, e := obj.PeekInt(keys...)
 	if e != nil {
 		return def
@@ -121,11 +128,11 @@ func (obj *JsonObj) PeekFloat(keys ...string) (float64, error) {
 	case float64:
 		return tv, nil
 	default:
-		return 0, ErrUnpeekableJsonObj
+		return 0, ErrUnexpectedJSON
 	}
 }
 
-func (obj *JsonObj) PeekFloatOr(def float64, keys ...string) float64 {
+func (obj *JsonObj) PeekFloatDefault(def float64, keys ...string) float64 {
 	v, e := obj.PeekFloat(keys...)
 	if e != nil {
 		return def
@@ -142,11 +149,11 @@ func (obj *JsonObj) PeekString(keys ...string) (string, error) {
 	case string:
 		return tv, nil
 	default:
-		return "", ErrUnpeekableJsonObj
+		return "", ErrUnexpectedJSON
 	}
 }
 
-func (obj *JsonObj) PeekStringOr(def string, keys ...string) string {
+func (obj *JsonObj) PeekStringDefault(def string, keys ...string) string {
 	v, e := obj.PeekString(keys...)
 	if e != nil {
 		return def
@@ -163,11 +170,11 @@ func (obj *JsonObj) PeekBool(keys ...string) (bool, error) {
 	case bool:
 		return tv, nil
 	default:
-		return false, ErrUnpeekableJsonObj
+		return false, ErrUnexpectedJSON
 	}
 }
 
-func (obj *JsonObj) PeekBoolOr(def bool, keys ...string) bool {
+func (obj *JsonObj) PeekBoolDefault(def bool, keys ...string) bool {
 	v, e := obj.PeekBool(keys...)
 	if e != nil {
 		return def
@@ -184,7 +191,7 @@ func (obj *JsonObj) PeekMap(keys ...string) (map[string]interface{}, error) {
 	case map[string]interface{}:
 		return tv, nil
 	default:
-		return nil, ErrUnpeekableJsonObj
+		return nil, ErrUnexpectedJSON
 	}
 }
 
@@ -197,7 +204,7 @@ func (obj *JsonObj) PeekSlice(keys ...string) ([]interface{}, error) {
 	case []interface{}:
 		return tv, nil
 	default:
-		return nil, ErrUnpeekableJsonObj
+		return nil, ErrUnexpectedJSON
 	}
 }
 
@@ -208,7 +215,7 @@ func (obj *JsonObj) PeekTimeFromString(layout string, keys ...string) (time.Time
 	}
 	t, err := time.Parse(layout, v)
 	if err != nil {
-		return time.Time{}, ErrUnpeekableJsonObj
+		return time.Time{}, ErrUnexpectedJSON
 	}
 	return t, nil
 }

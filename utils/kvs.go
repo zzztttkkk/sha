@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -16,14 +18,20 @@ func (item *KvItem) makeInvalid() {
 	item.Val = item.Val[:0]
 }
 
+type MultiValueMap map[string][]string
+
 type Kvs struct {
 	lst  []KvItem
 	size int
 }
 
-func (kvs *Kvs) Size() int {
-	return kvs.size
+type _KvsIterable interface {
+	EachItem(visitor func(item *KvItem) bool)
 }
+
+func (kvs *Kvs) Size() int { return kvs.size }
+
+func (kvs *Kvs) Cap() int { return cap(kvs.lst) }
 
 func (kvs *Kvs) String() string {
 	buf := strings.Builder{}
@@ -187,4 +195,34 @@ func (kvs *Kvs) Reset() {
 	}
 	kvs.lst = kvs.lst[:0]
 	kvs.size = 0
+}
+
+func (kvs *Kvs) LoadMap(m MultiValueMap) {
+	for k, vl := range m {
+		for _, v := range vl {
+			kvs.AppendString(k, v)
+		}
+	}
+}
+
+func (kvs *Kvs) LoadKvs(o *Kvs) {
+	o.EachItem(func(item *KvItem) bool {
+		kvs.AppendBytes(item.Key, item.Val)
+		return true
+	})
+}
+
+func (kvs *Kvs) LoadAny(v interface{}) bool {
+	switch tv := v.(type) {
+	case url.Values, http.Header, MultiValueMap, map[string][]string:
+		kvs.LoadMap(tv.(map[string][]string))
+	case _KvsIterable:
+		tv.EachItem(func(item *KvItem) bool {
+			kvs.AppendBytes(item.Key, item.Val)
+			return true
+		})
+	default:
+		return false
+	}
+	return true
 }

@@ -37,8 +37,8 @@ func TestNewShuffleStringGenerator(t *testing.T) {
 			res, _ := http.Get("https://v2.jinrishici.com/one.json")
 			defer res.Body.Close()
 			buf, _ := ioutil.ReadAll(res.Body)
-			data, _ := jsonx.NewJsonObject(buf)
-			verse := data.PeekStringOr("", "data", "origin", "content", jsonx.SliceRand) // choice a verse randomly
+			data, _ := jsonx.NewObject(buf)
+			verse := data.PeekStringDefault("", "data", "origin", "content", jsonx.SliceRand) // choice a verse randomly
 
 			// keep the structure
 			var splitVerse = func(v string) []string {

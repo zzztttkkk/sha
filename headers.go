@@ -36,7 +36,7 @@ const (
 	HeaderLastModified      = "Last-Modified"
 	HeaderVary              = "Vary"
 
-	// Connection management
+	// HTTPSession management
 	HeaderConnection = "Connection"
 	HeaderKeepAlive  = "Keep-Alive"
 
@@ -139,7 +139,7 @@ const (
 	HeaderSecWebSocketExtensions = "Sec-WebSocket-Extensions"
 	HeaderSecWebSocketKey        = "Sec-WebSocket-Key"
 	HeaderSecWebSocketProtocol   = "Sec-WebSocket-Protocol"
-	HeaderSecWebSocketVersion    = "Sec-WebSocket-Version"
+	HeaderSecWebSocketVersion    = "Sec-WebSocket-HTTPVersion"
 
 	// Other
 	HeaderAcceptPatch         = "Accept-Patch"

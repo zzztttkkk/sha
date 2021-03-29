@@ -186,7 +186,7 @@ type _FileSystemHandler struct {
 }
 
 func (fh *_FileSystemHandler) Handle(ctx *RequestCtx) {
-	fp, _ := ctx.Request.URLParams.Get("filepath")
+	fp, _ := ctx.Request.URL.Params.Get("filepath")
 	serveFileSystem(ctx, fh.fs, filepath.Clean(utils.S(fp)), fh.autoIndex)
 }
 
@@ -249,7 +249,7 @@ func (m *Mux) onNotFound(ctx *RequestCtx) {
 	if m.methodNotAllowed != nil {
 		optionsTree := m.stdTrees[_MOptions-1]
 		if optionsTree != nil {
-			h, _ := optionsTree.Get(utils.S(ctx.Request.Path()), ctx)
+			h, _ := optionsTree.Get(ctx.Request.Path(), ctx)
 			if h != nil {
 				m.methodNotAllowed(ctx)
 				return
@@ -296,15 +296,15 @@ func (m *Mux) Handle(ctx *RequestCtx) {
 
 	path := req.Path()
 
-	h, tsr := tree.Get(utils.S(path), ctx)
+	h, tsr := tree.Get(path, ctx)
 	if h == nil {
 		if tsr {
 			l := len(path)
 			if path[l-1] != '/' {
-				item := res.Header().Set(HeaderLocation, path)
+				item := res.Header().SetString(HeaderLocation, path)
 				item.Val = append(item.Val, '/')
 			} else {
-				res.Header().Set(HeaderLocation, path[:l-1])
+				res.Header().SetString(HeaderLocation, path[:l-1])
 			}
 			res.SetStatusCode(StatusFound)
 			return

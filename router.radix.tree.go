@@ -87,9 +87,8 @@ func (t *_RadixTree) Get(path string, ctx *RequestCtx) (RequestHandler, bool) {
 			return t.root.handler, false
 		case t.root.wildcard != nil:
 			if ctx != nil {
-				ctx.Request.URLParams.Set(t.root.wildcard.paramKey, utils.B(""))
+				ctx.Request.URL.Params.SetString(t.root.wildcard.paramKey, "")
 			}
-
 			return t.root.wildcard.handler, false
 		}
 	}

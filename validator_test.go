@@ -20,9 +20,6 @@ func (TestForm) Default(fieldName string) interface{} {
 
 func TestRequestCtx_Validate(t *testing.T) {
 	mux := NewMux(nil)
-	server := New(nil, nil)
-	server.Handler = mux
-
 	mux.HTTPWithOptions(
 		&HandlerOptions{
 			Document: validator.NewDocument(TestForm{}, validator.Undefined),
@@ -37,6 +34,5 @@ func TestRequestCtx_Validate(t *testing.T) {
 			},
 		),
 	)
-
-	server.ListenAndServe()
+	ListenAndServe("", mux)
 }

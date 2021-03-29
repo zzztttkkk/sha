@@ -5,7 +5,6 @@ import (
 	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
-	"time"
 )
 
 type URLParams struct {
@@ -25,31 +24,43 @@ func (up *URLParams) GetInt(name string, base int) (int64, bool) {
 }
 
 type URL struct {
-	ok    bool
-	Host  []byte
-	Port  []byte
-	Path  []byte
-	Query []byte
+	ok     bool
+	Host   []byte
+	Port   []byte
+	Path   []byte
+	Query  []byte
+	Params URLParams
+}
+
+func (u *URL) reset() {
+	u.ok = false
+	u.Host = nil
+	u.Port = nil
+	u.Path = nil
+	u.Query = nil
+	u.Params.Reset()
 }
 
 type Request struct {
 	_HTTPPocket
-	reqTime time.Time
 
 	_method _Method
 
-	URLParams   URLParams
-	url         URL
+	URL         URL
 	queryParsed bool
 
-	cookies  utils.Kvs
-	query    Form
-	bodyForm Form
-	files    FormFiles
+	// forms
+	query      Form
+	bodyStatus int // 0: unparsed; 1: unsupported content type; 2: parsed
+	bodyForm   Form
+	// forms ---  multipart
+	files         FormFiles
+	boundaryBegin []byte
+	boundaryEnd   []byte
+	boundaryLine  []byte
 
-	bodyStatus   int // 0: unparsed; 1: unsupported content type; 2: parsed
+	cookies      utils.Kvs
 	cookieParsed bool
-	version      []byte
 
 	// websocket
 	webSocketSubProtocolName     []byte
@@ -60,17 +71,22 @@ func (req *Request) Reset() {
 	req._HTTPPocket.reset()
 	req._method = 0
 
-	req.URLParams.Reset()
-	req.url.ok = false
+	req.URL.reset()
 
-	req.reqTime = time.Time{}
-	req.cookies.Reset()
 	req.query.Reset()
 	req.bodyForm.Reset()
-	req.files = nil
+
+	for _, f := range req.files {
+		f.reset()
+		formFilePool.Put(f)
+	}
+	req.files = req.files[:0]
+	req.boundaryBegin = req.boundaryBegin[:0]
+	req.boundaryEnd = req.boundaryEnd[:0]
+	req.boundaryLine = req.boundaryLine[:0]
+
+	req.cookies.Reset()
 	req.cookieParsed = false
-	req.bodyStatus = 0
-	req.version = req.version[:0]
 	req.webSocketSubProtocolName = req.webSocketSubProtocolName[:0]
 	req.webSocketShouldDoCompression = false
 }
@@ -79,17 +95,15 @@ func (req *Request) Method() []byte { return req.fl1 }
 
 func (req *Request) RawPath() []byte { return req.fl2 }
 
-const defaultPath = "/"
-
-func (req *Request) Path() []byte {
+func (req *Request) Path() string {
 	req.parsePath()
-	if len(req.url.Path) < 1 {
-		return utils.B(defaultPath)
+	if len(req.URL.Path) > 0 {
+		return utils.S(req.URL.Path)
 	}
-	return req.url.Path
+	return "/"
 }
 
-func (req *Request) Version() []byte { return req.fl3 }
+func (req *Request) HTTPVersion() []byte { return req.fl3 }
 
 func (req *Request) Body() *bytes.Buffer { return req._HTTPPocket.body }
 
@@ -117,41 +131,12 @@ func (req *Request) SetPathString(path string) *Request {
 	return req
 }
 
-func (req *Request) CookieValue(key string) ([]byte, bool) {
-	if !req.cookieParsed {
-		v, ok := req.Header().Get(HeaderCookie)
-		if ok {
-			var key []byte
-			var buf []byte
-
-			for _, b := range v {
-				switch b {
-				case '=':
-					key = append(key, buf...)
-					buf = buf[:0]
-				case ';':
-					req.cookies.Set(utils.S(utils.DecodeURI(key)), utils.DecodeURI(buf))
-					key = key[:0]
-					buf = buf[:0]
-				case ' ':
-					continue
-				default:
-					buf = append(buf, b)
-				}
-			}
-			req.cookies.Set(utils.S(utils.DecodeURI(key)), utils.DecodeURI(buf))
-		}
-		req.cookieParsed = true
-	}
-	return req.cookies.Get(key)
-}
-
 func (req *Request) SetJSONBody(v interface{}) error {
 	req.Header().SetContentType(MIMEJson)
 	return jsonx.NewEncoder(&req._HTTPPocket).Encode(v)
 }
 
-func (req *Request) SetMultiValueMapBody(fv MultiValueMap) *Request {
+func (req *Request) SetMultiValueMapBody(fv utils.MultiValueMap) *Request {
 	req.header.SetContentType(MIMEForm)
 	req.bodyForm.LoadMap(fv)
 	return req
@@ -159,7 +144,7 @@ func (req *Request) SetMultiValueMapBody(fv MultiValueMap) *Request {
 
 func (req *Request) SetFormBody(form *Form) *Request {
 	req.header.SetContentType(MIMEForm)
-	req.bodyForm.LoadForm(form)
+	req.bodyForm.LoadKvs(&form.Kvs)
 	return req
 }
 
@@ -207,11 +192,11 @@ func (req *Request) methodToEnum() {
 }
 
 func (req *Request) parsePath() {
-	if req.url.ok {
+	if req.URL.ok {
 		return
 	}
 	rawPath := req.fl2
-	u := &req.url
+	u := &req.URL
 	u.ok = true
 
 	portInd := bytes.IndexByte(rawPath, ':')

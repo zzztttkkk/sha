@@ -10,7 +10,6 @@ import (
 	"mime"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -41,6 +40,18 @@ type RequestCtx struct {
 
 	// err
 	err interface{}
+
+	//
+	keepByUser bool
+}
+
+func (ctx *RequestCtx) Keep() {
+	ctx.keepByUser = true
+}
+
+func (ctx *RequestCtx) ReturnTo(pool *RequestCtxPool) {
+	ctx.keepByUser = false
+	pool.Release(ctx)
 }
 
 // context.Context
@@ -155,45 +166,11 @@ func (ctx *RequestCtx) Reset() {
 	ctx.Request.header.fromOutSide = false
 }
 
-var ctxPool = sync.Pool{New: func() interface{} { return &RequestCtx{} }}
-
-func AcquireRequestCtxSize(conn net.Conn, readSize, writeSize int) *RequestCtx {
-	ctx := ctxPool.Get().(*RequestCtx)
-	if len(ctx.readBuf) != readSize {
-		ctx.readBuf = make([]byte, readSize)
-	}
-	if ctx.r == nil {
-		ctx.r = bufio.NewReaderSize(conn, readSize)
-	} else {
-		ctx.r.Reset(conn)
-	}
-	if ctx.w == nil {
-		ctx.w = bufio.NewWriterSize(conn, writeSize)
-	} else {
-		ctx.w.Reset(conn)
-	}
+func (ctx *RequestCtx) SetConnection(conn net.Conn) {
+	ctx.r.Reset(conn)
+	ctx.w.Reset(conn)
 	ctx.connTime = time.Now()
 	ctx.conn = conn
-	return ctx
-}
-
-func AcquireRequestCtx(conn net.Conn) *RequestCtx {
-	return AcquireRequestCtxSize(conn, 512, 4096)
-}
-
-func ReleaseRequestCtx(ctx *RequestCtx) {
-	ctx.Reset()
-	ctxPool.Put(ctx)
-}
-
-type RequestHandler interface {
-	Handle(ctx *RequestCtx)
-}
-
-type RequestHandlerFunc func(ctx *RequestCtx)
-
-func (fn RequestHandlerFunc) Handle(ctx *RequestCtx) {
-	fn(ctx)
 }
 
 func (ctx *RequestCtx) Write(p []byte) (int, error) {

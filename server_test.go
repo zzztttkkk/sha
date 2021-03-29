@@ -12,6 +12,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -154,4 +155,11 @@ func TestMergo(t *testing.T) {
 		panic(err)
 	}
 	fmt.Println(&a1, &a2)
+}
+
+func TestPoolGC(t *testing.T) {
+	ListenAndServe("", RequestHandlerFunc(func(ctx *RequestCtx) {
+		fmt.Printf("%p\r\n", ctx)
+		runtime.GC()
+	}))
 }

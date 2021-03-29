@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/zzztttkkk/sha/utils"
 	"io"
+	"mime"
 	"os"
 	"sync"
 )
@@ -41,21 +42,6 @@ func (form *Form) FromURLEncoded(p []byte) {
 	form.onItem(key, val)
 }
 
-func (form *Form) LoadMap(m MultiValueMap) {
-	for k, vl := range m {
-		for _, v := range vl {
-			form.AppendString(k, v)
-		}
-	}
-}
-
-func (form *Form) LoadForm(f *Form) {
-	f.EachItem(func(item *utils.KvItem) bool {
-		form.AppendBytes(item.Key, item.Val)
-		return true
-	})
-}
-
 func (form *Form) EncodeToBuf(w interface {
 	io.ByteWriter
 	io.Writer
@@ -79,8 +65,69 @@ type FormFile struct {
 	FileName string
 	Header   Header
 
-	buf []byte
+	buf    []byte
+	cursor int64
 }
+
+func (file *FormFile) meta() {
+	disposition, _ := file.Header.Get(HeaderContentDisposition)
+	mt, v, e := mime.ParseMediaType(utils.S(disposition))
+	if e != nil {
+		return
+	}
+	if mt != "form-data" {
+		return
+	}
+	file.Name = v["name"]
+	file.FileName = v["filename"]
+}
+
+func (file *FormFile) reset() {
+	file.Name = ""
+	file.FileName = ""
+	file.Header.Reset()
+	file.buf = file.buf[:0]
+	file.cursor = 0
+}
+
+func (file *FormFile) Read(p []byte) (int, error) {
+	var (
+		fileSize = int64(len(file.buf))
+		bufSize  = int64(len(p))
+	)
+
+	if file.cursor >= fileSize {
+		return 0, io.EOF
+	}
+
+	if file.cursor+bufSize <= fileSize {
+		file.cursor += bufSize
+		copy(p, file.buf[file.cursor:file.cursor+bufSize-1])
+		return len(p), nil
+	}
+	file.cursor = fileSize
+	copy(p, file.buf[file.cursor:])
+	return int(fileSize - file.cursor), nil
+}
+
+func (file *FormFile) Seek(offset int64, whence int) (int64, error) {
+	switch whence {
+	case io.SeekCurrent:
+		file.cursor += offset
+	case io.SeekStart:
+		file.cursor = offset
+	case io.SeekEnd:
+		file.cursor = int64(len(file.buf)) - offset
+	}
+	if file.cursor < 0 {
+		file.cursor = 0
+	}
+	return file.cursor, nil
+}
+
+var _ io.ReadSeeker = (*FormFile)(nil)
+
+var formFilePool = sync.Pool{New: func() interface{} { return &FormFile{} }}
 
 func (file *FormFile) Data() []byte { return file.buf }
 
@@ -96,19 +143,19 @@ func (file *FormFile) Save(name string) error {
 
 type FormFiles []*FormFile
 
-func (files FormFiles) Get(name []byte) *FormFile {
+func (files FormFiles) Get(name string) *FormFile {
 	for _, v := range files {
-		if v.Name == string(name) {
+		if v.Name == name {
 			return v
 		}
 	}
 	return nil
 }
 
-func (files FormFiles) GetAll(name []byte) []*FormFile {
+func (files FormFiles) GetAll(name string) []*FormFile {
 	var rv []*FormFile
 	for _, v := range files {
-		if v.Name == string(name) {
+		if v.Name == name {
 			rv = append(rv, v)
 		}
 	}
@@ -116,12 +163,12 @@ func (files FormFiles) GetAll(name []byte) []*FormFile {
 }
 
 func (req *Request) parseQuery() {
-	if !req.queryParsed {
+	if req.queryParsed {
 		return
 	}
 	req.queryParsed = true
-	if len(req.url.Query) > 0 {
-		req.query.FromURLEncoded(req.url.Query)
+	if len(req.URL.Query) > 0 {
+		req.query.FromURLEncoded(req.URL.Query)
 	}
 }
 
@@ -146,156 +193,139 @@ func (req *Request) QueryValues(name string) [][]byte {
 	return nil
 }
 
-type _MultiPartParser struct {
-	begin    []byte
-	end      []byte
-	line     []byte
-	inHeader bool
-	done     bool
+func (req *Request) parseMultiPartForm() bool {
+	var (
+		status  int
+		begin   int
+		current *FormFile
+		hItem   *utils.KvItem
+		keyDone bool
+		skipSp  bool
+		skipNL  bool
+		end     bool
+		data    = req.body.Bytes()
+	)
 
-	current *FormFile
-	files   *FormFiles
-	form    *Form
-}
-
-func (p *_MultiPartParser) reset() {
-	p.begin = p.begin[:0]
-	p.end = p.end[:0]
-	p.line = p.line[:0]
-	p.current = nil
-	p.inHeader = false
-	p.done = false
-	p.files = nil
-	p.form = nil
-}
-
-var multiPartParserPool = sync.Pool{New: func() interface{} { return &_MultiPartParser{} }}
-
-func acquireMultiPartParser(request *Request) *_MultiPartParser {
-	v := multiPartParserPool.Get().(*_MultiPartParser)
-	v.files = &request.files
-	v.form = &request.bodyForm
-	return v
-}
-
-func releaseMultiPartParser(p *_MultiPartParser) {
-	p.reset()
-	multiPartParserPool.Put(p)
-}
-
-func (p *_MultiPartParser) setBoundary(boundary []byte) {
-	p.begin = append(p.begin, '-', '-')
-	p.begin = append(p.begin, boundary...)
-	p.end = append(p.end, p.begin...)
-	p.end = append(p.end, '-', '-')
-	p.begin = append(p.begin, '\r', '\n')
-	p.end = append(p.end, '\r', '\n')
-}
-
-func (p *_MultiPartParser) onHeaderLineOk() bool {
-	ind := bytes.IndexByte(p.line, ':')
-	if ind < 0 {
-		return false
-	}
-	p.current.Header.AppendBytes(p.line[:ind], p.line[ind+2:])
-	return true
-}
-
-func (p *_MultiPartParser) appendLine() {
-	p.current.buf = append(p.current.buf, p.line...)
-}
-
-var formDataStr = []byte("form-data;")
-var headerValueAttrsSep = []byte(";")
-var nameStr = []byte("name=")
-var filenameStr = []byte("filename=")
-
-func (p *_MultiPartParser) onFieldOk() bool {
-	disposition, ok := p.current.Header.Get(HeaderContentDisposition)
-	if !ok || len(disposition) < 1 {
-		return false
-	}
-	if !bytes.HasPrefix(disposition, formDataStr) {
-		return false
-	}
-
-	var name []byte
-	var filename []byte
-
-	for _, v := range bytes.Split(disposition[11:], headerValueAttrsSep) {
-		v = utils.InPlaceTrimAsciiSpace(v)
-
-		if bytes.HasPrefix(v, nameStr) {
-			name = utils.DecodeURI(v[6 : len(v)-1])
-			continue
-		}
-		if bytes.HasPrefix(v, filenameStr) {
-			filename = utils.DecodeURI(v[10 : len(v)-1])
-		}
-	}
-
-	p.current.buf = p.current.buf[:len(p.current.buf)-2] // \r\n
-
-	if len(filename) > 0 {
-		p.current.Name = utils.S(name)
-		p.current.FileName = utils.S(filename)
-		*p.files = append(*p.files, p.current)
-		p.current = nil
-	} else {
-		p.form.AppendBytes(name, p.current.buf)
-	}
-	return true
-}
-
-func (req *Request) parseMultiPart(boundary []byte) bool {
-	buf := req._HTTPPocket.body
-	parser := acquireMultiPartParser(req)
-	defer releaseMultiPartParser(parser)
-
-	parser.setBoundary(boundary)
-
-	begin := false
-	for _, b := range buf.Bytes() {
-		if b == '\n' {
-			parser.line = append(parser.line, b)
-			if parser.inHeader { // is header line
-				parser.line = utils.InPlaceTrimAsciiSpace(parser.line)
-				if len(parser.line) == 0 {
-					parser.inHeader = false
-				} else {
-					if !parser.onHeaderLineOk() {
-						return false
-					}
+	for ind, b := range data {
+		switch status {
+		case 0:
+			req.boundaryLine = append(req.boundaryLine, b)
+			if b == '\n' {
+				if !bytes.Equal(req.boundaryLine, req.boundaryBegin) {
+					return false
 				}
-			} else {
-				if bytes.Equal(parser.begin, parser.line) {
-					if begin && !parser.onFieldOk() {
-						return false
-					}
-					parser.inHeader = true
-					begin = true
-					if parser.current == nil {
-						parser.current = &FormFile{}
-					} else {
-						parser.current.Header.Reset()
-						parser.current.buf = parser.current.buf[:0]
-					}
-				} else if bytes.Equal(parser.end, parser.line) {
-					if !parser.onFieldOk() {
-						return false
-					}
-					parser.done = true
-					break
-				} else {
-					parser.appendLine()
-				}
+				status++
+				req.boundaryLine = req.boundaryLine[:0]
+				continue
 			}
-			parser.line = parser.line[:0]
+			if len(req.boundaryLine) > len(req.boundaryBegin) {
+				return false
+			}
 			continue
+		case 1:
+			if b == ':' {
+				keyDone = true
+				skipSp = true
+				continue
+			}
+
+			if skipSp {
+				if b == ' ' {
+					skipSp = false
+					continue
+				}
+				return false
+			}
+
+			if skipNL {
+				if b == '\n' {
+					skipNL = false
+					continue
+				}
+				return false
+			}
+
+			if b == '\r' {
+				keyDone = false
+				skipNL = true
+				if hItem == nil {
+					status++
+					begin = ind + 2
+					continue
+				}
+				hItem = nil
+				continue
+			}
+
+			if hItem == nil {
+				if current == nil {
+					current = formFilePool.Get().(*FormFile)
+					current.Header.fromOutSide = true
+				}
+
+				hItem = current.Header.AppendBytes(nil, nil)
+			}
+
+			if keyDone {
+				hItem.Val = append(hItem.Val, b)
+			} else {
+				if b > 127 {
+					return false
+				}
+				hItem.Key = append(hItem.Key, toLowerTable[b])
+			}
+		case 2:
+			if skipNL {
+				if b == '\n' {
+					skipNL = false
+					continue
+				}
+				return false
+			}
+
+			if b == '\n' {
+				req.boundaryLine = append(req.boundaryLine, b)
+
+				end = bytes.Equal(req.boundaryLine, req.boundaryEnd)
+				if end || bytes.Equal(req.boundaryLine, req.boundaryBegin) {
+					if current == nil {
+						return false
+					}
+					current.buf = data[begin : ind-len(req.boundaryLine)-1]
+					current.meta()
+
+					if len(current.Name) < 1 {
+						current.reset()
+						formFilePool.Put(current)
+					} else {
+						if len(current.FileName) > 0 {
+							req.files = append(req.files, current)
+						} else {
+							item := req.bodyForm.AppendBytes(nil, nil)
+							item.Key = append(item.Key, current.Name...)
+							item.Val = append(item.Val, current.buf...)
+							current.reset()
+							formFilePool.Put(current)
+						}
+					}
+
+					status = 1
+					current = nil
+				}
+
+				if end {
+					return true
+				}
+				req.boundaryLine = req.boundaryLine[:0]
+				continue
+			}
+			if len(req.boundaryLine) >= len(req.boundaryEnd) {
+				continue
+			}
+			req.boundaryLine = append(req.boundaryLine, b)
 		}
-		parser.line = append(parser.line, b)
 	}
-	return true
+	return false
 }
 
 var boundaryBytes = []byte("boundary=")
@@ -336,7 +366,17 @@ func (req *Request) parseBodyBuf() {
 			return
 		}
 
-		req.parseMultiPart(typeValue[ind+9:])
+		req.boundaryBegin = append(req.boundaryBegin, "--"...)
+		req.boundaryBegin = append(req.boundaryBegin, typeValue[ind+9:]...)
+
+		req.boundaryEnd = append(req.boundaryEnd, req.boundaryBegin...)
+		req.boundaryEnd = append(req.boundaryEnd, "--\r\n"...)
+		req.boundaryBegin = append(req.boundaryBegin, "\r\n"...)
+		if req.parseMultiPartForm() {
+			req.bodyStatus = _BodyOK
+		} else {
+			req.bodyStatus = _BodyUnsupportedType
+		}
 		req.bodyStatus = _BodyOK
 		return
 	}

@@ -354,7 +354,7 @@ walk:
 						return child.handler, false
 					case child.wildcard != nil:
 						if ctx != nil {
-							ctx.Request.URLParams.Set(child.wildcard.paramKey, utils.B(""))
+							ctx.Request.URL.Params.Set(child.wildcard.paramKey, utils.B(""))
 						}
 
 						return child.wildcard.handler, false
@@ -381,7 +381,7 @@ walk:
 					} else if h != nil {
 						if ctx != nil {
 							for i, key := range child.paramKeys {
-								ctx.Request.URLParams.Set(key, utils.B(values[i]))
+								ctx.Request.URL.Params.Set(key, utils.B(values[i]))
 							}
 						}
 
@@ -397,7 +397,7 @@ walk:
 						continue
 					case ctx != nil:
 						for i, key := range child.paramKeys {
-							ctx.Request.URLParams.Set(key, utils.B(values[i]))
+							ctx.Request.URL.Params.Set(key, utils.B(values[i]))
 						}
 					}
 
@@ -427,7 +427,7 @@ walk:
 
 		if n.wildcard != nil {
 			if ctx != nil {
-				ctx.Request.URLParams.Set(n.wildcard.paramKey, utils.B(path))
+				ctx.Request.URL.Params.Set(n.wildcard.paramKey, utils.B(path))
 			}
 
 			return n.wildcard.handler, false

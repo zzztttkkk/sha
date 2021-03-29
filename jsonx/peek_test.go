@@ -6,7 +6,7 @@ import (
 )
 
 func TestPeek(t *testing.T) {
-	obj, _ := NewJsonObject(
+	obj, _ := NewObject(
 		[]byte(`{
   "status": "success",
   "data": {
@@ -40,9 +40,9 @@ func TestPeek(t *testing.T) {
 	)
 
 	fmt.Println(obj)
-	fmt.Println(obj.PeekIntOr(-1, "data", "popularity"))
-	fmt.Println(obj.PeekStringOr("", "data", "content"))
-	fmt.Println(obj.PeekStringOr("", "data", "origin", "content", "1"))
+	fmt.Println(obj.PeekIntDefault(-1, "data", "popularity"))
+	fmt.Println(obj.PeekStringDefault("", "data", "content"))
+	fmt.Println(obj.PeekStringDefault("", "data", "origin", "content", "1"))
 	fmt.Println(obj.IsNil("warning"))
 	fmt.Println(obj.IsNil("data", "origin", "translate"))
 }

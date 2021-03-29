@@ -35,7 +35,7 @@ func testHandlerAndParams(
 				params = make(map[string]interface{})
 			}
 
-			ctx.Request.URLParams.EachItem(func(item *utils.KvItem) bool {
+			ctx.Request.URL.Params.EachItem(func(item *utils.KvItem) bool {
 				resultParams[string(item.Key)] = string(item.Val)
 				return true
 			})
