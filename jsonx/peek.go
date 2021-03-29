@@ -9,33 +9,31 @@ import (
 	"time"
 )
 
-type JsonObj struct {
+type JSONValue struct {
 	v interface{}
-	t reflect.Type
-
-	peekAble bool
 }
 
-func (obj *JsonObj) String() string {
+func (obj *JSONValue) String() string {
 	return fmt.Sprintf("JsonObj(%s)", obj.v)
 }
 
-func NewObject(raw []byte) (*JsonObj, error) {
+func NewObject(raw []byte) (*JSONValue, error) {
 	var dist interface{}
 	if err := Unmarshal(raw, &dist); err != nil {
 		return nil, err
 	}
 
 	t := reflect.TypeOf(dist)
-	obj := &JsonObj{v: dist, t: t}
-	obj.peekAble = t.Kind() == reflect.Map || t.Kind() == reflect.Slice
-	return obj, nil
+	if t.Kind() != reflect.Map && t.Kind() != reflect.Slice {
+		return nil, ErrUnexpectedJSON
+	}
+	return &JSONValue{v: dist}, nil
 }
 
 var ErrUnexpectedJSON = errors.New("sha.jsonx: unexpected json structure")
 
 const (
-	SliceRand = "rand"
+	SliceRand = "sha.jsonx.rand"
 )
 
 func peek(v interface{}, key string) (interface{}, error) {
@@ -70,14 +68,10 @@ func peek(v interface{}, key string) (interface{}, error) {
 	}
 }
 
-func (obj *JsonObj) Peek(keys ...string) (interface{}, error) {
+func (obj *JSONValue) Peek(keys ...string) (interface{}, error) {
 	if len(keys) == 0 {
 		return obj.v, nil
 	}
-	if !obj.peekAble {
-		return nil, ErrUnexpectedJSON
-	}
-
 	v := obj.v
 	var err error
 	for _, key := range keys {
@@ -89,7 +83,7 @@ func (obj *JsonObj) Peek(keys ...string) (interface{}, error) {
 	return v, nil
 }
 
-func (obj *JsonObj) PeekDefault(def interface{}, keys ...string) interface{} {
+func (obj *JSONValue) PeekDefault(def interface{}, keys ...string) interface{} {
 	v, e := obj.Peek(keys...)
 	if e != nil {
 		return def
@@ -97,7 +91,7 @@ func (obj *JsonObj) PeekDefault(def interface{}, keys ...string) interface{} {
 	return v
 }
 
-func (obj *JsonObj) PeekInt(keys ...string) (int64, error) {
+func (obj *JSONValue) PeekInt(keys ...string) (int64, error) {
 	v, e := obj.Peek(keys...)
 	if e != nil {
 		return 0, e
@@ -111,7 +105,7 @@ func (obj *JsonObj) PeekInt(keys ...string) (int64, error) {
 	}
 }
 
-func (obj *JsonObj) PeekIntDefault(def int64, keys ...string) int64 {
+func (obj *JSONValue) PeekIntDefault(def int64, keys ...string) int64 {
 	v, e := obj.PeekInt(keys...)
 	if e != nil {
 		return def
@@ -119,7 +113,7 @@ func (obj *JsonObj) PeekIntDefault(def int64, keys ...string) int64 {
 	return v
 }
 
-func (obj *JsonObj) PeekFloat(keys ...string) (float64, error) {
+func (obj *JSONValue) PeekFloat(keys ...string) (float64, error) {
 	v, e := obj.Peek(keys...)
 	if e != nil {
 		return 0, e
@@ -132,7 +126,7 @@ func (obj *JsonObj) PeekFloat(keys ...string) (float64, error) {
 	}
 }
 
-func (obj *JsonObj) PeekFloatDefault(def float64, keys ...string) float64 {
+func (obj *JSONValue) PeekFloatDefault(def float64, keys ...string) float64 {
 	v, e := obj.PeekFloat(keys...)
 	if e != nil {
 		return def
@@ -140,7 +134,7 @@ func (obj *JsonObj) PeekFloatDefault(def float64, keys ...string) float64 {
 	return v
 }
 
-func (obj *JsonObj) PeekString(keys ...string) (string, error) {
+func (obj *JSONValue) PeekString(keys ...string) (string, error) {
 	v, e := obj.Peek(keys...)
 	if e != nil {
 		return "", e
@@ -153,7 +147,7 @@ func (obj *JsonObj) PeekString(keys ...string) (string, error) {
 	}
 }
 
-func (obj *JsonObj) PeekStringDefault(def string, keys ...string) string {
+func (obj *JSONValue) PeekStringDefault(def string, keys ...string) string {
 	v, e := obj.PeekString(keys...)
 	if e != nil {
 		return def
@@ -161,7 +155,7 @@ func (obj *JsonObj) PeekStringDefault(def string, keys ...string) string {
 	return v
 }
 
-func (obj *JsonObj) PeekBool(keys ...string) (bool, error) {
+func (obj *JSONValue) PeekBool(keys ...string) (bool, error) {
 	v, e := obj.Peek(keys...)
 	if e != nil {
 		return false, e
@@ -174,7 +168,7 @@ func (obj *JsonObj) PeekBool(keys ...string) (bool, error) {
 	}
 }
 
-func (obj *JsonObj) PeekBoolDefault(def bool, keys ...string) bool {
+func (obj *JSONValue) PeekBoolDefault(def bool, keys ...string) bool {
 	v, e := obj.PeekBool(keys...)
 	if e != nil {
 		return def
@@ -182,7 +176,7 @@ func (obj *JsonObj) PeekBoolDefault(def bool, keys ...string) bool {
 	return v
 }
 
-func (obj *JsonObj) PeekMap(keys ...string) (map[string]interface{}, error) {
+func (obj *JSONValue) PeekMap(keys ...string) (map[string]interface{}, error) {
 	v, e := obj.Peek(keys...)
 	if e != nil {
 		return nil, e
@@ -195,7 +189,7 @@ func (obj *JsonObj) PeekMap(keys ...string) (map[string]interface{}, error) {
 	}
 }
 
-func (obj *JsonObj) PeekSlice(keys ...string) ([]interface{}, error) {
+func (obj *JSONValue) PeekSlice(keys ...string) ([]interface{}, error) {
 	v, e := obj.Peek(keys...)
 	if e != nil {
 		return nil, e
@@ -208,7 +202,7 @@ func (obj *JsonObj) PeekSlice(keys ...string) ([]interface{}, error) {
 	}
 }
 
-func (obj *JsonObj) PeekTimeFromString(layout string, keys ...string) (time.Time, error) {
+func (obj *JSONValue) PeekTimeFromString(layout string, keys ...string) (time.Time, error) {
 	v, err := obj.PeekString(keys...)
 	if err != nil {
 		return time.Time{}, err
@@ -220,7 +214,7 @@ func (obj *JsonObj) PeekTimeFromString(layout string, keys ...string) (time.Time
 	return t, nil
 }
 
-func (obj *JsonObj) PeekTimeFromUnix(keys ...string) (time.Time, error) {
+func (obj *JSONValue) PeekTimeFromUnix(keys ...string) (time.Time, error) {
 	v, err := obj.PeekInt(keys...)
 	if err != nil {
 		return time.Time{}, err
@@ -228,7 +222,7 @@ func (obj *JsonObj) PeekTimeFromUnix(keys ...string) (time.Time, error) {
 	return time.Unix(v, 0), err
 }
 
-func (obj *JsonObj) IsNil(keys ...string) (bool, error) {
+func (obj *JSONValue) IsNil(keys ...string) (bool, error) {
 	v, err := obj.Peek(keys...)
 	if err != nil {
 		return false, err

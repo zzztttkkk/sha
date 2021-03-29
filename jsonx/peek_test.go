@@ -45,6 +45,7 @@ func TestPeek(t *testing.T) {
 	fmt.Println(obj.PeekStringDefault("", "data", "origin", "content", "1"))
 	fmt.Println(obj.IsNil("warning"))
 	fmt.Println(obj.IsNil("data", "origin", "translate"))
+	fmt.Println(obj.PeekTimeFromString("2006-01-02T15:04:05.000000", "data", "cacheAt"))
 }
 
 func TestUnmarshal(t *testing.T) {
