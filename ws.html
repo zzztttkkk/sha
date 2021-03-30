@@ -5,6 +5,7 @@
     <title>Title</title>
 </head>
 <body>
+<h1>ws test</h1>
 <script>
     let url;
     if (location.protocol === "http:") {
@@ -16,14 +17,15 @@
     window.onload = function () {
         // Create WebSocket connection.
         const socket = new WebSocket(url);
+        let sendInterval;
 
         // Connection opened
         socket.addEventListener(
             'open',
             function (event) {
-                let i = setInterval(
+                sendInterval = setInterval(
                     function () {
-                        socket.send('Hello Server!');
+                        socket.send(`Hello Server! ${Date.now().toString()}`);
                     },
                     1000
                 );
@@ -37,6 +39,11 @@
                 console.log('Message from server ', event.data);
             },
         );
+
+        socket.onclose = function (evt) {
+            console.log("connection closed by server")
+            clearInterval(sendInterval);
+        }
     };
 </script>
 </body>

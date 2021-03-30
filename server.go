@@ -60,8 +60,8 @@ type HTTPServerProtocol interface {
 }
 
 type WebSocketProtocol interface {
-	Handshake(ctx *RequestCtx) bool
-	Hijack(ctx *RequestCtx) *websocket.Conn
+	Handshake(ctx *RequestCtx) (string, bool)
+	Hijack(ctx *RequestCtx, subprotocol string) *websocket.Conn
 }
 
 type _CtxVKey int

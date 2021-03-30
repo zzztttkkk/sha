@@ -63,7 +63,6 @@ type Request struct {
 	cookieParsed bool
 
 	// websocket
-	webSocketSubProtocolName     []byte
 	webSocketShouldDoCompression bool
 }
 
@@ -73,8 +72,11 @@ func (req *Request) Reset() {
 
 	req.URL.reset()
 
+	req.queryParsed = false
 	req.query.Reset()
+
 	req.bodyForm.Reset()
+	req.bodyStatus = _BodyUnParsed
 
 	for _, f := range req.files {
 		f.reset()
@@ -87,7 +89,7 @@ func (req *Request) Reset() {
 
 	req.cookies.Reset()
 	req.cookieParsed = false
-	req.webSocketSubProtocolName = req.webSocketSubProtocolName[:0]
+
 	req.webSocketShouldDoCompression = false
 }
 

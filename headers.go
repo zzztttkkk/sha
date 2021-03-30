@@ -139,7 +139,7 @@ const (
 	HeaderSecWebSocketExtensions = "Sec-WebSocket-Extensions"
 	HeaderSecWebSocketKey        = "Sec-WebSocket-Key"
 	HeaderSecWebSocketProtocol   = "Sec-WebSocket-Protocol"
-	HeaderSecWebSocketVersion    = "Sec-WebSocket-HTTPVersion"
+	HeaderSecWebSocketVersion    = "Sec-WebSocket-Version"
 
 	// Other
 	HeaderAcceptPatch         = "Accept-Patch"

@@ -9,7 +9,6 @@ import (
 	"io"
 	"mime"
 	"net"
-	"net/http"
 	"time"
 )
 
@@ -67,7 +66,7 @@ func (ctx *RequestCtx) Err() error { return ctx.ctx.Err() }
 
 func (ctx *RequestCtx) Value(key interface{}) interface{} { return ctx.ctx.Value(key) }
 
-func (ctx *RequestCtx) Error(v interface{}) { ctx.err = v }
+func (ctx *RequestCtx) SetError(v interface{}) { ctx.err = v }
 
 type _RCtxKeyT int
 
@@ -118,9 +117,6 @@ func (ctx *RequestCtx) Hijack() net.Conn {
 const lowerUpgradeHeader = "upgrade"
 
 func (ctx *RequestCtx) UpgradeProtocol() string {
-	if string(ctx.Request.Method()) != http.MethodGet {
-		return ""
-	}
 	v, ok := ctx.Request.Header().Get(HeaderConnection)
 	if !ok {
 		return ""

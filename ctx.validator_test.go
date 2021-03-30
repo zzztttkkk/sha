@@ -108,3 +108,21 @@ func TestRequestCtx_ValidateJSON(t *testing.T) {
 
 	fmt.Printf("%+v\n", &form)
 }
+
+func TestPwd(t *testing.T) {
+	type Form struct {
+		Password validator.BcryptPassword `validator:"pwd"`
+	}
+
+	mux := NewMux(nil)
+	mux.HTTP(MethodGet, "/", RequestHandlerFunc(func(ctx *RequestCtx) {
+		var form Form
+		if err := ctx.ValidateForm(&form); err != nil {
+			ctx.SetError(err)
+			return
+		}
+		fmt.Println(string(form.Password))
+	}))
+
+	ListenAndServe("", mux)
+}

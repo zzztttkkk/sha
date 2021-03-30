@@ -111,7 +111,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 		isRequired: true,
 	}
 
-	if len(rule.formName) < 1 || len(f.Options) == 0 {
+	if len(rule.formName) < 1 || (rule.formName == f.Field.Name && len(f.Options) == 0) {
 		rule.formName = NameCast(f.Field.Name)
 	}
 

@@ -12,9 +12,9 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/imdario/mergo v0.3.11
 	github.com/jmoiron/sqlx v1.2.0
-	github.com/json-iterator/go v1.1.10 // indirect
+	github.com/json-iterator/go v1.1.10
 	github.com/klauspost/compress v1.11.2
-	github.com/zzztttkkk/websocket v1.4.2-a
+	github.com/zzztttkkk/websocket v1.4.3
 	go.uber.org/dig v1.10.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/image v0.0.0-20201208152932-35266b937fa6

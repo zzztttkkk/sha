@@ -101,13 +101,13 @@ func TestServer_Run(t *testing.T) {
 
 	mux.Websocket(
 		"/ws",
-		func(ctx context.Context, req *Request, conn *websocket.Conn, _ string) {
+		func(ctx context.Context, req *Request, conn *websocket.Conn) {
 			for {
 				_, d, e := conn.ReadMessage()
 				if e != nil {
 					break
 				}
-				fmt.Println(string(d))
+				fmt.Printf("recved from client: %s\n", d)
 
 				if e = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s", time.Now()))); e != nil {
 					break
