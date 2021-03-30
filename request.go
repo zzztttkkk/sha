@@ -195,7 +195,7 @@ func (req *Request) parsePath() {
 	if req.URL.ok {
 		return
 	}
-	rawPath := req.fl2
+	rawPath := req.RawPath()
 	u := &req.URL
 	u.ok = true
 

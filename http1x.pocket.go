@@ -3,6 +3,7 @@ package sha
 import (
 	"bytes"
 	"sync"
+	"time"
 )
 
 type _HTTPPocket struct {
@@ -40,4 +41,6 @@ func (p *_HTTPPocket) Write(v []byte) (int, error) {
 
 func (p *_HTTPPocket) Header() *Header { return &p.header }
 
-func (p *_HTTPPocket) Unix() int64 { return p.time }
+func (p *_HTTPPocket) UnixNano() int64 { return p.time }
+
+func (p *_HTTPPocket) setTime() { p.time = time.Now().UnixNano() }

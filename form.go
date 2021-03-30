@@ -50,9 +50,9 @@ func (form *Form) EncodeToBuf(w interface {
 	qs := form.Size()
 	form.EachItem(func(item *utils.KvItem) bool {
 		ind++
-		_, _ = w.Write(item.Key)
+		utils.EncodeURIComponentToBuf(item.Key, w)
 		_ = w.WriteByte('=')
-		utils.EncodeHeaderValueToBuf(item.Val, w)
+		utils.EncodeURIComponentToBuf(item.Val, w)
 		if ind < qs {
 			_ = w.WriteByte('&')
 		}

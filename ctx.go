@@ -149,13 +149,7 @@ func (ctx *RequestCtx) prepareForNextRequest() {
 	ctx.ud.Reset()
 }
 
-func (ctx *RequestCtx) Reset() {
-	if ctx.ctx == nil {
-		return
-	}
-
-	ctx.prepareForNextRequest()
-
+func (ctx *RequestCtx) resetConn() {
 	ctx.ctx = nil
 	ctx.cancelFunc = nil
 	ctx.conn = nil
@@ -164,6 +158,14 @@ func (ctx *RequestCtx) Reset() {
 	ctx.w.Reset(nil)
 	ctx.Response.header.fromOutSide = false
 	ctx.Request.header.fromOutSide = false
+}
+
+func (ctx *RequestCtx) Reset() {
+	if ctx.ctx == nil {
+		return
+	}
+	ctx.prepareForNextRequest()
+	ctx.resetConn()
 }
 
 func (ctx *RequestCtx) SetConnection(conn net.Conn) {

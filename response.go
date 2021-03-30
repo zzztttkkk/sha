@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
-	"strconv"
 	"sync"
 )
 
@@ -35,7 +34,6 @@ func (res *Response) SetStatusCode(v int) *Response {
 	if len(res.fl3) < 1 {
 		panic(ErrUnknownResponseStatusCode)
 	}
-	res.fl2 = append(res.fl2, strconv.FormatInt(int64(v), 10)...)
 	return res
 }
 

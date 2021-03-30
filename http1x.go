@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type HTTPOption struct {
+type HTTPOptions struct {
 	MaxFirstLineSize  int `json:"max_first_line_size"`
 	MaxHeaderPartSize int `json:"max_header_part_size"`
 	MaxBodySize       int `json:"max_body_size"`
@@ -16,7 +16,7 @@ type HTTPOption struct {
 	MaxBodyBufferSize int `json:"max_body_buffer_size" toml:"max-body-buffer-size"`
 }
 
-var defaultHTTPOption = HTTPOption{
+var defaultHTTPOption = HTTPOptions{
 	MaxFirstLineSize:  4096,
 	MaxHeaderPartSize: 4096,
 	MaxBodySize:       4096,
@@ -25,7 +25,7 @@ var defaultHTTPOption = HTTPOption{
 }
 
 type _Http11Protocol struct {
-	HTTPOption
+	HTTPOptions
 
 	OnParseError func(conn net.Conn, err error) bool                  // keep connection if return true
 	OnWriteError func(conn net.Conn, ctx *RequestCtx, err error) bool // keep connection if return true
@@ -39,7 +39,7 @@ type _Http11Protocol struct {
 
 func newHTTP11Protocol(pool *RequestCtxPool) HTTPServerProtocol {
 	option := pool.opt
-	v := &_Http11Protocol{HTTPOption: *option}
+	v := &_Http11Protocol{HTTPOptions: *option}
 	if v.MaxBodyBufferSize > v.MaxBodySize {
 		v.MaxBodyBufferSize = v.MaxBodySize
 	}
@@ -88,7 +88,7 @@ func (protocol *_Http11Protocol) handle(ctx *RequestCtx) bool {
 		_ = ctx.conn.SetReadDeadline(time.Now().Add(readTimeout))
 	}
 
-	err := parseRequest(ctx, ctx.r, ctx.readBuf, &ctx.Request, &protocol.HTTPOption)
+	err := parseRequest(ctx, ctx.r, ctx.readBuf, &ctx.Request, &protocol.HTTPOptions)
 	if err != nil {
 		if protocol.OnParseError != nil {
 			return protocol.OnParseError(ctx.conn, err)
@@ -123,7 +123,7 @@ func (protocol *_Http11Protocol) ServeConn(ctx context.Context, conn net.Conn) {
 
 	rctx := protocol.pool.Acquire()
 	rctx.isTLS = protocol.server.isTLS
-	defer protocol.pool.Release(rctx)
+	defer protocol.pool.release(rctx, false)
 
 	rctx.SetConnection(conn)
 	idleTimeout := protocol.server.option.IdleTimeout.Duration

@@ -9,14 +9,14 @@ type RequestCtxPool struct {
 	sync.Pool
 	readSize  int
 	writeSize int
-	opt       *HTTPOption
+	opt       *HTTPOptions
 }
 
-func NewRequestCtxPool(opt *HTTPOption) *RequestCtxPool {
+func NewRequestCtxPool(opt *HTTPOptions) *RequestCtxPool {
 	if opt == nil {
 		opt = &defaultHTTPOption
 	}
-	var eO HTTPOption
+	var eO HTTPOptions
 	eO = *opt
 	return &RequestCtxPool{
 		Pool:      sync.Pool{New: func() interface{} { return &RequestCtx{} }},
@@ -34,6 +34,10 @@ func DefaultRequestCtxPool() *RequestCtxPool {
 	return _defaultRCtxPool
 }
 
+func AcquireRequestCtx() *RequestCtx { return DefaultRequestCtxPool().Acquire() }
+
+func ReleaseRequestCtx(ctx *RequestCtx) { DefaultRequestCtxPool().Put(ctx) }
+
 func (p *RequestCtxPool) Acquire() *RequestCtx {
 	ctx := p.Get().(*RequestCtx)
 	if ctx.readBuf == nil {
@@ -49,6 +53,10 @@ func (p *RequestCtxPool) Acquire() *RequestCtx {
 }
 
 func (p *RequestCtxPool) Release(ctx *RequestCtx) {
+	p.release(ctx, true)
+}
+
+func (p *RequestCtxPool) release(ctx *RequestCtx, unprepared bool) {
 	if ctx.keepByUser {
 		return
 	}
@@ -61,18 +69,10 @@ func (p *RequestCtxPool) Release(ctx *RequestCtx) {
 			ctx.Response.body = nil
 		}
 	}
-	ctx.Reset()
+
+	if unprepared {
+		ctx.prepareForNextRequest()
+	}
+	ctx.resetConn()
 	p.Put(ctx)
-}
-
-func (p *RequestCtxPool) NewHTTPSession(address string, env *Environment) *HTTPSession {
-	return newHTTPSession(address, p, env)
-}
-
-func (p *RequestCtxPool) NewHTTPSSession(address string, env *Environment) *HTTPSession {
-	return newHTTPSSession(address, p, env)
-}
-
-func (p *RequestCtxPool) NewHTTPServerProtocol() {
-
 }

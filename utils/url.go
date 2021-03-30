@@ -151,3 +151,15 @@ func EncodeURIComponent(v []byte, buf *[]byte) {
 		*buf = append(*buf, '%', upperhex[b>>4], upperhex[b&0xf])
 	}
 }
+
+func EncodeURIComponentToBuf(v []byte, buf io.ByteWriter) {
+	for _, b := range v {
+		if noEscapedURIComponent[b] {
+			buf.WriteByte(b)
+			continue
+		}
+		buf.WriteByte('%')
+		buf.WriteByte(upperhex[b>>4])
+		buf.WriteByte(upperhex[b&0xf])
+	}
+}

@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
-	"time"
 )
 
 func sendPocket(buf *bufio.Writer, pocket *_HTTPPocket) error {
@@ -36,37 +35,37 @@ func sendPocket(buf *bufio.Writer, pocket *_HTTPPocket) error {
 	return buf.Flush()
 }
 
+const (
+	HTTPVersion11 = "HTTP/1.1"
+	HTTPVersion10 = "HTTP/1.0"
+)
+
 func sendResponse(w *bufio.Writer, res *Response) error {
-	if res.cw != nil {
+	if res.cw != nil { // flush compress writer
 		if err := res.cw.Flush(); err != nil {
 			return err
 		}
 	}
-	res.time = time.Now().UnixNano()
+	res.setTime()
 
 	const (
-		endLine     = "\r\n"
-		httpVersion = "HTTP/1.1"
-		_200        = "200"
-		ok          = "OK"
-		unknown     = "Unknown Status Code"
+		endLine = "\r\n"
+		_200    = "200"
+		ok      = "OK"
+		unknown = "Unknown Status Code"
 	)
 
 	if len(res.fl1) < 1 {
-		w.WriteString(httpVersion)
+		w.WriteString(HTTPVersion11)
 	} else {
 		w.Write(res.fl1)
 	}
 	w.WriteByte(' ')
 
-	if len(res.fl2) < 1 {
-		if res.statusCode == 0 {
-			w.WriteString(_200)
-		} else {
-			w.WriteString(strconv.FormatInt(int64(res.statusCode), 10))
-		}
+	if res.statusCode == 0 {
+		w.WriteString(_200)
 	} else {
-		w.Write(res.fl2)
+		w.WriteString(strconv.FormatInt(int64(res.statusCode), 10))
 	}
 	w.WriteByte(' ')
 
@@ -90,11 +89,10 @@ func sendResponse(w *bufio.Writer, res *Response) error {
 }
 
 func sendRequest(w *bufio.Writer, req *Request) error {
-	req.time =  time.Now().UnixNano()
+	req.setTime()
 
 	const (
-		endLine     = "\r\n"
-		httpVersion = "HTTP/1.1"
+		endLine = "\r\n"
 	)
 
 	if len(req.fl1) < 1 {
@@ -125,7 +123,7 @@ func sendRequest(w *bufio.Writer, req *Request) error {
 	w.WriteByte(' ')
 
 	if len(req.fl3) < 1 {
-		w.WriteString(httpVersion)
+		w.WriteString(HTTPVersion11)
 	} else {
 		w.Write(req.fl3)
 	}
