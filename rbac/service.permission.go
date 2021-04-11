@@ -14,7 +14,14 @@ import (
 func register(method, path string, fn HandlerFunc, form interface{}) {
 	internal.Dig.Append(
 		func(router Router, _ _PermOK) {
-			router.HTTP(method, path, fn, validator.NewDocument(form, validator.Undefined))
+			router.HTTP(
+				method, path,
+				func(ctx context.Context) {
+					defer Recover(ctx)
+					fn(ctx)
+				},
+				validator.NewDocument(form, validator.Undefined),
+			)
 		},
 	)
 }

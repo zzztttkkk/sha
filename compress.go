@@ -1,21 +1,23 @@
 package sha
 
 import (
-	"bytes"
 	"github.com/andybalholm/brotli"
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
 	"github.com/zzztttkkk/sha/utils"
 	"io"
+	"strings"
 	"sync"
 )
 
-var (
-	headerCompressValueSep = []byte(", ")
-	gzipStr                = []byte("gzip")
-	deflateStr             = []byte("deflate")
-	brotliStr              = []byte("br")
+const (
+	headerCompressValueSep = ", "
+	gzipStr                = "gzip"
+	deflateStr             = "deflate"
+	brotliStr              = "br"
+)
 
+var (
 	CompressLevelGzip    = gzip.DefaultCompression
 	CompressLevelDeflate = flate.DefaultCompression
 	CompressLevelBrotli  = brotli.DefaultCompression
@@ -30,7 +32,7 @@ type _CompressionWriter interface {
 var brWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressBrotli() {
-	ctx.Response.Header().Set(HeaderContentEncoding, brotliStr)
+	ctx.Response.Header().SetString(HeaderContentEncoding, brotliStr)
 	var cwr *brotli.Writer
 	brI := brWriterPool.Get()
 	w := &ctx.Response._HTTPPocket
@@ -48,7 +50,7 @@ func (ctx *RequestCtx) CompressBrotli() {
 var gzipWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressGzip() {
-	ctx.Response.Header().Set(HeaderContentEncoding, gzipStr)
+	ctx.Response.Header().SetString(HeaderContentEncoding, gzipStr)
 
 	var cwr *gzip.Writer
 	var err error
@@ -71,7 +73,7 @@ func (ctx *RequestCtx) CompressGzip() {
 var deflateWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressDeflate() {
-	ctx.Response.Header().Set(HeaderContentEncoding, deflateStr)
+	ctx.Response.Header().SetString(HeaderContentEncoding, deflateStr)
 
 	var cwr *flate.Writer
 	var err error
@@ -103,29 +105,19 @@ func (ctx *RequestCtx) AutoCompress() {
 		return
 	}
 
-	acceptGzip := false
-	acceptDeflate := false
-
 	for _, headerVal := range ctx.Request.Header().GetAll(HeaderAcceptEncoding) {
-		for _, v := range bytes.Split(headerVal, headerCompressValueSep) {
-			switch utils.S(v) {
-			case "gzip":
-				acceptGzip = true
-			case "deflate":
-				acceptDeflate = true
-			case "br":
-				ctx.CompressBrotli()
-				return
-			}
+		hsv := utils.S(headerVal)
+		if strings.Contains(hsv, brotliStr) {
+			ctx.CompressBrotli()
+			return
 		}
-	}
-
-	if acceptDeflate {
-		ctx.CompressDeflate()
-		return
-	}
-
-	if acceptGzip {
-		ctx.CompressGzip()
+		if strings.Contains(hsv, deflateStr) {
+			ctx.CompressDeflate()
+			return
+		}
+		if strings.Contains(hsv, gzipStr) {
+			ctx.CompressGzip()
+			return
+		}
 	}
 }

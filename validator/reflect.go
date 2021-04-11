@@ -11,6 +11,7 @@ import (
 	"unicode"
 )
 
+// no-sync, all form types should be prepared before the server starts listening.
 var cacheMap = map[reflect.Type]Rules{}
 var reflectMapper = reflectx.NewMapper("validator")
 

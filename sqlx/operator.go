@@ -80,9 +80,7 @@ func doCreate(db *sqlx.DB, name string, v Modeler) {
 	db.MustExec(q)
 }
 
-func (op *Operator) CreateTable() {
-	doCreate(writableDb, op.TableName(), op.ele)
-}
+func (op *Operator) CreateTable() { doCreate(writableDb, op.TableName(), op.ele) }
 
 func (op *Operator) simpleSelect(group, cond string) string {
 	buf := strings.Builder{}

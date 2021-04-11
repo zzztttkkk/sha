@@ -41,7 +41,8 @@ type Mux struct {
 	customTrees map[string]*_RadixTree
 
 	// path -> method -> description
-	documents map[string]map[string]validator.Document
+	documents         map[string]map[string]validator.Document
+	documentsTagIndex map[string]map[validator.Document]struct{}
 
 	// opt
 	doTrailingSlashRedirect bool
@@ -141,13 +142,16 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 	}
 
 	if document != nil {
-		m1 := m.documents[path]
-		if m1 == nil {
-			m1 = map[string]validator.Document{}
-			m.documents[path] = m1
-		}
+		mapAppend(m.documents, path, method, document)
 
-		m1[method] = document
+		for _, tag := range document.Tags() {
+			m2 := m.documentsTagIndex[tag]
+			if m2 == nil {
+				m2 = map[validator.Document]struct{}{}
+				m.documentsTagIndex[tag] = m2
+			}
+			m2[document] = struct{}{}
+		}
 	}
 
 	if isAutoOptionsHandler(rawHandler) {

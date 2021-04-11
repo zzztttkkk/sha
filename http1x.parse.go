@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
 	"unicode"
@@ -20,7 +21,12 @@ func init() {
 }
 
 var ErrBadHTTPPocketData = errors.New("sha.http: bad http pocket data")
-var ErrTimeout = errors.New("sha.http: timeout")
+var ErrCanceled = errors.New("sha.http: canceled")
+
+func init() {
+	internal.ErrorStatusByValue[ErrBadHTTPPocketData] = StatusBadRequest
+	internal.ErrorStatusByValue[ErrCanceled] = StatusBadRequest
+}
 
 func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pocket *_HTTPPocket, opt *HTTPOptions) error {
 	var (
@@ -92,7 +98,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 				goto checkCtxAndFirstLineSize
 			}
 			pocket.fl1 = append(pocket.fl1, toUpperTable[b])
-			continue
+			goto checkCtxAndFirstLineSize
 		case 1: // req path or res status code
 			firstLineSize++
 			if b == ' ' {
@@ -110,7 +116,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 				goto checkCtxAndFirstLineSize
 			}
 			pocket.fl3 = append(pocket.fl3, toUpperTable[b])
-			continue
+			goto checkCtxAndFirstLineSize
 		case 3:
 			headerSize++
 			if opt.MaxHeaderPartSize > 0 && headerSize > opt.MaxHeaderPartSize {
@@ -177,6 +183,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 			} else {
 				headerItem.Key = append(headerItem.Key, b)
 			}
+			continue
 		}
 		continue
 
@@ -186,7 +193,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 		}
 		select {
 		case <-ctx.Done():
-			return ErrTimeout
+			return ErrCanceled
 		default:
 		}
 		continue
@@ -194,7 +201,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 	checkCtx:
 		select {
 		case <-ctx.Done():
-			return ErrTimeout
+			return ErrCanceled
 		default:
 		}
 	}
