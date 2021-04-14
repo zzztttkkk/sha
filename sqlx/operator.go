@@ -23,28 +23,13 @@ func NewOperator(ele Modeler) *Operator {
 	return op
 }
 
-func (op *Operator) IsMutableField(f string) bool {
-	_, ok := op.info.mutable[f]
+func (op *Operator) IsImmutableField(f string) bool {
+	_, ok := op.info.immutable[f]
 	return ok
-}
-
-func (op *Operator) IsMutableFieldsData(data Data) bool {
-	for k, _ := range data {
-		if !op.IsMutableField(k) {
-			return false
-		}
-	}
-	return true
 }
 
 var ErrImmutableField = errors.New("sha.sqlx: immutable field")
 var ErrEmptyConditionOrEmptyData = errors.New("sha.sqlx: empty condition or empty data")
-
-func (op *Operator) MustMutableFieldsData(data Data) {
-	if !op.IsMutableFieldsData(data) {
-		panic(ErrImmutableField)
-	}
-}
 
 func (op *Operator) GroupColumns(name string) []string {
 	m := op.info.groups[name]
@@ -56,6 +41,23 @@ func (op *Operator) GroupColumns(name string) []string {
 		ret = append(ret, k)
 	}
 	return ret
+}
+
+func (op *Operator) GroupColumnsAppend(name, val string) {
+	m := op.info.groups[name]
+	if len(m) < 1 {
+		m = map[string]struct{}{}
+		op.info.groups[name] = m
+	}
+	m[val] = struct{}{}
+}
+
+func (op *Operator) GroupColumnsRemove(name, val string) {
+	m := op.info.groups[name]
+	if len(m) < 1 {
+		return
+	}
+	delete(m, val)
 }
 
 func getTableName(ele Modeler) string { return ele.TableName() }
@@ -95,7 +97,9 @@ func (op *Operator) simpleSelect(group, cond string) string {
 		}
 		i := 0
 		for v := range keys {
+			buf.WriteRune('`')
 			buf.WriteString(v)
+			buf.WriteRune('`')
 			if i < lastInd {
 				buf.WriteRune(',')
 			}
@@ -103,7 +107,9 @@ func (op *Operator) simpleSelect(group, cond string) string {
 		}
 	}
 	buf.WriteString(" FROM ")
+	buf.WriteRune('`')
 	buf.WriteString(op.TableName())
+	buf.WriteRune('`')
 	if len(cond) > 0 {
 		buf.WriteRune(' ')
 		buf.WriteString(cond)
@@ -125,7 +131,13 @@ func (op *Operator) simpleUpdate(cond string, m Data) (string, Data) {
 	i := 0
 	lastInd := len(m) - 1
 	for k, v := range m {
+		if op.IsImmutableField(k) {
+			panic(ErrImmutableField)
+		}
+
+		buf.WriteRune('`')
 		buf.WriteString(k)
+		buf.WriteRune('`')
 		buf.WriteRune('=')
 
 		switch rv := v.(type) {
@@ -193,12 +205,27 @@ func (op *Operator) FetchOne(ctx context.Context, keysGroup string, condition st
 	return Exe(ctx).Get(ctx, op.simpleSelect(keysGroup, condition), namedargs, dist)
 }
 
+func joinColumns(v []string) string {
+	var buf strings.Builder
+	for i, k := range v {
+		buf.WriteRune('`')
+		buf.WriteString(k)
+		buf.WriteRune('`')
+		if i < len(v)-1 {
+			buf.WriteRune(',')
+		}
+	}
+	return buf.String()
+}
+
 func (op *Operator) RowColumns(ctx context.Context, columns []string, cond string, namedargs interface{}, dist ...interface{}) error {
 	buf := strings.Builder{}
 	buf.WriteString("SELECT ")
-	buf.WriteString(strings.Join(columns, ", "))
+	buf.WriteString(joinColumns(columns))
 	buf.WriteString(" FROM ")
+	buf.WriteRune('`')
 	buf.WriteString(op.TableName())
+	buf.WriteRune('`')
 	buf.WriteRune(' ')
 	if len(cond) > 0 {
 		buf.WriteString(cond)
@@ -209,9 +236,13 @@ func (op *Operator) RowColumns(ctx context.Context, columns []string, cond strin
 func (op *Operator) RowsColumn(ctx context.Context, column string, cond string, namedargs interface{}, dist interface{}) error {
 	buf := strings.Builder{}
 	buf.WriteString("SELECT ")
+	buf.WriteRune('`')
 	buf.WriteString(column)
+	buf.WriteRune('`')
 	buf.WriteString(" FROM ")
+	buf.WriteRune('`')
 	buf.WriteString(op.TableName())
+	buf.WriteRune('`')
 	buf.WriteRune(' ')
 	if len(cond) > 0 {
 		buf.WriteString(cond)
@@ -238,7 +269,9 @@ func (op *Operator) simpleInsert(data Data, returning string) (string, Data) {
 
 	buf := strings.Builder{}
 	buf.WriteString("INSERT INTO ")
+	buf.WriteRune('`')
 	buf.WriteString(op.TableName())
+	buf.WriteRune('`')
 	buf.WriteRune('(')
 
 	var vals []string
@@ -256,7 +289,9 @@ func (op *Operator) simpleInsert(data Data, returning string) (string, Data) {
 			}
 			retM[a] = b
 		}
+		buf.WriteRune('`')
 		buf.WriteString(a)
+		buf.WriteRune('`')
 		if ind < lastInd {
 			buf.WriteRune(',')
 		}
@@ -299,7 +334,9 @@ func (op *Operator) Delete(ctx context.Context, cond string, namedargs interface
 
 	var buf strings.Builder
 	buf.WriteString("DELETE FROM ")
+	buf.WriteRune('`')
 	buf.WriteString(op.TableName())
+	buf.WriteRune('`')
 	buf.WriteRune(' ')
 	buf.WriteString(cond)
 

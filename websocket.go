@@ -42,17 +42,17 @@ const (
 	websocketExt         = "permessage-deflate; server_no_context_takeover; client_no_context_takeover"
 )
 
-func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) (string, bool) {
+func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) (string, bool, bool) {
 	version, _ := ctx.Request.Header().Get(HeaderSecWebSocketVersion)
 	if len(version) != 2 || version[0] != '1' || version[1] != '3' {
 		ctx.Response.statusCode = http.StatusBadRequest
-		return "", false
+		return "", false, false
 	}
 
 	key, _ := ctx.Request.Header().Get(HeaderSecWebSocketKey)
 	if len(key) < 1 {
 		ctx.Response.statusCode = http.StatusBadRequest
-		return "", false
+		return "", false, false
 	}
 
 	var subprotocol string
@@ -76,7 +76,6 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) (string, bool) {
 	res.Header().AppendString(HeaderUpgrade, websocketStr)
 	res.Header().Append(HeaderSecWebSocketAccept, utils.B(websocket.ComputeAcceptKey(utils.S(key))))
 	if compress {
-		ctx.Request.webSocketShouldDoCompression = true
 		res.Header().Append(HeaderSecWebSocketExtensions, utils.B(websocketExt))
 	}
 	if len(subprotocol) > 0 {
@@ -84,18 +83,17 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) (string, bool) {
 	}
 
 	if err := sendResponse(ctx.w, &ctx.Response); err != nil {
-		return "", false
+		return "", false, false
 	}
-	return subprotocol, true
+	return subprotocol, compress, true
 }
 
 var websocketWriteBufferPool sync.Pool
 
-func (p *_WebSocketProtocol) Hijack(ctx *RequestCtx, subprotocol string) *websocket.Conn {
-	req := &ctx.Request
+func (p *_WebSocketProtocol) Hijack(ctx *RequestCtx, subprotocol string, compress bool) *websocket.Conn {
 	ctx.hijacked = true
 	return websocket.NewConnExt(
-		ctx.conn, subprotocol, true, req.webSocketShouldDoCompression,
+		ctx.conn, subprotocol, true, compress,
 		p.opt.ReadBufferSize, p.opt.WriteBufferSize,
 		&websocketWriteBufferPool, ctx.r, nil,
 	)
@@ -110,7 +108,7 @@ func (w _WebsocketHandler) Handle(ctx *RequestCtx) { w(ctx) }
 func wshToHandler(wsh WebsocketHandlerFunc) RequestHandler {
 	return _WebsocketHandler(func(ctx *RequestCtx) {
 		p := ctx.UpgradeProtocol()
-		if p != "websocket" {
+		if p != websocketStr {
 			ctx.Response.statusCode = StatusBadRequest
 			return
 		}
@@ -124,10 +122,10 @@ func wshToHandler(wsh WebsocketHandlerFunc) RequestHandler {
 			ctx.Response.statusCode = StatusBadRequest
 			return
 		}
-		subprotocol, ok := wsp.Handshake(ctx)
+		subprotocol, compress, ok := wsp.Handshake(ctx)
 		if !ok {
 			return
 		}
-		wsh(ctx, &ctx.Request, wsp.Hijack(ctx, subprotocol))
+		wsh(ctx, &ctx.Request, wsp.Hijack(ctx, subprotocol, compress))
 	})
 }

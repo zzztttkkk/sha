@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// Init
 // FontName|FontFile
 // FontName|FontFile|FontSize
 // FontName|FontFile|FontSize|ASCII Half Width

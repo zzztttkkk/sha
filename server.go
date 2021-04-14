@@ -60,8 +60,8 @@ type HTTPServerProtocol interface {
 }
 
 type WebSocketProtocol interface {
-	Handshake(ctx *RequestCtx) (string, bool)
-	Hijack(ctx *RequestCtx, subprotocol string) *websocket.Conn
+	Handshake(ctx *RequestCtx) (string, bool, bool)
+	Hijack(ctx *RequestCtx, subprotocol string, compress bool) *websocket.Conn
 }
 
 type _CtxVKey int
@@ -297,9 +297,6 @@ func (s *Server) serveConn(conn net.Conn) {
 }
 
 func ListenAndServe(addr string, handler RequestHandler) {
-	if addr == "" {
-		addr = "127.0.0.1:5986"
-	}
 	server := Default()
 	server.Handler = handler
 	server.ListenAndServe()

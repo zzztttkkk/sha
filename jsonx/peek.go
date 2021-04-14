@@ -47,6 +47,9 @@ func peek(v interface{}, key string) (interface{}, error) {
 	case []interface{}:
 		var ind int
 		var l = len(tv)
+		if l < 1 {
+			return nil, ErrUnexpectedJSON
+		}
 		if key == SliceRand {
 			ind = rand.Int() % l
 		} else {
@@ -222,7 +225,7 @@ func (obj *JSONValue) PeekTimeFromUnix(keys ...string) (time.Time, error) {
 	return time.Unix(v, 0), err
 }
 
-func (obj *JSONValue) IsNil(keys ...string) (bool, error) {
+func (obj *JSONValue) IsNull(keys ...string) (bool, error) {
 	v, err := obj.Peek(keys...)
 	if err != nil {
 		return false, err

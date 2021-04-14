@@ -61,9 +61,6 @@ type Request struct {
 
 	cookies      utils.Kvs
 	cookieParsed bool
-
-	// websocket
-	webSocketShouldDoCompression bool
 }
 
 func (req *Request) Reset() {
@@ -89,8 +86,6 @@ func (req *Request) Reset() {
 
 	req.cookies.Reset()
 	req.cookieParsed = false
-
-	req.webSocketShouldDoCompression = false
 }
 
 func (req *Request) Method() []byte { return req.fl1 }

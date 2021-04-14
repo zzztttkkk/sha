@@ -55,7 +55,7 @@ func Test_XWrapper_Exe(t *testing.T) {
 	fmt.Println(e, string(j), 111)
 
 	var name, password []byte
-	_ = Exe(ctx).ScanRow(ctx, "select name,password from test_model where id=1 and deleted_at is null", nil, &name, &password)
+	_ = Exe(ctx).ScanRow(ctx, "select `name`,`password` from test_model where id=1 and deleted_at is null", nil, &name, &password)
 	fmt.Println(string(name), string(password))
 
 	fmt.Println(TestModelOperator.GroupColumns("login"))

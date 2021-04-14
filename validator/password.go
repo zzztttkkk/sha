@@ -6,12 +6,9 @@ import (
 	"unicode"
 )
 
-type BcryptPassword []byte
+type Password []byte
 
-var BcryptPasswordValidator func(data []byte) bool
-var BcryptPasswordCost = bcrypt.DefaultCost
-
-func defaultPwdValidator(data []byte) bool {
+var PasswordValidator func(data []byte) bool = func(data []byte) bool {
 	s := utils.S(data)
 	var (
 		hasMinLen  = false
@@ -40,20 +37,18 @@ func defaultPwdValidator(data []byte) bool {
 	return hasMinLen && hasUpper && hasLower && hasNumber && hasSpecial
 }
 
-func (p *BcryptPassword) FormValue(data []byte) bool {
-	var ok bool
-	if BcryptPasswordValidator != nil {
-		ok = BcryptPasswordValidator(data)
-	} else {
-		ok = defaultPwdValidator(data)
-	}
-	if !ok {
+func (p *Password) FormValue(data []byte) bool {
+	if !PasswordValidator(data) {
 		return false
 	}
-	h, e := bcrypt.GenerateFromPassword(data, BcryptPasswordCost)
-	if e != nil {
-		return false
-	}
-	*p = append(*p, h...)
+	*p = append(*p, data...)
 	return true
+}
+
+func (p *Password) BcryptHash(cost int) ([]byte, error) {
+	return bcrypt.GenerateFromPassword(*p, cost)
+}
+
+func (p *Password) MatchTo(hash []byte) bool {
+	return bcrypt.CompareHashAndPassword(hash, *p) == nil
 }

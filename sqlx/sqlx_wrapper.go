@@ -14,15 +14,11 @@ type W struct {
 
 var logging = false
 
-func EnableLogging() {
-	logging = true
-}
+func EnableLogging() { logging = true }
 
 var logger *log.Logger
 
-func SetLogger(l *log.Logger) {
-	logger = l
-}
+func SetLogger(l *log.Logger) { logger = l }
 
 func init() {
 	logger = log.New(os.Stdout, "sha.sqlx ", log.LstdFlags)

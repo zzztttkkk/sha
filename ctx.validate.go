@@ -2,7 +2,6 @@ package sha
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/sha/validator"
@@ -34,7 +33,6 @@ func (ctx *RequestCtx) ValidateJSON(dist interface{}) HTTPError {
 	if body == nil {
 		return StatusError(StatusBadRequest)
 	}
-	fmt.Printf("%s\n", body.Bytes())
 	if err := jsonx.Unmarshal(body.Bytes(), dist); err != nil {
 		return StatusError(StatusBadRequest)
 	}

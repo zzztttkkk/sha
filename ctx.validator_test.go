@@ -111,7 +111,7 @@ func TestRequestCtx_ValidateJSON(t *testing.T) {
 
 func TestPwd(t *testing.T) {
 	type Form struct {
-		Password validator.BcryptPassword `validator:"pwd"`
+		Password validator.Password `validator:"pwd"`
 	}
 
 	mux := NewMux(nil)
@@ -121,7 +121,9 @@ func TestPwd(t *testing.T) {
 			ctx.SetError(err)
 			return
 		}
-		fmt.Println(string(form.Password))
+
+		h, _ := form.Password.BcryptHash(-1)
+		fmt.Println(form.Password.MatchTo(h))
 	}))
 
 	ListenAndServe("", mux)

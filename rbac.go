@@ -16,7 +16,7 @@ func (r *_RbacRouterAdapter) HTTP(method string, path string, handler rbac.Handl
 	r.Router.HTTPWithOptions(
 		&HandlerOptions{Document: doc},
 		method, path,
-		RequestHandlerFunc(func(ctx *RequestCtx) { handler(Wrap(ctx)) }),
+		RequestHandlerFunc(func(ctx *RequestCtx) { handler(ctx.Context()) }),
 	)
 }
 

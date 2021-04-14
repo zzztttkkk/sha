@@ -34,9 +34,6 @@ type RequestCtx struct {
 
 	hijacked bool
 
-	// hook
-	onReset []func(ctx *RequestCtx)
-
 	// err
 	err interface{}
 
@@ -74,7 +71,7 @@ const (
 	_RCtxKey = _RCtxKeyT(iota)
 )
 
-func Wrap(ctx *RequestCtx) context.Context {
+func (ctx *RequestCtx) Context() context.Context {
 	return context.WithValue(ctx, _RCtxKey, ctx)
 }
 
@@ -131,15 +128,7 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 	return utils.S(inPlaceLowercase(v))
 }
 
-func (ctx *RequestCtx) OnReset(fn func(ctx *RequestCtx)) { ctx.onReset = append(ctx.onReset, fn) }
-
 func (ctx *RequestCtx) prepareForNextRequest() {
-	if len(ctx.onReset) > 0 {
-		for _, fn := range ctx.onReset {
-			fn(ctx)
-		}
-		ctx.onReset = ctx.onReset[:0]
-	}
 	ctx.Request.Reset()
 	ctx.Response.reset()
 	ctx.ud.Reset()
@@ -217,10 +206,7 @@ type Template interface {
 	Execute(ctx context.Context, v interface{}) error
 }
 
-func (ctx *RequestCtx) WriteTemplate(t Template, data interface{}) {
+func (ctx *RequestCtx) WriteTemplate(t Template, data interface{}) error {
 	ctx.Response.Header().SetContentType(MIMEHtml)
-	e := t.Execute(ctx, data)
-	if e != nil {
-		panic(e)
-	}
+	return t.Execute(ctx, data)
 }

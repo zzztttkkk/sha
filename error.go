@@ -39,13 +39,6 @@ func (err StatusError) Body() []byte {
 	return ret
 }
 
-var (
-	ErrBadConnection               = StatusError(http.StatusBadRequest)
-	ErrRequestURLTooLong           = StatusError(http.StatusRequestURITooLong)
-	ErrRequestHeaderFieldsTooLarge = StatusError(http.StatusRequestHeaderFieldsTooLarge)
-	ErrRequestEntityTooLarge       = StatusError(http.StatusRequestEntityTooLarge)
-)
-
 type _RedirectError struct {
 	status int
 	uri    string

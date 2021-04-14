@@ -38,6 +38,7 @@ type _Key int
 const (
 	txKey = _Key(iota + 1000)
 	justWDBKey
+	exeKey
 )
 
 func UseWriteableDB(ctx context.Context) context.Context {
@@ -55,7 +56,7 @@ func (re *RollbackError) Error() string {
 
 var ErrSubTx = errors.New("sha.sqlx: sub tx is invalid")
 
-// starts a transaction, return a sub context and a commit function
+// Tx starts a transaction, return a sub context and a commit function
 func Tx(ctx context.Context) (nctx context.Context, committer func()) {
 	if ctx.Value(txKey) != nil {
 		panic(ErrSubTx)
