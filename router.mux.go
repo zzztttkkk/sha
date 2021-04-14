@@ -173,6 +173,10 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 	m2[method] = handlerDesc
 }
 
+func (m *Mux) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
+	m.HTTPWithOptions(&HandlerOptions{Document: validator.NewDocument(form, validator.Undefined)}, method, path, handler)
+}
+
 func (m *Mux) NewGroup(prefix string) Router {
 	return &MuxGroup{
 		prefix: checkPrefix(prefix),
