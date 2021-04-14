@@ -26,7 +26,7 @@ func (f ManagerFunc) Auth(ctx context.Context) (auth.Subject, error) { return f(
 
 func main() {
 	mux := sha.NewMux(nil)
-	server := sha.New(nil, nil, &sha.ServerOption{Addr: "127.0.0.1:8080"})
+	server := sha.New(nil, nil, &sha.ServerOptions{Addr: "127.0.0.1:8080"})
 	server.Handler = mux
 	mux.ServeDocument("get", "/doc")
 

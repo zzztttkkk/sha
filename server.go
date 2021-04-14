@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-type ServerOption struct {
+type ServerOptions struct {
 	Addr string `json:"addr" toml:"addr"`
 	TLS  struct {
 		AutoCertDomains []string `json:"auto_cert_domains" toml:"auto-cert-domains"`
@@ -25,18 +25,15 @@ type ServerOption struct {
 	ReadTimeout            utils.TomlDuration `json:"read_timeout" toml:"read-timeout"`
 	IdleTimeout            utils.TomlDuration `json:"idle_timeout" toml:"idle-timeout"`
 	WriteTimeout           utils.TomlDuration `json:"write_timeout" toml:"write-timeout"`
-
-	HTTPProtocol      HTTPServerProtocol `json:"-" toml:"-"`
-	WebsocketProtocol WebSocketProtocol  `json:"-" toml:"-"`
 }
 
-var defaultServerOption = ServerOption{
+var defaultServerOption = ServerOptions{
 	Addr:                   "127.0.0.1:5986",
 	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
 }
 
 type Server struct {
-	option      ServerOption
+	option      ServerOptions
 	readTimeout time.Duration
 
 	OnConnectionAccepted func(conn net.Conn) bool
@@ -85,9 +82,9 @@ func init() {
 	)
 }
 
-func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOption) *Server {
+func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server {
 	if opt == nil {
-		_v := &ServerOption{}
+		_v := &ServerOptions{}
 		*_v = defaultServerOption
 		opt = _v
 	}
@@ -96,23 +93,13 @@ func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOption) *Server {
 		pool = DefaultRequestCtxPool()
 	}
 
-	if opt.HTTPProtocol == nil {
-		opt.HTTPProtocol = newHTTP11Protocol(pool)
-	}
-
-	if opt.WebsocketProtocol == nil {
-		opt.WebsocketProtocol = NewWebSocketProtocol(nil)
-	}
-
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	server := &Server{
-		httpProtocol:      opt.HTTPProtocol,
-		websocketProtocol: opt.WebsocketProtocol,
-		baseCtx:           ctx,
-		pool:              pool,
+		baseCtx: ctx,
+		pool:    pool,
 	}
 	server.option = *opt
 
@@ -123,6 +110,10 @@ func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOption) *Server {
 	server.readTimeout = server.option.ReadTimeout.Duration
 	return server
 }
+
+func (s *Server) SetHTTPProtocol(protocol HTTPServerProtocol) { s.httpProtocol = protocol }
+
+func (s *Server) SetWebSocketProtocol(protocol WebSocketProtocol) { s.websocketProtocol = protocol }
 
 func Default() *Server {
 	return New(nil, nil, nil)
@@ -176,6 +167,14 @@ func (s *Server) enableTLS(l net.Listener, certFile, keyFile string) net.Listene
 }
 
 func (s *Server) Serve(l net.Listener) {
+	if s.httpProtocol == nil {
+		s.httpProtocol = newHTTP11Protocol(s.pool)
+	}
+
+	if s.websocketProtocol == nil {
+		s.websocketProtocol = NewWebSocketProtocol(nil)
+	}
+
 	for _, fn := range serverPrepareFunc {
 		fn(s)
 	}

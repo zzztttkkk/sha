@@ -174,7 +174,7 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 }
 
 func (m *Mux) NewGroup(prefix string) Router {
-	return &_MuxGroup{
+	return &MuxGroup{
 		prefix: checkPrefix(prefix),
 		mux:    m,
 	}
