@@ -3,6 +3,7 @@ package sha
 import (
 	"errors"
 	"fmt"
+	"github.com/zzztttkkk/sha/validator"
 	"net/http"
 	"regexp"
 )
@@ -52,6 +53,10 @@ func (m *MuxGroup) HTTPWithOptions(opt *HandlerOptions, method, path string, han
 	m.add(nil, method, m.prefix+path, handler, opt)
 }
 
+func (m *MuxGroup) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
+	m.HTTPWithOptions(&HandlerOptions{Document: validator.NewDocument(form, validator.Undefined)}, method, path, handler)
+}
+
 func (m *MuxGroup) copyMiddleware(opt *HandlerOptions) *HandlerOptions {
 	if opt == nil {
 		opt = &HandlerOptions{}
@@ -99,7 +104,7 @@ func (m *MuxGroup) NewGroup(prefix string) Router {
 	}
 }
 
-func NewGroup(prefix string) *MuxGroup { return &MuxGroup{prefix: checkPrefix(prefix)} }
+func NewRouteGroup(prefix string) *MuxGroup { return &MuxGroup{prefix: checkPrefix(prefix)} }
 
 func (m *MuxGroup) BindTo(router Router) {
 	if m.parent != nil || m.mux != nil {

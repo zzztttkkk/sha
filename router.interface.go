@@ -23,6 +23,7 @@ type HandlerOptions struct {
 type Router interface {
 	HTTPWithOptions(opt *HandlerOptions, method, path string, handler RequestHandler)
 	HTTP(method, path string, handler RequestHandler)
+	HTTPWithForm(method, path string, handler RequestHandler, form interface{})
 	Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions)
 	FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool)
 	File(opt *HandlerOptions, method, path, filepath string)
