@@ -3,6 +3,7 @@ package sha
 import (
 	"context"
 	"github.com/zzztttkkk/sha/utils"
+	"log"
 	"net"
 	"time"
 )
@@ -76,12 +77,13 @@ func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx) bool {
 
 func (protocol *_Http11Protocol) handle(ctx *RequestCtx) bool {
 	defer func() {
+		rv := recover()
+		if rv != nil {
+			log.Panicf("Error: %v\n", rv)
+		}
 		ctx.cancelFunc()
 		ctx.prepareForNextRequest()
 	}()
-
-	ctx.Request.header.fromOutSide = true
-	ctx.Response.header.fromOutSide = false
 
 	readTimeout := protocol.server.option.ReadTimeout.Duration
 	if readTimeout > 0 {
@@ -125,13 +127,13 @@ func (protocol *_Http11Protocol) ServeConn(ctx context.Context, conn net.Conn) {
 	rctx.isTLS = protocol.server.isTLS
 	defer protocol.pool.release(rctx, false)
 
-	rctx.SetConnection(conn)
+	rctx.setConnection(conn)
 	idleTimeout := protocol.server.option.IdleTimeout.Duration
 
 	for shouldKeepAlive {
 		rctx.ctx, rctx.cancelFunc = context.WithCancel(ctx)
 		shouldKeepAlive = protocol.handle(rctx)
-		if rctx.hijacked {
+		if rctx.hijacked || !shouldKeepAlive {
 			return
 		}
 

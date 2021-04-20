@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-type _SameSiteVal string
+type CookieSameSiteVal string
 
 const (
-	CookeSameSiteDefault = _SameSiteVal("")
-	CookieSameSiteLax    = _SameSiteVal("lax")
-	CookieSameSiteStrict = _SameSiteVal("strict")
-	CookieSameSizeNone   = _SameSiteVal("none")
+	CookeSameSiteDefault = CookieSameSiteVal("")
+	CookieSameSiteLax    = CookieSameSiteVal("lax")
+	CookieSameSiteStrict = CookieSameSiteVal("strict")
+	CookieSameSizeNone   = CookieSameSiteVal("none")
 )
 
 type CookieOptions struct {
@@ -22,7 +22,7 @@ type CookieOptions struct {
 	Expires  time.Time
 	Secure   bool
 	HTTPOnly bool
-	SameSite _SameSiteVal
+	SameSite CookieSameSiteVal
 }
 
 const (

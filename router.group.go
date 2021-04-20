@@ -22,6 +22,7 @@ type MuxGroup struct {
 	parent *MuxGroup
 	mux    *Mux
 
+	lazy  bool
 	cache []*_MuxItem
 }
 
@@ -44,13 +45,13 @@ func (m *MuxGroup) HTTP(method, path string, handler RequestHandler) {
 var _ Router = (*MuxGroup)(nil)
 
 func (m *MuxGroup) HTTPWithOptions(opt *HandlerOptions, method, path string, handler RequestHandler) {
-	if m.mux == nil && m.parent == nil {
+	if m.lazy {
 		opt = m.copyMiddleware(opt)
 		m.cache = append(m.cache, &_MuxItem{opt: opt, path: m.prefix + path, method: method, handler: handler})
 		return
 	}
 
-	m.add(nil, method, m.prefix+path, handler, opt)
+	m.add(method, m.prefix+path, handler, opt)
 }
 
 func (m *MuxGroup) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
@@ -68,18 +69,11 @@ func (m *MuxGroup) copyMiddleware(opt *HandlerOptions) *HandlerOptions {
 	return opt
 }
 
-func (m *MuxGroup) add(childMiddlewares []Middleware, method, path string, handler RequestHandler, opt *HandlerOptions) {
-	var ms []Middleware
-	ms = append(ms, m.local...)
-	ms = append(ms, childMiddlewares...)
-
+func (m *MuxGroup) add(method, path string, handler RequestHandler, opt *HandlerOptions) {
+	opt = m.copyMiddleware(opt)
 	if m.parent != nil {
-		m.parent.add(ms, method, path, handler, opt)
+		m.parent.add(method, path, handler, opt)
 		return
-	}
-
-	if len(ms) != 0 {
-		opt = m.copyMiddleware(opt)
 	}
 	m.mux.HTTPWithOptions(opt, method, path, handler)
 }
@@ -104,10 +98,10 @@ func (m *MuxGroup) NewGroup(prefix string) Router {
 	}
 }
 
-func NewRouteGroup(prefix string) *MuxGroup { return &MuxGroup{prefix: checkPrefix(prefix)} }
+func NewRouteGroup(prefix string) *MuxGroup { return &MuxGroup{prefix: checkPrefix(prefix), lazy: true} }
 
 func (m *MuxGroup) BindTo(router Router) {
-	if m.parent != nil || m.mux != nil {
+	if !m.lazy {
 		panic(errors.New("sha.mux: bad group"))
 	}
 

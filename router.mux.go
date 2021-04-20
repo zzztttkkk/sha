@@ -254,7 +254,7 @@ func (m *Mux) getTree(ctx *RequestCtx) *_RadixTree {
 }
 
 func (m *Mux) onNotFound(ctx *RequestCtx) {
-	if m.methodNotAllowed != nil {
+	if m.methodNotAllowed != nil && ctx.Request._method != _MOptions {
 		optionsTree := m.stdTrees[_MOptions-1]
 		if optionsTree != nil {
 			h, _ := optionsTree.Get(ctx.Request.Path(), ctx)

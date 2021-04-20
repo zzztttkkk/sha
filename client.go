@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-type HTTPSession struct {
+type HTTPClientSession struct {
 	mutex     sync.Mutex
 	address   string
 	host      string
@@ -22,7 +22,7 @@ type HTTPSession struct {
 	w    *bufio.Writer
 
 	isTLS   bool
-	opt     *SessionOptions
+	opt     *ClientSessionOptions
 	httpOpt *HTTPOptions
 }
 
@@ -33,7 +33,7 @@ type HTTPProxy struct {
 	IsTLS     bool
 }
 
-type SessionOptions struct {
+type ClientSessionOptions struct {
 	HTTPOptions          *HTTPOptions
 	HTTPProxy            HTTPProxy
 	InsecureSkipVerify   bool
@@ -41,14 +41,14 @@ type SessionOptions struct {
 	RequestCtxPreChecker func(ctx *RequestCtx)
 }
 
-var defaultSessionOptions SessionOptions
+var defaultClientSessionOptions ClientSessionOptions
 
-func NewHTTPSession(address string, isTLS bool, opt *SessionOptions) *HTTPSession {
+func NewHTTPSession(address string, isTLS bool, opt *ClientSessionOptions) *HTTPClientSession {
 	if opt == nil {
-		opt = &defaultSessionOptions
+		opt = &defaultClientSessionOptions
 	}
 
-	s := &HTTPSession{opt: opt, isTLS: isTLS}
+	s := &HTTPClientSession{opt: opt, isTLS: isTLS}
 	ind := strings.IndexRune(address, ':')
 	if ind > -1 {
 		s.host = address[:ind]
@@ -77,7 +77,7 @@ func NewHTTPSession(address string, isTLS bool, opt *SessionOptions) *HTTPSessio
 	return s
 }
 
-func (s *HTTPSession) Close() error {
+func (s *HTTPClientSession) Close() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -87,7 +87,7 @@ func (s *HTTPSession) Close() error {
 	return s.conn.Close()
 }
 
-func (s *HTTPSession) Reconnect() {
+func (s *HTTPClientSession) Reconnect() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -105,7 +105,7 @@ func (s *HTTPSession) Reconnect() {
 	}
 }
 
-func (s *HTTPSession) OpenConn(ctx context.Context) error {
+func (s *HTTPClientSession) OpenConn(ctx context.Context) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -217,7 +217,7 @@ func (s *HTTPSession) OpenConn(ctx context.Context) error {
 	return nil
 }
 
-func (s *HTTPSession) Send(ctx *RequestCtx) error {
+func (s *HTTPClientSession) Send(ctx *RequestCtx) error {
 	if s.opt.RequestCtxPreChecker != nil {
 		s.opt.RequestCtxPreChecker(ctx)
 	}

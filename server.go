@@ -184,8 +184,7 @@ func (s *Server) Serve(l net.Listener) {
 	s.baseCtx = context.WithValue(s.baseCtx, CtxKeyServer, s)
 
 	var tempDelay time.Duration
-	var serveFunc func(conn net.Conn)
-	serveFunc = s.serveConn
+	serveFunc := s.serveConn
 	if s.isTLS {
 		serveFunc = s.serveTLS
 	}
@@ -197,6 +196,8 @@ func (s *Server) Serve(l net.Listener) {
 			case <-s.baseCtx.Done():
 				f = false
 				_ = l.Close()
+			default:
+				time.Sleep(time.Second)
 			}
 		}
 	}()

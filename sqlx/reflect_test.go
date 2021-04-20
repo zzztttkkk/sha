@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/zzztttkkk/sha/jsonx"
 	"net/url"
 	"testing"
@@ -22,12 +23,25 @@ type TestModel struct {
 func (TestModel) TableName() string { return "test_model" }
 
 func (TestModel) TableColumns(db *sqlx.DB) []string {
-	return []string{
-		"id bigint primary key auto_increment",
-		"created_at datetime default now()",
-		"deleted_at datetime",
-		"name char(20) unique not null",
-		"password char(128)",
+	switch db.DriverName() {
+	case "mysql":
+		return []string{
+			"id bigint primary key auto_increment",
+			"created_at datetime default now()",
+			"deleted_at datetime",
+			"name char(20) unique not null",
+			"password char(128)",
+		}
+	case "postgres":
+		return []string{
+			"id serial primary key",
+			"created_at timestamp default now()",
+			"deleted_at timestamp",
+			"name char(20) unique not null",
+			"password char(128)",
+		}
+	default:
+		return nil
 	}
 }
 
@@ -35,6 +49,7 @@ var TestModelOperator *Operator
 
 func init() {
 	OpenWriteableDB("mysql", "root:123456@/sha?parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"))
+	//OpenWriteableDB("postgres", "postgres://postgres:123456@127.0.0.1:5555/sha?sslmode=disable")
 	EnableLogging()
 
 	TestModelOperator = NewOperator(TestModel{})
@@ -63,9 +78,9 @@ func Test_XWrapper_Exe(t *testing.T) {
 
 func TestOperator_Insert(t *testing.T) {
 	ctx := context.Background()
-	tctx, committer := Tx(ctx)
-	defer committer()
+	tctx, tw := Tx(ctx)
+	defer tw.Commit(tctx)
 
-	r := TestModelOperator.Insert(tctx, Data{"name": "pou", "created_at": Raw("DATE_ADD(NOW(), INTERVAL 31 DAY)")})
+	r, _ := TestModelOperator.Insert(tctx, Data{"name": "pou", "created_at": Raw("DATE_ADD(NOW(), INTERVAL 31 DAY)")})
 	fmt.Println(r)
 }

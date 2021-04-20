@@ -25,7 +25,7 @@ type RequestCtx struct {
 	Response Response
 
 	// user data
-	ud userData
+	UserData userData
 
 	// time
 	connTime time.Time
@@ -39,6 +39,10 @@ type RequestCtx struct {
 
 	//
 	keepByUser bool
+
+	// session
+	sessionOK bool
+	session   Session
 }
 
 func (ctx *RequestCtx) Keep() {
@@ -87,14 +91,6 @@ func Unwrap(ctx context.Context) *RequestCtx {
 	return nil
 }
 
-// custom data
-func (ctx *RequestCtx) SetCustomData(key string, value interface{}) { ctx.ud.Set(key, value) }
-
-func (ctx *RequestCtx) GetCustomData(key string) interface{} { return ctx.ud.Get(key) }
-
-func (ctx *RequestCtx) VisitCustomData(fn func(key []byte, v interface{}) bool) { ctx.ud.Visit(fn) }
-
-// http connection
 func (ctx *RequestCtx) Close() { ctx.Response.Header().Set(HeaderConnection, []byte("close")) }
 
 func (ctx *RequestCtx) IsTLS() bool { return ctx.isTLS }
@@ -131,7 +127,8 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 func (ctx *RequestCtx) prepareForNextRequest() {
 	ctx.Request.Reset()
 	ctx.Response.reset()
-	ctx.ud.Reset()
+	ctx.UserData.Reset()
+	ctx.sessionOK = false
 }
 
 func (ctx *RequestCtx) resetConn() {
@@ -153,7 +150,7 @@ func (ctx *RequestCtx) Reset() {
 	ctx.resetConn()
 }
 
-func (ctx *RequestCtx) SetConnection(conn net.Conn) {
+func (ctx *RequestCtx) setConnection(conn net.Conn) {
 	ctx.r.Reset(conn)
 	ctx.w.Reset(conn)
 	ctx.connTime = time.Now()

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/jmoiron/sqlx/reflectx"
+	"github.com/zzztttkkk/sha/utils"
 	"reflect"
 	"strings"
 )
@@ -23,41 +24,34 @@ func NewOperator(ele Modeler) *Operator {
 	return op
 }
 
-func (op *Operator) IsImmutableField(f string) bool {
-	_, ok := op.info.immutable[f]
-	return ok
-}
+func (op *Operator) IsImmutableField(f string) bool { return op.info.immutable.has(f) }
 
 var ErrImmutableField = errors.New("sha.sqlx: immutable field")
 var ErrEmptyConditionOrEmptyData = errors.New("sha.sqlx: empty condition or empty data")
 
 func (op *Operator) GroupColumns(name string) []string {
-	m := op.info.groups[name]
-	if len(m) < 1 {
+	s := op.info.groups[name]
+	if s == nil {
 		return nil
 	}
-	var ret []string
-	for k := range m {
-		ret = append(ret, k)
-	}
-	return ret
+	return s.all()
 }
 
 func (op *Operator) GroupColumnsAppend(name, val string) {
-	m := op.info.groups[name]
-	if len(m) < 1 {
-		m = map[string]struct{}{}
-		op.info.groups[name] = m
+	s := op.info.groups[name]
+	if s == nil {
+		s = &_StringSet{}
+		op.info.groups[name] = s
 	}
-	m[val] = struct{}{}
+	s.add(val)
 }
 
 func (op *Operator) GroupColumnsRemove(name, val string) {
-	m := op.info.groups[name]
-	if len(m) < 1 {
+	s := op.info.groups[name]
+	if s == nil {
 		return
 	}
-	delete(m, val)
+	s.del(val)
 }
 
 func getTableName(ele Modeler) string { return ele.TableName() }
@@ -84,22 +78,20 @@ func doCreate(db *sqlx.DB, name string, v Modeler) {
 
 func (op *Operator) CreateTable() { doCreate(writableDb, op.TableName(), op.ele) }
 
-func (op *Operator) simpleSelect(group, cond string) string {
+func (op *Operator) simpleSelect(driver, group, cond string) string {
 	buf := strings.Builder{}
 	buf.WriteString("SELECT ")
 	if group == "*" {
 		buf.WriteString("*")
 	} else {
-		keys := op.info.groups[group]
+		keys := op.info.groups[group].all()
 		lastInd := len(keys) - 1
 		if lastInd < 0 {
 			panic(fmt.Errorf("sha.sqlx: empty key group `%s`", group))
 		}
 		i := 0
-		for v := range keys {
-			buf.WriteRune('`')
-			buf.WriteString(v)
-			buf.WriteRune('`')
+		for _, k := range keys {
+			writeIdentifier(driver, k, &buf)
 			if i < lastInd {
 				buf.WriteRune(',')
 			}
@@ -107,9 +99,7 @@ func (op *Operator) simpleSelect(group, cond string) string {
 		}
 	}
 	buf.WriteString(" FROM ")
-	buf.WriteRune('`')
-	buf.WriteString(op.TableName())
-	buf.WriteRune('`')
+	writeIdentifier(driver, op.TableName(), &buf)
 	if len(cond) > 0 {
 		buf.WriteRune(' ')
 		buf.WriteString(cond)
@@ -117,14 +107,84 @@ func (op *Operator) simpleSelect(group, cond string) string {
 	return buf.String()
 }
 
-func (op *Operator) simpleUpdate(cond string, m Data) (string, Data) {
+func writeCond(cond string, buf *strings.Builder) {
+	cond = strings.TrimSpace(cond)
+	if len(cond) < 1 {
+		return
+	}
+
+	w := false
+	ind := strings.IndexRune(cond, ' ')
+	if ind > 0 {
+		w = strings.ToLower(cond[:ind]) == "where"
+	}
+
+	if w {
+		buf.WriteByte(' ')
+		buf.WriteString(cond)
+	} else {
+		buf.WriteString(" WHERE ")
+		buf.WriteString(cond)
+	}
+}
+
+var quoteIdentifier = true
+
+func DisableQuoteIdentifier() { quoteIdentifier = false }
+
+func writeIdentifier(driver, v string, buf *strings.Builder) {
+	if !quoteIdentifier {
+		buf.WriteString(v)
+		return
+	}
+
+	mysql := func(a string) {
+		if strings.ContainsRune(a, '`') {
+			a = strings.ReplaceAll(a, "`", "\\`")
+		}
+		buf.WriteRune('`')
+		buf.WriteString(a)
+		buf.WriteRune('`')
+	}
+
+	postgres := func(a string) {
+		if strings.ContainsRune(a, '"') {
+			a = strings.ReplaceAll(a, "\"", "\\\"")
+		}
+		buf.WriteRune('"')
+		buf.WriteString(a)
+		buf.WriteRune('"')
+	}
+
+	vl := utils.SplitAndTrim(v, ".")
+	switch driver {
+	case "mysql":
+		for i, b := range vl {
+			mysql(b)
+			if i < len(vl)-1 {
+				buf.WriteRune('.')
+			}
+		}
+	case "postgres":
+		for i, b := range vl {
+			postgres(b)
+			if i < len(vl)-1 {
+				buf.WriteRune('.')
+			}
+		}
+	default:
+		buf.WriteString(v)
+	}
+}
+
+func (op *Operator) simpleUpdate(driver, cond string, m Data) (string, Data) {
 	if len(cond) < 1 || len(m) < 1 {
 		panic(ErrEmptyConditionOrEmptyData)
 	}
 
 	buf := strings.Builder{}
 	buf.WriteString("UPDATE ")
-	buf.WriteString(op.TableName())
+	writeIdentifier(driver, op.TableName(), &buf)
 	buf.WriteString(" SET ")
 
 	var retM Data
@@ -135,9 +195,7 @@ func (op *Operator) simpleUpdate(cond string, m Data) (string, Data) {
 			panic(ErrImmutableField)
 		}
 
-		buf.WriteRune('`')
-		buf.WriteString(k)
-		buf.WriteRune('`')
+		writeIdentifier(driver, k, &buf)
 		buf.WriteRune('=')
 
 		switch rv := v.(type) {
@@ -157,7 +215,7 @@ func (op *Operator) simpleUpdate(cond string, m Data) (string, Data) {
 		}
 		i++
 	}
-	buf.WriteString(cond)
+	writeCond(cond, &buf)
 	return buf.String(), retM
 }
 
@@ -202,76 +260,68 @@ func mergeMap(ctx context.Context, dist Data, src interface{}) interface{} {
 }
 
 func (op *Operator) FetchOne(ctx context.Context, keysGroup string, condition string, namedargs interface{}, dist interface{}) error {
-	return Exe(ctx).Get(ctx, op.simpleSelect(keysGroup, condition), namedargs, dist)
+	exe := Exe(ctx)
+	return exe.Get(ctx, op.simpleSelect(exe.Executor.DriverName(), keysGroup, condition), namedargs, dist)
 }
 
-func joinColumns(v []string) string {
-	var buf strings.Builder
+func joinColumns(d string, v []string, buf *strings.Builder) {
 	for i, k := range v {
-		buf.WriteRune('`')
-		buf.WriteString(k)
-		buf.WriteRune('`')
+		writeIdentifier(d, k, buf)
 		if i < len(v)-1 {
 			buf.WriteRune(',')
 		}
 	}
-	return buf.String()
 }
 
 func (op *Operator) RowColumns(ctx context.Context, columns []string, cond string, namedargs interface{}, dist ...interface{}) error {
+	exe := Exe(ctx)
+
 	buf := strings.Builder{}
 	buf.WriteString("SELECT ")
-	buf.WriteString(joinColumns(columns))
+	joinColumns(exe.Executor.DriverName(), columns, &buf)
 	buf.WriteString(" FROM ")
-	buf.WriteRune('`')
 	buf.WriteString(op.TableName())
-	buf.WriteRune('`')
+	writeIdentifier(exe.Executor.DriverName(), op.TableName(), &buf)
 	buf.WriteRune(' ')
-	if len(cond) > 0 {
-		buf.WriteString(cond)
-	}
-	return Exe(ctx).ScanRow(ctx, buf.String(), namedargs, dist...)
+	writeCond(cond, &buf)
+	return exe.ScanRow(ctx, buf.String(), namedargs, dist...)
 }
 
 func (op *Operator) RowsColumn(ctx context.Context, column string, cond string, namedargs interface{}, dist interface{}) error {
+	exe := Exe(ctx)
+
 	buf := strings.Builder{}
 	buf.WriteString("SELECT ")
-	buf.WriteRune('`')
-	buf.WriteString(column)
-	buf.WriteRune('`')
+	writeIdentifier(exe.Executor.DriverName(), column, &buf)
 	buf.WriteString(" FROM ")
-	buf.WriteRune('`')
-	buf.WriteString(op.TableName())
-	buf.WriteRune('`')
+	writeIdentifier(op.TableName(), column, &buf)
 	buf.WriteRune(' ')
-	if len(cond) > 0 {
-		buf.WriteString(cond)
-	}
-	return Exe(ctx).Select(ctx, buf.String(), namedargs, dist)
+	writeCond(cond, &buf)
+	return exe.Select(ctx, buf.String(), namedargs, dist)
 }
 
 func (op *Operator) FetchMany(ctx context.Context, keysGroup string, condition string, arg interface{}, dist interface{}) error {
-	return Exe(ctx).Select(ctx, op.simpleSelect(keysGroup, condition), arg, dist)
+	exe := Exe(ctx)
+	return exe.Select(ctx, op.simpleSelect(exe.Executor.DriverName(), keysGroup, condition), arg, dist)
 }
 
 type Raw string
 type Data map[string]interface{}
 
-func (op *Operator) Update(ctx context.Context, data Data, condition string, namedargs interface{}) sql.Result {
-	s, m := op.simpleUpdate(condition, data)
-	return Exe(ctx).Exec(ctx, s, mergeMap(ctx, m, namedargs))
+func (op *Operator) Update(ctx context.Context, data Data, condition string, namedargs interface{}) (sql.Result, error) {
+	exe := Exe(ctx)
+	s, m := op.simpleUpdate(exe.Executor.DriverName(), condition, data)
+	return exe.Exec(ctx, s, mergeMap(ctx, m, namedargs))
 }
 
-func (op *Operator) simpleInsert(data Data, returning string) (string, Data) {
+func (op *Operator) simpleInsert(driver string, data Data, returning string) (string, Data) {
 	if len(data) < 1 {
 		panic(ErrEmptyConditionOrEmptyData)
 	}
 
 	buf := strings.Builder{}
 	buf.WriteString("INSERT INTO ")
-	buf.WriteRune('`')
-	buf.WriteString(op.TableName())
-	buf.WriteRune('`')
+	writeIdentifier(driver, op.TableName(), &buf)
 	buf.WriteRune('(')
 
 	var vals []string
@@ -289,9 +339,7 @@ func (op *Operator) simpleInsert(data Data, returning string) (string, Data) {
 			}
 			retM[a] = b
 		}
-		buf.WriteRune('`')
-		buf.WriteString(a)
-		buf.WriteRune('`')
+		writeIdentifier(driver, a, &buf)
 		if ind < lastInd {
 			buf.WriteRune(',')
 		}
@@ -309,36 +357,36 @@ func (op *Operator) simpleInsert(data Data, returning string) (string, Data) {
 	return buf.String(), retM
 }
 
-func (op *Operator) Insert(ctx context.Context, data Data) int64 {
-	s, m := op.simpleInsert(data, "")
-	ret, e := Exe(ctx).Exec(ctx, s, m).LastInsertId()
+func (op *Operator) Insert(ctx context.Context, data Data) (int64, error) {
+	exe := Exe(ctx)
+	s, m := op.simpleInsert(exe.Executor.DriverName(), data, "")
+	r, e := exe.Exec(ctx, s, m)
 	if e != nil {
-		panic(e)
+		return 0, e
 	}
-	return ret
+	return r.LastInsertId()
 }
 
 func (op *Operator) InsertWithReturning(ctx context.Context, data Data, returning string, dist ...interface{}) {
-	s, m := op.simpleInsert(data, returning)
-	if err := Exe(ctx).ScanRow(ctx, s, m, dist); err != nil {
+	exe := Exe(ctx)
+	s, m := op.simpleInsert(exe.Executor.DriverName(), data, returning)
+	if err := exe.ScanRow(ctx, s, m, dist); err != nil {
 		panic(err)
 	}
 }
 
 var ErrDeleteWithoutCondition = errors.New("sha.sqlx: delete without condition")
 
-func (op *Operator) Delete(ctx context.Context, cond string, namedargs interface{}) sql.Result {
+func (op *Operator) Delete(ctx context.Context, cond string, namedargs interface{}) (sql.Result, error) {
 	if len(cond) < 1 {
 		panic(ErrDeleteWithoutCondition)
 	}
 
+	exe := Exe(ctx)
+
 	var buf strings.Builder
 	buf.WriteString("DELETE FROM ")
-	buf.WriteRune('`')
-	buf.WriteString(op.TableName())
-	buf.WriteRune('`')
-	buf.WriteRune(' ')
-	buf.WriteString(cond)
-
-	return Exe(ctx).Exec(ctx, buf.String(), namedargs)
+	writeIdentifier(exe.Executor.DriverName(), op.TableName(), &buf)
+	writeCond(cond, &buf)
+	return exe.Exec(ctx, buf.String(), namedargs)
 }

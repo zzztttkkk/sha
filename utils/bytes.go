@@ -4,6 +4,7 @@ package utils
 
 import (
 	"reflect"
+	"strings"
 	"unsafe"
 )
 
@@ -56,4 +57,15 @@ func InPlaceTrimAsciiSpace(v []byte) []byte {
 		}
 	}
 	return v[left : right+1]
+}
+
+func SplitAndTrim(a, b string) []string {
+	var ret []string
+	for _, v := range strings.Split(a, b) {
+		v = strings.TrimSpace(v)
+		if len(v) > 0 {
+			ret = append(ret, v)
+		}
+	}
+	return ret
 }
