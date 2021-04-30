@@ -20,8 +20,8 @@ func init() {
 		"POST",
 		"/roles",
 		func(ctx context.Context) {
-			ctx, committer := sqlx.Tx(ctx)
-			defer committer()
+			ctx, tx := sqlx.Tx(ctx)
+			defer tx.AutoCommit(ctx)
 
 			MustGrantedAll(ctx, PermRoleCreate)
 
@@ -96,8 +96,8 @@ func init() {
 				"POST",
 				"/role/{rname}/perms",
 				func(ctx context.Context) {
-					ctx, committer := sqlx.Tx(ctx)
-					defer committer()
+					ctx, tx := sqlx.Tx(ctx)
+					defer tx.AutoCommit(ctx)
 
 					MustGrantedAll(ctx, PermRoleAddPerm)
 
@@ -128,8 +128,8 @@ func init() {
 				"DELETE",
 				"/role/{rname}/perms/{pname}",
 				func(ctx context.Context) {
-					ctx, committer := sqlx.Tx(ctx)
-					defer committer()
+					ctx, tx := sqlx.Tx(ctx)
+					defer tx.AutoCommit(ctx)
 
 					MustGrantedAll(ctx, PermRoleDelPerm)
 

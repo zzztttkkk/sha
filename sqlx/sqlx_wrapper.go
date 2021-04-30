@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-type _LoggingWrapper struct {
+type LoggingExecutor struct {
 	Executor
 }
 
@@ -26,7 +26,7 @@ func init() {
 }
 
 // scan
-func (w _LoggingWrapper) ScanRow(ctx context.Context, q string, namedargs interface{}, dist ...interface{}) error {
+func (w LoggingExecutor) ScanRow(ctx context.Context, q string, namedargs interface{}, dist ...interface{}) error {
 	q, a := BindNamedArgs(w.Executor, q, namedargs)
 	row := w.Executor.QueryRowxContext(ctx, q, a...)
 	if err := row.Err(); err != nil {
@@ -35,7 +35,7 @@ func (w _LoggingWrapper) ScanRow(ctx context.Context, q string, namedargs interf
 	return row.Scan(dist...)
 }
 
-func (w _LoggingWrapper) ScanRows(ctx context.Context, q string, namedargs interface{}, scanner func(*sqlx.Rows) error) error {
+func (w LoggingExecutor) ScanRows(ctx context.Context, q string, namedargs interface{}, scanner func(*sqlx.Rows) error) error {
 	q, a := BindNamedArgs(w.Executor, q, namedargs)
 
 	rows, err := w.Executor.QueryxContext(ctx, q, a...)
@@ -78,33 +78,33 @@ func BindNamedArgs(exe Executor, q string, namedArgs interface{}) (string, []int
 	return qs, args
 }
 
-func (w _LoggingWrapper) Select(ctx context.Context, q string, namedArgs interface{}, sliceDist interface{}) error {
+func (w LoggingExecutor) Select(ctx context.Context, q string, namedArgs interface{}, sliceDist interface{}) error {
 	q, a := BindNamedArgs(w.Executor, q, namedArgs)
-	return Exe(ctx).Executor.SelectContext(ctx, sliceDist, q, a...)
+	return w.Executor.SelectContext(ctx, sliceDist, q, a...)
 }
 
-func (w _LoggingWrapper) Get(ctx context.Context, q string, namedArgs interface{}, dist interface{}) error {
+func (w LoggingExecutor) Get(ctx context.Context, q string, namedArgs interface{}, dist interface{}) error {
 	q, a := BindNamedArgs(w.Executor, q, namedArgs)
-	return Exe(ctx).Executor.GetContext(ctx, dist, q, a...)
+	return w.Executor.GetContext(ctx, dist, q, a...)
 }
 
 // exec
-func (w _LoggingWrapper) Exec(ctx context.Context, q string, namedargs interface{}) (sql.Result, error) {
+func (w LoggingExecutor) Exec(ctx context.Context, q string, namedargs interface{}) (sql.Result, error) {
 	q, a := BindNamedArgs(w.Executor, q, namedargs)
 	return w.Executor.ExecContext(ctx, q, a...)
 }
 
-func (w _LoggingWrapper) SavePoint(ctx context.Context, name string) error {
-	_, e := w.Exec(ctx, fmt.Sprintf("SAVEPOINT %s", ensureSavePointName(name)), nil)
+func (w LoggingExecutor) savePoint(ctx context.Context, name string) error {
+	_, e := w.Exec(ctx, fmt.Sprintf("SAVEPOINT %s", name), nil)
 	return e
 }
 
-func (w _LoggingWrapper) ReleaseSavePoint(ctx context.Context, name string) error {
-	_, e := w.Exec(ctx, fmt.Sprintf("RELEASE SAVEPOINT %s", ensureSavePointName(name)), nil)
+func (w LoggingExecutor) releaseSavePoint(ctx context.Context, name string) error {
+	_, e := w.Exec(ctx, fmt.Sprintf("RELEASE SAVEPOINT %s", name), nil)
 	return e
 }
 
-func (w _LoggingWrapper) RollbackToSavePoint(ctx context.Context, name string) error {
-	_, e := w.Exec(ctx, fmt.Sprintf("ROLLBACK TO SAVEPOINT %s", ensureSavePointName(name)), nil)
+func (w LoggingExecutor) rollbackToSavePoint(ctx context.Context, name string) error {
+	_, e := w.Exec(ctx, fmt.Sprintf("ROLLBACK TO SAVEPOINT %s", name), nil)
 	return e
 }

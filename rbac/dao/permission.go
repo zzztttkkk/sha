@@ -52,8 +52,8 @@ func NewPerm(ctx context.Context, name, desc string) {
 }
 
 func CreatePermIfNotExists(name string) string {
-	ctx, committer := sqlx.Tx(context.Background())
-	defer committer()
+	ctx, tx := sqlx.Tx(context.Background())
+	defer tx.AutoCommit(ctx)
 
 	_, e := GetPermIDByName(ctx, name)
 	if e != nil {

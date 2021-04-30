@@ -8,7 +8,6 @@ import (
 	x "github.com/jmoiron/sqlx"
 	"github.com/zzztttkkk/sha/utils"
 	mrandlib "math/rand"
-	"regexp"
 	"sync"
 )
 
@@ -48,7 +47,6 @@ type _Key int
 const (
 	txKey = _Key(iota + 1000)
 	justWDBKey
-	subTxKey
 )
 
 func UseWriteableDB(ctx context.Context) context.Context {
@@ -60,85 +58,76 @@ type TxOptions struct {
 	SavePointName string
 }
 
-var savepointNameRegexp = regexp.MustCompile(`^[a-zA-Z_]\w*$`)
-
-func ensureSavePointName(name string) string {
-	if !savepointNameRegexp.MatchString(name) {
-		panic(fmt.Errorf("sha.sqlx: bad savepoint name `%s`", name))
-	}
-	return name
-}
-
-func savePoint(ctx context.Context, tx *x.Tx, name string) error {
-	_, e := _LoggingWrapper{Executor: tx}.Exec(ctx, fmt.Sprintf("SAVEPOINT %s", ensureSavePointName(name)), nil)
-	return e
-}
-
-func rollbackToSavePoint(ctx context.Context, tx *x.Tx, name string) error {
-	_, e := _LoggingWrapper{Executor: tx}.Exec(ctx, fmt.Sprintf("ROLLBACK TO SAVEPOINT %s", ensureSavePointName(name)), nil)
-	return e
-}
-
-func releaseSavePoint(ctx context.Context, tx *x.Tx, name string) error {
-	_, e := _LoggingWrapper{Executor: tx}.Exec(ctx, fmt.Sprintf("RELEASE SAVEPOINT %s", ensureSavePointName(name)), nil)
-	return e
-}
-
-const subTxBegin = "SHA_SQLX_SUB_TX_BEGIN"
-
-func getSubTx(ctx context.Context) *TxWrapper {
-	i := ctx.Value(subTxKey)
-	if i == nil {
-		return nil
-	}
-	return i.(*TxWrapper)
-}
-
 type TxWrapper struct {
-	_LoggingWrapper
+	LoggingExecutor
 	savepoint string
-	done      bool
 }
 
 func (t *TxWrapper) Savepoint() string { return t.savepoint }
 
 func (t *TxWrapper) Commit(ctx context.Context) error {
 	if len(t.savepoint) > 0 {
-		if e := t._LoggingWrapper.ReleaseSavePoint(ctx, subTxBegin); e != nil {
+		if e := t.LoggingExecutor.releaseSavePoint(ctx, fmt.Sprintf("%s_BEGIN", t.savepoint)); e != nil {
 			return e
 		}
-		t.done = true
-		return t._LoggingWrapper.SavePoint(ctx, t.savepoint)
+		return t.LoggingExecutor.savePoint(ctx, t.savepoint)
 	}
-	return t._LoggingWrapper.Executor.(*x.Tx).Commit()
+	return t.LoggingExecutor.Executor.(*x.Tx).Commit()
 }
 
 func (t *TxWrapper) Rollback(ctx context.Context) error {
 	if len(t.savepoint) > 0 {
-		t.done = true
-		return t._LoggingWrapper.RollbackToSavePoint(ctx, subTxBegin)
+		return t.LoggingExecutor.rollbackToSavePoint(ctx, fmt.Sprintf("%s_BEGIN", t.savepoint))
 	}
-	return t._LoggingWrapper.Executor.(*x.Tx).Rollback()
+	return t.LoggingExecutor.Executor.(*x.Tx).Rollback()
 }
 
-// TxWithOptions starts a transaction, return a sub context and a commit function
+type RollbackError struct {
+	v interface{}
+	e error
+}
+
+func (r *RollbackError) Unwrap() error {
+	return r.e
+}
+
+func (r *RollbackError) Error() string {
+	return fmt.Sprintf("sha.sqlx: rollback error `%v`, recoverd value `%v`", r.e.Error(), r.v)
+}
+
+func (t *TxWrapper) AutoCommit(ctx context.Context) {
+	v := recover()
+	var e error
+	if v == nil {
+		e = t.Commit(ctx)
+	} else {
+		e = t.Rollback(ctx)
+	}
+	if e != nil {
+		panic(&RollbackError{v: v, e: e})
+	}
+}
+
 func TxWithOptions(ctx context.Context, options *TxOptions) (context.Context, *TxWrapper) {
+	txi := ctx.Value(txKey)
 	var tx *x.Tx
-	if ctx.Value(txKey) != nil { // sub tx
+	if txi != nil { // sub tx
 		if options == nil || options.SavePointName == "" {
 			panic(errors.New("sha.sqlx: empty options or empty savepoint name"))
 		}
 
-		tx = ctx.Value(txKey).(*x.Tx)
-		subTx := getSubTx(ctx)
-		if subTx != nil && !subTx.done {
-			panic(fmt.Errorf("sha.sqlx: unfinished sub tx: `%s`", subTx.savepoint))
+		switch tv := txi.(type) {
+		case *x.Tx:
+			tx = tv
+		case *TxWrapper:
+			tx = tv.Executor.(*x.Tx)
 		}
-		subTx = &TxWrapper{_LoggingWrapper: _LoggingWrapper{Executor: tx}, savepoint: options.SavePointName}
-		if e := subTx._LoggingWrapper.SavePoint(ctx, subTxBegin); e != nil {
+
+		subTx := &TxWrapper{LoggingExecutor: LoggingExecutor{Executor: tx}, savepoint: options.SavePointName}
+		if e := subTx.LoggingExecutor.savePoint(ctx, fmt.Sprintf("%s_BEGIN", subTx.savepoint)); e != nil {
 			panic(e)
 		}
-		return context.WithValue(ctx, subTxKey, subTx), subTx
+		return context.WithValue(ctx, txKey, subTx), subTx
 	}
 
 	var o *sql.TxOptions
@@ -146,7 +135,7 @@ func TxWithOptions(ctx context.Context, options *TxOptions) (context.Context, *T
 		o = &options.TxOptions
 	}
 	tx = writableDb.MustBeginTx(ctx, o)
-	return context.WithValue(ctx, txKey, tx), &TxWrapper{_LoggingWrapper: _LoggingWrapper{Executor: tx}}
+	return context.WithValue(ctx, txKey, tx), &TxWrapper{LoggingExecutor: LoggingExecutor{Executor: tx}}
 }
 
 func Tx(ctx context.Context) (context.Context, *TxWrapper) { return TxWithOptions(ctx, nil) }
@@ -157,19 +146,19 @@ func init() {
 
 var PickReadonlyDB = func(dbs []*x.DB) *x.DB { return dbs[int(mrandlib.Uint32())%len(dbs)] }
 
-func Exe(ctx context.Context) _LoggingWrapper {
+func Exe(ctx context.Context) LoggingExecutor {
 	tx := ctx.Value(txKey)
 	if tx != nil {
-		return _LoggingWrapper{tx.(*x.Tx)}
+		return LoggingExecutor{tx.(*x.Tx)}
 	}
 
 	if ctx.Value(justWDBKey) != nil {
-		return _LoggingWrapper{writableDb}
+		return LoggingExecutor{writableDb}
 	}
 	if len(readonlyDbs) < 1 {
-		return _LoggingWrapper{writableDb}
+		return LoggingExecutor{writableDb}
 	}
-	return _LoggingWrapper{PickReadonlyDB(readonlyDbs)}
+	return LoggingExecutor{PickReadonlyDB(readonlyDbs)}
 }
 
 func db(ctx context.Context) *x.DB {

@@ -10,8 +10,8 @@ import (
 const root = "rbac.root"
 
 func grantRoot(rootId int64, rootInfo interface{}) {
-	ctx, committer := sqlx.Tx(internal.NewRootContext(rootId, rootInfo))
-	defer committer()
+	ctx, tx := sqlx.Tx(internal.NewRootContext(rootId, rootInfo))
+	defer tx.AutoCommit(ctx)
 
 	// create root role
 	rootRoleId, _ := dao.GetRoleIDByName(ctx, root)

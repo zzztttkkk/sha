@@ -2,11 +2,10 @@ package model
 
 import (
 	x "github.com/jmoiron/sqlx"
-	"github.com/zzztttkkk/sha/sqlx"
 )
 
 type Permission struct {
-	sqlx.Model
+	Model
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }

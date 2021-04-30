@@ -63,8 +63,8 @@ func init() {
 		"POST",
 		"/perms",
 		func(ctx context.Context) {
-			ctx, committer := sqlx.Tx(ctx)
-			defer committer()
+			ctx, tx := sqlx.Tx(ctx)
+			defer tx.AutoCommit(ctx)
 
 			MustGrantedAll(ctx, PermPermissionCreate)
 
@@ -101,8 +101,8 @@ func init() {
 		"DELETE",
 		"/perm/{name}",
 		func(ctx context.Context) {
-			ctx, committer := sqlx.Tx(ctx)
-			defer committer()
+			ctx, tx := sqlx.Tx(ctx)
+			defer tx.AutoCommit(ctx)
 
 			MustGrantedAll(ctx, PermPermissionDelete)
 

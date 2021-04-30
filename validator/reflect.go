@@ -136,25 +136,25 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 		switch strings.ToLower(key) {
 		case "w", "where":
 			switch strings.ToLower(val) {
-			case "query":
+			case "query", "q":
 				rule.where = _WhereQuery
 				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.QueryValue(name) }
 				rule.peekAll = func(former Former, name string) [][]byte { return former.QueryValues(name) }
-			case "body":
+			case "body", "b":
 				rule.where = _WhereBody
 				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.BodyValue(name) }
 				rule.peekAll = func(former Former, name string) [][]byte { return former.BodyValues(name) }
-			case "form":
+			case "form", "f":
 				rule.where = _WhereForm
-			case "url", "urlparams", "url-params", "urlparam", "url-param":
+			case "url", "urlparams", "url-params", "urlparam", "url-param", "u":
 				rule.where = _WhereURLParams
 				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.URLParam(name) }
 				rule.peekAll = func(former Former, name string) [][]byte { panic(ErrPeekManyValuesFromURLParamsOrCookie) }
-			case "header":
+			case "header", "h", "headers":
 				rule.where = _WhereHeader
 				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.HeaderValue(name) }
 				rule.peekAll = func(former Former, name string) [][]byte { return former.HeaderValues(name) }
-			case "cookie":
+			case "cookie", "c", "cookies":
 				rule.where = _WhereCookie
 				rule.peekOne = func(former Former, name string) ([]byte, bool) { return former.CookieValue(name) }
 				rule.peekAll = func(former Former, name string) [][]byte { panic(ErrPeekManyValuesFromURLParamsOrCookie) }
