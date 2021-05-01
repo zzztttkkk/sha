@@ -111,8 +111,6 @@ func (w LoggingExecutor) rollbackToSavePoint(ctx context.Context, name string) e
 	return e
 }
 
-var mapper = reflectx.NewMapper("db")
-
 func (w LoggingExecutor) JoinGet(
 	ctx context.Context, q string, namedArgs interface{}, dists ...interface{},
 ) error {
@@ -149,7 +147,7 @@ func joinScan(r _RowI, dist interface{}, get func(interface{}, int) interface{})
 		if dT == nil {
 			d = get(dist, dIdx)
 			dV = reflect.ValueOf(d).Elem()
-			dT = mapper.TypeMap(reflect.TypeOf(d).Elem())
+			dT = reflectMapper.TypeMap(reflect.TypeOf(d).Elem())
 			dN = len(dT.Names)
 		}
 		fi, ok := dT.Names[c]
