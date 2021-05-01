@@ -179,6 +179,7 @@ func (w LoggingExecutor) JoinSelect(
 		}
 		return err
 	}
+	defer rows.Close()
 
 	distsV := reflect.ValueOf(dists).Elem()
 	eleT := reflect.TypeOf(dists).Elem().Elem()
