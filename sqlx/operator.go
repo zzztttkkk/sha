@@ -81,21 +81,25 @@ func (op *Operator) CreateTable() { doCreate(writableDb, op.TableName(), op.ele)
 func (op *Operator) simpleSelect(driver, group, cond string) string {
 	buf := strings.Builder{}
 	buf.WriteString("SELECT ")
-	if group == "*" {
+	if group == "" || group == "*" {
 		buf.WriteString("*")
 	} else {
-		keys := op.info.groups[group].all()
-		lastInd := len(keys) - 1
-		if lastInd < 0 {
-			panic(fmt.Errorf("sha.sqlx: empty key group `%s`", group))
-		}
-		i := 0
-		for _, k := range keys {
-			writeIdentifier(driver, k, &buf)
-			if i < lastInd {
-				buf.WriteRune(',')
+		if group[0] == '!' {
+			buf.WriteString(group[1:])
+		} else {
+			keys := op.info.groups[group].all()
+			lastInd := len(keys) - 1
+			if lastInd < 0 {
+				panic(fmt.Errorf("sha.sqlx: empty key group `%s`", group))
 			}
-			i++
+			i := 0
+			for _, k := range keys {
+				writeIdentifier(driver, k, &buf)
+				if i < lastInd {
+					buf.WriteRune(',')
+				}
+				i++
+			}
 		}
 	}
 	buf.WriteString(" FROM ")

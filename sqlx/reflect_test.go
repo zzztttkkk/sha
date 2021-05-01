@@ -7,7 +7,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/zzztttkkk/sha/jsonx"
-	"net/url"
 	"testing"
 	"time"
 )
@@ -48,8 +47,8 @@ func (TestModel) TableColumns(db *sqlx.DB) []string {
 var TestModelOperator *Operator
 
 func init() {
-	OpenWriteableDB("mysql", "root:123456@/sha?parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"))
-	//OpenWriteableDB("postgres", "postgres://postgres:123456@127.0.0.1:5555/sha?sslmode=disable")
+	//OpenWriteableDB("mysql", "root:123456@/sha?parseTime=true&loc="+url.QueryEscape("Asia/Shanghai"))
+	OpenWriteableDB("postgres", "postgres://postgres:123456@127.0.0.1:5432/sha?sslmode=disable")
 	EnableLogging()
 
 	TestModelOperator = NewOperator(TestModel{})
@@ -78,9 +77,104 @@ func Test_XWrapper_Exe(t *testing.T) {
 
 func TestOperator_Insert(t *testing.T) {
 	ctx := context.Background()
-	tctx, tw := Tx(ctx)
-	defer tw.Commit(tctx)
+	ctx, tx := Tx(ctx)
+	defer tx.AutoCommit(ctx)
 
-	r, _ := TestModelOperator.Insert(tctx, Data{"name": "pou", "created_at": Raw("DATE_ADD(NOW(), INTERVAL 31 DAY)")})
+	r, _ := TestModelOperator.Insert(ctx, Data{"name": "pou", "created_at": Raw("DATE_ADD(NOW(), INTERVAL 31 DAY)")})
 	fmt.Println(r)
+}
+
+type TestModel2 struct {
+	ID        int64      `db:"id,g=login" json:"id"`
+	CreatedAt time.Time  `db:"created_at" json:"created_at"`
+	M1ID      int64      `db:"m1_id" json:"m1_id"`
+	M1        *TestModel `db:"-" json:"m"`
+}
+
+func (t TestModel2) TableName() string {
+	return "test_model2"
+}
+
+func (t TestModel2) TableColumns(db *sqlx.DB) []string {
+	return []string{
+		"id serial primary key",
+		"created_at timestamp default now()",
+		"m1_id bigint not null",
+	}
+}
+
+var TestModel2Operator *Operator
+
+func init() {
+	TestModel2Operator = NewOperator(TestModel2{})
+	TestModel2Operator.CreateTable()
+}
+func TestJoin(t *testing.T) {
+	ctx := context.Background()
+	var m TestModel2
+	var m1 TestModel
+	m.M1 = &m1
+	type Arg struct {
+		AID int64 `db:"aid"`
+	}
+	e := Exe(ctx).JoinGet(
+		ctx, "select * from test_model, test_model2 where test_model2.m1_id = test_model.id and test_model2.id=:aid", Arg{AID: 1},
+		m.M1, &m,
+	)
+	if e != nil {
+		panic(e)
+	}
+	if m.M1.Password == "" {
+		t.Fail()
+	}
+
+	var pL []*TestModel2
+	e = Exe(ctx).JoinSelect(
+		ctx,
+		"select * from test_model, test_model2 where test_model2.m1_id = test_model.id", nil, &pL,
+		func(i interface{}) {
+			v := i.(*TestModel2)
+			v.M1 = &TestModel{}
+		},
+		func(i interface{}, i2 int) interface{} {
+			v := i.(*TestModel2)
+			switch i2 {
+			case 0:
+				return v.M1
+			case 1:
+				return v
+			default:
+				panic("")
+			}
+		},
+	)
+	if e != nil {
+		panic(e)
+	}
+	fmt.Println(pL[0])
+
+	var vL = make([]TestModel2, 0, 10)
+	e = Exe(ctx).JoinSelect(
+		ctx,
+		"select * from test_model, test_model2 where test_model2.m1_id = test_model.id", nil, &vL,
+		func(i interface{}) {
+			v := i.(*TestModel2)
+			v.M1 = &TestModel{}
+		},
+		func(i interface{}, i2 int) interface{} {
+			v := i.(*TestModel2)
+			switch i2 {
+			case 0:
+				return v.M1
+			case 1:
+				return v
+			default:
+				panic("")
+			}
+		},
+	)
+	if e != nil {
+		panic(e)
+	}
+	fmt.Println(vL[0])
 }

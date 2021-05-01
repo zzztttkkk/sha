@@ -82,17 +82,17 @@ func (t *TxWrapper) Rollback(ctx context.Context) error {
 	return t.LoggingExecutor.Executor.(*x.Tx).Rollback()
 }
 
-type RollbackError struct {
+type AutoCommitError struct {
 	v interface{}
 	e error
 }
 
-func (r *RollbackError) Unwrap() error {
-	return r.e
-}
+func (r *AutoCommitError) Recoverd() interface{} { return r.v }
 
-func (r *RollbackError) Error() string {
-	return fmt.Sprintf("sha.sqlx: rollback error `%v`, recoverd value `%v`", r.e.Error(), r.v)
+func (r AutoCommitError) DbError() error { return r.e }
+
+func (r *AutoCommitError) Error() string {
+	return fmt.Sprintf("sha.sqlx: database error `%v`, recoverd value `%v`", r.e.Error(), r.v)
 }
 
 func (t *TxWrapper) AutoCommit(ctx context.Context) {
@@ -104,7 +104,7 @@ func (t *TxWrapper) AutoCommit(ctx context.Context) {
 		e = t.Rollback(ctx)
 	}
 	if e != nil {
-		panic(&RollbackError{v: v, e: e})
+		panic(&AutoCommitError{v: v, e: e})
 	}
 }
 
