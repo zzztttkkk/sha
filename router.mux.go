@@ -58,6 +58,10 @@ type Mux struct {
 	all map[string]map[string]string
 }
 
+func (m *Mux) AddGroup(group *MuxGroup) {
+	group.BindTo(m)
+}
+
 func (m *Mux) HTTP(method, path string, handler RequestHandler) {
 	m.HTTPWithOptions(nil, method, path, handler)
 }

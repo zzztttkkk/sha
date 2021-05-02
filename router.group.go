@@ -26,6 +26,10 @@ type MuxGroup struct {
 	cache []*_MuxItem
 }
 
+func (m *MuxGroup) AddGroup(group *MuxGroup) {
+	group.BindTo(m)
+}
+
 func (m *MuxGroup) Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions) {
 	m.HTTPWithOptions(opt, "get", path, wshToHandler(handlerFunc))
 }

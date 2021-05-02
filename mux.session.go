@@ -2,11 +2,14 @@ package sha
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"github.com/zzztttkkk/sha/auth"
+	"github.com/zzztttkkk/sha/captcha"
 	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
+	"io"
 	"math/bits"
 	"math/rand"
 	"sync"
@@ -55,18 +58,22 @@ type SessionBackend interface {
 }
 
 type SessionOptions struct {
-	CookieName  string             `json:"cookie_name" toml:"cookie-name"`
-	HeaderName  string             `json:"header_name" toml:"header-name"`
-	KeyPrefix   string             `json:"key_prefix" toml:"key-prefix"`
-	MaxAge      utils.TomlDuration `json:"max_age" toml:"max-age"`
-	Auth        bool               `json:"auth" toml:"auth"`
-	ServerSeqID uint64             `json:"server_seq_id" toml:"server-seq-id"`
+	CookieName   string             `json:"cookie_name" toml:"cookie-name"`
+	HeaderName   string             `json:"header_name" toml:"header-name"`
+	KeyPrefix    string             `json:"key_prefix" toml:"key-prefix"`
+	MaxAge       utils.TomlDuration `json:"max_age" toml:"max-age"`
+	Auth         bool               `json:"auth" toml:"auth"`
+	ServerSeqID  uint64             `json:"server_seq_id" toml:"server-seq-id"`
+	ImageCaptcha captcha.Generator  `json:"-" toml:"-"`
+	AudioCaptcha captcha.Generator  `json:"-" toml:"-"`
 }
 
 var defaultSessionOptions = SessionOptions{}
 var sessionBackend SessionBackend
 var sessionOptions SessionOptions
 var sessionCookieOptions *CookieOptions
+var sessionImageCaptcha captcha.Generator
+var sessionAudioCaptcha captcha.Generator
 var once sync.Once
 
 func UseSession(v SessionBackend, opt *SessionOptions) {
@@ -77,6 +84,8 @@ func UseSession(v SessionBackend, opt *SessionOptions) {
 		}
 		sessionOptions = *opt
 		sessionCookieOptions = &CookieOptions{MaxAge: int64(sessionOptions.MaxAge.Duration / time.Second)}
+		sessionAudioCaptcha = opt.AudioCaptcha
+		sessionImageCaptcha = opt.ImageCaptcha
 	})
 }
 
@@ -104,6 +113,43 @@ func (s *Session) Get(ctx context.Context, key string, dist interface{}) bool {
 
 func (s *Session) Del(ctx context.Context, keys ...string) error {
 	return sessionBackend.SessionDel(ctx, s.key(), keys...)
+}
+
+func (s *Session) ImageCaptcha(ctx context.Context, w io.Writer) error {
+	if sessionImageCaptcha == nil {
+		return errors.New("sha: nil ImageCaptchaGenerator")
+	}
+	token, err := sessionImageCaptcha.GenerateTo(ctx, w)
+	if err != nil {
+		return err
+	}
+	_ = s.Set(ctx, "captcha.token", token)
+	_ = s.Set(ctx, "captcha.created", time.Now().Unix())
+	return nil
+}
+
+func (s *Session) AudioCaptcha(ctx context.Context, w io.Writer) error {
+	if sessionAudioCaptcha == nil {
+		return errors.New("sha: nil ImageCaptchaGenerator")
+	}
+	token, err := sessionAudioCaptcha.GenerateTo(ctx, w)
+	if err != nil {
+		return err
+	}
+	_ = s.Set(ctx, "captcha.token", token)
+	_ = s.Set(ctx, "captcha.created", time.Now().Unix())
+	return nil
+}
+
+func (s *Session) CaptchaVerify(ctx context.Context, tokenInReq string) bool {
+	if len(tokenInReq) < 1 {
+		return false
+	}
+	var tokenInDB string
+	var created int64
+	s.Get(ctx, "captcha.token", &tokenInDB)
+	s.Get(ctx, "captcha.created", &created)
+	return time.Now().Unix()-created < 300 && tokenInDB == tokenInReq
 }
 
 func (ctx *RequestCtx) Session() (*Session, error) {

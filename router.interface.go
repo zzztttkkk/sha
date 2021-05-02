@@ -30,6 +30,7 @@ type Router interface {
 
 	Use(middlewares ...Middleware)
 	NewGroup(prefix string) Router
+	AddGroup(group *MuxGroup)
 }
 
 func middlewaresWrap(middlewares []Middleware, h RequestHandler) RequestHandler {

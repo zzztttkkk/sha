@@ -425,3 +425,16 @@ func (req *Request) BodyRaw() []byte {
 	}
 	return req._HTTPPocket.body.Bytes()
 }
+
+func (req *Request) FormValue(name string) ([]byte, bool) {
+	v, ok := req.BodyFormValue(name)
+	if ok {
+		return v, ok
+	}
+	return req.QueryValue(name)
+}
+
+func (req *Request) FormValues(name string) [][]byte {
+	v := req.BodyFormValues(name)
+	return append(v, req.QueryValues(name)...)
+}

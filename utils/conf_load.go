@@ -1,11 +1,8 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/BurntSushi/toml"
-	"github.com/imdario/mergo"
 	"github.com/zzztttkkk/sha/internal"
-	"github.com/zzztttkkk/sha/jsonx"
 	"io/ioutil"
 	"log"
 	"os"
@@ -116,12 +113,7 @@ func (_ConfNamespace) LoadFromFile(conf interface{}, fp string) error {
 		panic(e)
 	}
 
-	if strings.HasSuffix(fp, ".toml") {
-		e = confFromTomlBytes(conf, v)
-	} else {
-		e = jsonx.Unmarshal(v, conf)
-	}
-
+	e = confFromTomlBytes(conf, v)
 	if e != nil {
 		return e
 	}
@@ -131,30 +123,6 @@ func (_ConfNamespace) LoadFromFile(conf interface{}, fp string) error {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("sha.utils.config: load from file `%s`\n", fp)
+	log.Printf("sha.utils.config: load from file `%s`\n%s\n", fp, v)
 	return nil
-}
-
-func (cn _ConfNamespace) LoadFromFiles(dist interface{}, fps ...string) {
-	if reflect.TypeOf(dist).Kind() != reflect.Ptr || dist == nil || reflect.ValueOf(dist).IsNil() {
-		panic(fmt.Errorf("sha.utils.config: bad dist value, `%v`\n", dist))
-	}
-
-	t := dist
-
-	ct := reflect.TypeOf(dist).Elem()
-	if ct.Kind() != reflect.Struct {
-		panic(fmt.Errorf("sha.utils.config: dist is not a struct pointer"))
-	}
-
-	for _, fp := range fps {
-		ele := reflect.New(ct).Interface()
-		if err := cn.LoadFromFile(ele, fp); err != nil {
-			panic(err)
-		}
-
-		if err := mergo.Merge(t, ele, mergo.WithOverride); err != nil {
-			panic(err)
-		}
-	}
 }
