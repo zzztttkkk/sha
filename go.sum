@@ -90,6 +90,8 @@ github.com/tinylib/msgp v1.1.0/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDW
 github.com/willf/bitset v1.1.10 h1:NotGKqX0KwQ72NUzqrjZq5ipPNDQex9lo3WpaS8L2sc=
 github.com/willf/bitset v1.1.10/go.mod h1:RjeCKbqT1RxIR/KWY6phxZiaY1IyutSBfGjNPySAYV4=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
+github.com/zzztttkkk/sqlx v0.0.1 h1:67G5YRb6aJA8+/2p3IjA5o1dUyB8jtlEW1T/UrGqkGU=
+github.com/zzztttkkk/sqlx v0.0.1/go.mod h1:hGheyvhHd6QCQPJnEE7HrHdKgT/ayyMrPVts6J0Lo18=
 github.com/zzztttkkk/websocket v1.4.3 h1:8WzP/wRdz4F9ie/lCGGj+V+9e3MpRGevDlweDjPrpNI=
 github.com/zzztttkkk/websocket v1.4.3/go.mod h1:nzQxFzKdXUDvkznL1AaNXDVR7V3skD/dsIzNxjzLIPo=
 go.opentelemetry.io/otel v0.16.0 h1:uIWEbdeb4vpKPGITLsRVUS44L5oDbDUCZxn8lkxhmgw=
