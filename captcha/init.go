@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-// Init
+// RegisterFonts
 // FontName|FontFile
 // FontName|FontFile|FontSize
 // FontName|FontFile|FontSize|ASCII Half Width
-func Init(fonts ...string) {
+func RegisterFonts(fonts ...string) {
 	for _, f := range fonts {
 		a := strings.Split(strings.TrimSpace(f), "|")
 		for i, v := range a {

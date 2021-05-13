@@ -207,6 +207,9 @@ func (s *Server) Serve(l net.Listener) {
 	for f {
 		conn, err := l.Accept()
 		if err != nil {
+			if !f {
+				return
+			}
 			log.Printf("sha.server: bad connection: %s\n", err.Error())
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				if tempDelay == 0 {

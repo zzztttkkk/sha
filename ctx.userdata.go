@@ -3,23 +3,22 @@
 package sha
 
 import (
-	"github.com/zzztttkkk/sha/utils"
 	"io"
 )
 
 type userDataKV struct {
-	key   []byte
+	key   interface{}
 	value interface{}
 }
 
 type userData []userDataKV
 
-func (d *userData) Set(key string, value interface{}) {
+func (d *userData) Set(key interface{}, value interface{}) {
 	args := *d
 	n := len(args)
 	for i := 0; i < n; i++ {
 		kv := &args[i]
-		if string(kv.key) == key {
+		if kv.key == key {
 			kv.value = value
 			return
 		}
@@ -29,39 +28,27 @@ func (d *userData) Set(key string, value interface{}) {
 	if c > n {
 		args = args[:n+1]
 		kv := &args[n]
-		kv.key = append(kv.key[:0], key...)
+		kv.key = key
 		kv.value = value
 		*d = args
 		return
 	}
-
-	kv := userDataKV{}
-	kv.key = append(kv.key[:0], key...)
-	kv.value = value
-	*d = append(args, kv)
+	*d = append(args, userDataKV{key: key, value: value})
 }
 
-func (d *userData) SetBytes(key []byte, value interface{}) {
-	d.Set(utils.S(key), value)
-}
-
-func (d *userData) Get(key string) interface{} {
+func (d *userData) Get(key interface{}) interface{} {
 	args := *d
 	n := len(args)
 	for i := 0; i < n; i++ {
 		kv := &args[i]
-		if string(kv.key) == key {
+		if kv.key == key {
 			return kv.value
 		}
 	}
 	return nil
 }
 
-func (d *userData) GetBytes(key []byte) interface{} {
-	return d.Get(utils.S(key))
-}
-
-func (d *userData) Visit(fn func(k []byte, v interface{}) bool) {
+func (d *userData) Visit(fn func(k interface{}, v interface{}) bool) {
 	for _, item := range *d {
 		if !fn(item.key, item.value) {
 			break

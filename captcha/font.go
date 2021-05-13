@@ -11,34 +11,67 @@ import (
 	"sync"
 )
 
-type _SyncFace struct {
-	font.Face
-	size           int
-	asciiHalfWidth bool
-	sync.Mutex
+type _CacheKey struct {
+	v   rune
+	dot fixed.Point26_6
 }
 
-func (f *_SyncFace) Glyph(dot fixed.Point26_6, r rune) (dr image.Rectangle, mask image.Image, maskp image.Point, advance fixed.Int26_6, ok bool) {
+type _CacheValue struct {
+	dr      image.Rectangle
+	mask    image.Image
+	maskp   image.Point
+	advance fixed.Int26_6
+}
+
+type _SyncCachedFace struct {
+	sync.RWMutex
+	font.Face
+
+	size           int
+	asciiHalfWidth bool
+	cache          map[_CacheKey]*_CacheValue
+}
+
+func (f *_SyncCachedFace) Glyph(dot fixed.Point26_6, r rune) (image.Rectangle, image.Image, image.Point, fixed.Int26_6, bool) {
+	f.RLock()
+	key := _CacheKey{v: r, dot: dot}
+	cached, ok := f.cache[key]
+	if ok {
+		if cached == nil {
+			f.RUnlock()
+			return image.Rectangle{}, nil, image.Point{}, 0, false
+		}
+		f.RUnlock()
+		return cached.dr, cached.mask, cached.maskp, cached.advance, true
+	}
+	f.RUnlock()
+
 	f.Lock()
 	defer f.Unlock()
 
-	return f.Face.Glyph(dot, r)
+	dr, mask, maskp, advance, ok := f.Face.Glyph(dot, r)
+	if ok {
+		f.cache[key] = &_CacheValue{dr, mask, maskp, advance}
+	} else {
+		f.cache[key] = nil
+	}
+	return dr, mask, maskp, advance, ok
 }
 
 type _FontCache struct {
-	m map[string]*_SyncFace
-	l []*_SyncFace
+	m map[string]*_SyncCachedFace
+	l []*_SyncCachedFace
 }
 
-var fontCache _FontCache
-
-func init() {
-	fontCache.m = map[string]*_SyncFace{}
-}
+var fontsCacheMutex sync.Mutex
+var fontsCache = _FontCache{m: map[string]*_SyncCachedFace{}}
 
 func RegisterFont(name, file string, options *truetype.Options, asciiHalfWidth bool) {
-	if _, exists := fontCache.m[name]; exists {
-		panic(fmt.Errorf("suna.captcha: font name(`%s`) file(`%s`) is already exists", name, file))
+	fontsCacheMutex.Lock()
+	defer fontsCacheMutex.Unlock()
+
+	if _, exists := fontsCache.m[name]; exists {
+		panic(fmt.Errorf("sha.captcha: font name(`%s`) file(`%s`) is already exists", name, file))
 	}
 	f, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -49,29 +82,33 @@ func RegisterFont(name, file string, options *truetype.Options, asciiHalfWidth b
 		panic(err)
 	}
 
-	face := &_SyncFace{Face: truetype.NewFace(ttf, options), asciiHalfWidth: asciiHalfWidth}
+	face := &_SyncCachedFace{
+		Face:           truetype.NewFace(ttf, options),
+		asciiHalfWidth: asciiHalfWidth,
+		cache:          map[_CacheKey]*_CacheValue{},
+	}
 	if options == nil {
-		face.size = 12
+		face.size = 16
 	} else {
 		face.size = int(options.Size)
 	}
-	fontCache.m[name] = face
-	fontCache.l = append(fontCache.l, face)
+	fontsCache.m[name] = face
+	fontsCache.l = append(fontsCache.l, face)
 }
 
-func getFaceByName(name string) *_SyncFace {
+func getFaceByName(name string) *_SyncCachedFace {
 	if name == "*" {
-		return fontCache.l[int(rand.Uint32())%len(fontCache.l)]
+		return fontsCache.l[int(rand.Uint32())%len(fontsCache.l)]
 	}
-	return fontCache.m[name]
+	return fontsCache.m[name]
 }
 
-func getFaceByCount(i int) (l []*_SyncFace) {
-	if i < 0 || i >= len(fontCache.l) {
-		return fontCache.l
+func getFaceByCount(i int) (l []*_SyncCachedFace) {
+	if i < 1 || i >= len(fontsCache.l) {
+		return fontsCache.l
 	}
 	for ; i > 0; i-- {
-		l = append(l, fontCache.l[int(rand.Uint32())%len(fontCache.l)])
+		l = append(l, fontsCache.l[int(rand.Uint32())%len(fontsCache.l)])
 	}
 	return
 }

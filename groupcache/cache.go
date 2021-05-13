@@ -2,6 +2,7 @@ package groupcache
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
@@ -23,13 +24,13 @@ type Convertor interface {
 	Decode(v []byte, dist interface{}) error
 }
 
-type _StdJsonConvertor struct{}
+type _JSONConvertor struct{}
 
-func (_StdJsonConvertor) Encode(v interface{}) ([]byte, error) { return jsonx.Marshal(v) }
+func (_JSONConvertor) Encode(v interface{}) ([]byte, error) { return jsonx.Marshal(v) }
 
-func (_StdJsonConvertor) Decode(v []byte, dist interface{}) error { return jsonx.Unmarshal(v, dist) }
+func (_JSONConvertor) Decode(v []byte, dist interface{}) error { return jsonx.Unmarshal(v, dist) }
 
-var StdJsonConvertor = _StdJsonConvertor{}
+var DefaultBytesConvertor = _JSONConvertor{}
 
 type Storage interface {
 	Set(ctx context.Context, k string, v []byte, expires time.Duration)
@@ -104,6 +105,7 @@ var emptyVal = []byte("")
 var ErrEmpty = errors.New("sha.groupcache: empty")
 var ErrBadCacheValue = errors.New("sha.groupcache: bad cache")
 var ErrRetryAfter = internal.ErrRetryAfter
+var ErrNotFound = errors.New("sha.groupcache: not found")
 
 func (g *Group) MakeKey(loaderName, argsName string) string {
 	if len(g.prefix) < 1 {
@@ -112,15 +114,20 @@ func (g *Group) MakeKey(loaderName, argsName string) string {
 	return fmt.Sprintf("%s:%s:%s:%s", g.prefix, g.name, loaderName, argsName)
 }
 
-// dist must be a pointer
+// DoWithExpires dist must be a pointer
 func (g *Group) DoWithExpires(ctx context.Context, loaderName string, dist interface{}, args NamedArgs, expires *Expires) error {
+	loader := g.loads[loaderName]
+	if loader == nil {
+		return fmt.Errorf("sha.groupcache: name `%s` is not exists in group `%s`", loaderName, g.name)
+	}
+
 	if expires == nil {
 		expires = &g.expires
 	}
 
 	conv := g.conv
 	if conv == nil {
-		conv = StdJsonConvertor
+		conv = DefaultBytesConvertor
 	}
 
 	key := g.MakeKey(loaderName, args.Name())
@@ -131,7 +138,7 @@ func (g *Group) DoWithExpires(ctx context.Context, loaderName string, dist inter
 		}
 
 		err := conv.Decode(v, dist)
-		if err != nil { // bad groupcache
+		if err != nil { // bad cached value or bad dist, but i trust the caller
 			g.storage.Del(ctx, key)
 			return ErrBadCacheValue
 		} else {
@@ -142,14 +149,12 @@ func (g *Group) DoWithExpires(ctx context.Context, loaderName string, dist inter
 	ret, e := g.sf.Do(
 		args.Name(),
 		func() (interface{}, error) {
-			fn := g.loads[loaderName]
-			if fn == nil {
-				panic(fmt.Errorf("sha.groupcache: name `%s` is not exists in group `%s`", loaderName, g.name))
-			}
-
-			_v, e := fn(ctx, args)
+			_v, e := loader(ctx, args)
 			if e != nil {
-				return nil, e
+				if e != sql.ErrNoRows && e != ErrNotFound {
+					return nil, e
+				}
+				_v = nil
 			}
 
 			if _v == nil {
@@ -172,8 +177,8 @@ func (g *Group) DoWithExpires(ctx context.Context, loaderName string, dist inter
 	return e
 }
 
-func (g *Group) Do(ctx context.Context, loaderName string, dist interface{}, args NamedArgs) error {
-	return g.DoWithExpires(ctx, loaderName, dist, args, nil)
+func (g *Group) Do(ctx context.Context, loader string, dist interface{}, args NamedArgs) error {
+	return g.DoWithExpires(ctx, loader, dist, args, nil)
 }
 
 // dist must be a pointer

@@ -37,6 +37,13 @@ var SessionIDGenerator = func(v *Session) {
 	}
 }
 
+var CRSFTokenGenerator = func(v []byte) {
+	const encodeStd = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	for i := 0; i < len(v); i++ {
+		v[i] = encodeStd[rand.Int()%64]
+	}
+}
+
 func init() {
 	utils.MathRandSeed()
 }
@@ -58,34 +65,42 @@ type SessionBackend interface {
 }
 
 type SessionOptions struct {
-	CookieName   string             `json:"cookie_name" toml:"cookie-name"`
-	HeaderName   string             `json:"header_name" toml:"header-name"`
-	KeyPrefix    string             `json:"key_prefix" toml:"key-prefix"`
-	MaxAge       utils.TomlDuration `json:"max_age" toml:"max-age"`
-	Auth         bool               `json:"auth" toml:"auth"`
-	ServerSeqID  uint64             `json:"server_seq_id" toml:"server-seq-id"`
-	ImageCaptcha captcha.Generator  `json:"-" toml:"-"`
-	AudioCaptcha captcha.Generator  `json:"-" toml:"-"`
+	CookieName  string             `json:"cookie_name" toml:"cookie-name"`
+	HeaderName  string             `json:"header_name" toml:"header-name"`
+	KeyPrefix   string             `json:"key_prefix" toml:"key-prefix"`
+	MaxAge      utils.TomlDuration `json:"max_age" toml:"max-age"`
+	Auth        bool               `json:"auth" toml:"auth"`
+	ServerSeqID uint64             `json:"server_id" toml:"server-id"`
+
+	Captcha struct {
+		ImageCaptcha captcha.Generator  `json:"-" toml:"-"`
+		AudioCaptcha captcha.Generator  `json:"-" toml:"-"`
+		MaxAge       utils.TomlDuration `json:"max_age" toml:"max-age"`
+		Skip         bool               `json:"skip" toml:"skip"`
+		seconds      int64
+	} `json:"captcha" toml:"captcha"`
+
+	CSRF struct {
+		CookieName string             `json:"cookie_name" toml:"cookie-name"`
+		HeaderName string             `json:"header_name" toml:"header-name"`
+		MaxAge     utils.TomlDuration `json:"max_age" toml:"max-age"`
+		seconds    int64
+		Skip       bool `json:"skip" toml:"skip"`
+	} `json:"csrf" toml:"csrf"`
 }
 
-var defaultSessionOptions = SessionOptions{}
 var sessionBackend SessionBackend
 var sessionOptions SessionOptions
-var sessionCookieOptions *CookieOptions
-var sessionImageCaptcha captcha.Generator
-var sessionAudioCaptcha captcha.Generator
+var sessionCookieOptions CookieOptions
 var once sync.Once
 
 func UseSession(v SessionBackend, opt *SessionOptions) {
 	once.Do(func() {
 		sessionBackend = v
-		if opt == nil {
-			opt = &defaultSessionOptions
-		}
 		sessionOptions = *opt
-		sessionCookieOptions = &CookieOptions{MaxAge: int64(sessionOptions.MaxAge.Duration / time.Second)}
-		sessionAudioCaptcha = opt.AudioCaptcha
-		sessionImageCaptcha = opt.ImageCaptcha
+		sessionCookieOptions.MaxAge = int64(sessionOptions.MaxAge.Duration / time.Second)
+		sessionOptions.Captcha.seconds = int64(sessionOptions.Captcha.MaxAge.Duration / time.Second)
+		sessionOptions.CSRF.seconds = int64(sessionOptions.CSRF.MaxAge.Duration / time.Second)
 	})
 }
 
@@ -115,41 +130,66 @@ func (s *Session) Del(ctx context.Context, keys ...string) error {
 	return sessionBackend.SessionDel(ctx, s.key(), keys...)
 }
 
-func (s *Session) ImageCaptcha(ctx context.Context, w io.Writer) error {
-	if sessionImageCaptcha == nil {
+func (s *Session) GenerateImageCaptcha(ctx context.Context, w io.Writer) error {
+	if sessionOptions.Captcha.ImageCaptcha == nil {
 		return errors.New("sha: nil ImageCaptchaGenerator")
 	}
-	token, err := sessionImageCaptcha.GenerateTo(ctx, w)
+	token, err := sessionOptions.Captcha.ImageCaptcha.GenerateTo(ctx, w)
 	if err != nil {
 		return err
 	}
-	_ = s.Set(ctx, "captcha.token", token)
-	_ = s.Set(ctx, "captcha.created", time.Now().Unix())
+	_ = s.Set(ctx, ".captcha.token", token)
+	_ = s.Set(ctx, ".captcha.created", time.Now().Unix())
 	return nil
 }
 
-func (s *Session) AudioCaptcha(ctx context.Context, w io.Writer) error {
-	if sessionAudioCaptcha == nil {
+func (s *Session) GenerateAudioCaptcha(ctx context.Context, w io.Writer) error {
+	if sessionOptions.Captcha.AudioCaptcha == nil {
 		return errors.New("sha: nil ImageCaptchaGenerator")
 	}
-	token, err := sessionAudioCaptcha.GenerateTo(ctx, w)
+	token, err := sessionOptions.Captcha.AudioCaptcha.GenerateTo(ctx, w)
 	if err != nil {
 		return err
 	}
-	_ = s.Set(ctx, "captcha.token", token)
-	_ = s.Set(ctx, "captcha.created", time.Now().Unix())
+	_ = s.Set(ctx, ".captcha.token", token)
+	_ = s.Set(ctx, ".captcha.created", time.Now().Unix())
 	return nil
 }
 
-func (s *Session) CaptchaVerify(ctx context.Context, tokenInReq string) bool {
+func (s *Session) VerifyCaptcha(ctx context.Context, tokenInReq string) bool {
+	if sessionOptions.Captcha.Skip {
+		return true
+	}
 	if len(tokenInReq) < 1 {
 		return false
 	}
 	var tokenInDB string
 	var created int64
-	s.Get(ctx, "captcha.token", &tokenInDB)
-	s.Get(ctx, "captcha.created", &created)
-	return time.Now().Unix()-created < 300 && tokenInDB == tokenInReq
+	s.Get(ctx, ".captcha.token", &tokenInDB)
+	s.Get(ctx, ".captcha.created", &created)
+
+	return tokenInDB == tokenInReq &&
+		(sessionOptions.Captcha.seconds < 1 || time.Now().Unix()-created <= sessionOptions.Captcha.seconds)
+}
+
+func (s *Session) GenerateCSRFToken(ctx context.Context) string {
+	var tmp = make([]byte, 16)
+	CRSFTokenGenerator(tmp)
+	_ = s.Set(ctx, ".crsf.token", tmp)
+	_ = s.Set(ctx, ".crsf.created", time.Now().Unix())
+	return utils.S(tmp)
+}
+
+func (s *Session) VerifyCRSFToken(ctx context.Context, token string) bool {
+	if sessionOptions.CSRF.Skip {
+		return true
+	}
+	var tokenInStorage string
+	var created int64
+	s.Get(ctx, ".crsf.token", &tokenInStorage)
+	s.Get(ctx, ".crsf.created", &created)
+	return tokenInStorage == token &&
+		(sessionOptions.CSRF.seconds < 1 || time.Now().Unix()-created <= sessionOptions.CSRF.seconds)
 }
 
 func (ctx *RequestCtx) Session() (*Session, error) {
@@ -188,7 +228,7 @@ func (ctx *RequestCtx) Session() (*Session, error) {
 			if byHeader {
 				ctx.Response.Header().SetString(sessionOptions.HeaderName, ctx.session.String())
 			} else {
-				ctx.Response.SetCookie(sessionOptions.CookieName, ctx.session.String(), sessionCookieOptions)
+				ctx.Response.SetCookie(sessionOptions.CookieName, ctx.session.String(), &sessionCookieOptions)
 			}
 			if user != nil {
 				_ = sessionBackend.Set(

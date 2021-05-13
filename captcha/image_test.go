@@ -13,7 +13,8 @@ import (
 )
 
 func init() {
-	RegisterFont("微软雅黑32", "C:/Windows/Fonts/simkai.ttf", &truetype.Options{Size: 32}, true)
+	RegisterFont("微软雅黑", "C:/Windows/Fonts/simkai.ttf", &truetype.Options{Size: 64}, true)
+	RegisterFont("更纱黑体UI-SC", "C:/Windows/Fonts/sarasa-ui-sc-extralightitalic.ttf", &truetype.Options{Size: 64}, true)
 }
 
 func TestNewImage(t *testing.T) {
@@ -21,8 +22,7 @@ func TestNewImage(t *testing.T) {
 		"*",
 		[]rune("21598"),
 		&Options{
-			OffsetX: 10, OffsetY: 10,
-			Points: 200,
+			OffsetX: 16, OffsetY: 10,
 		},
 	)
 
@@ -33,8 +33,7 @@ func TestNewImage(t *testing.T) {
 		-1,
 		[]rune("我可以吞下玻璃而不伤身体"),
 		&Options{
-			OffsetX: 10, OffsetY: 10,
-			Points: 200,
+			OffsetX: 16, OffsetY: 16,
 		},
 	)
 
@@ -70,7 +69,6 @@ func TestConcurrency(t *testing.T) {
 				[]rune("21598"),
 				&Options{
 					OffsetX: 16, OffsetY: 16,
-					Points: 200,
 				},
 			)
 			of, _ := os.OpenFile(fmt.Sprintf("test_concurrency_%d.png", ind), os.O_WRONLY|os.O_CREATE, 0766)
@@ -83,4 +81,3 @@ func TestConcurrency(t *testing.T) {
 
 	wg.Wait()
 }
-

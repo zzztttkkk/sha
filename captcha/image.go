@@ -17,13 +17,13 @@ func init() {
 type Options struct {
 	OffsetX int
 	OffsetY int
-	Points  int
+	Lines   int
 	Color   color.Color
 }
 
 var defaultOption = &Options{}
 
-func randFace(faces []*_SyncFace) *_SyncFace {
+func randFace(faces []*_SyncCachedFace) *_SyncCachedFace {
 	l := len(faces)
 	if l < 2 {
 		return faces[0]
@@ -31,14 +31,14 @@ func randFace(faces []*_SyncFace) *_SyncFace {
 	return faces[int(rand.Uint32())%l]
 }
 
-func newImageWithString(str []rune, faces []*_SyncFace, option *Options) image.Image {
+func newImageWithString(str []rune, faces []*_SyncCachedFace, option *Options) image.Image {
 	if option == nil {
 		option = defaultOption
 	}
 
 	type RuneAndFace struct {
 		r  rune
-		f  *_SyncFace
+		f  *_SyncCachedFace
 		dx int
 		dy int
 	}
@@ -54,13 +54,14 @@ func newImageWithString(str []rune, faces []*_SyncFace, option *Options) image.I
 		}
 	}
 
+	var dx = int(float32(option.OffsetX+1)*1.5) / 2
+
 	var rfs []RuneAndFace
 	w := 0
 	fs := 0
 	for _, v := range str {
 		face := randFace(faces)
-		dx := face.size / 3
-		dy := dx
+		_dx := dx
 
 		if face.size > fs {
 			fs = face.size
@@ -68,44 +69,26 @@ func newImageWithString(str []rune, faces []*_SyncFace, option *Options) image.I
 
 		if face.asciiHalfWidth && v < 255 {
 			w += face.size / 2
-			dx = dx / 2
-			dy = dy / 2
+			_dx = dx / 2
 		} else {
 			w += face.size
 		}
-		rfs = append(rfs, RuneAndFace{r: v, f: face, dx: dx, dy: dy})
+		rfs = append(rfs, RuneAndFace{r: v, f: face, dx: _dx, dy: option.OffsetY})
 	}
 	h := fs + fs/2
 	w += fs / 2
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 
-	// points
-	for n := option.Points; n > 0; n-- {
-		a := int(rand.Uint32()) % w
-		b := int(rand.Uint32()) % h
-
-		img.Set(a, b, c)
-		a++
-		img.Set(a, b, c)
-		b++
-		img.Set(a, b, c)
-		a--
-		img.Set(a, b, c)
-	}
-
-	dot := fixed.P(fs/4, fs)
+	dot := fixed.P(fs/6, fs)
 	cursor := image.NewUniform(c)
 
-	var dxV, dyV int
 	var p image.Point
 	for _, r := range rfs {
-		dxV = r.dx
-		dyV = r.dy
-		v := fixed.P(int(rand.Uint32())%dxV, int(rand.Uint32())%dyV)
-		if rand.Uint32()&1 == 0 {
+		v := fixed.P(rand.Int()%(r.dx)+r.dx, rand.Int()%(r.dy+1))
+		if rand.Int()&1 == 0 {
 			v.X *= -1
 		}
-		if rand.Uint32()&1 == 0 {
+		if rand.Int()&1 == 0 {
 			v.Y *= -1
 		}
 
@@ -117,18 +100,19 @@ func newImageWithString(str []rune, faces []*_SyncFace, option *Options) image.I
 			continue
 		}
 
-		draw.DrawMask(img, dr, cursor, p, mask, maskp, draw.Src)
+		draw.DrawMask(img, dr, cursor, p, mask, maskp, draw.Over)
 
 		dot.X += advance
 
 		dot.X -= v.X
 		dot.Y -= v.Y
 	}
+
 	return img
 }
 
 func RenderOneFont(fontname string, txt []rune, option *Options) image.Image {
-	return newImageWithString(txt, []*_SyncFace{getFaceByName(fontname)}, option)
+	return newImageWithString(txt, []*_SyncCachedFace{getFaceByName(fontname)}, option)
 }
 
 func RenderSomeFonts(count int, txt []rune, option *Options) image.Image {
