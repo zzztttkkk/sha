@@ -4,11 +4,10 @@ package utils
 
 import (
 	"reflect"
-	"strings"
 	"unsafe"
 )
 
-// See https://groups.google.com/forum/#!msg/Golang-Nuts/ENgbUzYvCuU/90yGx7GUAgAJ .
+// S See https://groups.google.com/forum/#!msg/Golang-Nuts/ENgbUzYvCuU/90yGx7GUAgAJ .
 func S(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
@@ -33,39 +32,4 @@ func init() {
 			spaceMap[i] = false
 		}
 	}
-}
-
-func InPlaceTrimAsciiSpace(v []byte) []byte {
-	var left = 0
-	var right = len(v) - 1
-	for ; left <= right; left++ {
-		b := v[left]
-		if b > 127 {
-			break
-		}
-		if !spaceMap[b] {
-			break
-		}
-	}
-	for ; right >= left; right-- {
-		b := v[right]
-		if b > 127 {
-			break
-		}
-		if !spaceMap[b] {
-			break
-		}
-	}
-	return v[left : right+1]
-}
-
-func SplitAndTrim(a, b string) []string {
-	var ret []string
-	for _, v := range strings.Split(a, b) {
-		v = strings.TrimSpace(v)
-		if len(v) > 0 {
-			ret = append(ret, v)
-		}
-	}
-	return ret
 }

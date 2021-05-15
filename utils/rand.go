@@ -35,3 +35,9 @@ func RandBytes(dist, pool []byte) {
 		dist[i] = RandByte(pool)
 	}
 }
+
+func RandBase58Bytes(dist []byte) {
+	for i := 0; i < len(dist); i++ {
+		dist[i] = RandByte(Base58BytesPool)
+	}
+}

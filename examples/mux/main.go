@@ -1,18 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"github.com/zzztttkkk/sha"
 	"simple/h"
 	"simple/services/a"
 )
 
 func main() {
-	conf := sha.MuxOption{
-		AutoSlashRedirect: true,
-		AutoOptions:       true,
+	conf := sha.MuxOptions{
+		DoTrailingSlashRedirect: true,
+		AutoHandleOptions:       true,
 	}
 
-	mux := sha.NewMux(&conf, nil)
+	mux := sha.NewMux(&conf)
 
 	mux.Use(
 		h.NewPrintMiddleware("g.m1"),
@@ -20,10 +21,11 @@ func main() {
 		h.NewPrintMiddleware("g.m3"),
 	)
 
-	server := sha.Default(mux)
+	server := sha.Default()
+	server.Handler = mux
 
-	mux.AddBranch("/a", a.Branch)
+	mux.AddGroup(a.Group)
 
-	mux.Print()
+	fmt.Println(mux)
 	server.ListenAndServe()
 }

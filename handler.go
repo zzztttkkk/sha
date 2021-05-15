@@ -6,6 +6,4 @@ type RequestHandler interface {
 
 type RequestHandlerFunc func(ctx *RequestCtx)
 
-func (fn RequestHandlerFunc) Handle(ctx *RequestCtx) {
-	fn(ctx)
-}
+func (fn RequestHandlerFunc) Handle(ctx *RequestCtx) { fn(ctx) }

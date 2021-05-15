@@ -19,6 +19,7 @@ type MuxOptions struct {
 	NoFound                 func(ctx *RequestCtx)                `json:"-" toml:"-"`
 	MethodNotAllowed        func(ctx *RequestCtx)                `json:"-" toml:"-"`
 	CORS                    []*CorsOptions                       `json:"cors" toml:"cors"`
+	CORSSKip                bool                                 `json:"cors_skip" toml:"cors-skip"`
 	CORSOriginToName        func(origin []byte) string           `json:"-" toml:"-"`
 	Recover                 func(ctx *RequestCtx, v interface{}) `json:"recover" toml:"-"`
 }
@@ -58,9 +59,9 @@ type Mux struct {
 	all map[string]map[string]string
 }
 
-func (m *Mux) AddGroup(group *MuxGroup) {
-	group.BindTo(m)
-}
+func (m *Mux) Frozen() { m.frozen = true }
+
+func (m *Mux) AddGroup(group *MuxGroup) { group.BindTo(m) }
 
 func (m *Mux) HTTP(method, path string, handler RequestHandler) {
 	m.HTTPWithOptions(nil, method, path, handler)
@@ -103,7 +104,6 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 		ind = 6
 	case MethodConnect:
 		ind = 7
-		path = "/"
 	case MethodOptions:
 		ind = 8
 	case MethodTrace:
@@ -263,10 +263,12 @@ func (m *Mux) onNotFound(ctx *RequestCtx) {
 		if optionsTree != nil {
 			h, _ := optionsTree.Get(ctx.Request.Path(), ctx)
 			if h != nil {
-				m.methodNotAllowed(ctx)
+				h.Handle(ctx)
 				return
 			}
 		}
+		m.methodNotAllowed(ctx)
+		return
 	}
 	if m.notFound != nil {
 		m.notFound(ctx)
@@ -381,10 +383,10 @@ func NewMux(opt *MuxOptions) *Mux {
 		all:         map[string]map[string]string{},
 
 		doTrailingSlashRedirect: opt.DoTrailingSlashRedirect,
-		//methodNotAllowed:        opt.MethodNotAllowed,
-		notFound:          opt.NoFound,
-		recover:           opt.Recover,
-		autoHandleOptions: opt.AutoHandleOptions,
+		methodNotAllowed:        opt.MethodNotAllowed,
+		notFound:                opt.NoFound,
+		recover:                 opt.Recover,
+		autoHandleOptions:       opt.AutoHandleOptions,
 	}
 
 	if len(opt.CORS) > 0 {
@@ -404,12 +406,18 @@ func NewMux(opt *MuxOptions) *Mux {
 				return
 			}
 
-			opt := mux.cors[mux.corsOriginToName(origin)]
-			if opt == nil {
+			if opt.CORSSKip {
+				allowAllCorsOption.writeHeader(ctx, origin)
+				next()
 				return
 			}
 
-			opt.writeHeader(ctx, origin)
+			corsOptions := mux.cors[mux.corsOriginToName(origin)]
+			if corsOptions == nil {
+				return
+			}
+
+			corsOptions.writeHeader(ctx, origin)
 			next()
 		}))
 	}

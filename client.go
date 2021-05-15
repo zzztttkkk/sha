@@ -43,7 +43,7 @@ type ClientSessionOptions struct {
 
 var defaultClientSessionOptions ClientSessionOptions
 
-func NewHTTPSession(address string, isTLS bool, opt *ClientSessionOptions) *HTTPClientSession {
+func NewHTTPClientSession(address string, isTLS bool, opt *ClientSessionOptions) *HTTPClientSession {
 	if opt == nil {
 		opt = &defaultClientSessionOptions
 	}

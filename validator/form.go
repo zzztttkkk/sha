@@ -256,7 +256,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *FormError {
 	return nil
 }
 
-// return value is a ptr, not an interface.
+// BindAndValidateForm return value is a ptr, not an interface.
 func BindAndValidateForm(former Former, dist interface{}) (err *FormError) {
 	v := reflect.ValueOf(dist).Elem()
 	var field reflect.Value

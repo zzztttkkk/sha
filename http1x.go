@@ -3,7 +3,6 @@ package sha
 import (
 	"context"
 	"github.com/zzztttkkk/sha/utils"
-	"log"
 	"net"
 	"time"
 )
@@ -46,7 +45,7 @@ func newHTTP11Protocol(pool *RequestCtxPool) HTTPServerProtocol {
 	}
 
 	if pool == nil {
-		pool = DefaultRequestCtxPool()
+		pool = defaultRCtxPool
 	}
 	v.pool = pool
 	return v
@@ -60,7 +59,7 @@ const (
 
 func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx) bool {
 	connVal, _ := ctx.Response.Header().Get(HeaderConnection) // disable keep-alive by response
-	if string(inPlaceLowercase(connVal)) == headerValClose {
+	if utils.S(inPlaceLowercase(connVal)) == headerValClose {
 		return false
 	}
 	connVal, _ = ctx.Request.Header().Get(HeaderConnection) // disable keep-alive by request
@@ -77,10 +76,6 @@ func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx) bool {
 
 func (protocol *_Http11Protocol) handle(ctx *RequestCtx) bool {
 	defer func() {
-		rv := recover()
-		if rv != nil {
-			log.Panicf("Error: %v\n", rv)
-		}
 		ctx.cancelFunc()
 		ctx.prepareForNextRequest()
 	}()
@@ -133,7 +128,7 @@ func (protocol *_Http11Protocol) ServeConn(ctx context.Context, conn net.Conn) {
 	for shouldKeepAlive {
 		rctx.ctx, rctx.cancelFunc = context.WithCancel(ctx)
 		shouldKeepAlive = protocol.handle(rctx)
-		if rctx.hijacked || !shouldKeepAlive {
+		if !shouldKeepAlive {
 			return
 		}
 

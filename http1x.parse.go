@@ -35,7 +35,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 		headerItem  *utils.KvItem
 		keySep      bool
 		keyDone     bool
-		bodyRemain  int
+		bodyRemain  int = -1
 		parseStatus int
 
 		firstLineSize int
@@ -46,52 +46,31 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 	pocket.header.fromOutSide = true
 
 	for {
-		if parseStatus == 4 {
-			for {
-				l, e := reader.Read(readBuf)
-				if e != nil {
-					return e
-				}
-				if l == 0 {
-					goto checkCtx
-				}
+		if parseStatus < 4 {
+			b, e = reader.ReadByte()
+			if e != nil {
+				return e
+			}
 
-				_, _ = pocket.Write(readBuf[:l])
-
-				bodyRemain -= l
-				if bodyRemain == 0 {
-					return nil
-				}
-				if bodyRemain < 0 {
+			if skipNewLine {
+				if b != '\n' {
 					return ErrBadHTTPPocketData
 				}
-
-				goto checkCtx
+				skipNewLine = false
+				continue
 			}
-		}
-
-		b, e = reader.ReadByte()
-		if e != nil {
-			return e
-		}
-
-		if skipNewLine {
-			if b != '\n' {
-				return ErrBadHTTPPocketData
+			if skipSpace {
+				if b != ' ' {
+					return ErrBadHTTPPocketData
+				}
+				skipSpace = false
+				continue
 			}
-			skipNewLine = false
-			continue
-		}
-		if skipSpace {
-			if b != ' ' {
-				return ErrBadHTTPPocketData
-			}
-			skipSpace = false
-			continue
 		}
 
 		switch parseStatus {
-		case 0: // req method or res version
+		// req method or res version
+		case 0:
 			firstLineSize++
 			if b == ' ' {
 				parseStatus++
@@ -99,7 +78,8 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 			}
 			pocket.fl1 = append(pocket.fl1, toUpperTable[b])
 			goto checkCtxAndFirstLineSize
-		case 1: // req path or res status code
+		// req path or res status code
+		case 1:
 			firstLineSize++
 			if b == ' ' {
 				parseStatus++
@@ -107,7 +87,8 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 			}
 			pocket.fl2 = append(pocket.fl2, b)
 			goto checkCtxAndFirstLineSize
-		case 2: // req version or res status phrase
+		// req version or res status phrase
+		case 2:
 			firstLineSize++
 			if b == '\r' {
 				skipNewLine = true
@@ -117,6 +98,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 			}
 			pocket.fl3 = append(pocket.fl3, toUpperTable[b])
 			goto checkCtxAndFirstLineSize
+		// headers
 		case 3:
 			headerSize++
 			if opt.MaxHeaderPartSize > 0 && headerSize > opt.MaxHeaderPartSize {
@@ -146,6 +128,11 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 						return ErrBadHTTPPocketData
 					}
 
+					rn, _ := pocket.header.Get(HeaderTransferEncoding)
+					if string(rn) == "chunked" {
+						parseStatus++
+						goto checkCtx
+					}
 					contentLength := pocket.header.ContentLength()
 					if contentLength < 1 {
 						return nil
@@ -184,6 +171,82 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 				headerItem.Key = append(headerItem.Key, b)
 			}
 			continue
+		// fixed size body
+		case 4:
+			for {
+				if len(readBuf) > bodyRemain {
+					readBuf = readBuf[:bodyRemain]
+				}
+				l, e := reader.Read(readBuf)
+				if e != nil {
+					return e
+				}
+				if l == 0 {
+					goto checkCtx
+				}
+
+				_, _ = pocket.Write(readBuf[:l])
+
+				bodyRemain -= l
+				if bodyRemain == 0 {
+					return nil
+				}
+				if bodyRemain < 0 {
+					return ErrBadHTTPPocketData
+				}
+				goto checkCtx
+			}
+		// chunked body
+		case 5:
+			for {
+				if bodyRemain < 0 {
+					var line []byte
+					line, _, e = reader.ReadLine()
+					if e != nil {
+						return e
+					}
+					if len(line) == 0 {
+						goto checkCtx
+					}
+					var l int64
+					l, e = strconv.ParseInt(utils.S(line), 16, 32)
+					if e != nil {
+						return e
+					}
+					bodyRemain = int(l)
+					if bodyRemain == 0 {
+						line, _, e = reader.ReadLine()
+						if e != nil {
+							return e
+						}
+						return nil
+					}
+					goto checkCtx
+				}
+
+				if len(readBuf) > bodyRemain {
+					readBuf = readBuf[:bodyRemain]
+				}
+
+				l, e := reader.Read(readBuf)
+				if e != nil {
+					return e
+				}
+				if l == 0 {
+					goto checkCtx
+				}
+				_, _ = pocket.Write(readBuf[:l])
+
+				bodyRemain -= l
+				if bodyRemain == 0 {
+					bodyRemain = -1
+					goto checkCtx
+				}
+				if bodyRemain < 0 {
+					return ErrBadHTTPPocketData
+				}
+				goto checkCtx
+			}
 		}
 		continue
 

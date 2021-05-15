@@ -26,6 +26,8 @@ type MuxGroup struct {
 	cache []*_MuxItem
 }
 
+func (m *MuxGroup) Frozen() { m.frozen = true }
+
 func (m *MuxGroup) AddGroup(group *MuxGroup) {
 	group.BindTo(m)
 }
@@ -108,7 +110,7 @@ func (m *MuxGroup) BindTo(router Router) {
 	if !m.lazy {
 		panic(errors.New("sha.mux: bad group"))
 	}
-
+	router.Frozen()
 	for _, item := range m.cache {
 		router.HTTPWithOptions(item.opt, item.method, item.path, item.handler)
 	}

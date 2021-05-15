@@ -49,14 +49,13 @@ func (ctx *RequestCtx) Keep() {
 	ctx.keepByUser = true
 }
 
+// ReturnTo if pool is nil, return to the default
 func (ctx *RequestCtx) ReturnTo(pool *RequestCtxPool) {
 	ctx.keepByUser = false
+	if pool == nil {
+		pool = defaultRCtxPool
+	}
 	pool.Release(ctx)
-}
-
-// context.Context
-func (ctx *RequestCtx) SetParentContext(pctx context.Context) {
-	ctx.ctx = pctx
 }
 
 func (ctx *RequestCtx) Deadline() (deadline time.Time, ok bool) { return ctx.ctx.Deadline() }

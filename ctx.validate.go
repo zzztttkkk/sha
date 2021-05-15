@@ -14,9 +14,7 @@ func (ctx *RequestCtx) MustValidateForm(dist interface{}) {
 	}
 }
 
-// revive:disable
-
-// pointer -> interface
+// ValidateForm error pointer ->  error interface
 func (ctx *RequestCtx) ValidateForm(dist interface{}) HTTPError {
 	if err := validator.BindAndValidateForm(_Former{&ctx.Request}, dist); err != nil {
 		return err
@@ -26,7 +24,7 @@ func (ctx *RequestCtx) ValidateForm(dist interface{}) HTTPError {
 
 func (ctx *RequestCtx) ValidateJSON(dist interface{}) HTTPError {
 	if !bytes.HasPrefix(ctx.Request.Header().ContentType(), utils.B(MIMEJson)) {
-		return StatusError(StatusBadRequest)
+		return StatusError(StatusUnsupportedMediaType)
 	}
 
 	body := ctx.Request._HTTPPocket.body
@@ -42,11 +40,26 @@ func (ctx *RequestCtx) ValidateJSON(dist interface{}) HTTPError {
 	return nil
 }
 
-//revive:enable
-
 func (ctx *RequestCtx) MustValidateJSON(dist interface{}) {
 	err := ctx.ValidateJSON(dist)
 	if err != nil {
+		panic(err)
+	}
+}
+
+func (ctx *RequestCtx) Validate(dist interface{}) HTTPError {
+	err := ctx.ValidateJSON(dist)
+	if err != nil {
+		if err.StatusCode() == StatusUnsupportedMediaType {
+			return ctx.ValidateForm(dist)
+		}
+		return err
+	}
+	return nil
+}
+
+func (ctx *RequestCtx) MustValidate(dist interface{}) {
+	if err := ctx.Validate(dist); err != nil {
 		panic(err)
 	}
 }

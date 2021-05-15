@@ -155,37 +155,47 @@ func (req *Request) methodToEnum() {
 	case 'G':
 		if method == MethodGet {
 			req._method = _MGet
+			return
 		}
 	case 'H':
 		if method == MethodHead {
 			req._method = _MHead
+			return
 		}
 	case 'P':
 		switch method {
 		case MethodPatch:
 			req._method = _MPatch
+			return
 		case MethodPost:
 			req._method = _MPost
+			return
 		case MethodPut:
 			req._method = _MPut
+			return
 		}
 	case 'D':
 		if method == MethodDelete {
 			req._method = _MDelete
+			return
 		}
 	case 'C':
 		if method == MethodConnect {
 			req._method = _MConnect
+			return
 		}
 	case 'O':
 		if method == MethodOptions {
 			req._method = _MOptions
+			return
 		}
 	case 'T':
 		if method == MethodTrace {
 			req._method = _MTrace
+			return
 		}
 	}
+	req._method = _MCustom
 }
 
 func (req *Request) parsePath() {

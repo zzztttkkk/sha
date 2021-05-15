@@ -1,6 +1,7 @@
 package sha
 
 import (
+	"fmt"
 	"github.com/zzztttkkk/sha/validator"
 	"net/http"
 )
@@ -29,6 +30,8 @@ type Router interface {
 	File(opt *HandlerOptions, method, path, filepath string)
 
 	Use(middlewares ...Middleware)
+	Frozen()
+
 	NewGroup(prefix string) Router
 	AddGroup(group *MuxGroup)
 }
@@ -62,10 +65,8 @@ type _MiddlewareNode struct {
 }
 
 func (m *_MiddlewareNode) Use(middlewares ...Middleware) {
+	if m.frozen {
+		panic(fmt.Errorf("sha.router: Router's middleware should registerd first"))
+	}
 	m.local = append(m.local, middlewares...)
-}
-
-type _MiddlewareHandler struct {
-	ms      []Middleware
-	handler RequestHandler
 }

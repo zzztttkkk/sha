@@ -6,18 +6,17 @@ import (
 	"simple/services/a/b/c"
 )
 
-var Branch = sha.NewBranch()
+var Group = sha.NewRouteGroup("/b")
 
 func init() {
-	Branch.AddBranch("/c", c.Branch)
-
-	Branch.Use(
+	Group.Use(
 		h.NewPrintMiddleware("a.b.m1"),
 		h.NewPrintMiddleware("a.b.m2"),
 		h.NewPrintMiddleware("a.b.m3"),
 	)
+	Group.AddGroup(c.Group)
 
-	Branch.HTTP(
+	Group.HTTP(
 		"get",
 		"/",
 		h.NewPrintHandler("a.b.h"),

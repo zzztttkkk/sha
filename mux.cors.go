@@ -20,6 +20,18 @@ type _CorsOptions struct {
 
 type OriginToName func(origin []byte) string
 
+var allowAllCorsOption *_CorsOptions
+
+func init() {
+	allowAllCorsOption = newCorsOptions(
+		&CorsOptions{
+			Name: "*", AllowMethods: "*",
+			AllowHeaders: "*", ExposeHeaders: "*",
+			AllowCredentials: true,
+		},
+	)
+}
+
 func newCorsOptions(cc *CorsOptions) *_CorsOptions {
 	v := &_CorsOptions{}
 

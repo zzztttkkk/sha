@@ -5,32 +5,18 @@ import (
 	"simple/h"
 )
 
-var Branch = sha.NewBranch()
-
-type _H struct {
-	Name string
-}
-
-func (h *_H) Handle(ctx *sha.RequestCtx) {
-	_, _ = ctx.WriteString(h.Name)
-}
+var Group = sha.NewRouteGroup("/c")
 
 func init() {
-	Branch.Use(
+	Group.Use(
 		h.NewPrintMiddleware("a.b.c.m1"),
 		h.NewPrintMiddleware("a.b.c.m2"),
 		h.NewPrintMiddleware("a.b.c.m3"),
 	)
 
-	Branch.HTTP(
+	Group.HTTP(
 		"get",
 		"/",
 		h.NewPrintHandler("a.b.c.h"),
-	)
-
-	Branch.HTTP(
-		"get",
-		"/h",
-		&_H{Name: "0.0"},
 	)
 }

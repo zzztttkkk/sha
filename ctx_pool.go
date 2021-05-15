@@ -26,17 +26,15 @@ func NewRequestCtxPool(opt *HTTPOptions) *RequestCtxPool {
 	}
 }
 
-var _defaultRCtxPool *RequestCtxPool
-var __defaultRCtxPoolOnce sync.Once
+var defaultRCtxPool *RequestCtxPool
 
-func DefaultRequestCtxPool() *RequestCtxPool {
-	__defaultRCtxPoolOnce.Do(func() { _defaultRCtxPool = NewRequestCtxPool(nil) })
-	return _defaultRCtxPool
+func init() {
+	defaultRCtxPool = NewRequestCtxPool(nil)
 }
 
-func AcquireRequestCtx() *RequestCtx { return DefaultRequestCtxPool().Acquire() }
+func AcquireRequestCtx() *RequestCtx { return defaultRCtxPool.Acquire() }
 
-func ReleaseRequestCtx(ctx *RequestCtx) { DefaultRequestCtxPool().Put(ctx) }
+func ReleaseRequestCtx(ctx *RequestCtx) { defaultRCtxPool.Put(ctx) }
 
 func (p *RequestCtxPool) Acquire() *RequestCtx {
 	ctx := p.Get().(*RequestCtx)

@@ -410,10 +410,10 @@ func (req *Request) BodyFormValues(name string) [][]byte {
 }
 
 func (req *Request) Files() FormFiles {
-	if req.bodyStatus == 0 {
+	if req.bodyStatus == _BodyUnParsed {
 		req.parseBodyBuf()
 	}
-	if req.bodyStatus != 2 {
+	if req.bodyStatus != _BodyOK {
 		return nil
 	}
 	return req.files

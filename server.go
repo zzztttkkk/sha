@@ -8,7 +8,6 @@ import (
 	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/websocket"
 	"golang.org/x/crypto/acme/autocert"
-	"io"
 	"log"
 	"net"
 	"time"
@@ -90,7 +89,7 @@ func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server 
 	}
 
 	if pool == nil {
-		pool = DefaultRequestCtxPool()
+		pool = defaultRCtxPool
 	}
 
 	if ctx == nil {
@@ -184,7 +183,7 @@ func (s *Server) Serve(l net.Listener) {
 	s.baseCtx = context.WithValue(s.baseCtx, CtxKeyServer, s)
 
 	var tempDelay time.Duration
-	serveFunc := s.serveConn
+	serveFunc := s.serveHTTPConn
 	if s.isTLS {
 		serveFunc = s.serveTLS
 	}
@@ -252,49 +251,35 @@ func (s *Server) ListenAndServe() {
 	s.Serve(s.Listen())
 }
 
-var NonTLSRequestResponseMessage = `HTTP/1.0 400 Bad Request
-Connection: close
-Content-Length: 47
-
-Client sent an HTTP request to an HTTPS server.`
-
-var UnSupportedTLSSubProtocolRequestResponseMessage = `HTTP/1.0 510 Not Implemented
-Connection: close
-Content-Length: 25
-
-UnSupportedTLSSubProtocol`
-
 func (s *Server) serveTLS(conn net.Conn) {
-	defer conn.Close()
+	tlsConn, ok := conn.(*tls.Conn)
+	if !ok {
+		conn.Close()
+		return
+	}
 
-	var tlsConn = conn.(*tls.Conn)
 	var err error
-
 	if s.readTimeout > 0 {
 		_ = conn.SetReadDeadline(time.Now().Add(s.readTimeout))
 	}
 	err = tlsConn.Handshake()
 	if err != nil { // tls handshake error
-		if re, ok := err.(tls.RecordHeaderError); ok && re.Conn != nil {
-			_, _ = io.WriteString(re.Conn, NonTLSRequestResponseMessage)
-		}
+		conn.Close()
 		return
 	}
-
-	switch tlsConn.ConnectionState().NegotiatedProtocol {
-	case "", "http/1.0", "http/1.1":
-	default:
-		_, _ = io.WriteString(tlsConn, UnSupportedTLSSubProtocolRequestResponseMessage)
-		return
-	}
-
 	if s.readTimeout > 0 {
 		_ = conn.SetReadDeadline(time.Time{})
 	}
-	s.httpProtocol.ServeConn(context.WithValue(s.baseCtx, CtxKeyConnection, tlsConn), tlsConn)
+	switch tlsConn.ConnectionState().NegotiatedProtocol {
+	case "", "http/1.0", "http/1.1":
+		s.serveHTTPConn(tlsConn)
+	default:
+		conn.Close()
+		return
+	}
 }
 
-func (s *Server) serveConn(conn net.Conn) {
+func (s *Server) serveHTTPConn(conn net.Conn) {
 	defer conn.Close()
 	s.httpProtocol.ServeConn(context.WithValue(s.baseCtx, CtxKeyConnection, conn), conn)
 }
