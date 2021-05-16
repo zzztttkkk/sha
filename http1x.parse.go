@@ -102,7 +102,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 		case 3:
 			headerSize++
 			if opt.MaxHeaderPartSize > 0 && headerSize > opt.MaxHeaderPartSize {
-				return ErrBadHTTPPocketData
+				return StatusError(StatusRequestHeaderFieldsTooLarge)
 			}
 
 			if !keySep && b == ':' {
@@ -191,8 +191,9 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 				if bodyRemain == 0 {
 					return nil
 				}
-				if bodyRemain < 0 {
-					return ErrBadHTTPPocketData
+
+				if opt.MaxBodySize > 0 && pocket.body.Len() > opt.MaxBodySize {
+					return StatusError(StatusRequestEntityTooLarge)
 				}
 				goto checkCtx
 			}
@@ -242,9 +243,6 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 					bodyRemain = -1
 					goto checkCtx
 				}
-				if bodyRemain < 0 {
-					return ErrBadHTTPPocketData
-				}
 				goto checkCtx
 			}
 		}
@@ -252,14 +250,8 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 
 	checkCtxAndFirstLineSize:
 		if opt.MaxFirstLineSize > 0 && firstLineSize > opt.MaxFirstLineSize {
-			return ErrBadHTTPPocketData
+			return StatusError(StatusRequestURITooLong)
 		}
-		select {
-		case <-ctx.Done():
-			return ErrCanceled
-		default:
-		}
-		continue
 
 	checkCtx:
 		select {

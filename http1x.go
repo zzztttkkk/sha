@@ -8,20 +8,21 @@ import (
 )
 
 type HTTPOptions struct {
-	MaxFirstLineSize  int `json:"max_first_line_size"`
-	MaxHeaderPartSize int `json:"max_header_part_size"`
-	MaxBodySize       int `json:"max_body_size"`
-	ReadBufferSize    int `json:"read_buffer_size"`
-	SendBufferSize    int `json:"send_buffer_size"`
-	MaxBodyBufferSize int `json:"max_body_buffer_size" toml:"max-body-buffer-size"`
+	MaxFirstLineSize  int `json:"max_first_line_size" toml:"max-first-line-size"`
+	MaxHeaderPartSize int `json:"max_header_part_size" toml:"max-header-part-size"`
+	MaxBodySize       int `json:"max_body_size" toml:"max-body-size"`
+
+	ReadBufferSize      int `json:"read_buffer_size" toml:"read-buffer-size"`
+	SendBufferSize      int `json:"send_buffer_size" toml:"send-buffer-size"`
+	BufferPoolSizeLimit int `json:"buffer_pool_size_limit" toml:"buffer-pool-size-limit"`
 }
 
 var defaultHTTPOption = HTTPOptions{
-	MaxFirstLineSize:  4096,
-	MaxHeaderPartSize: 4096,
-	MaxBodySize:       4096,
-	ReadBufferSize:    4096,
-	MaxBodyBufferSize: 1024,
+	MaxFirstLineSize:    4096,
+	MaxHeaderPartSize:   1024 * 16,
+	MaxBodySize:         1024 * 1024 * 10,
+	ReadBufferSize:      2048,
+	BufferPoolSizeLimit: 2048,
 }
 
 type _Http11Protocol struct {
@@ -40,8 +41,8 @@ type _Http11Protocol struct {
 func newHTTP11Protocol(pool *RequestCtxPool) HTTPServerProtocol {
 	option := pool.opt
 	v := &_Http11Protocol{HTTPOptions: *option}
-	if v.MaxBodyBufferSize > v.MaxBodySize {
-		v.MaxBodyBufferSize = v.MaxBodySize
+	if v.BufferPoolSizeLimit > v.MaxBodySize {
+		v.BufferPoolSizeLimit = v.MaxBodySize
 	}
 
 	if pool == nil {

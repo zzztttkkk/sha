@@ -31,6 +31,6 @@ func TestNewHTTPSession(t *testing.T) {
 
 	fmt.Println(res.StatusCode(), res.Phrase())
 	fmt.Print(res.Header())
-	fmt.Println("")
+	fmt.Printf("\r\nBodySize : %d\r\n", res.Body().Len())
 	fmt.Println(res.Body().String())
 }

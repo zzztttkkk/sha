@@ -42,7 +42,7 @@ func (p *RequestCtxPool) Acquire() *RequestCtx {
 		ctx.readBuf = make([]byte, p.readSize)
 	}
 	if ctx.r == nil {
-		ctx.r = bufio.NewReaderSize(nil, p.readSize*2)
+		ctx.r = bufio.NewReaderSize(nil, p.readSize)
 	}
 	if ctx.w == nil {
 		ctx.w = bufio.NewWriterSize(nil, p.writeSize)
@@ -59,11 +59,11 @@ func (p *RequestCtxPool) release(ctx *RequestCtx, unprepared bool) {
 		return
 	}
 
-	if p.opt.MaxBodyBufferSize > 0 {
-		if ctx.Request.body != nil && ctx.Request.body.Cap() > p.opt.MaxBodyBufferSize {
+	if p.opt.BufferPoolSizeLimit > 0 {
+		if ctx.Request.body != nil && ctx.Request.body.Cap() > p.opt.BufferPoolSizeLimit {
 			ctx.Request.body = nil
 		}
-		if ctx.Response.body != nil && ctx.Response.body.Cap() > p.opt.MaxBodyBufferSize {
+		if ctx.Response.body != nil && ctx.Response.body.Cap() > p.opt.BufferPoolSizeLimit {
 			ctx.Response.body = nil
 		}
 	}
