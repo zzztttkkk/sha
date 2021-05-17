@@ -338,11 +338,7 @@ const (
 
 func (req *Request) parseBodyBuf() {
 	buf := req._HTTPPocket.body
-	if buf == nil {
-		req.bodyStatus = _BodyUnsupportedType
-		return
-	}
-	if buf.Len() < 1 {
+	if buf == nil || buf.Len() < 1 {
 		req.bodyStatus = _BodyUnsupportedType
 		return
 	}

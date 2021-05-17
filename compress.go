@@ -11,10 +11,9 @@ import (
 )
 
 const (
-	headerCompressValueSep = ", "
-	gzipStr                = "gzip"
-	deflateStr             = "deflate"
-	brotliStr              = "br"
+	gzipStr    = "gzip"
+	deflateStr = "deflate"
+	brotliStr  = "br"
 )
 
 var (
@@ -99,7 +98,7 @@ func DisableCompress() {
 	disableCompress = true
 }
 
-// br > deflate > gzip
+// AutoCompress br > deflate > gzip
 func (ctx *RequestCtx) AutoCompress() {
 	if disableCompress {
 		return

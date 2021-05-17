@@ -28,6 +28,15 @@ func init() {
 	internal.ErrorStatusByValue[ErrCanceled] = StatusBadRequest
 }
 
+/* parsePocket read http pocket from `reader`, use fixed-size buffer `readBuf`
+parseStatus:
+0  --  first line first part
+1  --  first line second part
+2  --  first line third part
+3  --  header lines
+4  --  read fixed size body, `content-length`
+5  --  read chunked body
+*/
 func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pocket *_HTTPPocket, opt *HTTPOptions) error {
 	var (
 		skipNewLine bool
@@ -139,7 +148,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 					}
 					bodyRemain = contentLength
 					if opt.MaxBodySize > 0 && contentLength > opt.MaxBodySize {
-						return ErrBadHTTPPocketData
+						return StatusError(StatusRequestEntityTooLarge)
 					}
 					goto checkCtx
 				}
@@ -190,10 +199,6 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 				bodyRemain -= l
 				if bodyRemain == 0 {
 					return nil
-				}
-
-				if opt.MaxBodySize > 0 && pocket.body.Len() > opt.MaxBodySize {
-					return StatusError(StatusRequestEntityTooLarge)
 				}
 				goto checkCtx
 			}

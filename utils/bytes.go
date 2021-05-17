@@ -20,16 +20,3 @@ func B(s string) (b []byte) {
 	bh.Len = sh.Len
 	return
 }
-
-var spaceMap [128]bool
-
-func init() {
-	for i := 0; i < 128; i++ {
-		switch i {
-		case '\t', '\n', '\v', '\f', '\r', ' ', 0x85, 0xA0:
-			spaceMap[i] = true
-		default:
-			spaceMap[i] = false
-		}
-	}
-}

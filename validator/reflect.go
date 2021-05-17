@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx/reflectx"
 	"github.com/zzztttkkk/sha/internal"
+	"log"
 	"reflect"
 	"sort"
 	"strings"
@@ -87,8 +88,8 @@ func init() {
 	}
 }
 
-func isCustomField(rule *_Rule, t reflect.Type) {
-	// type AField **
+func _isCustomField(rule *_Rule, t reflect.Type) {
+	// type AField struct {}
 
 	if t.Kind() == reflect.Ptr { // *AField
 		if t.ConvertibleTo(customFieldType) {
@@ -101,6 +102,20 @@ func isCustomField(rule *_Rule, t reflect.Type) {
 	ele := reflect.New(t)
 	if ele.Type().ConvertibleTo(customFieldType) {
 		rule.rtype = _CustomType
+		return
+	}
+}
+
+func isCustomField(rule *_Rule, t reflect.Type) {
+	if t.Kind() != reflect.Slice {
+		_isCustomField(rule, t)
+		return
+	}
+
+	t = t.Elem()
+	_isCustomField(rule, t)
+	if rule.rtype == _CustomType {
+		rule.isSlice = true
 	}
 }
 
@@ -309,11 +324,13 @@ func GetRules(t reflect.Type) Rules {
 	ele := reflect.New(t)
 
 	var rules Rules
-	fmap := reflectMapper.TypeMap(t)
-	for _, f := range fmap.Index {
+	fMap := reflectMapper.TypeMap(t)
+	for _, f := range fMap.Index {
 		rule := fieldInfoToRule(t, f, getDefaultFunc(ele, f.Field.Name))
 		if rule != nil {
 			rules = append(rules, rule)
+		} else {
+			log.Printf("sha.validator: ignore filed, `%s`.`%s`.`%s`", t.PkgPath(), t.Name(), f.Name)
 		}
 	}
 	sort.Sort(rules)

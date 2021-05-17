@@ -21,14 +21,14 @@ import (
 
 type _CustomFormTime time.Time
 
-func (ft *_CustomFormTime) FormValue(v []byte) bool {
+func (ft *_CustomFormTime) FromBytes(v []byte) bool {
 	*ft = _CustomFormTime(time.Now())
 	return true
 }
 
 type _CustomFormInt int64
 
-func (fi *_CustomFormInt) FormValue(v []byte) bool {
+func (fi *_CustomFormInt) FromBytes(v []byte) bool {
 	i, e := strconv.ParseInt(utils.S(v), 10, 64)
 	if e != nil {
 		return false
@@ -39,7 +39,7 @@ func (fi *_CustomFormInt) FormValue(v []byte) bool {
 
 type Sha5256Hash []byte
 
-func (pwd *Sha5256Hash) FormValue(v []byte) bool {
+func (pwd *Sha5256Hash) FromBytes(v []byte) bool {
 	n := sha512.New512_256()
 	n.Write(v)
 	dist := make([]byte, 64)

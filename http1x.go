@@ -31,7 +31,6 @@ type _Http11Protocol struct {
 	OnParseError func(conn net.Conn, err error) bool                  // keep connection if return true
 	OnWriteError func(conn net.Conn, ctx *RequestCtx, err error) bool // keep connection if return true
 
-	server          *Server
 	ReadBufferSize  int
 	WriteBufferSize int
 
@@ -75,13 +74,13 @@ func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx) bool {
 	return v[5] >= '1' && v[7] >= '1'
 }
 
-func (protocol *_Http11Protocol) handle(ctx *RequestCtx) bool {
+func (protocol *_Http11Protocol) handle(ctx *RequestCtx, server *Server) bool {
 	defer func() {
 		ctx.cancelFunc()
 		ctx.prepareForNextRequest()
 	}()
 
-	readTimeout := protocol.server.option.ReadTimeout.Duration
+	readTimeout := server.Options.ReadTimeout.Duration
 	if readTimeout > 0 {
 		_ = ctx.conn.SetReadDeadline(time.Now().Add(readTimeout))
 	}
@@ -94,13 +93,13 @@ func (protocol *_Http11Protocol) handle(ctx *RequestCtx) bool {
 		return false
 	}
 
-	protocol.server.Handler.Handle(ctx)
+	server.Handler.Handle(ctx)
 	if ctx.hijacked { // another protocol process has been completed
 		return false
 	}
 	shouldKeepAlive := protocol.keepalive(ctx)
 
-	writeTimeout := protocol.server.option.WriteTimeout.Duration
+	writeTimeout := server.Options.WriteTimeout.Duration
 	if writeTimeout > 0 {
 		_ = ctx.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 	}
@@ -118,17 +117,18 @@ func (protocol *_Http11Protocol) handle(ctx *RequestCtx) bool {
 
 func (protocol *_Http11Protocol) ServeConn(ctx context.Context, conn net.Conn) {
 	var shouldKeepAlive = true
+	server := ctx.Value(CtxKeyServer).(*Server)
 
 	rctx := protocol.pool.Acquire()
-	rctx.isTLS = protocol.server.isTLS
+	rctx.isTLS = server.isTLS
 	defer protocol.pool.release(rctx, false)
 
 	rctx.setConnection(conn)
-	idleTimeout := protocol.server.option.IdleTimeout.Duration
+	idleTimeout := server.Options.IdleTimeout.Duration
 
 	for shouldKeepAlive {
 		rctx.ctx, rctx.cancelFunc = context.WithCancel(ctx)
-		shouldKeepAlive = protocol.handle(rctx)
+		shouldKeepAlive = protocol.handle(rctx, server)
 		if !shouldKeepAlive {
 			return
 		}

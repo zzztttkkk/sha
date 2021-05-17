@@ -118,10 +118,19 @@ var ruleFmt = utils.NewNamedFmt(
 func (rule *_Rule) String() string {
 	typeString := typeNames[rule.rtype]
 	if rule.rtype == _CustomType {
-		if rule.isPtr {
-			typeString = reflect.New(rule.fieldType).Type().Elem().Name()
+		if rule.isSlice {
+			eleT := rule.fieldType.Elem()
+			if eleT.Kind() == reflect.Ptr {
+				typeString = fmt.Sprintf("[]%s", reflect.New(eleT.Elem()).Type().Elem().Name())
+			} else {
+				typeString = fmt.Sprintf("[]%s", eleT.Name())
+			}
 		} else {
-			typeString = rule.fieldType.Name()
+			if rule.isPtr {
+				typeString = reflect.New(rule.fieldType).Type().Elem().Name()
+			} else {
+				typeString = rule.fieldType.Name()
+			}
 		}
 	}
 	m := utils.M{

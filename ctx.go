@@ -68,14 +68,8 @@ func (ctx *RequestCtx) Value(key interface{}) interface{} { return ctx.ctx.Value
 
 func (ctx *RequestCtx) SetError(v interface{}) { ctx.err = v }
 
-type _RCtxKeyT int
-
-const (
-	_RCtxKey = _RCtxKeyT(iota)
-)
-
 func (ctx *RequestCtx) Context() context.Context {
-	return context.WithValue(ctx, _RCtxKey, ctx)
+	return context.WithValue(ctx, CtxKeyRequestCtx, ctx)
 }
 
 func Unwrap(ctx context.Context) *RequestCtx {
@@ -83,7 +77,7 @@ func Unwrap(ctx context.Context) *RequestCtx {
 	if ok {
 		return c
 	}
-	v := ctx.Value(_RCtxKey)
+	v := ctx.Value(CtxKeyRequestCtx)
 	if v != nil {
 		return v.(*RequestCtx)
 	}

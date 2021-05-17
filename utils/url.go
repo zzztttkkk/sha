@@ -74,7 +74,7 @@ func DecodeURIFormed(src []byte) []byte {
 	return src[:end]
 }
 
-const upperhex = "0123456789ABCDEF"
+const upperHex = "0123456789ABCDEF"
 
 var noEscapedURI [256]bool
 var noEscapedHeaderValue [256]bool
@@ -102,7 +102,7 @@ func EncodeURI(v []byte, buf *[]byte) {
 			*buf = append(*buf, b)
 			continue
 		}
-		*buf = append(*buf, '%', upperhex[b>>4], upperhex[b&0xf])
+		*buf = append(*buf, '%', upperHex[b>>4], upperHex[b&0xf])
 	}
 }
 
@@ -112,7 +112,7 @@ func EncodeHeaderValue(v []byte, buf *[]byte) {
 			*buf = append(*buf, b)
 			continue
 		}
-		*buf = append(*buf, '%', upperhex[b>>4], upperhex[b&0xf])
+		*buf = append(*buf, '%', upperHex[b>>4], upperHex[b&0xf])
 	}
 }
 
@@ -123,8 +123,8 @@ func EncodeHeaderValueToBuf(v []byte, buf io.ByteWriter) {
 			continue
 		}
 		buf.WriteByte('%')
-		buf.WriteByte(upperhex[b>>4])
-		buf.WriteByte(upperhex[b&0xf])
+		buf.WriteByte(upperHex[b>>4])
+		buf.WriteByte(upperHex[b&0xf])
 	}
 }
 
@@ -148,7 +148,7 @@ func EncodeURIComponent(v []byte, buf *[]byte) {
 			*buf = append(*buf, b)
 			continue
 		}
-		*buf = append(*buf, '%', upperhex[b>>4], upperhex[b&0xf])
+		*buf = append(*buf, '%', upperHex[b>>4], upperHex[b&0xf])
 	}
 }
 
@@ -159,7 +159,7 @@ func EncodeURIComponentToBuf(v []byte, buf io.ByteWriter) {
 			continue
 		}
 		buf.WriteByte('%')
-		buf.WriteByte(upperhex[b>>4])
-		buf.WriteByte(upperhex[b&0xf])
+		buf.WriteByte(upperHex[b>>4])
+		buf.WriteByte(upperHex[b&0xf])
 	}
 }

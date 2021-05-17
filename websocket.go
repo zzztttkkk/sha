@@ -55,9 +55,9 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) (string, bool, bool) {
 		return "", false, false
 	}
 
-	var subprotocol string
+	var subProtocol string
 	if p.opt.SelectSubprotocol != nil {
-		subprotocol = p.opt.SelectSubprotocol(ctx)
+		subProtocol = p.opt.SelectSubprotocol(ctx)
 	}
 
 	var compress bool
@@ -78,22 +78,22 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) (string, bool, bool) {
 	if compress {
 		res.Header().Append(HeaderSecWebSocketExtensions, utils.B(websocketExt))
 	}
-	if len(subprotocol) > 0 {
-		ctx.Response.header.SetString(HeaderSecWebSocketProtocol, subprotocol)
+	if len(subProtocol) > 0 {
+		ctx.Response.header.SetString(HeaderSecWebSocketProtocol, subProtocol)
 	}
 
 	if err := sendResponse(ctx.w, &ctx.Response); err != nil {
 		return "", false, false
 	}
-	return subprotocol, compress, true
+	return subProtocol, compress, true
 }
 
 var websocketWriteBufferPool sync.Pool
 
-func (p *_WebSocketProtocol) Hijack(ctx *RequestCtx, subprotocol string, compress bool) *websocket.Conn {
+func (p *_WebSocketProtocol) Hijack(ctx *RequestCtx, subProtocol string, compress bool) *websocket.Conn {
 	ctx.hijacked = true
 	return websocket.NewConnExt(
-		ctx.conn, subprotocol, true, compress,
+		ctx.conn, subProtocol, true, compress,
 		p.opt.ReadBufferSize, p.opt.WriteBufferSize,
 		&websocketWriteBufferPool, ctx.r, nil,
 	)
@@ -112,20 +112,16 @@ func wshToHandler(wsh WebsocketHandlerFunc) RequestHandler {
 			ctx.Response.statusCode = StatusBadRequest
 			return
 		}
-		serv, ok := ctx.Value(CtxKeyServer).(*Server)
-		if !ok {
-			ctx.Response.statusCode = StatusInternalServerError
-			return
-		}
+		serv := ctx.Value(CtxKeyServer).(*Server)
 		wsp := serv.websocketProtocol
 		if wsp == nil {
 			ctx.Response.statusCode = StatusBadRequest
 			return
 		}
-		subprotocol, compress, ok := wsp.Handshake(ctx)
+		subProtocol, compress, ok := wsp.Handshake(ctx)
 		if !ok {
 			return
 		}
-		wsh(ctx, &ctx.Request, wsp.Hijack(ctx, subprotocol, compress))
+		wsh(ctx, &ctx.Request, wsp.Hijack(ctx, subProtocol, compress))
 	})
 }

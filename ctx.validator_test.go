@@ -1,28 +1,32 @@
 package sha
 
 import (
+	"errors"
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/sha/validator"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 )
 
 type Time time.Time
 
-func (t *Time) FormValue(data []byte) bool {
+func (t *Time) FromBytes(data []byte) error {
 	v, e := strconv.ParseInt(utils.S(data), 10, 64)
 	if e != nil {
-		return false
+		return e
 	}
-	if v < 6000 {
-		return false
+	*t = Time(time.Unix(v, 0))
+	return nil
+}
+
+func (t *Time) Validate() error {
+	if (*time.Time)(t).Before(time.Date(1900, 12, 12, 12, 12, 12, 12, time.UTC)) {
+		return errors.New("unvalidated time")
 	}
-	*t = Time(time.Unix(v-6000, 0))
-	return true
+	return nil
 }
 
 func (t *Time) String() string {
@@ -30,46 +34,14 @@ func (t *Time) String() string {
 }
 
 type TV01Form struct {
-	//NumbersPtr *[]int64
-	//Numbers    []int64 `validator:",w=body"`
-	//StrPtr     *string
-	//Str        string
-	CFTime       Time
-	CFTimePtr    *Time
-	CFTimePtrPtr **Time
-}
-
-func (t *TV01Form) String() string {
-	sb := strings.Builder{}
-
-	//sb.WriteString("NumbersPtr: ")
-	//if t.NumbersPtr == nil {
-	//	sb.WriteString("nil\n")
-	//} else {
-	//	sb.WriteString(fmt.Sprintf("%v\n", *t.NumbersPtr))
-	//}
-	//
-	//sb.WriteString(fmt.Sprintf("Numbers: %v\n", t.Numbers))
-	//
-	//sb.WriteString("StrPtr: ")
-	//if t.StrPtr == nil {
-	//	sb.WriteString("nil\n")
-	//} else {
-	//	sb.WriteString(fmt.Sprintf("%p<%s>\n", t.StrPtr, *t.StrPtr))
-	//}
-	//
-	//sb.WriteString(fmt.Sprintf("Str: %s\n", t.Str))
-
-	sb.WriteString(fmt.Sprintf("CFTime: %s\n", &t.CFTime))
-
-	sb.WriteString("CFTimePtr: ")
-	if t.CFTimePtr == nil {
-		sb.WriteString("nil\n")
-	} else {
-		sb.WriteString(fmt.Sprintf("%s\n", t.CFTimePtr))
-	}
-
-	return sb.String()
+	NumbersPtr  *[]int64 `validator:"a,optional"`
+	Numbers     []int64  `validator:"b"`
+	StrPtr      *string  `validator:"c,optional"`
+	Str         string   `validator:"d,optional"`
+	Time        Time     `validator:"e,optional"`
+	TimePtr     *Time    `validator:"f,optional"`
+	TimePtrs    []*Time  `validator:"g,optional"`
+	Times       []Time   `validator:"h,optional"`
 }
 
 func (t *TV01Form) DefaultNumbers() interface{} { return []int64{1, 2, 3} }
@@ -86,7 +58,7 @@ func TestValidator(t *testing.T) {
 				return
 			}
 
-			fmt.Print(&form)
+			fmt.Printf("%+v\r\n", &form)
 		}),
 	)
 }

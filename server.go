@@ -3,7 +3,6 @@ package sha
 import (
 	"context"
 	"crypto/tls"
-	"github.com/imdario/mergo"
 	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/websocket"
@@ -29,11 +28,13 @@ type ServerOptions struct {
 var defaultServerOption = ServerOptions{
 	Addr:                   "127.0.0.1:5986",
 	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
+	ReadTimeout:            utils.TomlDuration{Duration: time.Second * 10},
+	IdleTimeout:            utils.TomlDuration{Duration: time.Second * 30},
+	WriteTimeout:           utils.TomlDuration{Duration: time.Second * 10},
 }
 
 type Server struct {
-	option      ServerOptions
-	readTimeout time.Duration
+	Options ServerOptions
 
 	OnConnectionAccepted func(conn net.Conn) bool
 
@@ -65,21 +66,10 @@ type _CtxVKey int
 const (
 	CtxKeyServer = _CtxVKey(iota)
 	CtxKeyConnection
+	CtxKeyRequestCtx
 )
 
 var serverPrepareFunc []func(s *Server)
-
-func init() {
-	serverPrepareFunc = append(
-		serverPrepareFunc,
-		func(server *Server) {
-			hp, ok := server.httpProtocol.(*_Http11Protocol)
-			if ok {
-				hp.server = server
-			}
-		},
-	)
-}
 
 func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server {
 	if opt == nil {
@@ -100,13 +90,7 @@ func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server 
 		baseCtx: ctx,
 		pool:    pool,
 	}
-	server.option = *opt
-
-	if err := mergo.Merge(&server.option, &defaultServerOption); err != nil {
-		panic(err)
-	}
-
-	server.readTimeout = server.option.ReadTimeout.Duration
+	server.Options = *opt
 	return server
 }
 
@@ -125,16 +109,16 @@ func (s *Server) BeforeAccept(fn func(s *Server)) {
 }
 
 func (s *Server) Listen() net.Listener {
-	if s.option.Addr == "" {
-		s.option.Addr = "127.0.0.1:5986"
+	if s.Options.Addr == "" {
+		s.Options.Addr = "127.0.0.1:5986"
 	}
 	if s.Handler == nil {
 		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("Hello World!\n") })
 	}
 
-	log.Printf("sha: listening at `%s`\n", s.option.Addr)
+	log.Printf("sha: listening at `%s`\n", s.Options.Addr)
 
-	listener, err := net.Listen("tcp4", s.option.Addr)
+	listener, err := net.Listen("tcp4", s.Options.Addr)
 	if err != nil {
 		panic(err)
 	}
@@ -201,7 +185,7 @@ func (s *Server) Serve(l net.Listener) {
 		}
 	}()
 
-	maxKeepAlive := s.option.MaxConnectionKeepAlive.Duration
+	maxKeepAlive := s.Options.MaxConnectionKeepAlive.Duration
 
 	for f {
 		conn, err := l.Accept()
@@ -236,15 +220,15 @@ func (s *Server) Serve(l net.Listener) {
 }
 
 func (s *Server) ListenAndServe() {
-	if len(s.option.TLS.AutoCertDomains) > 0 {
+	if len(s.Options.TLS.AutoCertDomains) > 0 {
 		s.isTLS = true
-		s.Serve(autocert.NewListener(s.option.TLS.AutoCertDomains...))
+		s.Serve(autocert.NewListener(s.Options.TLS.AutoCertDomains...))
 		return
 	}
 
-	if len(s.option.TLS.Cert) > 0 {
+	if len(s.Options.TLS.Cert) > 0 {
 		s.isTLS = true
-		s.Serve(s.enableTLS(s.Listen(), s.option.TLS.Cert, s.option.TLS.Key))
+		s.Serve(s.enableTLS(s.Listen(), s.Options.TLS.Cert, s.Options.TLS.Key))
 		return
 	}
 
@@ -259,15 +243,15 @@ func (s *Server) serveTLS(conn net.Conn) {
 	}
 
 	var err error
-	if s.readTimeout > 0 {
-		_ = conn.SetReadDeadline(time.Now().Add(s.readTimeout))
+	if s.Options.ReadTimeout.Duration > 0 {
+		_ = conn.SetReadDeadline(time.Now().Add(s.Options.ReadTimeout.Duration))
 	}
 	err = tlsConn.Handshake()
 	if err != nil { // tls handshake error
 		conn.Close()
 		return
 	}
-	if s.readTimeout > 0 {
+	if s.Options.ReadTimeout.Duration > 0 {
 		_ = conn.SetReadDeadline(time.Time{})
 	}
 	switch tlsConn.ConnectionState().NegotiatedProtocol {
@@ -286,6 +270,8 @@ func (s *Server) serveHTTPConn(conn net.Conn) {
 
 func ListenAndServe(addr string, handler RequestHandler) {
 	server := Default()
+	server.Options = defaultServerOption
+	server.Options.Addr = addr
 	server.Handler = handler
 	server.ListenAndServe()
 }

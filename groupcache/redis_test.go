@@ -23,7 +23,7 @@ func (a *_AddArgs) Name() string {
 	return fmt.Sprintf(f, a.A, a.B)
 }
 
-var c = New("test", nil, 10).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7})).Register(
+var c = New("test", nil, 30).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7, Addr: "127.0.0.1:16379"})).Register(
 	"add-return-value",
 	func(ctx context.Context, args NamedArgs) (ret interface{}, err error) {
 		v := args.(*_AddArgs)

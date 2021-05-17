@@ -52,6 +52,7 @@ type SessionBackend interface {
 	NewSession(ctx context.Context, session string, duration time.Duration) error
 	ExistsSession(ctx context.Context, session string) bool
 	ExpireSession(ctx context.Context, session string, duration time.Duration) error
+	TTLSession(ctx context.Context, session string) time.Duration
 	RemoveSession(ctx context.Context, session string) error
 
 	SessionSet(ctx context.Context, session string, key string, val []byte) error
@@ -69,7 +70,6 @@ type SessionOptions struct {
 	HeaderName  string             `json:"header_name" toml:"header-name"`
 	KeyPrefix   string             `json:"key_prefix" toml:"key-prefix"`
 	MaxAge      utils.TomlDuration `json:"max_age" toml:"max-age"`
-	Auth        bool               `json:"auth" toml:"auth"`
 	ServerSeqID uint64             `json:"server_id" toml:"server-id"`
 
 	Captcha struct {
@@ -106,20 +106,20 @@ func UseSession(v SessionBackend, opt *SessionOptions) {
 
 type Session []byte
 
-func (s *Session) String() string { return utils.S((*s)[len(sessionOptions.KeyPrefix):]) }
+func (s *Session) String() string { return utils.S(*s) }
 
-func (s *Session) key() string { return utils.S(*s) }
+func (s *Session) Key() string { return utils.S((*s)[len(sessionOptions.KeyPrefix)+1:]) }
 
 func (s *Session) Set(ctx context.Context, key string, val interface{}) error {
 	v, e := jsonx.Marshal(val)
 	if e != nil {
 		return e
 	}
-	return sessionBackend.SessionSet(ctx, s.key(), key, v)
+	return sessionBackend.SessionSet(ctx, s.Key(), key, v)
 }
 
 func (s *Session) Get(ctx context.Context, key string, dist interface{}) bool {
-	v, e := sessionBackend.SessionGet(ctx, s.key(), key)
+	v, e := sessionBackend.SessionGet(ctx, s.Key(), key)
 	if e != nil {
 		return false
 	}
@@ -127,7 +127,7 @@ func (s *Session) Get(ctx context.Context, key string, dist interface{}) bool {
 }
 
 func (s *Session) Del(ctx context.Context, keys ...string) error {
-	return sessionBackend.SessionDel(ctx, s.key(), keys...)
+	return sessionBackend.SessionDel(ctx, s.Key(), keys...)
 }
 
 func (s *Session) GenerateImageCaptcha(ctx context.Context, w io.Writer) error {
@@ -195,24 +195,23 @@ func (s *Session) VerifyCRSFToken(ctx context.Context, token string) bool {
 func (ctx *RequestCtx) Session() (*Session, error) {
 	if !ctx.sessionOK {
 		ctx.session = append(ctx.session, sessionOptions.KeyPrefix...)
+		ctx.session = append(ctx.session, ':')
 
 		var sessionID []byte
 		var byHeader bool
 		var user auth.Subject
-		if sessionOptions.Auth {
-			user, _ = auth.Auth(ctx)
-			if user != nil {
-				var sid string
-				if sessionBackend.Get(ctx, fmt.Sprintf("%sauth:%d", sessionOptions.KeyPrefix, user.GetID()), &sid) {
-					sessionID = append(sessionID, sid...)
-				}
+		user, _ = auth.Auth(ctx)
+		if user != nil {
+			var sid string
+			if sessionBackend.Get(ctx, fmt.Sprintf("%s:auth:%d", sessionOptions.KeyPrefix, user.GetID()), &sid) {
+				sessionID = append(sessionID, sid...)
 			}
 		}
 
-		if len(sessionOptions.CookieName) > 0 {
+		if len(sessionID) < 1 && len(sessionOptions.CookieName) > 0 {
 			sessionID, _ = ctx.Request.CookieValue(sessionOptions.CookieName)
 		}
-		if len(sessionID) < 0 && len(sessionOptions.HeaderName) > 0 {
+		if len(sessionID) < 1 && len(sessionOptions.HeaderName) > 0 {
 			sessionID, _ = ctx.Request.header.Get(sessionOptions.HeaderName)
 			byHeader = true
 		}
@@ -222,31 +221,39 @@ func (ctx *RequestCtx) Session() (*Session, error) {
 		} else {
 			// bad session id or session already expired
 			SessionIDGenerator(&ctx.session)
-			if e := sessionBackend.NewSession(ctx, ctx.session.key(), sessionOptions.MaxAge.Duration); e != nil {
+			if e := sessionBackend.NewSession(ctx, ctx.session.Key(), sessionOptions.MaxAge.Duration); e != nil {
 				return nil, e
 			}
 			if byHeader {
-				ctx.Response.Header().SetString(sessionOptions.HeaderName, ctx.session.String())
+				ctx.Response.Header().SetString(sessionOptions.HeaderName, ctx.session.Key())
 			} else {
-				ctx.Response.SetCookie(sessionOptions.CookieName, ctx.session.String(), &sessionCookieOptions)
+				ctx.Response.SetCookie(sessionOptions.CookieName, ctx.session.Key(), &sessionCookieOptions)
 			}
 			if user != nil {
 				_ = sessionBackend.Set(
 					ctx,
 					fmt.Sprintf("%sauth:%d", sessionOptions.KeyPrefix, user.GetID()),
-					ctx.session.String(), sessionOptions.MaxAge.Duration,
+					ctx.session.Key(), sessionOptions.MaxAge.Duration,
 				)
 			}
 		}
 		ctx.sessionOK = true
 	}
-	_ = sessionBackend.ExpireSession(ctx, ctx.session.key(), sessionOptions.MaxAge.Duration)
+	_ = sessionBackend.ExpireSession(ctx, ctx.session.Key(), sessionOptions.MaxAge.Duration)
 	return &ctx.session, nil
 }
 
 type _RedisSessionBackend struct {
-	cmd redis.Cmdable
+	cmd                redis.Cmdable
+	hSetAndExpiresSha1 string
 }
+
+func (rsb *_RedisSessionBackend) TTLSession(ctx context.Context, session string) time.Duration {
+	v, _ := rsb.cmd.TTL(ctx, session).Result()
+	return v
+}
+
+var hSetAndExpiresScript = `redis.call('hset', KEYS[1], KEYS[2], ARGV[1]);redis.call('expire', KEYS[1], ARGV[2])`
 
 func (rsb *_RedisSessionBackend) Set(ctx context.Context, key string, val interface{}, duration time.Duration) error {
 	v, e := jsonx.Marshal(val)
@@ -290,7 +297,11 @@ func (rsb *_RedisSessionBackend) ExpireSession(ctx context.Context, session stri
 }
 
 func (rsb *_RedisSessionBackend) SessionSet(ctx context.Context, session string, key string, val []byte) error {
-	return rsb.cmd.HSet(ctx, session, key, val).Err()
+	return rsb.cmd.EvalSha(
+		ctx, rsb.hSetAndExpiresSha1,
+		[]string{session, key},
+		val, sessionOptions.MaxAge.Duration/time.Second,
+	).Err()
 }
 
 func (rsb *_RedisSessionBackend) SessionGet(ctx context.Context, session string, key string) ([]byte, error) {
@@ -307,4 +318,10 @@ func (rsb *_RedisSessionBackend) RemoveSession(ctx context.Context, session stri
 
 var _ SessionBackend = (*_RedisSessionBackend)(nil)
 
-func NewRedisSessionBackend(cmd redis.Cmdable) SessionBackend { return &_RedisSessionBackend{cmd: cmd} }
+func NewRedisSessionBackend(cmd redis.Cmdable) SessionBackend {
+	hSetAndExpiresSha1, err := cmd.ScriptLoad(context.Background(), hSetAndExpiresScript).Result()
+	if err != nil {
+		panic(err)
+	}
+	return &_RedisSessionBackend{cmd: cmd, hSetAndExpiresSha1: hSetAndExpiresSha1}
+}

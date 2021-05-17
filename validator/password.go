@@ -37,7 +37,7 @@ var PasswordValidator func(data []byte) bool = func(data []byte) bool {
 	return hasMinLen && hasUpper && hasLower && hasNumber && hasSpecial
 }
 
-func (p *Password) FormValue(data []byte) bool {
+func (p *Password) FromBytes(data []byte) bool {
 	if !PasswordValidator(data) {
 		return false
 	}
@@ -45,10 +45,6 @@ func (p *Password) FormValue(data []byte) bool {
 	return true
 }
 
-func (p *Password) BcryptHash(cost int) ([]byte, error) {
-	return bcrypt.GenerateFromPassword(*p, cost)
-}
+func (p *Password) BcryptHash(cost int) ([]byte, error) { return bcrypt.GenerateFromPassword(*p, cost) }
 
-func (p *Password) MatchTo(hash []byte) bool {
-	return bcrypt.CompareHashAndPassword(hash, *p) == nil
-}
+func (p *Password) MatchTo(hash []byte) bool { return bcrypt.CompareHashAndPassword(hash, *p) == nil }
