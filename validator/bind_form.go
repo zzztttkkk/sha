@@ -130,7 +130,7 @@ func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *ValidateError {
 		var data []byte
 		data, ok = rule.toBytes(fv)
 		if ok {
-			if err := rule.toCustomField(filed, data); err != nil {
+			if err := rule.formValueToCustomField(filed, data); err != nil {
 				return &ValidateError{FormName: rule.formName, Type: BadValue, Wrapped: err}
 			}
 			return nil
@@ -238,7 +238,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 		for _, bs := range formVals {
 			elePV := reflect.New(eleT)
 
-			if err := rule.toCustomFieldVPtr(&elePV, bs); err != nil {
+			if err := rule.formValueToCustomFieldVPtr(&elePV, bs); err != nil {
 				return &ValidateError{FormName: rule.formName, Type: BadValue, Wrapped: err}
 			}
 

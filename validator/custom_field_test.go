@@ -28,12 +28,12 @@ func (a *AInt) Validate() error {
 func TestField(t *testing.T) {
 	type Form struct {
 		A    AInt
-		ALst []AInt
+		ALst []AInt `validator:",size=2-"`
 	}
 
 	var f Form
 	f.A = 199
-	f.ALst = append(f.ALst, 134, 60)
+	f.ALst = append(f.ALst, 134, 1000)
 
 	fmt.Println(ValidateStruct(&f))
 }

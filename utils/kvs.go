@@ -21,8 +21,9 @@ func (item *KvItem) makeInvalid() {
 type MultiValueMap map[string][]string
 
 type Kvs struct {
-	lst  []KvItem
-	size int
+	lst      []KvItem
+	size     int
+	invalids []int
 }
 
 type _KvsIterable interface {
@@ -39,7 +40,7 @@ func (kvs *Kvs) String() string {
 	kvs.EachItem(
 		func(item *KvItem) bool {
 			buf.Write(item.Key)
-			buf.WriteByte(' ')
+			buf.WriteString(": ")
 			buf.Write(item.Val)
 			buf.WriteByte(';')
 			buf.WriteByte(' ')
@@ -53,25 +54,21 @@ func (kvs *Kvs) String() string {
 func (kvs *Kvs) Append(k string, v []byte) *KvItem { return kvs.AppendBytes(B(k), v) }
 
 func (kvs *Kvs) AppendBytes(k, v []byte) *KvItem {
-	var item *KvItem
-
-	s := len(kvs.lst)
-	if cap(kvs.lst) > s {
-		kvs.lst = kvs.lst[:s+1]
-	} else {
-		kvs.lst = append(kvs.lst, KvItem{})
-	}
-	item = &(kvs.lst[len(kvs.lst)-1])
-	item.invalid = false
-	item.Key = append(item.Key, k...)
-	item.Val = append(item.Val, v...)
-
-	kvs.size++
-	return item
+	return kvs.AppendString(S(k), S(v))
 }
 
 func (kvs *Kvs) AppendString(k, v string) *KvItem {
 	var item *KvItem
+	invalidsSize := len(kvs.invalids)
+	if invalidsSize > 0 {
+		item = &kvs.lst[kvs.invalids[invalidsSize-1]]
+		kvs.invalids = kvs.invalids[:invalidsSize-1]
+		item.invalid = false
+		item.Key = append(item.Key, k...)
+		item.Val = append(item.Val, v...)
+		kvs.size++
+		return item
+	}
 
 	s := len(kvs.lst)
 	if cap(kvs.lst) > s {
@@ -107,6 +104,7 @@ func (kvs *Kvs) Del(k string) {
 		if string(item.Key) == k {
 			item.makeInvalid()
 			kvs.size--
+			kvs.invalids = append(kvs.invalids, i)
 		}
 	}
 }
@@ -195,6 +193,7 @@ func (kvs *Kvs) Reset() {
 	}
 	kvs.lst = kvs.lst[:0]
 	kvs.size = 0
+	kvs.invalids = kvs.invalids[:0]
 }
 
 func (kvs *Kvs) LoadMap(m MultiValueMap) {

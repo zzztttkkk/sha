@@ -8,11 +8,7 @@ import (
 func (rule *_Rule) validateOne(field *reflect.Value) *ValidateError {
 	switch rule.rtype {
 	case _CustomType:
-		f, ok := field.Interface().(Field)
-		if !ok {
-			f, _ = field.Addr().Interface().(Field)
-		}
-		if err := f.Validate(); err != nil {
+		if err := toCustomField(field).Validate(); err != nil {
 			return &ValidateError{FormName: rule.formName, Type: BadValue, Wrapped: err}
 		}
 		return nil
@@ -67,7 +63,7 @@ func (rule *_Rule) validateSlice(field *reflect.Value) *ValidateError {
 		if rule.minSliceSize != nil && i < *rule.minSliceSize {
 			return &ValidateError{FormName: rule.formName, Type: BadValue}
 		}
-		if rule.maxSliceSize != nil && 1 > *rule.maxSliceSize {
+		if rule.maxSliceSize != nil && i > *rule.maxSliceSize {
 			return &ValidateError{FormName: rule.formName, Type: BadValue}
 		}
 	}
@@ -120,11 +116,7 @@ func (rule *_Rule) validateSlice(field *reflect.Value) *ValidateError {
 		l := v.Len()
 		for i := 0; i < l; i++ {
 			ele := v.Index(i)
-			f, ok := ele.Interface().(Field)
-			if !ok {
-				f, _ = ele.Addr().Interface().(Field)
-			}
-			if err := f.Validate(); err != nil {
+			if err := toCustomField(&ele).Validate(); err != nil {
 				return &ValidateError{FormName: rule.formName, Type: BadValue, Wrapped: err}
 			}
 		}

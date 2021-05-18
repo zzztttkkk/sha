@@ -34,14 +34,14 @@ func (t *Time) String() string {
 }
 
 type TV01Form struct {
-	NumbersPtr  *[]int64 `validator:"a,optional"`
-	Numbers     []int64  `validator:"b"`
-	StrPtr      *string  `validator:"c,optional"`
-	Str         string   `validator:"d,optional"`
-	Time        Time     `validator:"e,optional"`
-	TimePtr     *Time    `validator:"f,optional"`
-	TimePtrs    []*Time  `validator:"g,optional"`
-	Times       []Time   `validator:"h,optional"`
+	NumbersPtr *[]int64 `validator:"a,optional"`
+	Numbers    []int64  `validator:"b"`
+	StrPtr     *string  `validator:"c,optional"`
+	Str        string   `validator:"d,optional"`
+	Time       Time     `validator:"e,optional"`
+	TimePtr    *Time    `validator:"f,optional"`
+	TimePtrs   []*Time  `validator:"g,optional"`
+	Times      []Time   `validator:"h,optional"`
 }
 
 func (t *TV01Form) DefaultNumbers() interface{} { return []int64{1, 2, 3} }
@@ -58,7 +58,7 @@ func TestValidator(t *testing.T) {
 				return
 			}
 
-			fmt.Printf("%+v\r\n", &form)
+			fmt.Printf("%+v\r\n%p\r\n", &form, form.Numbers)
 		}),
 	)
 }

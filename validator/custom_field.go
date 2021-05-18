@@ -9,14 +9,14 @@ type Field interface {
 	Validate() error
 }
 
-func (rule *_Rule) toCustomField(f *reflect.Value, data []byte) error {
+func (rule *_Rule) formValueToCustomField(f *reflect.Value, data []byte) error {
 	t := rule.fieldType
 	if rule.isPtr {
 		t = t.Elem()
 	}
 
 	ptrV := reflect.New(t)
-	err := rule.toCustomFieldVPtr(&ptrV, data)
+	err := rule.formValueToCustomFieldVPtr(&ptrV, data)
 	if err != nil {
 		return err
 	}
@@ -28,7 +28,7 @@ func (rule *_Rule) toCustomField(f *reflect.Value, data []byte) error {
 	return nil
 }
 
-func (rule *_Rule) toCustomFieldVPtr(f *reflect.Value, data []byte) error {
+func (rule *_Rule) formValueToCustomFieldVPtr(f *reflect.Value, data []byte) error {
 	ptr := f.Interface().(Field)
 	if err := ptr.FromBytes(data); err != nil {
 		return err
@@ -37,4 +37,13 @@ func (rule *_Rule) toCustomFieldVPtr(f *reflect.Value, data []byte) error {
 		return err
 	}
 	return nil
+}
+
+var fieldType = reflect.TypeOf((*Field)(nil)).Elem()
+
+func toCustomField(v *reflect.Value) Field {
+	if v.Type().ConvertibleTo(fieldType) {
+		return v.Interface().(Field)
+	}
+	return v.Addr().Interface().(Field)
 }
