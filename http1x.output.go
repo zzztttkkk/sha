@@ -3,6 +3,7 @@ package sha
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"github.com/zzztttkkk/sha/utils"
 	"io"
 	"strconv"
@@ -83,7 +84,17 @@ func sendCompressedChunkedStream(buf *bufio.Writer, ctx *RequestCtx, stream io.R
 	return buf.Flush()
 }
 
+var ErrChunkedResponseRequireHTTP11OrHigher = errors.New("sha: chunked response require HTTP11 or higher")
+
+//sendChunkedStreamResponse
+//https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
 func sendChunkedStreamResponse(buf *bufio.Writer, ctx *RequestCtx, stream io.Reader) error {
+	version := ctx.Request.HTTPVersion()
+	isGet11 := version[5] >= '1' && version[7] >= '1'
+	if !isGet11 {
+		return ErrChunkedResponseRequireHTTP11OrHigher
+	}
+
 	res := &ctx.Response
 	if err := sendResponseFirstLine(buf, res); err != nil {
 		return err
@@ -138,11 +149,6 @@ const (
 )
 
 func sendResponseFirstLine(w *bufio.Writer, res *Response) error {
-	if res.cw != nil { // flush compress writer
-		if err := res.cw.Flush(); err != nil {
-			return err
-		}
-	}
 	res.setTime()
 
 	const (
@@ -187,6 +193,11 @@ func sendResponseFirstLine(w *bufio.Writer, res *Response) error {
 func sendResponse(w *bufio.Writer, res *Response) error {
 	if err := sendResponseFirstLine(w, res); err != nil {
 		return err
+	}
+	if res.cw != nil { // flush compress writer
+		if err := res.cw.Flush(); err != nil {
+			return err
+		}
 	}
 	return sendPocket(w, &res._HTTPPocket)
 }

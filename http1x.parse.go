@@ -142,6 +142,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 					}
 
 					rn, _ := pocket.header.Get(HeaderTransferEncoding)
+					// multi-values such as `chunked, gzip` is not supported. i think the `gzip` should be set to `Content-Encoding`
 					if string(rn) == chunked {
 						parseStatus++
 						goto checkCtx

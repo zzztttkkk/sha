@@ -172,28 +172,19 @@ func (ctx *RequestCtx) WriteHTML(v []byte) {
 	ctx.Response.Header().SetContentType(MIMEHtml)
 	_, e := ctx.Write(v)
 	if e != nil {
-		panic(e)
+		ctx.SetError(e)
 	}
+}
+
+func (ctx *RequestCtx) WriteStream(stream io.Reader) error {
+	return sendChunkedStreamResponse(ctx.w, ctx, stream)
 }
 
 func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
 	ctx.Response.Header().SetContentType(mime.TypeByExtension(ext))
-
-	buf := ctx.readBuf
-	for {
-		l, e := f.Read(buf)
-		if e != nil {
-			panic(e)
-		}
-		_, e = ctx.Write(buf[:l])
-		if e != nil {
-			panic(e)
-		}
+	if e := ctx.WriteStream(f); e != nil {
+		ctx.SetError(e)
 	}
-}
-
-func (ctx *RequestCtx) SendStream(stream io.Reader) error {
-	return sendChunkedStreamResponse(ctx.w, ctx, stream)
 }
 
 type Template interface {

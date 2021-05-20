@@ -136,7 +136,7 @@ func TestServer_Run(t *testing.T) {
 				return
 			}
 			defer f.Close()
-			e = ctx.SendStream(f)
+			e = ctx.WriteStream(f)
 			if e != nil {
 				ctx.SetError(e)
 			}
@@ -155,7 +155,7 @@ func TestServer_Run(t *testing.T) {
 				return
 			}
 			defer f.Close()
-			e = ctx.SendStream(f)
+			e = ctx.WriteStream(f)
 			if e != nil {
 				ctx.SetError(e)
 			}
