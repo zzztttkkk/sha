@@ -38,6 +38,10 @@ parseStatus:
 5  --  read chunked body
 */
 func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pocket *_HTTPPocket, opt *HTTPOptions) error {
+	const (
+		chunked = "chunked"
+	)
+
 	var (
 		skipNewLine bool
 		skipSpace   bool
@@ -138,7 +142,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 					}
 
 					rn, _ := pocket.header.Get(HeaderTransferEncoding)
-					if string(rn) == "chunked" {
+					if string(rn) == chunked {
 						parseStatus++
 						goto checkCtx
 					}

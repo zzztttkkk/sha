@@ -192,6 +192,10 @@ func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
 	}
 }
 
+func (ctx *RequestCtx) SendStream(stream io.Reader) error {
+	return sendChunkedStreamResponse(ctx.w, ctx, stream)
+}
+
 type Template interface {
 	Execute(ctx context.Context, v interface{}) error
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/zzztttkkk/websocket"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -122,6 +123,42 @@ func TestServer_Run(t *testing.T) {
 		"/hello",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			_, _ = ctx.WriteString("hello world")
+		}),
+	)
+
+	mux.HTTP(
+		"get",
+		"/chunked",
+		RequestHandlerFunc(func(ctx *RequestCtx) {
+			f, e := os.Open("./server.go")
+			if e != nil {
+				ctx.SetError(e)
+				return
+			}
+			defer f.Close()
+			e = ctx.SendStream(f)
+			if e != nil {
+				ctx.SetError(e)
+			}
+		}),
+	)
+
+	mux.HTTP(
+		"get",
+		"/compress_chunked",
+		RequestHandlerFunc(func(ctx *RequestCtx) {
+			ctx.AutoCompress()
+
+			f, e := os.Open("./server.go")
+			if e != nil {
+				ctx.SetError(e)
+				return
+			}
+			defer f.Close()
+			e = ctx.SendStream(f)
+			if e != nil {
+				ctx.SetError(e)
+			}
 		}),
 	)
 

@@ -2,6 +2,7 @@ package sha
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
@@ -30,6 +31,10 @@ type URL struct {
 	Path   []byte
 	Query  []byte
 	Params URLParams
+}
+
+func (u *URL) String() string {
+	return fmt.Sprintf("Host: %s, Port: %s, Path: %s, Query: %s", u.Host, u.Port, u.Path, u.Query)
 }
 
 func (u *URL) reset() {
@@ -117,9 +122,7 @@ func (req *Request) SetVersion(version string) *Request {
 }
 
 func (req *Request) SetPath(path []byte) *Request {
-	req.fl2 = req.fl2[:0]
-	req.fl2 = append(req.fl2, path...)
-	return req
+	return req.SetPathString(utils.S(path))
 }
 
 func (req *Request) SetPathString(path string) *Request {
