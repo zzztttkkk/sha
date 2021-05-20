@@ -12,10 +12,12 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -163,7 +165,10 @@ func TestServer_Run(t *testing.T) {
 	)
 
 	fmt.Println(mux)
-	ListenAndServe("127.0.0.1:8080", mux)
+
+	ctx, cancelFunc := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT)
+	defer cancelFunc()
+	ListenAndServeWithContext(ctx, "127.0.0.1:8080", mux)
 }
 
 func TestStdHttp(t *testing.T) {

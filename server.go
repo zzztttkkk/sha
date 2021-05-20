@@ -9,6 +9,9 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net"
+	"os"
+	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,6 +26,8 @@ type ServerOptions struct {
 	ReadTimeout            utils.TomlDuration `json:"read_timeout" toml:"read-timeout"`
 	IdleTimeout            utils.TomlDuration `json:"idle_timeout" toml:"idle-timeout"`
 	WriteTimeout           utils.TomlDuration `json:"write_timeout" toml:"write-timeout"`
+	GracefulShutdown       bool               `json:"graceful_shutdown" toml:"graceful_shutdown"`
+	Pid                    string             `json:"pid" toml:"pid"`
 }
 
 var defaultServerOption = ServerOptions{
@@ -43,9 +48,16 @@ type Server struct {
 	httpProtocol      HTTPServerProtocol
 	websocketProtocol WebSocketProtocol
 
-	tls          *tls.Config
-	isTLS        bool
-	beforeAccept []func(s *Server)
+	tls   *tls.Config
+	isTLS bool
+
+	// lifecycle
+	beforeAccept     []func(s *Server)
+	beforeShutdown   []func(s *Server)
+	aliveConns       int64
+	flag             bool // server running flag
+	listener         net.Listener
+	shutdownByMethod bool // ensure `Shutdown` run once
 
 	pool *RequestCtxPool
 }
@@ -94,13 +106,17 @@ func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server 
 	return server
 }
 
+func (s *Server) BeforeShutdown(fn func(server *Server)) {
+	s.beforeShutdown = append(s.beforeShutdown, fn)
+}
+
 func (s *Server) SetHTTPProtocol(protocol HTTPServerProtocol) { s.httpProtocol = protocol }
 
 func (s *Server) SetWebSocketProtocol(protocol WebSocketProtocol) { s.websocketProtocol = protocol }
 
-func Default() *Server {
-	return New(nil, nil, nil)
-}
+func Default() *Server { return New(nil, nil, nil) }
+
+func DefaultWithContext(ctx context.Context) *Server { return New(ctx, nil, nil) }
 
 func (s *Server) RequestCtxPool() *RequestCtxPool { return s.pool }
 
@@ -115,8 +131,6 @@ func (s *Server) Listen() net.Listener {
 	if s.Handler == nil {
 		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("Hello World!\n") })
 	}
-
-	log.Printf("sha: listening at `%s`\n", s.Options.Addr)
 
 	listener, err := net.Listen("tcp4", s.Options.Addr)
 	if err != nil {
@@ -149,7 +163,39 @@ func (s *Server) enableTLS(l net.Listener, certFile, keyFile string) net.Listene
 	return tls.NewListener(l, s.tls)
 }
 
+func (s *Server) Shutdown() {
+	if s.shutdownByMethod {
+		return
+	}
+	s.shutdownByMethod = true
+
+	s.flag = false
+	_ = s.listener.Close()
+
+	if s.Options.GracefulShutdown {
+		for {
+			v := atomic.LoadInt64(&s.aliveConns)
+			if v < 1 {
+				break
+			} else {
+				time.Sleep(time.Millisecond * 100)
+			}
+		}
+	}
+
+	for _, fn := range s.beforeShutdown {
+		fn(s)
+	}
+	if len(s.Options.Pid) > 0 {
+		_ = os.Remove(s.Options.Pid)
+	}
+	log.Println("sha.server: shutdown")
+}
+
 func (s *Server) Serve(l net.Listener) {
+	s.listener = l
+	s.flag = true
+
 	if s.httpProtocol == nil {
 		s.httpProtocol = newHTTP11Protocol(s.pool)
 	}
@@ -172,25 +218,31 @@ func (s *Server) Serve(l net.Listener) {
 		serveFunc = s.serveTLS
 	}
 
-	f := true
 	go func() {
-		for {
-			select {
-			case <-s.baseCtx.Done():
-				f = false
-				_ = l.Close()
-			default:
-				time.Sleep(time.Second)
-			}
-		}
+		<-s.baseCtx.Done()
+		s.flag = false
+		_ = l.Close()
+
+		s.Shutdown()
 	}()
 
 	maxKeepAlive := s.Options.MaxConnectionKeepAlive.Duration
 
-	for f {
+	if len(s.Options.Pid) > 0 {
+		pid, e := os.OpenFile(s.Options.Pid, os.O_CREATE|os.O_WRONLY, 0644)
+		if e != nil {
+			panic(e)
+		}
+		defer pid.Close()
+		_, _ = pid.WriteString(strconv.FormatInt(int64(os.Getpid()), 10))
+	}
+
+	log.Printf("sha.server: listening @ `%s`, Pid: %d\r\n", s.Options.Addr, os.Getpid())
+
+	for s.flag {
 		conn, err := l.Accept()
 		if err != nil {
-			if !f {
+			if !s.flag {
 				return
 			}
 			log.Printf("sha.server: bad connection: %s\n", err.Error())
@@ -215,7 +267,11 @@ func (s *Server) Serve(l net.Listener) {
 		if maxKeepAlive > 0 {
 			_ = conn.SetDeadline(time.Now().Add(maxKeepAlive))
 		}
-		go serveFunc(conn)
+		s.aliveConns++
+		go func() {
+			defer atomic.AddInt64(&s.aliveConns, -1)
+			serveFunc(conn)
+		}()
 	}
 }
 
@@ -269,7 +325,11 @@ func (s *Server) serveHTTPConn(conn net.Conn) {
 }
 
 func ListenAndServe(addr string, handler RequestHandler) {
-	server := Default()
+	ListenAndServeWithContext(context.Background(), addr, handler)
+}
+
+func ListenAndServeWithContext(ctx context.Context, addr string, handler RequestHandler) {
+	server := DefaultWithContext(ctx)
 	server.Options = defaultServerOption
 	server.Options.Addr = addr
 	server.Handler = handler

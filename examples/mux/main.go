@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/zzztttkkk/sha"
+	"os/signal"
 	"simple/h"
 	"simple/services/a"
 )
@@ -21,7 +23,10 @@ func main() {
 		h.NewPrintMiddleware("g.m3"),
 	)
 
-	server := sha.Default()
+	ctx, cancelFunc := signal.NotifyContext(context.Background())
+	defer cancelFunc()
+	server := sha.DefaultWithContext(ctx)
+	server.Options.Pid = "./sha.mux.pid"
 	server.Handler = mux
 
 	mux.AddGroup(a.Group)

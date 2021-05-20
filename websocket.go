@@ -13,7 +13,7 @@ type WebSocketOptions struct {
 	ReadBufferSize    int
 	WriteBufferSize   int
 	EnableCompression bool
-	SelectSubprotocol func(ctx *RequestCtx) string
+	SelectSubProtocol func(ctx *RequestCtx) string
 }
 
 var defaultWebSocketProtocolOption = WebSocketOptions{
@@ -56,8 +56,8 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) (string, bool, bool) {
 	}
 
 	var subProtocol string
-	if p.opt.SelectSubprotocol != nil {
-		subProtocol = p.opt.SelectSubprotocol(ctx)
+	if p.opt.SelectSubProtocol != nil {
+		subProtocol = p.opt.SelectSubProtocol(ctx)
 	}
 
 	var compress bool
