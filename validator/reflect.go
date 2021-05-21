@@ -3,8 +3,8 @@ package validator
 import (
 	"errors"
 	"fmt"
-	"github.com/jmoiron/sqlx/reflectx"
 	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sqlx/reflectx"
 	"log"
 	"reflect"
 	"sort"

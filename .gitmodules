@@ -1,3 +1,0 @@
-[submodule "captcha/chinese-poetry"]
-	path = captcha/chinese-poetry
-	url = git@github.com:chinese-poetry/chinese-poetry.git

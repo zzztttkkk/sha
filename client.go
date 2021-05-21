@@ -1,244 +1,125 @@
 package sha
 
 import (
-	"bufio"
-	"bytes"
 	"context"
-	"crypto/tls"
 	"fmt"
-	"net"
-	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
-type HTTPClientSession struct {
-	mutex     sync.Mutex
-	address   string
-	host      string
-	connCount int
-
-	conn net.Conn
-	r    *bufio.Reader
-	w    *bufio.Writer
-
-	isTLS   bool
-	opt     *ClientSessionOptions
-	httpOpt *HTTPOptions
+type CliOptions struct {
+	CliSessionOptions
+	MaxAge  int64
+	MaxIdle int
+	MaxOpen int
+	//MaxRedirect
+	// <0: no limit on the number of redirects
+	// =0: do not redirect
+	// >0: limit on the number of redirects
+	MaxRedirect int
 }
 
-type HTTPProxy struct {
-	Address   string
-	AuthFunc  func() (string, string)
-	TLSConfig *tls.Config
-	IsTLS     bool
+type Cli struct {
+	mutex  sync.Mutex
+	idling map[string]chan *CliSession
+	using  int64
+	opts   CliOptions
 }
 
-type ClientSessionOptions struct {
-	HTTPOptions          *HTTPOptions
-	HTTPProxy            HTTPProxy
-	InsecureSkipVerify   bool
-	TLSConfig            *tls.Config
-	RequestCtxPreChecker func(ctx *RequestCtx)
+var defaultClientSessionPoolOptions = CliOptions{
+	defaultCliOptions,
+	600, // 10min
+	10, 10,
+	0,
 }
 
-var defaultClientSessionOptions ClientSessionOptions
-
-func NewHTTPClientSession(address string, isTLS bool, opt *ClientSessionOptions) *HTTPClientSession {
+func NewCli(opt *CliOptions) *Cli {
+	cp := &Cli{
+		idling: map[string]chan *CliSession{},
+	}
 	if opt == nil {
-		opt = &defaultClientSessionOptions
-	}
-
-	s := &HTTPClientSession{opt: opt, isTLS: isTLS}
-	ind := strings.IndexRune(address, ':')
-	if ind > -1 {
-		s.host = address[:ind]
-		port := address[ind:]
-		if isTLS && port != ":443" {
-			s.host = address
-		}
-		if !isTLS && port != ":80" {
-			s.host = address
-		}
+		cp.opts = defaultClientSessionPoolOptions
 	} else {
-		s.host = address
-		if isTLS {
-			address += ":443"
-		} else {
-			address += ":80"
-		}
+		cp.opts = *opt
 	}
-	s.address = address
-
-	if s.opt.HTTPOptions != nil {
-		s.httpOpt = s.opt.HTTPOptions
-	} else {
-		s.httpOpt = &defaultHTTPOption
-	}
-	return s
+	return cp
 }
 
-func (s *HTTPClientSession) Close() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, error) {
+	key := fmt.Sprintf("%s:%v", addr, isTLS)
 
-	if s.conn == nil {
-		return nil
+	cp.mutex.Lock()
+	iC := cp.idling[key]
+	if iC == nil {
+		iC = make(chan *CliSession, cp.opts.MaxIdle)
+		cp.idling[key] = iC
 	}
-	return s.conn.Close()
+	cp.mutex.Unlock()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ErrCanceled
+		case cli := <-iC:
+			return cli, nil
+		default:
+			if int(atomic.LoadInt64(&cp.using)) < cp.opts.MaxOpen {
+				return NewCliSession(addr, isTLS, &cp.opts.CliSessionOptions), nil
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
 }
 
-func (s *HTTPClientSession) Reconnect() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (cp *Cli) get(ctx context.Context, addr string, isTLS bool) (*CliSession, error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ErrCanceled
+		default:
+			cli, err := cp._get(ctx, addr, isTLS)
+			if err != nil {
+				return nil, err
+			}
+			if cp.opts.MaxAge > 0 && time.Now().Unix()-cli.created > cp.opts.MaxAge {
+				_ = cli.Close()
+				cli = nil
+			}
+			if cli != nil {
+				atomic.AddInt64(&cp.using, 1)
+				return cli, nil
+			}
+		}
+	}
+}
 
-	if s.conn == nil {
+func (cp *Cli) put(s *CliSession) {
+	cp.mutex.Lock()
+	key := fmt.Sprintf("%s:%v", s.address, s.isTLS)
+	iC := cp.idling[key]
+	defer cp.mutex.Unlock()
+
+	atomic.AddInt64(&cp.using, -1)
+
+	for i := 2; i > 0; i-- {
+		select {
+		case iC <- s:
+			return
+		default:
+			time.Sleep(time.Millisecond * 5)
+		}
+	}
+	_ = s.Close()
+}
+
+func (cp *Cli) Send(ctx *RequestCtx, addr string, isTLS bool, onDone func(*CliSession, error)) {
+	cli, err := cp.get(ctx, addr, isTLS)
+	if err != nil {
+		onDone(cli, err)
 		return
 	}
+	defer cp.put(cli)
 
-	_ = s.conn.Close()
-	s.conn = nil
-	if s.r != nil {
-		s.r.Reset(nil)
-	}
-	if s.w != nil {
-		s.w.Reset(nil)
-	}
-}
-
-func (s *HTTPClientSession) OpenConn(ctx context.Context) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	if s.conn != nil {
-		return nil
-	}
-
-	var c net.Conn
-	var e error
-	var w = s.w
-	var r = s.r
-
-	proxy := &s.opt.HTTPProxy
-	if len(proxy.Address) > 0 {
-		var buf bytes.Buffer
-		buf.WriteString("CONNECT ")
-		buf.WriteString(s.address)
-		buf.WriteByte(' ')
-		buf.WriteString("HTTP/1.1\r\n")
-		buf.WriteString("Host: ")
-		buf.WriteString(s.address)
-		buf.WriteString("\r\n")
-
-		if proxy.AuthFunc != nil {
-			authType, realm := proxy.AuthFunc()
-			buf.WriteString("Proxy-Authenticate: ")
-			buf.WriteString(authType)
-			buf.WriteByte(' ')
-			buf.WriteString(realm)
-			buf.WriteString("\r\n")
-		}
-		buf.WriteString("\r\n")
-
-		var proxyC net.Conn
-		if proxy.IsTLS {
-			proxyC, e = tls.Dial("tcp", proxy.Address, proxy.TLSConfig)
-		} else {
-			proxyC, e = net.Dial("tcp", proxy.Address)
-		}
-		if e != nil {
-			return e
-		}
-
-		if w == nil {
-			w = bufio.NewWriter(proxyC)
-		} else {
-			w.Reset(proxyC)
-		}
-		_, e = w.Write(buf.Bytes())
-		if e != nil {
-			return e
-		}
-		e = w.Flush()
-		if e != nil {
-			return e
-		}
-
-		var res Response
-		if r == nil {
-			r = bufio.NewReader(proxyC)
-		} else {
-			r.Reset(proxyC)
-		}
-		e = parseResponse(ctx, r, make([]byte, 128), &res, s.httpOpt)
-		if e != nil {
-			return e
-		}
-		if res.statusCode != StatusOK {
-			return fmt.Errorf("sha.clent: bad proxy response, %d %s", res.StatusCode(), res.Phrase())
-		}
-		if s.isTLS {
-			if s.opt.TLSConfig == nil {
-				s.opt.TLSConfig = &tls.Config{}
-				if s.opt.InsecureSkipVerify {
-					s.opt.TLSConfig.InsecureSkipVerify = true
-				} else {
-					s.opt.TLSConfig.ServerName = strings.Split(s.address, ":")[0]
-				}
-			}
-
-			c = tls.Client(proxyC, s.opt.TLSConfig)
-		} else {
-			c = proxyC
-		}
-	} else {
-		if s.isTLS {
-			c, e = tls.Dial("tcp", s.address, s.opt.TLSConfig)
-		} else {
-			c, e = net.Dial("tcp", s.address)
-		}
-	}
-
-	if e != nil {
-		return e
-	}
-	s.conn = c
-	if r == nil {
-		r = bufio.NewReader(c)
-	} else {
-		r.Reset(c)
-	}
-	if w == nil {
-		w = bufio.NewWriter(c)
-	} else {
-		w.Reset(c)
-	}
-	s.r = r
-	s.w = w
-	return nil
-}
-
-func (s *HTTPClientSession) Send(ctx *RequestCtx) error {
-	if s.opt.RequestCtxPreChecker != nil {
-		s.opt.RequestCtxPreChecker(ctx)
-	}
-
-	if ctx.ctx == nil {
-		ctx.ctx = context.Background()
-	}
-
-	if ctx.readBuf == nil {
-		ctx.readBuf = make([]byte, 512)
-	}
-
-	if err := s.OpenConn(ctx); err != nil {
-		return err
-	}
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	if err := sendRequest(s.w, &ctx.Request); err != nil {
-		return err
-	}
-	return parseResponse(ctx, s.r, ctx.readBuf, &ctx.Response, s.httpOpt)
+	onDone(cli, cli.Send(ctx))
 }

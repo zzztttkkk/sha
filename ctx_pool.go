@@ -2,6 +2,7 @@ package sha
 
 import (
 	"bufio"
+	"context"
 	"sync"
 )
 
@@ -32,9 +33,16 @@ func init() {
 	defaultRCtxPool = NewRequestCtxPool(nil)
 }
 
-func AcquireRequestCtx() *RequestCtx { return defaultRCtxPool.Acquire() }
+func AcquireRequestCtx(ctx context.Context) *RequestCtx {
+	rctx := defaultRCtxPool.Acquire()
+	rctx.ctx = ctx
+	return rctx
+}
 
-func ReleaseRequestCtx(ctx *RequestCtx) { defaultRCtxPool.Put(ctx) }
+func ReleaseRequestCtx(ctx *RequestCtx) {
+	ctx.Reset()
+	defaultRCtxPool.Put(ctx)
+}
 
 func (p *RequestCtxPool) Acquire() *RequestCtx {
 	ctx := p.Get().(*RequestCtx)

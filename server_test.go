@@ -5,7 +5,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
-	"github.com/imdario/mergo"
 	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/sha/validator"
 	"github.com/zzztttkkk/websocket"
@@ -180,23 +179,6 @@ func TestStdHttp(t *testing.T) {
 		_, _ = writer.Write([]byte("hello world"))
 	})
 	_ = s.ListenAndServe()
-}
-
-func TestMergo(t *testing.T) {
-	type A struct {
-		Z string `json:"z"`
-		X int64  `json:"-"`
-	}
-
-	var a1 = A{Z: "a1", X: 45}
-	var a2 A
-	a2.X = 56
-
-	err := mergo.Merge(&a2, &a1)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(&a1, &a2)
 }
 
 func TestPoolGC(t *testing.T) {

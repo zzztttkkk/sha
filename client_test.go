@@ -3,34 +3,39 @@ package sha
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
+	"time"
 )
 
-func TestNewHTTPSession(t *testing.T) {
-	cli := NewHTTPClientSession(
-		"www.google.com", true,
-		&ClientSessionOptions{
-			HTTPProxy: HTTPProxy{Address: "127.0.0.1:50266"},
-		},
-	)
-	_ = cli.OpenConn(context.Background())
-	defer cli.Close()
+func TestCli(t *testing.T) {
+	cli := NewCli(nil)
 
-	ctx := AcquireRequestCtx()
-	defer ReleaseRequestCtx(ctx)
+	var wg = &sync.WaitGroup{}
+	for i := 0; i < 50; i++ {
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
 
-	ctx.Request.SetPathString("/search?q=go")
+			baseCtx, cancelFunc := context.WithTimeout(context.Background(), time.Second*2)
+			defer cancelFunc()
 
-	err := cli.Send(ctx)
-	if err != nil {
-		fmt.Println("Err: ", err)
-		return
+			ctx := AcquireRequestCtx(baseCtx)
+			defer ReleaseRequestCtx(ctx)
+
+			req := &ctx.Request
+			req.SetMethod(MethodGet)
+			req.SetPathString("/")
+
+			cli.Send(ctx, "www.baidu.com:443", true, func(_ *CliSession, err error) {
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				fmt.Printf("Req: %d %s\r\n", ctx.Response.StatusCode(), ctx.Response.Phrase())
+			})
+		}()
 	}
 
-	res := &ctx.Response
-
-	fmt.Println(res.StatusCode(), res.Phrase())
-	fmt.Print(res.Header())
-	fmt.Printf("\r\nBodySize : %d\r\n", res.Body().Len())
-	fmt.Println(res.Body().String())
+	wg.Wait()
 }

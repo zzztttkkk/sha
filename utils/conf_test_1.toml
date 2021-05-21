@@ -1,0 +1,5 @@
+str-slice = ["aaa", "$ENV{OS}"]
+
+[vm]
+gopath = "$ENV{GOPATH}"
+ddd = { xxx = "$ENV{USERNAME}" }

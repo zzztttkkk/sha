@@ -223,13 +223,13 @@ func scanETag(s string) (etag string, remain string) {
 	return "", ""
 }
 
-// etagStrongMatch reports whether a and b match using strong ETag comparison.
+// etagStrongMatch reports whether a and b match idling strong ETag comparison.
 // Assumes a and b are valid ETags.
 func etagStrongMatch(a, b string) bool {
 	return a == b && a != "" && a[0] == '"'
 }
 
-// etagWeakMatch reports whether a and b match using weak ETag comparison.
+// etagWeakMatch reports whether a and b match idling weak ETag comparison.
 // Assumes a and b are valid ETags.
 func etagWeakMatch(a, b string) bool {
 	return strings.TrimPrefix(a, "W/") == strings.TrimPrefix(b, "W/")
