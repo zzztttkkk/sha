@@ -66,6 +66,8 @@ type Request struct {
 
 	cookies      utils.Kvs
 	cookieParsed bool
+
+	history []string // redirect history
 }
 
 func (req *Request) Reset() {
@@ -91,7 +93,10 @@ func (req *Request) Reset() {
 
 	req.cookies.Reset()
 	req.cookieParsed = false
+	req.history = nil
 }
+
+func (req *Request) History() []string { return req.history }
 
 func (req *Request) Method() []byte { return req.fl1 }
 

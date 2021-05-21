@@ -21,11 +21,9 @@ func init() {
 }
 
 var ErrBadHTTPPocketData = errors.New("sha.http: bad http pocket data")
-var ErrCanceled = errors.New("sha.http: canceled")
 
 func init() {
 	internal.ErrorStatusByValue[ErrBadHTTPPocketData] = StatusBadRequest
-	internal.ErrorStatusByValue[ErrCanceled] = StatusBadRequest
 }
 
 /* parsePocket read http pocket from `reader`, use fixed-size buffer `readBuf`
@@ -266,7 +264,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 	checkCtx:
 		select {
 		case <-ctx.Done():
-			return ErrCanceled
+			return ctx.Err()
 		default:
 		}
 	}
