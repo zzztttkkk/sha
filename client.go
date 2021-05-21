@@ -98,7 +98,7 @@ func (cp *Cli) put(s *CliSession) {
 	cp.mutex.Lock()
 	key := fmt.Sprintf("%s:%v", s.address, s.isTLS)
 	iC := cp.idling[key]
-	defer cp.mutex.Unlock()
+	cp.mutex.Unlock()
 
 	atomic.AddInt64(&cp.using, -1)
 
