@@ -103,31 +103,32 @@ func (n *_Node) findEndIndexAndValues(path string) (int, []string) {
 	return end, values
 }
 
-type _AutoOptions struct {
+type _AutoOptionsHandler struct {
 	m  []byte
 	cm string
 }
 
-func (a *_AutoOptions) Handle(ctx *RequestCtx) {
+func (a *_AutoOptionsHandler) Handle(ctx *RequestCtx) {
 	ctx.Response.Header().Set(HeaderAllow, a.m)
 }
 
-func newAutoOptions(method string) *_AutoOptions {
-	return &_AutoOptions{
+func newAutoOptions(method string) *_AutoOptionsHandler {
+	aoh := &_AutoOptionsHandler{
 		m:  []byte(method),
 		cm: method,
 	}
+	return aoh
 }
 
 func isAutoOptionsHandler(h RequestHandler) bool {
-	_, ok := h.(*_AutoOptions)
+	_, ok := h.(*_AutoOptionsHandler)
 	return ok
 }
 
 func (n *_Node) setHandler(handler RequestHandler, fullPath string) (*_Node, error) {
 	if n.handler != nil || n.tsr {
-		oAoh, oAohOk := n.handler.(*_AutoOptions)
-		nAoh, nAohOk := handler.(*_AutoOptions)
+		oAoh, oAohOk := n.handler.(*_AutoOptionsHandler)
+		nAoh, nAohOk := handler.(*_AutoOptionsHandler)
 
 		if !oAohOk && !nAohOk {
 			return n, newRadixError(errSetHandler, fullPath)
@@ -137,13 +138,10 @@ func (n *_Node) setHandler(handler RequestHandler, fullPath string) (*_Node, err
 			oAoh.m = append(oAoh.m, ',', ' ')
 			oAoh.m = append(oAoh.m, nAoh.cm...)
 			handler = n.handler
-		}
-
-		//if oAohOk && !nAohOk {
-		//}
-
-		if !oAohOk && nAohOk {
+		} else if !oAohOk && nAohOk {
 			handler = n.handler
+		} else {
+			// oAohOK && !nAohOk
 		}
 	}
 

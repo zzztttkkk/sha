@@ -133,6 +133,7 @@ func (req *Request) SetPath(path []byte) *Request {
 func (req *Request) SetPathString(path string) *Request {
 	req.fl2 = req.fl2[:0]
 	req.fl2 = append(req.fl2, path...)
+	req.URL.ok = false
 	return req
 }
 

@@ -35,8 +35,7 @@ func init() {
 
 type Mux struct {
 	_MiddlewareNode
-
-	prefix string
+	Opts MuxOptions
 
 	stdTrees    [10]*_RadixTree
 	customTrees map[string]*_RadixTree
@@ -45,14 +44,7 @@ type Mux struct {
 	documents         map[string]map[string]validator.Document
 	documentsTagIndex map[string]map[validator.Document]struct{}
 
-	// opt
-	doTrailingSlashRedirect bool
-	notFound                func(ctx *RequestCtx)
-	methodNotAllowed        func(ctx *RequestCtx)
-	cors                    map[string]*_CorsOptions
-	corsOriginToName        func(origin []byte) string
-	recover                 func(ctx *RequestCtx, v interface{})
-	autoHandleOptions       bool
+	cors map[string]*_CorsOptions
 
 	// raw
 	// path -> method
@@ -138,10 +130,11 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 		}
 	}
 
-	path = m.prefix + path
+	opts := &m.Opts
+	path = opts.Prefix + path
 
 	tree.Add(path, handler)
-	if method != MethodOptions && m.autoHandleOptions {
+	if method != MethodOptions && opts.AutoHandleOptions {
 		m.HTTP(MethodOptions, path, newAutoOptions(method))
 	}
 
@@ -258,20 +251,25 @@ func (m *Mux) getTree(ctx *RequestCtx) *_RadixTree {
 }
 
 func (m *Mux) onNotFound(ctx *RequestCtx) {
-	if m.methodNotAllowed != nil && ctx.Request._method != _MOptions {
+	opts := &m.Opts
+
+	if opts.MethodNotAllowed != nil && ctx.Request._method != _MOptions {
 		optionsTree := m.stdTrees[_MOptions-1]
 		if optionsTree != nil {
 			h, _ := optionsTree.Get(ctx.Request.Path(), ctx)
 			if h != nil {
+				ctx.Response.SetStatusCode(StatusMethodNotAllowed)
 				h.Handle(ctx)
 				return
 			}
+		} else {
+			opts.MethodNotAllowed(ctx)
+			return
 		}
-		m.methodNotAllowed(ctx)
-		return
 	}
-	if m.notFound != nil {
-		m.notFound(ctx)
+
+	if opts.NoFound != nil {
+		opts.NoFound(ctx)
 		return
 	}
 	ctx.Response.statusCode = StatusNotFound
@@ -287,8 +285,8 @@ func (m *Mux) Handle(ctx *RequestCtx) {
 			}
 		}
 
-		if m.recover != nil {
-			m.recover(ctx, v)
+		if m.Opts.Recover != nil {
+			m.Opts.Recover(ctx, v)
 			return
 		}
 
@@ -371,31 +369,25 @@ func (m *Mux) String() string {
 	return buf.String()
 }
 
-func NewMux(opt *MuxOptions) *Mux {
-	if opt == nil {
-		opt = &defaultMuxOption
+func NewMux(opts *MuxOptions) *Mux {
+	if opts == nil {
+		opts = &defaultMuxOption
 	}
 
 	mux := &Mux{
-		prefix:      checkPrefix(opt.Prefix),
+		Opts:        *opts,
 		documents:   map[string]map[string]validator.Document{},
 		customTrees: map[string]*_RadixTree{},
 		all:         map[string]map[string]string{},
-
-		doTrailingSlashRedirect: opt.DoTrailingSlashRedirect,
-		methodNotAllowed:        opt.MethodNotAllowed,
-		notFound:                opt.NoFound,
-		recover:                 opt.Recover,
-		autoHandleOptions:       opt.AutoHandleOptions,
 	}
 
-	if len(opt.CORS) > 0 {
-		if opt.CORSOriginToName == nil {
+	opts = &mux.Opts
+	if len(opts.CORS) > 0 {
+		if opts.CORSOriginToName == nil {
 			panic(fmt.Errorf("sha.mux: nil CORSOriginToName"))
 		}
-		mux.corsOriginToName = opt.CORSOriginToName
 		mux.cors = map[string]*_CorsOptions{}
-		for _, co := range opt.CORS {
+		for _, co := range opts.CORS {
 			mux.cors[co.Name] = newCorsOptions(co)
 		}
 
@@ -406,13 +398,13 @@ func NewMux(opt *MuxOptions) *Mux {
 				return
 			}
 
-			if opt.CORSSKip {
+			if opts.CORSSKip {
 				allowAllCorsOption.writeHeader(ctx, origin)
 				next()
 				return
 			}
 
-			corsOptions := mux.cors[mux.corsOriginToName(origin)]
+			corsOptions := mux.cors[opts.CORSOriginToName(origin)]
 			if corsOptions == nil {
 				return
 			}

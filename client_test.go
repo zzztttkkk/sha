@@ -11,6 +11,7 @@ import (
 
 func TestCli(t *testing.T) {
 	cli := NewCli(nil)
+	defer cli.Close()
 
 	var wg = &sync.WaitGroup{}
 	for i := 0; i < 50; i++ {
@@ -18,7 +19,7 @@ func TestCli(t *testing.T) {
 			wg.Add(1)
 			defer wg.Done()
 
-			baseCtx, cancelFunc := context.WithTimeout(context.Background(), time.Millisecond*100)
+			baseCtx, cancelFunc := context.WithTimeout(context.Background(), time.Millisecond*250)
 			defer cancelFunc()
 
 			ctx := AcquireRequestCtx(baseCtx)
@@ -33,7 +34,7 @@ func TestCli(t *testing.T) {
 					fmt.Println(err)
 					return
 				}
-				fmt.Printf("Res: %d %s\r\n", ctx.Response.StatusCode(), ctx.Response.Phrase())
+				fmt.Printf("Res (%s): %d %s\r\n", ctx.TimeSpent(), ctx.Response.StatusCode(), ctx.Response.Phrase())
 			})
 		}()
 	}
@@ -60,6 +61,7 @@ func TestCliRedirect(t *testing.T) {
 	cli := NewCli(nil)
 	cli.Opts.MaxRedirect = 100
 	cli.Opts.KeepRedirectHistory = true
+	defer cli.Close()
 
 	ctx := AcquireRequestCtx(context.Background())
 	defer ReleaseRequestCtx(ctx)
@@ -71,5 +73,49 @@ func TestCliRedirect(t *testing.T) {
 			return
 		}
 		fmt.Printf("Res: %d %s %s\r\n", ctx.Response.StatusCode(), ctx.Response.Phrase(), ctx.Request.History())
+	})
+}
+
+func TestCliRedirectToAnotherHost(t *testing.T) {
+	go func() {
+		ListenAndServe("", RequestHandlerFunc(func(ctx *RequestCtx) {
+			num, _ := strconv.ParseInt(string(ctx.Request.Path()[1:]), 10, 32)
+			if num < 100 {
+				ctx.Response.SetStatusCode(StatusMovedPermanently)
+				ctx.Response.Header().SetString(
+					HeaderLocation,
+					fmt.Sprintf("/%d?time=%d", num+1, time.Now().UnixNano()),
+				)
+				return
+			}
+			ctx.Response.SetStatusCode(StatusMovedPermanently)
+			ctx.Response.Header().SetString(
+				HeaderLocation,
+				fmt.Sprintf("https://www.baidu.com/aaaa?time=%d", time.Now().UnixNano()),
+			)
+			return
+		}))
+	}()
+
+	time.Sleep(time.Second)
+
+	cli := NewCli(nil)
+	cli.Opts.MaxRedirect = 101
+	cli.Opts.KeepRedirectHistory = true
+	defer cli.Close()
+
+	ctx := AcquireRequestCtx(context.Background())
+	defer ReleaseRequestCtx(ctx)
+
+	ctx.Request.SetPathString("/0")
+	cli.Send(ctx, "127.0.0.1:5986", false, func(_ *CliSession, err error) {
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf(
+			"Res (%s): %d %s %s\r\n",
+			ctx.TimeSpent(), ctx.Response.StatusCode(), ctx.Response.Phrase(), ctx.Request.History(),
+		)
 	})
 }

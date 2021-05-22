@@ -26,10 +26,11 @@ type CliOptions struct {
 }
 
 type Cli struct {
-	mutex  sync.Mutex
-	idling map[string]chan *CliSession
-	using  int64
-	Opts   CliOptions
+	mutex   sync.Mutex
+	idling  map[string]chan *CliSession
+	using   int64
+	Opts    CliOptions
+	closing bool
 }
 
 var defaultClientSessionPoolOptions = CliOptions{
@@ -52,10 +53,16 @@ func NewCli(opt *CliOptions) *Cli {
 	return cp
 }
 
+var ErrClosedCli = errors.New("sha.cli: closed")
+
 func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, error) {
 	key := fmt.Sprintf("%s:%v", addr, isTLS)
 
 	cp.mutex.Lock()
+	if cp.closing {
+		return nil, ErrClosedCli
+	}
+
 	iC := cp.idling[key]
 	if iC == nil {
 		iC = make(chan *CliSession, cp.Opts.MaxIdle)
@@ -63,17 +70,26 @@ func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, 
 	}
 	cp.mutex.Unlock()
 
+	var n time.Duration = 0
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case cli := <-iC:
+		case cli, ok := <-iC:
+			if !ok {
+				return nil, ErrClosedCli
+			}
 			return cli, nil
 		default:
 			if int(atomic.LoadInt64(&cp.using)) < cp.Opts.MaxOpen {
 				return NewCliSession(addr, isTLS, &cp.Opts.CliSessionOptions), nil
 			}
-			time.Sleep(time.Millisecond)
+			n += 2
+			if n > 10 {
+				n = 2
+			}
+			time.Sleep(time.Millisecond * n)
 		}
 	}
 }
@@ -106,6 +122,13 @@ func (cp *Cli) put(s *CliSession) {
 	}
 
 	cp.mutex.Lock()
+
+	if cp.closing {
+		_ = s.Close()
+		cp.mutex.Unlock()
+		return
+	}
+
 	key := fmt.Sprintf("%s:%v", s.address, s.isTLS)
 	iC := cp.idling[key]
 	cp.mutex.Unlock()
@@ -151,7 +174,12 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, onDone func(*Cli
 	if cp.Opts.KeepRedirectHistory {
 		ctx.Request.history = append(ctx.Request.history, string(ctx.Request.fl2))
 	}
+
+	begin := ctx.Request.time
 	err = session.Send(ctx)
+	if begin != 0 {
+		ctx.Request.time = begin
+	}
 	if err != nil {
 		onDone(session, err)
 		return
@@ -221,4 +249,22 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, onDone func(*Cli
 
 func (cp *Cli) Send(ctx *RequestCtx, addr string, isTLS bool, onDone func(*CliSession, error)) {
 	cp.doSend(ctx, addr, isTLS, onDone, 0, nil)
+}
+
+func (cp *Cli) Close() error {
+	cp.mutex.Lock()
+	defer cp.mutex.Unlock()
+
+	if cp.closing {
+		return nil
+	}
+	cp.closing = true
+
+	for _, cn := range cp.idling {
+		close(cn)
+		for v := range cn {
+			_ = v.Close()
+		}
+	}
+	return nil
 }

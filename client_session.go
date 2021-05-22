@@ -247,3 +247,5 @@ func (s *CliSession) Send(ctx *RequestCtx) error {
 	}
 	return parseResponse(ctx, s.r, ctx.readBuf, &ctx.Response, s.httpOpt)
 }
+
+func (s *CliSession) Conn() net.Conn { return s.conn }

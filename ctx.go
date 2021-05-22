@@ -49,6 +49,14 @@ func (ctx *RequestCtx) Keep() {
 	ctx.keepByUser = true
 }
 
+func (ctx *RequestCtx) TimeSpent() time.Duration {
+	diff := ctx.Request.time - ctx.Response.time
+	if diff >= 0 {
+		return time.Duration(diff)
+	}
+	return time.Duration(-diff)
+}
+
 // ReturnTo if pool is nil, return to the default
 func (ctx *RequestCtx) ReturnTo(pool *RequestCtxPool) {
 	ctx.keepByUser = false
