@@ -63,10 +63,6 @@ func (p *RequestCtxPool) Release(ctx *RequestCtx) {
 }
 
 func (p *RequestCtxPool) release(ctx *RequestCtx, unprepared bool) {
-	if ctx.keepByUser {
-		return
-	}
-
 	if p.opt.BufferPoolSizeLimit > 0 {
 		if ctx.Request.body != nil && ctx.Request.body.Cap() > p.opt.BufferPoolSizeLimit {
 			ctx.Request.body = nil

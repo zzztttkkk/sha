@@ -47,13 +47,3 @@ func TestPeek(t *testing.T) {
 	fmt.Println(obj.IsNull("data", "origin", "translate"))
 	fmt.Println(obj.PeekTimeFromString("2006-01-02T15:04:05.000000", "data", "cacheAt"))
 }
-
-func TestUnmarshal(t *testing.T) {
-	type A struct {
-		S string
-	}
-
-	var a A
-	err := Unmarshal([]byte(`{"S":"<div></div>"}`), &a)
-	fmt.Println(a.S, err)
-}

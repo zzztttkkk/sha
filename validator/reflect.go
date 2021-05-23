@@ -315,6 +315,48 @@ func getDefaultFunc(ele reflect.Value, name string) func() interface{} {
 	return nil
 }
 
+// GetRules
+/*
+	tag name:
+		validator
+	tag options:
+		where/w:
+			- query/q => get bytes value from Request.Query
+			- body/b => get bytes value from Request.Body
+			- form/f => get bytes value from Request.Query or Request.Body
+			- urlparams/url/u => get bytes value from Request.URLParams
+			- headers/h => get bytes value from Request.Header
+			- cookies/c => get bytes value from Request.Cookies
+
+		optional
+			this field is optional
+
+		disabletrimspace/no-trim
+			do not trim space of the bytes value
+
+		disableescapehtml/no-escape
+			do not escape of the string value
+
+		description
+			the description of this field
+
+		regexp/r
+			a name of the regexp
+			use `RegisterRegexp` to register a regexp
+
+		filter/f
+			names of the bytes filter functions
+			use `RegisterBytesFilter` to register a function
+
+		value/v
+			number value range
+
+		size/s
+			slice value size range
+
+		length/len/l
+			bytes length range
+*/
 func GetRules(t reflect.Type) Rules {
 	v, ok := cacheMap[t]
 	if ok {

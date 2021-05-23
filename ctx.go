@@ -12,7 +12,13 @@ import (
 	"time"
 )
 
+// RequestCtx
+// most of the fields and most of the method return values are read-only, so:
+// 1, if you want to modify them, you should keep this in mind.
+// 2, if you want to keep them after handling, you should copy them.
 type RequestCtx struct {
+	noCopy
+
 	ctx        context.Context
 	cancelFunc func()
 
@@ -37,16 +43,9 @@ type RequestCtx struct {
 	// err
 	err interface{}
 
-	//
-	keepByUser bool
-
 	// session
 	sessionOK bool
 	session   Session
-}
-
-func (ctx *RequestCtx) Keep() {
-	ctx.keepByUser = true
 }
 
 func (ctx *RequestCtx) TimeSpent() time.Duration {
@@ -55,15 +54,6 @@ func (ctx *RequestCtx) TimeSpent() time.Duration {
 		return time.Duration(diff)
 	}
 	return time.Duration(-diff)
-}
-
-// ReturnTo if pool is nil, return to the default
-func (ctx *RequestCtx) ReturnTo(pool *RequestCtxPool) {
-	ctx.keepByUser = false
-	if pool == nil {
-		pool = defaultRCtxPool
-	}
-	pool.Release(ctx)
 }
 
 func (ctx *RequestCtx) Deadline() (deadline time.Time, ok bool) { return ctx.ctx.Deadline() }

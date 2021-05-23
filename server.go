@@ -174,8 +174,7 @@ func (s *Server) Shutdown() {
 
 	if s.Options.GracefulShutdown {
 		for {
-			v := atomic.LoadInt64(&s.aliveConns)
-			if v < 1 {
+			if atomic.LoadInt64(&s.aliveConns) < 1 {
 				break
 			} else {
 				time.Sleep(time.Millisecond * 100)
@@ -267,7 +266,7 @@ func (s *Server) Serve(l net.Listener) {
 		if maxKeepAlive > 0 {
 			_ = conn.SetDeadline(time.Now().Add(maxKeepAlive))
 		}
-		s.aliveConns++
+		atomic.AddInt64(&s.aliveConns, 1)
 		go func() {
 			defer atomic.AddInt64(&s.aliveConns, -1)
 			serveFunc(conn)

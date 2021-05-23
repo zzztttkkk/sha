@@ -47,6 +47,7 @@ func (u *URL) reset() {
 }
 
 type Request struct {
+	noCopy
 	_HTTPPocket
 
 	_method _Method

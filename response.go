@@ -8,6 +8,7 @@ import (
 )
 
 type Response struct {
+	noCopy
 	_HTTPPocket
 	statusCode int
 	cw         _CompressionWriter
