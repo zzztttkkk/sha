@@ -88,6 +88,8 @@ func (ctx *RequestCtx) IsTLS() bool { return ctx.isTLS }
 
 func (ctx *RequestCtx) RemoteAddr() net.Addr { return ctx.conn.RemoteAddr() }
 
+func (ctx *RequestCtx) LocalAddr() net.Addr { return ctx.conn.LocalAddr() }
+
 var ErrRequestHijacked = errors.New("sha: request is already hijacked")
 
 func (ctx *RequestCtx) Hijack() net.Conn {
@@ -152,37 +154,30 @@ func (ctx *RequestCtx) Write(p []byte) (int, error) {
 	return ctx.Response.Write(p)
 }
 
-func (ctx *RequestCtx) WriteString(s string) (int, error) {
-	return ctx.Write(utils.B(s))
+func (ctx *RequestCtx) WriteString(s string) error {
+	_, e := ctx.Write(utils.B(s))
+	return e
 }
 
-func (ctx *RequestCtx) WriteJSON(v interface{}) {
+func (ctx *RequestCtx) WriteJSON(v interface{}) error {
 	ctx.Response.Header().SetContentType(MIMEJson)
-
 	encoder := jsonx.NewEncoder(ctx)
-	err := encoder.Encode(v)
-	if err != nil {
-		panic(err)
-	}
+	return encoder.Encode(v)
 }
 
-func (ctx *RequestCtx) WriteHTML(v []byte) {
+func (ctx *RequestCtx) WriteHTML(v []byte) error {
 	ctx.Response.Header().SetContentType(MIMEHtml)
 	_, e := ctx.Write(v)
-	if e != nil {
-		ctx.SetError(e)
-	}
+	return e
 }
 
 func (ctx *RequestCtx) WriteStream(stream io.Reader) error {
 	return sendChunkedStreamResponse(ctx.w, ctx, stream)
 }
 
-func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) {
+func (ctx *RequestCtx) WriteFile(f io.Reader, ext string) error {
 	ctx.Response.Header().SetContentType(mime.TypeByExtension(ext))
-	if e := ctx.WriteStream(f); e != nil {
-		ctx.SetError(e)
-	}
+	return ctx.WriteStream(f)
 }
 
 type Template interface {

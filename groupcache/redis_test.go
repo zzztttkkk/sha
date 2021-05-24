@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unsafe"
 )
 
 type _AddArgs struct {
@@ -16,31 +17,50 @@ type _AddArgs struct {
 }
 
 func (a *_AddArgs) Name() string {
-	f := "%d:%d"
+	f := "%d+%d"
 	if a.B < a.A {
 		return fmt.Sprintf(f, a.B, a.A)
 	}
 	return fmt.Sprintf(f, a.A, a.B)
 }
 
-var c = New("test", nil, 30).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7, Addr: "127.0.0.1:16379"})).Register(
+type Item struct {
+	Sum int
+}
+
+var c = New("test", nil).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7, Addr: "127.0.0.1:16379"})).RegisterLoader(
 	"add-return-value",
 	func(ctx context.Context, args NamedArgs) (ret interface{}, err error) {
 		v := args.(*_AddArgs)
 		time.Sleep(time.Second)
-		fmt.Printf("Calc: %d %d\n", v.A, v.B)
-		return v.A + v.B, err
+		fmt.Printf("!!!!!!!!!!!!!!Calc: %d %d\n", v.A, v.B)
+		return Item{v.A + v.B}, err
 	},
-).Register(
+).RegisterLoader(
 	"add-return-pointer",
 	func(ctx context.Context, args NamedArgs) (ret interface{}, err error) {
 		v := args.(*_AddArgs)
 		time.Sleep(time.Second)
-		fmt.Printf("Calc: %d %d\n", v.A, v.B)
-		r := v.A + v.B
-		return &r, err
+		fmt.Printf("--------------Calc: %d %d\n", v.A, v.B)
+		return &Item{v.A + v.B}, err
+	},
+).RegisterCopyFunc(
+	"add-return-pointer",
+	func(dist, src interface{}) {
+		dPtr := dist.(**Item)
+		switch tv := src.(type) {
+		case *Item:
+			*dPtr = tv
+		case **Item:
+			*dPtr = *tv
+		}
 	},
 )
+
+func init() {
+	c.Opts.RetryLimit = 5
+	c.Opts.RetrySleep = time.Millisecond * 300
+}
 
 func TestAddReturnValue(t *testing.T) {
 	wg := &sync.WaitGroup{}
@@ -50,17 +70,15 @@ func TestAddReturnValue(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		go func(ind int) {
-			var ret int
-
-			if err := c.Do(context.Background(), "add-return-value", &ret, &arg); err != nil {
+			defer wg.Done()
+			var ret *Item
+			if err := c.Do(context.Background(), "add-return-pointer", &ret, &arg); err != nil {
 				if err == ErrRetryAfter {
 					fmt.Println("retry after")
-					wg.Done()
 					return
 				}
 			}
-			fmt.Println(ind, ret)
-			wg.Done()
+			fmt.Println(ind, ret, unsafe.Pointer(ret))
 		}(i)
 	}
 

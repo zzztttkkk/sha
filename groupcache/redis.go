@@ -10,8 +10,8 @@ type _RedisStorage struct {
 	cli redis.Cmdable
 }
 
-func (rs _RedisStorage) Set(ctx context.Context, k string, v []byte, expires time.Duration) {
-	if err := rs.cli.Set(ctx, k, v, expires).Err(); err != nil {
+func (rs _RedisStorage) Set(ctx context.Context, k string, v []byte, expire time.Duration) {
+	if err := rs.cli.Set(ctx, k, v, expire).Err(); err != nil {
 		panic(err)
 	}
 }
