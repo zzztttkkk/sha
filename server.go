@@ -129,7 +129,7 @@ func (s *Server) Listen() net.Listener {
 		s.Options.Addr = "127.0.0.1:5986"
 	}
 	if s.Handler == nil {
-		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.WriteString("Hello World!\n") })
+		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _ = ctx.WriteString("Hello World!\n") })
 	}
 
 	listener, err := net.Listen("tcp4", s.Options.Addr)
@@ -324,6 +324,9 @@ func (s *Server) serveHTTPConn(conn net.Conn) {
 }
 
 func ListenAndServe(addr string, handler RequestHandler) {
+	if handler == nil {
+		handler = DefaultMux
+	}
 	ListenAndServeWithContext(context.Background(), addr, handler)
 }
 

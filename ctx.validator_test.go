@@ -54,7 +54,7 @@ func TestValidator(t *testing.T) {
 
 			if err := ctx.ValidateForm(&form); err != nil {
 				ctx.Response.SetStatusCode(err.StatusCode())
-				_, _ = ctx.WriteString(err.Error())
+				_ = ctx.WriteString(err.Error())
 				return
 			}
 

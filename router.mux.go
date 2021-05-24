@@ -416,3 +416,9 @@ func NewMux(opts *MuxOptions) *Mux {
 
 	return mux
 }
+
+var DefaultMux = NewMux(nil)
+
+func HandleFunc(method, path string, handler RequestHandler) {
+	DefaultMux.HTTP(method, path, handler)
+}

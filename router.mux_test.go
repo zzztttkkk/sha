@@ -10,7 +10,7 @@ import (
 func makeHandler(v int) RequestHandler {
 	return RequestHandlerFunc(func(ctx *RequestCtx) {
 		fmt.Println(v, &ctx.Request.URL.Params)
-		_, _ = ctx.WriteString("Hello!")
+		_ = ctx.WriteString("Hello!")
 	})
 }
 
@@ -19,11 +19,11 @@ func TestMux(t *testing.T) {
 
 	mux.Use(
 		MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			_, _ = ctx.WriteString("global middleware 1\n")
+			_ = ctx.WriteString("global middleware 1\n")
 			next()
 		}),
 		MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			_, _ = ctx.WriteString("global middleware 2\n")
+			_= ctx.WriteString("global middleware 2\n")
 			next()
 		}),
 	)
@@ -37,7 +37,7 @@ func TestMux(t *testing.T) {
 		&HandlerOptions{
 			Middlewares: []Middleware{
 				MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-					_, _ = ctx.WriteString("handler middleware 1\n")
+					_ = ctx.WriteString("handler middleware 1\n")
 					next()
 				}),
 			},
@@ -52,11 +52,11 @@ func TestMux(t *testing.T) {
 	groupA := mux.NewGroup("/a")
 	groupA.Use(
 		MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			_, _ = ctx.WriteString("A middleware 1\n")
+			_ = ctx.WriteString("A middleware 1\n")
 			next()
 		}),
 		MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			_, _ = ctx.WriteString("A middleware 2\n")
+			_ = ctx.WriteString("A middleware 2\n")
 			next()
 		}),
 	)

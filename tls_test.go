@@ -13,7 +13,7 @@ func TestServer_ListenAndServeTLS(t *testing.T) {
 
 	s.Handler = RequestHandlerFunc(
 		func(ctx *RequestCtx) {
-			_, _ = ctx.WriteString("Hello tls")
+			_ = ctx.WriteString("Hello tls")
 		},
 	)
 

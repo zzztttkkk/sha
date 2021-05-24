@@ -76,7 +76,7 @@ func doRecover(ctx *RequestCtx, v interface{}) {
 			logStack = false
 		}
 		ctx.Response.SetStatusCode(rv.StatusCode())
-		_, _ = ctx.WriteString(rv.Error())
+		_ = ctx.WriteString(rv.Error())
 	} else {
 		ctx.Response.SetStatusCode(http.StatusInternalServerError)
 	}

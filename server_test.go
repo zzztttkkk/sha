@@ -57,7 +57,7 @@ func TestServer_Run(t *testing.T) {
 		"/compress",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
-			_, _ = ctx.WriteString(strings.Repeat("Hello World!", 100))
+			_ = ctx.WriteString(strings.Repeat("Hello World!", 100))
 		}),
 	)
 
@@ -65,7 +65,7 @@ func TestServer_Run(t *testing.T) {
 		"get",
 		"/close",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
-			_, _ = ctx.WriteString("Hello World!")
+			_ = ctx.WriteString("Hello World!")
 			ctx.Response.Header().Set(HeaderConnection, []byte("close"))
 		}),
 	)
@@ -97,7 +97,7 @@ func TestServer_Run(t *testing.T) {
 				fmt.Println(file.FileName, file.Name)
 				fmt.Println(string(file.Data()))
 			}
-			_, _ = ctx.WriteString("Hello World!")
+			_ = ctx.WriteString("Hello World!")
 		}),
 	)
 
@@ -123,7 +123,7 @@ func TestServer_Run(t *testing.T) {
 		"get",
 		"/hello",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
-			_, _ = ctx.WriteString("hello world")
+			_ = ctx.WriteString("hello world")
 		}),
 	)
 

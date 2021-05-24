@@ -105,7 +105,7 @@ func (m *Mux) ServeDocument(method, path string, middleware ...Middleware) {
 				}
 			}
 
-			_, _ = ctx.WriteString(buf.String())
+			_= ctx.WriteString(buf.String())
 		}),
 	)
 }

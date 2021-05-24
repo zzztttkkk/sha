@@ -52,7 +52,7 @@ func TestCliRedirect(t *testing.T) {
 				return
 			}
 			ctx.Response.SetStatusCode(StatusOK)
-			_, _ = ctx.WriteString("OK!")
+			_ = ctx.WriteString("OK!")
 		}))
 	}()
 
