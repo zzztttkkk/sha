@@ -84,7 +84,7 @@ func TestServer_Run(t *testing.T) {
 	}
 
 	mux.HTTPWithOptions(
-		&HandlerOptions{Document: validator.NewDocument(Form{}, validator.Undefined)},
+		&HandlerOptions{Document: validator.NewDocument(Form{}, nil)},
 		"post",
 		"/form",
 		RequestHandlerFunc(func(ctx *RequestCtx) {

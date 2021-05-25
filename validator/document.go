@@ -47,31 +47,20 @@ func (m *SimpleDocument) SetDescription(desc string) *SimpleDocument {
 	return m
 }
 
-type _undefined struct{}
-
-var Undefined = &_undefined{}
-
 func NewDocument(input interface{}, output interface{}) *SimpleDocument {
 	o := ""
-	if output == Undefined {
-		o = "Undefined"
-	} else {
-		if output == nil || !reflect.ValueOf(output).IsValid() {
-			o = "Empty"
-		} else {
-			s, _ := jsonx.Marshal(output)
-			o = string(s)
-		}
+	if output != nil && reflect.ValueOf(output).IsValid() {
+		s, _ := jsonx.Marshal(output)
+		o = string(s)
 	}
-
 	var i string
-	if input == Undefined {
-		i = "Undefined"
-	} else {
-		if input == nil || !reflect.ValueOf(input).IsValid() {
-			i = "Empty"
-		} else {
-			i = GetRules(reflect.TypeOf(input)).String()
+	if input != nil && reflect.ValueOf(input).IsValid() {
+		i = GetRules(reflect.TypeOf(input)).String()
+		ed, ok := input.(ExtDescriptor)
+		if ok && len(ed.ExtDescription()) > 0 {
+			i += "\r\n`\r\n"
+			i += ed.ExtDescription()
+			i += "\r\n`"
 		}
 	}
 	return &SimpleDocument{input: i, output: o}

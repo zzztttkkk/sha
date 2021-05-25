@@ -10,10 +10,10 @@ type TestForm struct {
 	Nums []int64 `validator:",V=0-9,S=3"`
 }
 
-func (TestForm) Default(fieldName string) interface{} {
+func (TestForm) Default(fieldName string) func() interface{} {
 	switch fieldName {
 	case "Nums":
-		return []int64{1, 2, 3}
+		return func() interface{} { return []int64{1, 2, 3, 678} }
 	}
 	return nil
 }
@@ -21,9 +21,7 @@ func (TestForm) Default(fieldName string) interface{} {
 func TestRequestCtx_Validate(t *testing.T) {
 	mux := NewMux(nil)
 	mux.HTTPWithOptions(
-		&HandlerOptions{
-			Document: validator.NewDocument(TestForm{}, validator.Undefined),
-		},
+		&HandlerOptions{Document: validator.NewDocument(TestForm{}, nil)},
 		"get",
 		"/",
 		RequestHandlerFunc(

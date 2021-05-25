@@ -61,7 +61,7 @@ func (m *MuxGroup) HTTPWithOptions(opt *HandlerOptions, method, path string, han
 }
 
 func (m *MuxGroup) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
-	m.HTTPWithOptions(&HandlerOptions{Document: validator.NewDocument(form, validator.Undefined)}, method, path, handler)
+	m.HTTPWithOptions(&HandlerOptions{Document: validator.NewDocument(form, nil)}, method, path, handler)
 }
 
 func (m *MuxGroup) copyMiddleware(opt *HandlerOptions) *HandlerOptions {

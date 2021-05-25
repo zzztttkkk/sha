@@ -17,7 +17,16 @@ var cacheMap = map[reflect.Type]Rules{}
 var reflectMapper = reflectx.NewMapper("validator")
 
 type Defaulter interface {
-	Default(fieldName string) interface{}
+	Default(fieldName string) func() interface{}
+}
+
+type ExtDescriptor interface {
+	ExtDescription() string
+}
+
+type DefaultAndExtDescriptor interface {
+	Defaulter
+	ExtDescriptor
 }
 
 var customFieldType = reflect.TypeOf((*Field)(nil)).Elem()
@@ -304,17 +313,6 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 	return rule
 }
 
-func getDefaultFunc(ele reflect.Value, name string) func() interface{} {
-	fnV := ele.MethodByName(fmt.Sprintf("Default%s", name))
-	if fnV.IsValid() {
-		ret, ok := fnV.Interface().(func() interface{})
-		if ok {
-			return ret
-		}
-	}
-	return nil
-}
-
 // GetRules
 /*
 	tag name:
@@ -365,10 +363,19 @@ func GetRules(t reflect.Type) Rules {
 
 	ele := reflect.New(t)
 
+	defaulter, isD := ele.Interface().(Defaulter)
+	if !isD {
+		defaulter, isD = ele.Elem().Interface().(Defaulter)
+	}
+
 	var rules Rules
 	fMap := reflectMapper.TypeMap(t)
 	for _, f := range fMap.Index {
-		rule := fieldInfoToRule(t, f, getDefaultFunc(ele, f.Field.Name))
+		var ed func() interface{}
+		if isD {
+			ed = defaulter.Default(f.Field.Name)
+		}
+		rule := fieldInfoToRule(t, f, ed)
 		if rule != nil {
 			rules = append(rules, rule)
 		} else {

@@ -19,11 +19,11 @@ func TestMux(t *testing.T) {
 
 	mux.Use(
 		MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			_ = ctx.WriteString("global middleware 1\n")
+			fmt.Println("global middleware 1")
 			next()
 		}),
 		MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			_= ctx.WriteString("global middleware 2\n")
+			fmt.Println("global middleware 2")
 			next()
 		}),
 	)

@@ -3,6 +3,7 @@ package sha
 import (
 	"fmt"
 	"github.com/zzztttkkk/sha/validator"
+	"sort"
 	"strings"
 )
 
@@ -12,7 +13,7 @@ type _DocForm struct {
 	TagsLogic string   `validator:"logic,optional"`
 }
 
-func (d _DocForm) DefaultTagsLogic() interface{} { return "OR" }
+func (_ _DocForm) DefaultTagsLogic() interface{} { return "OR" }
 
 func contains(v []string, d string) bool {
 	for _, a := range v {
@@ -34,7 +35,7 @@ func mapAppend(m map[string]map[string]validator.Document, path, method string, 
 
 func (m *Mux) ServeDocument(method, path string, middleware ...Middleware) {
 	m.HTTPWithOptions(
-		&HandlerOptions{Document: validator.NewDocument(_DocForm{}, validator.Undefined), Middlewares: middleware},
+		&HandlerOptions{Document: validator.NewDocument(_DocForm{}, nil), Middlewares: middleware},
 		method, path,
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			var form _DocForm
@@ -84,28 +85,39 @@ func (m *Mux) ServeDocument(method, path string, middleware ...Middleware) {
 			}
 
 			var buf strings.Builder
+			type _PathItem struct {
+				Path string
+				doc  string
+			}
+			var paths []*_PathItem
 
 			for p, m1 := range vm {
 				buf.WriteString(fmt.Sprintf("## Path: %s\n", p))
 				for me, doc := range m1 {
 					buf.WriteString(fmt.Sprintf("### Method: %s\n", me))
-					buf.WriteString(fmt.Sprintf(
-						`## Document:
-#### Input:
-%s
-#### Output:
-%s
-#### Description:
-%s
-#### Tags:
-%s
-`,
-						doc.Input(), doc.Output(), doc.Description(), strings.Join(doc.Tags(), "; "),
-					))
+					if doc.Description() != "" {
+						buf.WriteString(fmt.Sprintf("#### Description:\r\n%s\r\n", doc.Input()))
+					}
+					if doc.Input() != "" {
+						buf.WriteString(fmt.Sprintf("#### Input:\r\n%s\r\n", doc.Input()))
+					}
+					if doc.Output() != "" {
+						buf.WriteString(fmt.Sprintf("#### Output:\r\n%s\r\n", doc.Output()))
+					}
+					if len(doc.Tags()) > 0 {
+						buf.WriteString(fmt.Sprintf("#### Tags:\r\n%s\r\n", strings.Join(doc.Tags(), "; ")))
+					}
 				}
+				paths = append(paths, &_PathItem{doc: buf.String(), Path: p})
+				buf.Reset()
 			}
 
-			_= ctx.WriteString(buf.String())
+			sort.Slice(paths, func(i, j int) bool { return paths[i].Path < paths[j].Path })
+
+			for _, v := range paths {
+				buf.WriteString(v.doc)
+			}
+			_ = ctx.WriteString(buf.String())
 		}),
 	)
 }

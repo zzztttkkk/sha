@@ -106,7 +106,7 @@ type _Rule struct {
 var MarkdownTableHeader = "\n|name|type|required|field bytes size|int value range|list size range|default|regexp|function|description|\n"
 
 func init() {
-	MarkdownTableHeader += strings.Repeat("|:---:", 10)
+	MarkdownTableHeader += strings.Repeat("|:---", 10)
 	MarkdownTableHeader += "|\n"
 }
 
@@ -146,17 +146,17 @@ func (rule *_Rule) String() string {
 
 	switch rule.where {
 	case _WhereForm:
-		m["name"] = fmt.Sprintf("Form<%s>", rule.formName)
+		m["name"] = fmt.Sprintf("Form{%s}", rule.formName)
 	case _WhereCookie:
-		m["name"] = fmt.Sprintf("Cookie<%s>", rule.formName)
+		m["name"] = fmt.Sprintf("Cookie{%s}", rule.formName)
 	case _WhereHeader:
-		m["name"] = fmt.Sprintf("Header<%s>", rule.formName)
+		m["name"] = fmt.Sprintf("Header{%s}", rule.formName)
 	case _WhereBody:
-		m["name"] = fmt.Sprintf("Body<%s>", rule.formName)
+		m["name"] = fmt.Sprintf("Body{%s}", rule.formName)
 	case _WhereQuery:
-		m["name"] = fmt.Sprintf("Query<%s>", rule.formName)
+		m["name"] = fmt.Sprintf("Query{%s}", rule.formName)
 	case _WhereURLParams:
-		m["name"] = fmt.Sprintf("URLParams<%s>", rule.formName)
+		m["name"] = fmt.Sprintf("URLParams{%s}", rule.formName)
 	}
 
 	if rule.checkListSize {
@@ -364,8 +364,6 @@ type Rules []*_Rule
 
 func (rules Rules) String() string {
 	buf := strings.Builder{}
-
-	buf.WriteString("#### fields\n")
 	buf.WriteString(MarkdownTableHeader)
 	for _, r := range rules {
 		buf.WriteString(r.String())

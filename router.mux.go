@@ -22,6 +22,7 @@ type MuxOptions struct {
 	CORSSKip                bool                                 `json:"cors_skip" toml:"cors-skip"`
 	CORSOriginToName        func(origin []byte) string           `json:"-" toml:"-"`
 	Recover                 func(ctx *RequestCtx, v interface{}) `json:"recover" toml:"-"`
+	AutoHandleDocs          bool                                 `json:"auto_handle_docs" toml:"auto-handle-docs"`
 }
 
 var defaultMuxOption MuxOptions
@@ -31,6 +32,14 @@ func init() {
 	defaultMuxOption.NoFound = func(ctx *RequestCtx) { ctx.Response.SetStatusCode(StatusNotFound) }
 	defaultMuxOption.Recover = doRecover
 	defaultMuxOption.AutoHandleOptions = true
+	defaultMuxOption.AutoHandleDocs = true
+
+	serverPrepareFunc = append(serverPrepareFunc, func(s *Server) {
+		h := s.Handler
+		if m, ok := h.(*Mux); ok {
+			m.ServeDocument(MethodGet, "/docs")
+		}
+	})
 }
 
 type Mux struct {
@@ -171,7 +180,7 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 }
 
 func (m *Mux) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
-	m.HTTPWithOptions(&HandlerOptions{Document: validator.NewDocument(form, validator.Undefined)}, method, path, handler)
+	m.HTTPWithOptions(&HandlerOptions{Document: validator.NewDocument(form, nil)}, method, path, handler)
 }
 
 func (m *Mux) NewGroup(prefix string) Router {
