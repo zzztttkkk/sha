@@ -30,7 +30,7 @@ var defaultMuxOption MuxOptions
 func init() {
 	defaultMuxOption.DoTrailingSlashRedirect = true
 	defaultMuxOption.NoFound = func(ctx *RequestCtx) { ctx.Response.SetStatusCode(StatusNotFound) }
-	defaultMuxOption.Recover = doRecover
+	defaultMuxOption.Recover = defaultRecover
 	defaultMuxOption.AutoHandleOptions = true
 	defaultMuxOption.AutoHandleDocs = true
 
@@ -299,7 +299,7 @@ func (m *Mux) Handle(ctx *RequestCtx) {
 			return
 		}
 
-		log.Printf("sha.error: %v\n", v)
+		log.Printf("sha.unhandled error: %v\n", v)
 
 		ctx.Response.SetStatusCode(StatusInternalServerError)
 		ctx.Response.ResetBody()

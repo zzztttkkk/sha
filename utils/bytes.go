@@ -8,9 +8,7 @@ import (
 )
 
 // S See https://groups.google.com/forum/#!msg/Golang-Nuts/ENgbUzYvCuU/90yGx7GUAgAJ .
-func S(b []byte) string {
-	return *(*string)(unsafe.Pointer(&b))
-}
+func S(b []byte) string { return *(*string)(unsafe.Pointer(&b)) }
 
 func B(s string) (b []byte) {
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))

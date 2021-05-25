@@ -37,12 +37,15 @@ func init() {
 }
 
 var (
-	errType        = reflect.TypeOf((*error)(nil)).Elem()
-	httpResErrType = reflect.TypeOf((*HTTPResponseError)(nil)).Elem()
-	httpErrType    = reflect.TypeOf((*HTTPError)(nil)).Elem()
+	errType                        = reflect.TypeOf((*error)(nil)).Elem()
+	httpResErrType                 = reflect.TypeOf((*HTTPResponseError)(nil)).Elem()
+	httpErrType                    = reflect.TypeOf((*HTTPError)(nil)).Elem()
+	CallersFramesSkip          int = 0
+	CallersFramesSize          int = 20
+	InternalServerErrorMessage     = `<h1>Oops, an unknown internal server error occurred.`
 )
 
-func doRecover(ctx *RequestCtx, v interface{}) {
+func defaultRecover(ctx *RequestCtx, v interface{}) {
 	ctx.Response.ResetBody()
 
 	vt := reflect.TypeOf(v)
@@ -79,9 +82,11 @@ func doRecover(ctx *RequestCtx, v interface{}) {
 		_ = ctx.WriteString(rv.Error())
 	} else {
 		ctx.Response.SetStatusCode(http.StatusInternalServerError)
+		ctx.Response.Header().SetContentType(MIMEHtml)
+		_ = ctx.WriteString(InternalServerErrorMessage)
 	}
 
 	if logStack {
-		log.Print(internal.Stacks(v, 2, 20))
+		log.Print(internal.LoadCallersFrames(v, CallersFramesSkip, CallersFramesSize))
 	}
 }

@@ -11,13 +11,7 @@ func TestFs(t *testing.T) {
 	server := Default()
 	mux := NewMux(nil)
 
-	mux.FileSystem(
-		nil,
-		"Get",
-		"/sha/src/",
-		http.Dir("./"),
-		true,
-	)
+	mux.FileSystem(nil, "Get", "/sha/src/{filepath:*}", http.Dir("./"), true)
 
 	server.Handler = mux
 	server.ListenAndServe()

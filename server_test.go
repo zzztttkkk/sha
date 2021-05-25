@@ -58,6 +58,7 @@ func TestServer_Run(t *testing.T) {
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 			_ = ctx.WriteString(strings.Repeat("Hello World!", 100))
+			panic(111)
 		}),
 	)
 

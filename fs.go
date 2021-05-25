@@ -13,13 +13,11 @@ import (
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"io"
-	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"net/url"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -73,22 +71,6 @@ func init() {
 // all of the byte-range-spec values is greater than the content size.
 var errNoOverlap = errors.New("invalid range: failed to overlap")
 
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
-var defaultMIMEMap = map[string]string{
-	".js":   "application/javascript",
-	".css":  "text/css",
-	".html": "text/html",
-
-	".apng": "image/apng",
-	".git":  "image/gif",
-	".jpg":  "image/jpeg",
-	".jpeg": "image/jpeg",
-	".png":  "image/png",
-	".svg":  "image/svg+xml",
-	".webp": "image/webp",
-	".ico":  "image/x-icon",
-}
-
 // if name is empty, filename is unknown. (used for mime type, before sniffing)
 // if modtime.IsZero(), modtime is unknown.
 // content must be seeked to the beginning of the file.
@@ -106,17 +88,7 @@ func serveFileContent(ctx *RequestCtx, name string, modtime time.Time, size int6
 
 	// If Content-Type isn't set, use the file's extension to find it, but
 	// if the Content-Type is unset explicitly, do not sniff the type.
-	_, haveType := w.Header().Get(HeaderContentType)
-	var ctype string
-	if !haveType {
-		ext := strings.ToLower(filepath.Ext(name))
-		var ok bool
-		ctype, ok = defaultMIMEMap[ext]
-		if !ok {
-			ctype = mime.TypeByExtension(ext)
-		}
-		w.Header().SetContentType(ctype)
-	}
+	ctype := setContentTypeForFile(w, name)
 
 	// handle Content-Range Header().
 	sendSize := size

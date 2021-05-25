@@ -4,9 +4,6 @@ import (
 	"embed"
 	"github.com/zzztttkkk/sha/utils"
 	"io"
-	"mime"
-	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -50,17 +47,7 @@ func NewEmbedFSHandler(fs *embed.FS, modTime time.Time, pathRewrite func(ctx *Re
 			return
 		}
 
-		_, haveType := w.Header().Get(HeaderContentType)
-		var ctype string
-		if !haveType {
-			ext := strings.ToLower(filepath.Ext(path))
-			var ok bool
-			ctype, ok = defaultMIMEMap[ext]
-			if !ok {
-				ctype = mime.TypeByExtension(ext)
-			}
-			w.Header().SetContentType(ctype)
-		}
+		setContentTypeForFile(w, path)
 
 		if len(rangeReq) > 0 {
 			w.statusCode = StatusBadRequest
