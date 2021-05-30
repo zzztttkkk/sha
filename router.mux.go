@@ -37,7 +37,7 @@ func init() {
 	serverPrepareFunc = append(serverPrepareFunc, func(s *Server) {
 		h := s.Handler
 		if m, ok := h.(*Mux); ok {
-			m.ServeDocument(MethodGet, "/docs")
+			m.ServeDocuments(MethodGet, "/docs")
 		}
 	})
 }
@@ -401,9 +401,14 @@ func NewMux(opts *MuxOptions) *Mux {
 		}
 
 		mux.Use(MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			origin, _ := ctx.Request.Header().Get(HeaderOrigin)
-			if len(origin) < 1 {
+			origin, ok := ctx.Request.Header().Get(HeaderOrigin)
+			if !ok {
 				next()
+				return
+			}
+
+			if len(origin) < 1 {
+				ctx.Response.SetStatusCode(StatusBadRequest)
 				return
 			}
 

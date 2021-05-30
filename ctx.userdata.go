@@ -36,16 +36,16 @@ func (d *userData) Set(key interface{}, value interface{}) {
 	*d = append(args, userDataKV{key: key, value: value})
 }
 
-func (d *userData) Get(key interface{}) interface{} {
+func (d *userData) Get(key interface{}) (interface{}, bool) {
 	args := *d
 	n := len(args)
 	for i := 0; i < n; i++ {
 		kv := &args[i]
 		if kv.key == key {
-			return kv.value
+			return kv.value, true
 		}
 	}
-	return nil
+	return nil, false
 }
 
 func (d *userData) Visit(fn func(k interface{}, v interface{}) bool) {

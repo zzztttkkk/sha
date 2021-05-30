@@ -13,7 +13,14 @@ type _DocForm struct {
 	TagsLogic string   `validator:"logic,optional"`
 }
 
-func (_ _DocForm) DefaultTagsLogic() interface{} { return "OR" }
+func (_ _DocForm) Default(name string) func() interface{} {
+	switch name {
+	case "TagsLogic":
+		return func() interface{} { return "OR" }
+	default:
+		return nil
+	}
+}
 
 func contains(v []string, d string) bool {
 	for _, a := range v {
@@ -33,7 +40,7 @@ func mapAppend(m map[string]map[string]validator.Document, path, method string, 
 	m1[method] = doc
 }
 
-func (m *Mux) ServeDocument(method, path string, middleware ...Middleware) {
+func (m *Mux) ServeDocuments(method, path string, middleware ...Middleware) {
 	m.HTTPWithOptions(
 		&HandlerOptions{Document: validator.NewDocument(_DocForm{}, nil), Middlewares: middleware},
 		method, path,
@@ -42,46 +49,46 @@ func (m *Mux) ServeDocument(method, path string, middleware ...Middleware) {
 			ctx.MustValidateForm(&form)
 			ctx.Response.Header().SetContentType(MIMEMarkdown)
 
-			pm := map[string]map[string]validator.Document{}
+			pathFilterMap := map[string]map[string]validator.Document{}
 			if len(form.Prefix) > 0 {
 				for p, m1 := range m.documents {
 					if strings.HasPrefix(p, form.Prefix) {
-						pm[p] = m1
+						pathFilterMap[p] = m1
 					}
 				}
 			} else {
-				pm = m.documents
+				pathFilterMap = m.documents
 			}
 
-			var vm map[string]map[string]validator.Document
+			var tagsFilterMap map[string]map[string]validator.Document
 			if len(form.Tags) > 0 {
-				vm = map[string]map[string]validator.Document{}
+				tagsFilterMap = map[string]map[string]validator.Document{}
 				switch form.TagsLogic {
 				case "OR":
 					for _, tag := range form.Tags {
 						tag = strings.ToLower(tag)
-						for p1, m1 := range pm {
+						for p1, m1 := range pathFilterMap {
 							for m2, d := range m1 {
 								if contains(d.Tags(), tag) {
-									mapAppend(vm, p1, m2, d)
+									mapAppend(tagsFilterMap, p1, m2, d)
 								}
 							}
 						}
 					}
 				default:
-					for p1, m1 := range pm {
+					for p1, m1 := range pathFilterMap {
 						for m2, d := range m1 {
 							for _, tag := range form.Tags {
 								if !contains(d.Tags(), tag) {
 									break
 								}
-								mapAppend(vm, p1, m2, d)
+								mapAppend(tagsFilterMap, p1, m2, d)
 							}
 						}
 					}
 				}
 			} else {
-				vm = pm
+				tagsFilterMap = pathFilterMap
 			}
 
 			var buf strings.Builder
@@ -91,7 +98,7 @@ func (m *Mux) ServeDocument(method, path string, middleware ...Middleware) {
 			}
 			var paths []*_PathItem
 
-			for p, m1 := range vm {
+			for p, m1 := range tagsFilterMap {
 				buf.WriteString(fmt.Sprintf("## Path: %s\n", p))
 				for me, doc := range m1 {
 					buf.WriteString(fmt.Sprintf("### Method: %s\n", me))

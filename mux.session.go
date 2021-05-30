@@ -84,8 +84,8 @@ type SessionOptions struct {
 		CookieName string             `json:"cookie_name" toml:"cookie-name"`
 		HeaderName string             `json:"header_name" toml:"header-name"`
 		MaxAge     utils.TomlDuration `json:"max_age" toml:"max-age"`
+		Skip       bool               `json:"skip" toml:"skip"`
 		seconds    int64
-		Skip       bool `json:"skip" toml:"skip"`
 	} `json:"csrf" toml:"csrf"`
 }
 

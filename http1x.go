@@ -55,9 +55,18 @@ const (
 	headerValClose = "close"
 	keepAlive      = "keep-alive"
 	upgrade        = "upgrade"
+	five           = time.Second * 5
 )
 
-func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx) bool {
+func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx, s *Server) bool {
+	if !s.runningFlag {
+		return false
+	}
+	timeout := s.Options.MaxConnectionKeepAlive.Duration
+	if timeout > 0 && timeout-time.Now().Sub(ctx.connTime) <= five {
+		return false
+	}
+
 	connVal, _ := ctx.Response.Header().Get(HeaderConnection) // disable keep-alive by response
 	if utils.S(inPlaceLowercase(connVal)) == headerValClose {
 		return false
@@ -97,7 +106,7 @@ func (protocol *_Http11Protocol) handle(ctx *RequestCtx, server *Server) bool {
 	if ctx.hijacked { // another protocol process has been completed
 		return false
 	}
-	shouldKeepAlive := protocol.keepalive(ctx)
+	shouldKeepAlive := protocol.keepalive(ctx, server)
 
 	writeTimeout := server.Options.WriteTimeout.Duration
 	if writeTimeout > 0 {

@@ -11,31 +11,37 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type ServerOptions struct {
-	Addr string `json:"addr" toml:"addr"`
-	TLS  struct {
+	Network string `json:"network" toml:"network"`
+	Addr    string `json:"addr" toml:"addr"`
+	TLS     struct {
 		AutoCertDomains []string `json:"auto_cert_domains" toml:"auto-cert-domains"`
 		Key             string   `json:"key" toml:"key"`
 		Cert            string   `json:"cert" toml:"cert"`
 	} `json:"tls" toml:"tls"`
+
 	MaxConnectionKeepAlive utils.TomlDuration `json:"max_connection_keep_alive" toml:"max-connection-keep-alive"`
 	ReadTimeout            utils.TomlDuration `json:"read_timeout" toml:"read-timeout"`
 	IdleTimeout            utils.TomlDuration `json:"idle_timeout" toml:"idle-timeout"`
 	WriteTimeout           utils.TomlDuration `json:"write_timeout" toml:"write-timeout"`
-	GracefulShutdown       bool               `json:"graceful_shutdown" toml:"graceful_shutdown"`
-	Pid                    string             `json:"pid" toml:"pid"`
+
+	GracefullyShutdown bool   `json:"graceful_shutdown" toml:"graceful_shutdown"` //shut down until all connections are closed
+	Pid                string `json:"pid" toml:"pid"`                             //pid file path
 }
 
 var defaultServerOption = ServerOptions{
+	Network:                "tcp4",
 	Addr:                   "127.0.0.1:5986",
 	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
 	ReadTimeout:            utils.TomlDuration{Duration: time.Second * 10},
 	IdleTimeout:            utils.TomlDuration{Duration: time.Second * 30},
 	WriteTimeout:           utils.TomlDuration{Duration: time.Second * 10},
+	GracefullyShutdown:     true,
 }
 
 type Server struct {
@@ -52,12 +58,13 @@ type Server struct {
 	isTLS bool
 
 	// lifecycle
-	beforeAccept     []func(s *Server)
-	beforeShutdown   []func(s *Server)
-	aliveConns       int64
-	flag             bool // server running flag
-	listener         net.Listener
-	shutdownByMethod bool // ensure `Shutdown` run once
+	beforeAccept   []func(s *Server)
+	beforeShutdown []func(s *Server)
+	aliveConns     int64
+	runningFlag    bool
+	listener       net.Listener
+	shutdownOnce   sync.Once
+	shutdownChan   *chan struct{}
 
 	pool *RequestCtxPool
 }
@@ -70,7 +77,7 @@ type HTTPServerProtocol interface {
 
 type WebSocketProtocol interface {
 	Handshake(ctx *RequestCtx) (string, bool, bool)
-	Hijack(ctx *RequestCtx, subprotocol string, compress bool) *websocket.Conn
+	Hijack(ctx *RequestCtx, subProtocol string, compress bool) *websocket.Conn
 }
 
 type _CtxVKey int
@@ -125,14 +132,11 @@ func (s *Server) BeforeAccept(fn func(s *Server)) {
 }
 
 func (s *Server) Listen() net.Listener {
-	if s.Options.Addr == "" {
-		s.Options.Addr = "127.0.0.1:5986"
-	}
 	if s.Handler == nil {
 		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _ = ctx.WriteString("Hello World!\n") })
 	}
 
-	listener, err := net.Listen("tcp4", s.Options.Addr)
+	listener, err := net.Listen(s.Options.Network, s.Options.Addr)
 	if err != nil {
 		panic(err)
 	}
@@ -164,36 +168,37 @@ func (s *Server) enableTLS(l net.Listener, certFile, keyFile string) net.Listene
 }
 
 func (s *Server) Shutdown() {
-	if s.shutdownByMethod {
-		return
-	}
-	s.shutdownByMethod = true
+	s.shutdownOnce.Do(func() {
+		sc := make(chan struct{}, 1)
+		s.shutdownChan = &sc
 
-	s.flag = false
-	_ = s.listener.Close()
+		s.runningFlag = false
+		_ = s.listener.Close()
 
-	if s.Options.GracefulShutdown {
-		for {
-			if atomic.LoadInt64(&s.aliveConns) < 1 {
-				break
-			} else {
-				time.Sleep(time.Millisecond * 100)
+		if s.Options.GracefullyShutdown {
+			for {
+				if atomic.LoadInt64(&s.aliveConns) < 1 {
+					break
+				} else {
+					time.Sleep(time.Millisecond * 100)
+				}
 			}
 		}
-	}
 
-	for _, fn := range s.beforeShutdown {
-		fn(s)
-	}
-	if len(s.Options.Pid) > 0 {
-		_ = os.Remove(s.Options.Pid)
-	}
-	log.Println("sha.server: shutdown")
+		for _, fn := range s.beforeShutdown {
+			fn(s)
+		}
+		if len(s.Options.Pid) > 0 {
+			_ = os.Remove(s.Options.Pid)
+		}
+		log.Printf("sha.server: shutdown; Pid: %d\r\n", os.Getpid())
+		sc <- struct{}{}
+	})
 }
 
 func (s *Server) Serve(l net.Listener) {
 	s.listener = l
-	s.flag = true
+	s.runningFlag = true
 
 	if s.httpProtocol == nil {
 		s.httpProtocol = newHTTP11Protocol(s.pool)
@@ -219,30 +224,27 @@ func (s *Server) Serve(l net.Listener) {
 
 	go func() {
 		<-s.baseCtx.Done()
-		s.flag = false
-		_ = l.Close()
-
 		s.Shutdown()
 	}()
 
 	maxKeepAlive := s.Options.MaxConnectionKeepAlive.Duration
 
 	if len(s.Options.Pid) > 0 {
-		pid, e := os.OpenFile(s.Options.Pid, os.O_CREATE|os.O_WRONLY, 0644)
+		pid, e := os.OpenFile(s.Options.Pid, os.O_CREATE|os.O_WRONLY, 0600)
 		if e != nil {
 			panic(e)
 		}
-		defer pid.Close()
 		_, _ = pid.WriteString(strconv.FormatInt(int64(os.Getpid()), 10))
+		_ = pid.Close()
 	}
 
 	log.Printf("sha.server: listening @ `%s`, Pid: %d\r\n", s.Options.Addr, os.Getpid())
 
-	for s.flag {
+	for s.runningFlag {
 		conn, err := l.Accept()
 		if err != nil {
-			if !s.flag {
-				return
+			if !s.runningFlag {
+				break
 			}
 			log.Printf("sha.server: bad connection: %s\n", err.Error())
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
@@ -266,12 +268,19 @@ func (s *Server) Serve(l net.Listener) {
 		if maxKeepAlive > 0 {
 			_ = conn.SetDeadline(time.Now().Add(maxKeepAlive))
 		}
-		atomic.AddInt64(&s.aliveConns, 1)
 		go func() {
+			atomic.AddInt64(&s.aliveConns, 1)
 			defer atomic.AddInt64(&s.aliveConns, -1)
 			serveFunc(conn)
 		}()
 	}
+
+	// waiting for shutdown
+	time.Sleep(time.Millisecond)
+	if s.shutdownChan != nil {
+		<-(*s.shutdownChan)
+	}
+	log.Printf("sha.server: stop @ `%s`, Pid: %d\r\n", s.Options.Addr, os.Getpid())
 }
 
 func (s *Server) ListenAndServe() {

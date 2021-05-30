@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func (ctx *RequestCtx) stdRequest() *http.Request {
+func (ctx *RequestCtx) toStdRequest() *http.Request {
 	req := &ctx.Request
 	var body io.Reader
 	if req.body != nil {
@@ -45,15 +45,20 @@ func (rw *_ResponseWriter) WriteHeader(statusCode int) { rw.res.SetStatusCode(st
 
 var _ http.ResponseWriter = (*_ResponseWriter)(nil)
 
-func (ctx *RequestCtx) stdResponse() http.ResponseWriter {
+func (ctx *RequestCtx) toStdResponse() *_ResponseWriter {
 	return &_ResponseWriter{&ctx.Response, nil}
 }
 
 func WrapStdHandler(handler http.Handler) RequestHandler {
 	return RequestHandlerFunc(func(ctx *RequestCtx) {
-		res := ctx.stdResponse()
-		defer func() { ctx.Response.Header().LoadMap(utils.MultiValueMap(res.Header())) }()
-		handler.ServeHTTP(res, ctx.stdRequest())
+		res := ctx.toStdResponse()
+		defer func() {
+			if res.header == nil {
+				return
+			}
+			ctx.Response.Header().LoadMap(utils.MultiValueMap(res.header))
+		}()
+		handler.ServeHTTP(res, ctx.toStdRequest())
 	})
 }
 

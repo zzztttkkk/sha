@@ -47,6 +47,8 @@ var (
 
 func defaultRecover(ctx *RequestCtx, v interface{}) {
 	ctx.Response.ResetBody()
+	ctx.Response.Header().Del(HeaderContentType)
+	ctx.Response.Header().Del(HeaderContentLength)
 
 	vt := reflect.TypeOf(v)
 

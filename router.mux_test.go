@@ -2,6 +2,7 @@ package sha
 
 import (
 	"fmt"
+	"github.com/zzztttkkk/sha/utils"
 	"net/http"
 	"testing"
 	"time"
@@ -14,12 +15,26 @@ func makeHandler(v int) RequestHandler {
 	})
 }
 
+type RandIDGenerator struct{}
+
+func (RandIDGenerator) Size() int { return 16 }
+
+func (RandIDGenerator) Generate(v []byte) {
+	for i := 0; i < 16; i++ {
+		v[i] = utils.RandByte(nil)
+	}
+}
+
+func init() {
+	UniqueIDGenerator = RandIDGenerator{}
+}
+
 func TestMux(t *testing.T) {
 	mux := NewMux(nil)
 
 	mux.Use(
 		MiddlewareFunc(func(ctx *RequestCtx, next func()) {
-			fmt.Println("global middleware 1")
+			fmt.Printf("global middleware 1: %p %s\r\n", ctx, ctx.Request.GUID())
 			next()
 		}),
 		MiddlewareFunc(func(ctx *RequestCtx, next func()) {
