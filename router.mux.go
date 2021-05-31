@@ -36,7 +36,7 @@ func init() {
 
 	serverPrepareFunc = append(serverPrepareFunc, func(s *Server) {
 		h := s.Handler
-		if m, ok := h.(*Mux); ok {
+		if m, ok := h.(*Mux); ok && m.Opts.AutoHandleDocs {
 			m.ServeDocuments(MethodGet, "/docs")
 		}
 	})

@@ -92,9 +92,7 @@ var serverPrepareFunc []func(s *Server)
 
 func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server {
 	if opt == nil {
-		_v := &ServerOptions{}
-		*_v = defaultServerOption
-		opt = _v
+		opt = &defaultServerOption
 	}
 
 	if pool == nil {
@@ -105,12 +103,11 @@ func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server 
 		ctx = context.Background()
 	}
 
-	server := &Server{
+	return &Server{
+		Options: *opt,
 		baseCtx: ctx,
 		pool:    pool,
 	}
-	server.Options = *opt
-	return server
 }
 
 func (s *Server) BeforeShutdown(fn func(server *Server)) {
@@ -176,6 +173,12 @@ func (s *Server) Shutdown() {
 		_ = s.listener.Close()
 
 		if s.Options.GracefullyShutdown {
+			if s.aliveConns > 0 {
+				log.Printf(
+					"sha.server: shutdown waiting, alive connections(%d); Pid: %d\r\n",
+					s.aliveConns, os.Getpid(),
+				)
+			}
 			for {
 				if atomic.LoadInt64(&s.aliveConns) < 1 {
 					break
@@ -189,9 +192,11 @@ func (s *Server) Shutdown() {
 			fn(s)
 		}
 		if len(s.Options.Pid) > 0 {
-			_ = os.Remove(s.Options.Pid)
+			if e := os.Remove(s.Options.Pid); e != nil {
+				log.Printf("sha.server: shutdown error, %s\r\n", e.Error())
+			}
 		}
-		log.Printf("sha.server: shutdown; Pid: %d\r\n", os.Getpid())
+		log.Printf("sha.server: shutdown done; Pid: %d\r\n", os.Getpid())
 		sc <- struct{}{}
 	})
 }
@@ -260,23 +265,26 @@ func (s *Server) Serve(l net.Listener) {
 			}
 			continue
 		}
-		if s.OnConnectionAccepted != nil && !s.OnConnectionAccepted(conn) {
-			_ = conn.Close()
-			continue
-		}
 
 		if maxKeepAlive > 0 {
 			_ = conn.SetDeadline(time.Now().Add(maxKeepAlive))
 		}
-		go func() {
+
+		go func(c net.Conn) {
 			atomic.AddInt64(&s.aliveConns, 1)
-			defer atomic.AddInt64(&s.aliveConns, -1)
-			serveFunc(conn)
-		}()
+			defer func() {
+				_ = c.Close()
+				atomic.AddInt64(&s.aliveConns, -1)
+			}()
+
+			if s.OnConnectionAccepted != nil && !s.OnConnectionAccepted(c) {
+				return
+			}
+			serveFunc(c)
+		}(conn)
 	}
 
 	// waiting for shutdown
-	time.Sleep(time.Millisecond)
 	if s.shutdownChan != nil {
 		<-(*s.shutdownChan)
 	}
@@ -302,7 +310,6 @@ func (s *Server) ListenAndServe() {
 func (s *Server) serveTLS(conn net.Conn) {
 	tlsConn, ok := conn.(*tls.Conn)
 	if !ok {
-		conn.Close()
 		return
 	}
 
@@ -312,7 +319,6 @@ func (s *Server) serveTLS(conn net.Conn) {
 	}
 	err = tlsConn.Handshake()
 	if err != nil { // tls handshake error
-		conn.Close()
 		return
 	}
 	if s.Options.ReadTimeout.Duration > 0 {
@@ -321,14 +327,10 @@ func (s *Server) serveTLS(conn net.Conn) {
 	switch tlsConn.ConnectionState().NegotiatedProtocol {
 	case "", "http/1.0", "http/1.1":
 		s.serveHTTPConn(tlsConn)
-	default:
-		conn.Close()
-		return
 	}
 }
 
 func (s *Server) serveHTTPConn(conn net.Conn) {
-	defer conn.Close()
 	s.httpProtocol.ServeConn(context.WithValue(s.baseCtx, CtxKeyConnection, conn), conn)
 }
 
