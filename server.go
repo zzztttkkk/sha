@@ -41,7 +41,6 @@ var defaultServerOption = ServerOptions{
 	ReadTimeout:            utils.TomlDuration{Duration: time.Second * 10},
 	IdleTimeout:            utils.TomlDuration{Duration: time.Second * 30},
 	WriteTimeout:           utils.TomlDuration{Duration: time.Second * 10},
-	GracefullyShutdown:     true,
 }
 
 type Server struct {
@@ -102,7 +101,6 @@ func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-
 	return &Server{
 		Options: *opt,
 		baseCtx: ctx,
@@ -285,9 +283,10 @@ func (s *Server) Serve(l net.Listener) {
 	}
 
 	// waiting for shutdown
-	if s.shutdownChan != nil {
-		<-(*s.shutdownChan)
+	if s.shutdownChan == nil {
+		s.Shutdown()
 	}
+	<-(*s.shutdownChan)
 	log.Printf("sha.server: stop @ `%s`, Pid: %d\r\n", s.Options.Addr, os.Getpid())
 }
 

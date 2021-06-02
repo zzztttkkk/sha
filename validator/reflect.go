@@ -12,9 +12,12 @@ import (
 	"unicode"
 )
 
-// no-sync, all form types should be prepared before the server starts listening.
-var cacheMap = map[reflect.Type]Rules{}
-var reflectMapper = reflectx.NewMapper("validator")
+//CacheMap is not thread-safe, all types should be prepared before the server starts to listening.
+var CacheMap = map[reflect.Type]Rules{}
+
+const TagName = "vld"
+
+var ReflectMapper = reflectx.NewMapper(TagName)
 
 type Defaulter interface {
 	Default(fieldName string) func() interface{}
@@ -316,7 +319,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 // GetRules
 /*
 	tag name:
-		validator
+		vld
 	tag options:
 		where/w:
 			- query/q => get bytes value from Request.Query
@@ -356,7 +359,7 @@ func fieldInfoToRule(t reflect.Type, f *reflectx.FieldInfo, defaultF func() inte
 			bytes length range
 */
 func GetRules(t reflect.Type) Rules {
-	v, ok := cacheMap[t]
+	v, ok := CacheMap[t]
 	if ok {
 		return v
 	}
@@ -369,7 +372,7 @@ func GetRules(t reflect.Type) Rules {
 	}
 
 	var rules Rules
-	fMap := reflectMapper.TypeMap(t)
+	fMap := ReflectMapper.TypeMap(t)
 	for _, f := range fMap.Index {
 		var ed func() interface{}
 		if isD {
@@ -382,8 +385,8 @@ func GetRules(t reflect.Type) Rules {
 			log.Printf("sha.validator: ignore filed, `%s`.`%s`.`%s`", t.PkgPath(), t.Name(), f.Name)
 		}
 	}
-	sort.Sort(rules)
+	sort.Slice(rules, func(i, j int) bool { return rules[i].where < rules[j].where })
 
-	cacheMap[t] = rules
+	CacheMap[t] = rules
 	return rules
 }

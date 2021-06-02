@@ -34,17 +34,24 @@ func (t *Time) String() string {
 }
 
 type TV01Form struct {
-	NumbersPtr *[]int64 `validator:"a,optional"`
-	Numbers    []int64  `validator:"b"`
-	StrPtr     *string  `validator:"c,optional"`
-	Str        string   `validator:"d,optional"`
-	Time       Time     `validator:"e,optional"`
-	TimePtr    *Time    `validator:"f,optional"`
-	TimePtrs   []*Time  `validator:"g,optional"`
-	Times      []Time   `validator:"h,optional"`
+	NumbersPtr *[]int64 `vld:"a,optional"`
+	Numbers    []int64  `vld:"b"`
+	StrPtr     *string  `vld:"c,optional"`
+	Str        string   `vld:"d,optional"`
+	Time       Time     `vld:"e,optional"`
+	TimePtr    *Time    `vld:"f,optional"`
+	TimePtrs   []*Time  `vld:"g,optional"`
+	Times      []Time   `vld:"h,optional"`
 }
 
-func (t *TV01Form) DefaultNumbers() interface{} { return []int64{1, 2, 3} }
+func (t *TV01Form) Default(name string) func() interface{} {
+	switch name {
+	case "Numbers":
+		return func() interface{} { return []int64{1, 2, 3} }
+	default:
+		return nil
+	}
+}
 
 func TestValidator(t *testing.T) {
 	ListenAndServe(
@@ -67,8 +74,8 @@ func TestRequestCtx_ValidateJSON(t *testing.T) {
 	validator.RegisterRegexp("name", regexp.MustCompile("\\w{5}"))
 
 	type Form struct {
-		Num  int64  `json:"num" validator:",v=10-50"`
-		Name string `json:"name" validator:",r=name"`
+		Num  int64  `json:"num" vld:",v=10-50"`
+		Name string `json:"name" vld:",r=name"`
 	}
 
 	rctx := &RequestCtx{}
@@ -83,7 +90,7 @@ func TestRequestCtx_ValidateJSON(t *testing.T) {
 
 func TestPwd(t *testing.T) {
 	type Form struct {
-		Password validator.Password `validator:"pwd"`
+		Password validator.Password `vld:"pwd"`
 	}
 
 	mux := NewMux(nil)

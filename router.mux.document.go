@@ -8,9 +8,9 @@ import (
 )
 
 type _DocForm struct {
-	Prefix    string   `validator:"prefix,desc='url prefix',optional"`
-	Tags      []string `validator:"tags,optional"`
-	TagsLogic string   `validator:"logic,optional"`
+	Prefix    string   `vld:"prefix,desc='url prefix',optional"`
+	Tags      []string `vld:"tags,optional"`
+	TagsLogic string   `vld:"logic,optional"`
 }
 
 func (_ _DocForm) Default(name string) func() interface{} {

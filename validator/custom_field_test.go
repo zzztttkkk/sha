@@ -28,7 +28,7 @@ func (a *AInt) Validate() error {
 func TestField(t *testing.T) {
 	type Form struct {
 		A    AInt
-		ALst []AInt `validator:",size=2-"`
+		ALst []AInt `vld:",size=2-"`
 	}
 
 	var f Form

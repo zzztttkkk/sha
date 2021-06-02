@@ -371,9 +371,3 @@ func (rules Rules) String() string {
 	}
 	return buf.String()
 }
-
-func (rules Rules) Len() int { return len(rules) }
-
-func (rules Rules) Less(i, j int) bool { return rules[i].where < rules[j].where }
-
-func (rules Rules) Swap(i, j int) { rules[i], rules[j] = rules[j], rules[i] }

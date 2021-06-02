@@ -66,7 +66,7 @@ func (ctx *RequestCtx) Value(key interface{}) interface{} { return ctx.ctx.Value
 
 func (ctx *RequestCtx) SetError(v interface{}) { ctx.err = v }
 
-func (ctx *RequestCtx) Context() context.Context {
+func (ctx *RequestCtx) Wrap() context.Context {
 	return context.WithValue(ctx, CtxKeyRequestCtx, ctx)
 }
 
