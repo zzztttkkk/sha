@@ -220,9 +220,9 @@ func (s *Server) Serve(l net.Listener) {
 	s.baseCtx = context.WithValue(s.baseCtx, CtxKeyServer, s)
 
 	var tempDelay time.Duration
-	serveFunc := s.serveHTTPConn
+	serve := s.serveHTTPConn
 	if s.isTLS {
-		serveFunc = s.serveTLS
+		serve = s.serveTLS
 	}
 
 	go func() {
@@ -269,16 +269,17 @@ func (s *Server) Serve(l net.Listener) {
 		}
 
 		go func(c net.Conn) {
+			if s.OnConnectionAccepted != nil && !s.OnConnectionAccepted(c) {
+				return
+			}
+
 			atomic.AddInt64(&s.aliveConns, 1)
 			defer func() {
 				_ = c.Close()
 				atomic.AddInt64(&s.aliveConns, -1)
 			}()
 
-			if s.OnConnectionAccepted != nil && !s.OnConnectionAccepted(c) {
-				return
-			}
-			serveFunc(c)
+			serve(c)
 		}(conn)
 	}
 

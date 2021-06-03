@@ -132,7 +132,7 @@ func TestServer_Run(t *testing.T) {
 		"get",
 		"/chunked",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
-			f, e := os.Open("./server.go")
+			f, e := os.Open("./engine.go")
 			if e != nil {
 				ctx.SetError(e)
 				return
@@ -151,7 +151,7 @@ func TestServer_Run(t *testing.T) {
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 
-			f, e := os.Open("./server.go")
+			f, e := os.Open("./engine.go")
 			if e != nil {
 				ctx.SetError(e)
 				return
