@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"golang.org/x/crypto/bcrypt"
 	"unicode"
@@ -37,14 +38,25 @@ var PasswordValidator func(data []byte) bool = func(data []byte) bool {
 	return hasMinLen && hasUpper && hasLower && hasNumber && hasSpecial
 }
 
-func (p *Password) FromBytes(data []byte) bool {
+var ErrBadPassword = fmt.Errorf("validator: bad passowrd format")
+
+func (p *Password) FromBytes(data []byte) error {
 	if !PasswordValidator(data) {
-		return false
+		return ErrBadPassword
 	}
 	*p = append(*p, data...)
-	return true
+	return nil
+}
+
+func (p *Password) Validate() error {
+	if !PasswordValidator(*p) {
+		return ErrBadPassword
+	}
+	return nil
 }
 
 func (p *Password) BcryptHash(cost int) ([]byte, error) { return bcrypt.GenerateFromPassword(*p, cost) }
 
 func (p *Password) MatchTo(hash []byte) bool { return bcrypt.CompareHashAndPassword(hash, *p) == nil }
+
+var _ Field = (*Password)(nil)

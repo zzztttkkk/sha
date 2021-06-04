@@ -118,12 +118,17 @@ func _isCustomField(rule *_Rule, t reflect.Type) {
 	}
 }
 
+var bytesType = reflect.TypeOf((*[]byte)(nil)).Elem()
+var u8SliceType = reflect.TypeOf((*[]uint8)(nil)).Elem()
+
 func isCustomField(rule *_Rule, t reflect.Type) {
-	if t.Kind() != reflect.Slice {
+	// bytes or struct
+	if t == bytesType || t == u8SliceType || t.ConvertibleTo(bytesType) || t.Kind() != reflect.Slice {
 		_isCustomField(rule, t)
 		return
 	}
 
+	// slice of struct
 	t = t.Elem()
 	_isCustomField(rule, t)
 	if rule.rtype == _CustomType {

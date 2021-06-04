@@ -31,10 +31,7 @@ func (rule *_Rule) formValueToCustomField(f *reflect.Value, data []byte) error {
 func (rule *_Rule) formValueToCustomFieldVPtr(f *reflect.Value, data []byte) error {
 	ptr := f.Interface().(Field)
 	if err := ptr.FromBytes(data); err != nil {
-		return err
-	}
-	if err := ptr.Validate(); err != nil {
-		return err
+		return &Error{FormName: rule.formName, Type: BadValue, Wrapped: err}
 	}
 	return nil
 }

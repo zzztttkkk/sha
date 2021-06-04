@@ -3,7 +3,6 @@ package validator
 import (
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
-	"net/http"
 	"reflect"
 	"unicode/utf8"
 )
@@ -38,36 +37,6 @@ func (v _FormErrorType) String() string {
 	}
 }
 
-const (
-	MissingRequired = _FormErrorType(iota)
-	BadValue
-)
-
-type ValidateError struct {
-	FormName string
-	Type     _FormErrorType
-	Wrapped  error
-}
-
-var CustomFormError func(fe *ValidateError) string
-
-func init() {
-	CustomFormError = func(fe *ValidateError) string {
-		if fe.Wrapped == nil {
-			return fmt.Sprintf("ValidateError: %s; field `%s`", fe.Type, fe.FormName)
-		}
-		return fmt.Sprintf("ValidateError: %s, %s; field `%s`", fe.Type, fe.Wrapped.Error(), fe.FormName)
-	}
-}
-
-func (e *ValidateError) Error() string {
-	return CustomFormError(e)
-}
-
-func (e *ValidateError) StatusCode() int {
-	return http.StatusBadRequest
-}
-
 func htmlEscape(p []byte) []byte {
 	var ret []byte
 	var temp = make([]byte, 4)
@@ -93,7 +62,7 @@ func htmlEscape(p []byte) []byte {
 	return ret
 }
 
-func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *ValidateError {
+func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *Error {
 	fv, ok := rule.peekOne(former, rule.formName)
 	if !ok {
 		if rule.where != _WhereURLParams {
@@ -102,13 +71,13 @@ func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *ValidateError {
 				return nil
 			} else {
 				if rule.isRequired {
-					return &ValidateError{FormName: rule.formName, Type: MissingRequired}
+					return &Error{FormName: rule.formName, Type: MissingRequired}
 				} else {
 					return nil
 				}
 			}
 		} else {
-			return &ValidateError{FormName: rule.formName, Type: MissingRequired}
+			return &Error{FormName: rule.formName, Type: MissingRequired}
 		}
 	}
 
@@ -131,7 +100,7 @@ func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *ValidateError {
 		data, ok = rule.toBytes(fv)
 		if ok {
 			if err := rule.formValueToCustomField(filed, data); err != nil {
-				return &ValidateError{FormName: rule.formName, Type: BadValue, Wrapped: err}
+				return &Error{FormName: rule.formName, Type: BadValue, Wrapped: err}
 			}
 			return nil
 		}
@@ -149,10 +118,10 @@ func (rule *_Rule) bindOne(former Former, filed *reflect.Value) *ValidateError {
 
 		return nil
 	}
-	return &ValidateError{FormName: rule.formName, Type: BadValue}
+	return &Error{FormName: rule.formName, Type: BadValue}
 }
 
-func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError {
+func (rule *_Rule) bindMany(former Former, field *reflect.Value) *Error {
 	var ret interface{}
 	formVals := rule.peekAll(former, rule.formName)
 	if len(formVals) < 1 {
@@ -161,7 +130,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 				field.Set(reflect.ValueOf(rule.defaultFunc()))
 				return nil
 			}
-			return &ValidateError{FormName: rule.formName, Type: MissingRequired}
+			return &Error{FormName: rule.formName, Type: MissingRequired}
 		} else {
 			return nil
 		}
@@ -173,7 +142,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 		for _, bs := range formVals {
 			a, b := rule.toBool(bs)
 			if !b {
-				return &ValidateError{FormName: rule.formName, Type: BadValue}
+				return &Error{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -183,7 +152,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 		for _, bs := range formVals {
 			a, b := rule.toInt(bs)
 			if !b {
-				return &ValidateError{FormName: rule.formName, Type: BadValue}
+				return &Error{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -193,7 +162,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 		for _, bs := range formVals {
 			a, b := rule.toUint(bs)
 			if !b {
-				return &ValidateError{FormName: rule.formName, Type: BadValue}
+				return &Error{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -203,7 +172,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 		for _, bs := range formVals {
 			a, b := rule.toFloat(bs)
 			if !b {
-				return &ValidateError{FormName: rule.formName, Type: BadValue}
+				return &Error{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -213,7 +182,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 		for _, bs := range formVals {
 			a, b := rule.toString(bs)
 			if !b {
-				return &ValidateError{FormName: rule.formName, Type: BadValue}
+				return &Error{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -223,7 +192,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 		for _, bs := range formVals {
 			a, ok := rule.toBytes(bs)
 			if !ok {
-				return &ValidateError{FormName: rule.formName, Type: BadValue}
+				return &Error{FormName: rule.formName, Type: BadValue}
 			}
 			lst = append(lst, a)
 		}
@@ -239,7 +208,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 			elePV := reflect.New(eleT)
 
 			if err := rule.formValueToCustomFieldVPtr(&elePV, bs); err != nil {
-				return &ValidateError{FormName: rule.formName, Type: BadValue, Wrapped: err}
+				return &Error{FormName: rule.formName, Type: BadValue, Wrapped: err}
 			}
 
 			if rule.isPtr {
@@ -258,16 +227,16 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 	if rule.checkListSize {
 		if v.IsNil() {
 			if rule.isRequired {
-				return &ValidateError{FormName: rule.formName, Type: MissingRequired}
+				return &Error{FormName: rule.formName, Type: MissingRequired}
 			}
 			return nil
 		}
 		s := v.Len()
 		if rule.minSliceSize != nil && s < *rule.minSliceSize {
-			return &ValidateError{FormName: rule.formName, Type: MissingRequired}
+			return &Error{FormName: rule.formName, Type: MissingRequired}
 		}
 		if rule.maxSliceSize != nil && s > *rule.maxSliceSize {
-			return &ValidateError{FormName: rule.formName, Type: MissingRequired}
+			return &Error{FormName: rule.formName, Type: MissingRequired}
 		}
 	}
 
@@ -282,7 +251,7 @@ func (rule *_Rule) bindMany(former Former, field *reflect.Value) *ValidateError 
 }
 
 // BindAndValidateForm return value is a ptr, not an interface.
-func BindAndValidateForm(former Former, dist interface{}) (err *ValidateError) {
+func BindAndValidateForm(former Former, dist interface{}) (err *Error) {
 	v := reflect.ValueOf(dist).Elem()
 	var field reflect.Value
 	for _, rule := range GetRules(v.Type()) {

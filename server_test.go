@@ -2,8 +2,6 @@ package sha
 
 import (
 	"context"
-	"crypto/sha512"
-	"encoding/hex"
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"github.com/zzztttkkk/sha/validator"
@@ -16,39 +14,35 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 )
 
 type _CustomFormTime time.Time
 
-func (ft *_CustomFormTime) FromBytes(v []byte) bool {
-	*ft = _CustomFormTime(time.Now())
-	return true
+func (ft *_CustomFormTime) FromBytes(v []byte) error {
+	num, err := strconv.ParseInt(utils.S(v), 10, 64)
+	if err != nil {
+		return err
+	}
+	*ft = _CustomFormTime(time.Now().Add(time.Second * time.Duration(num)))
+	return nil
 }
+
+func (ft *_CustomFormTime) Validate() error { return nil }
 
 type _CustomFormInt int64
 
-func (fi *_CustomFormInt) FromBytes(v []byte) bool {
+func (fi *_CustomFormInt) FromBytes(v []byte) error {
 	i, e := strconv.ParseInt(utils.S(v), 10, 64)
 	if e != nil {
-		return false
+		return e
 	}
 	*fi = _CustomFormInt(i)
-	return true
+	return nil
 }
 
-type Sha5256Hash []byte
-
-func (pwd *Sha5256Hash) FromBytes(v []byte) bool {
-	n := sha512.New512_256()
-	n.Write(v)
-	dist := make([]byte, 64)
-	hex.Encode(dist, n.Sum(nil))
-	*pwd = dist
-	return true
-}
+func (fi *_CustomFormInt) Validate() error { return nil }
 
 func TestServer_Run(t *testing.T) {
 	mux := NewMux(nil)
@@ -72,16 +66,15 @@ func TestServer_Run(t *testing.T) {
 	)
 
 	validator.RegisterRegexp("joineduints", regexp.MustCompile(`^\d+(,\d+)*$`))
-	validator.RegisterRegexp("password", regexp.MustCompile(`^\w{6,}$`))
 
 	type Form struct {
-		FormTime _CustomFormTime `validator:"ft"`
-		FormInt  _CustomFormInt  `validator:"fi"`
-		String   string          `validator:",L=3"`
-		Bytes    []byte          `validator:",R=joineduints"`
-		Int      int64           `validator:",V=40-60"`
-		Bool     bool            `validator:",optional"`
-		Password Sha5256Hash     `validator:"pwd,R=password"`
+		FormTime _CustomFormTime    `vld:"ft"`
+		FormInt  _CustomFormInt     `vld:"fi"`
+		String   string             `vld:",L=3"`
+		Bytes    []byte             `vld:",R=joineduints"`
+		Int      int64              `vld:",V=40-60"`
+		Bool     bool               `vld:",optional"`
+		Password validator.Password `vld:"pwd"`
 	}
 
 	mux.HTTPWithOptions(
@@ -151,7 +144,7 @@ func TestServer_Run(t *testing.T) {
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 
-			f, e := os.Open("./engine.go")
+			f, e := os.Open("./server.go")
 			if e != nil {
 				ctx.SetError(e)
 				return
@@ -164,10 +157,11 @@ func TestServer_Run(t *testing.T) {
 		}),
 	)
 
+	ctx, cancelFunc := signal.NotifyContext(context.Background())
+
+	mux.HTTP(MethodGet, "/stop", RequestHandlerFunc(func(ctx *RequestCtx) { cancelFunc() }))
 	fmt.Println(mux)
 
-	ctx, cancelFunc := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT)
-	defer cancelFunc()
 	ListenAndServeWithContext(ctx, "127.0.0.1:8080", mux)
 }
 

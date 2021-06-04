@@ -5,11 +5,11 @@ import (
 	"reflect"
 )
 
-func (rule *_Rule) validateOne(field *reflect.Value) *ValidateError {
+func (rule *_Rule) validateOne(field *reflect.Value) *Error {
 	switch rule.rtype {
 	case _CustomType:
 		if err := toCustomField(field).Validate(); err != nil {
-			return &ValidateError{FormName: rule.formName, Type: BadValue, Wrapped: err}
+			return &Error{FormName: rule.formName, Type: BadValue, Wrapped: err}
 		}
 		return nil
 	case _Int64:
@@ -18,10 +18,10 @@ func (rule *_Rule) validateOne(field *reflect.Value) *ValidateError {
 		}
 		i := field.Interface().(int64)
 		if rule.minIntVal != nil && i < *rule.minIntVal {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 		if rule.maxIntVal != nil && i > *rule.maxIntVal {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 	case _Float64:
 		if !rule.checkNumRange {
@@ -29,10 +29,10 @@ func (rule *_Rule) validateOne(field *reflect.Value) *ValidateError {
 		}
 		i := field.Interface().(float64)
 		if rule.minDoubleVal != nil && i < *rule.minDoubleVal {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 		if rule.maxDoubleVal != nil && i > *rule.maxDoubleVal {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 	case _Uint64:
 		if !rule.checkNumRange {
@@ -40,31 +40,31 @@ func (rule *_Rule) validateOne(field *reflect.Value) *ValidateError {
 		}
 		i := field.Interface().(uint64)
 		if rule.minUintVal != nil && i < *rule.minUintVal {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 		if rule.maxUintVal != nil && i > *rule.maxUintVal {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 	case _String:
 		s, ok := rule.toString(utils.B(field.Interface().(string)))
 		if !ok {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 		field.SetString(s)
 	}
 	return nil
 }
 
-func (rule *_Rule) validateSlice(field *reflect.Value) *ValidateError {
+func (rule *_Rule) validateSlice(field *reflect.Value) *Error {
 	vi := field.Interface()
 	v := reflect.ValueOf(vi)
 	if rule.checkListSize {
 		i := v.Len()
 		if rule.minSliceSize != nil && i < *rule.minSliceSize {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 		if rule.maxSliceSize != nil && i > *rule.maxSliceSize {
-			return &ValidateError{FormName: rule.formName, Type: BadValue}
+			return &Error{FormName: rule.formName, Type: BadValue}
 		}
 	}
 
@@ -73,10 +73,10 @@ func (rule *_Rule) validateSlice(field *reflect.Value) *ValidateError {
 		if rule.checkNumRange {
 			for _, i := range vi.([]int64) {
 				if rule.minIntVal != nil && i < *rule.minIntVal {
-					return &ValidateError{FormName: rule.formName, Type: BadValue}
+					return &Error{FormName: rule.formName, Type: BadValue}
 				}
 				if rule.maxIntVal != nil && i < *rule.maxIntVal {
-					return &ValidateError{FormName: rule.formName, Type: BadValue}
+					return &Error{FormName: rule.formName, Type: BadValue}
 				}
 			}
 		}
@@ -84,10 +84,10 @@ func (rule *_Rule) validateSlice(field *reflect.Value) *ValidateError {
 		if rule.checkNumRange {
 			for _, i := range vi.([]uint64) {
 				if rule.minUintVal != nil && i < *rule.minUintVal {
-					return &ValidateError{FormName: rule.formName, Type: BadValue}
+					return &Error{FormName: rule.formName, Type: BadValue}
 				}
 				if rule.maxUintVal != nil && i < *rule.maxUintVal {
-					return &ValidateError{FormName: rule.formName, Type: BadValue}
+					return &Error{FormName: rule.formName, Type: BadValue}
 				}
 			}
 		}
@@ -95,10 +95,10 @@ func (rule *_Rule) validateSlice(field *reflect.Value) *ValidateError {
 		if rule.checkNumRange {
 			for _, i := range vi.([]float64) {
 				if rule.minDoubleVal != nil && i < *rule.minDoubleVal {
-					return &ValidateError{FormName: rule.formName, Type: BadValue}
+					return &Error{FormName: rule.formName, Type: BadValue}
 				}
 				if rule.maxDoubleVal != nil && i < *rule.maxDoubleVal {
-					return &ValidateError{FormName: rule.formName, Type: BadValue}
+					return &Error{FormName: rule.formName, Type: BadValue}
 				}
 			}
 		}
@@ -107,7 +107,7 @@ func (rule *_Rule) validateSlice(field *reflect.Value) *ValidateError {
 		for _, s := range vi.([]string) {
 			_s, ok := rule.toString(utils.B(s))
 			if !ok {
-				return &ValidateError{FormName: rule.formName, Type: BadValue}
+				return &Error{FormName: rule.formName, Type: BadValue}
 			}
 			ss = append(ss, _s)
 		}
@@ -117,14 +117,14 @@ func (rule *_Rule) validateSlice(field *reflect.Value) *ValidateError {
 		for i := 0; i < l; i++ {
 			ele := v.Index(i)
 			if err := toCustomField(&ele).Validate(); err != nil {
-				return &ValidateError{FormName: rule.formName, Type: BadValue, Wrapped: err}
+				return &Error{FormName: rule.formName, Type: BadValue, Wrapped: err}
 			}
 		}
 	}
 	return nil
 }
 
-func ValidateStruct(vPtr interface{}) (err *ValidateError) {
+func ValidateStruct(vPtr interface{}) (err *Error) {
 	v := reflect.ValueOf(vPtr).Elem()
 	t := v.Type()
 	for _, rule := range GetRules(t) {
