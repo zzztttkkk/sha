@@ -61,7 +61,7 @@ func TestServer_Run(t *testing.T) {
 		"/close",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			_ = ctx.WriteString("Hello World!")
-			ctx.Response.Header().Set(HeaderConnection, []byte("close"))
+			ctx.Close()
 		}),
 	)
 
@@ -117,6 +117,7 @@ func TestServer_Run(t *testing.T) {
 		"get",
 		"/hello",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
+			fmt.Println(ctx.Request.Header())
 			_ = ctx.WriteString("hello world")
 		}),
 	)

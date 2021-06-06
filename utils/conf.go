@@ -24,9 +24,7 @@ func (d *TomlDuration) UnmarshalText(text []byte) error {
 	return err
 }
 
-func (d *TomlDuration) UnmarshalJSON(text []byte) error {
-	return d.UnmarshalText(text)
-}
+func (d *TomlDuration) UnmarshalJSON(text []byte) error { return d.UnmarshalText(text) }
 
 func confFromTomlBytes(conf interface{}, data []byte) error {
 	_, err := toml.Decode(string(data), conf)

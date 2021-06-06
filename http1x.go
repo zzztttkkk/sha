@@ -68,17 +68,15 @@ func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx, s *Server) bool {
 	}
 
 	connVal, _ := ctx.Response.Header().Get(HeaderConnection) // disable keep-alive by response
-	if utils.S(inPlaceLowercase(connVal)) == headerValClose {
+	if len(connVal) > 0 && utils.S(connVal) == headerValClose {
 		return false
 	}
+
 	connVal, _ = ctx.Request.Header().Get(HeaderConnection) // disable keep-alive by request
-	connValS := utils.S(inPlaceLowercase(connVal))
-	if connValS == headerValClose {
+	if len(connVal) > 0 && utils.S(inPlaceLowercase(connVal)) == headerValClose {
 		return false
 	}
-	if connValS == keepAlive { // enable keep-alive by request
-		return true
-	}
+
 	v := ctx.Request.HTTPVersion()
 	return v[5] >= '1' && v[7] >= '1'
 }

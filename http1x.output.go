@@ -24,7 +24,7 @@ func sendPocket(buf *bufio.Writer, pocket *_HTTPPocket) error {
 		func(item *utils.KvItem) bool {
 			buf.Write(item.Key)
 			buf.WriteString(headerKVSep)
-			utils.EncodeHeaderValueToBuf(item.Val, buf)
+			buf.Write(item.Val)
 			buf.WriteString(endLine)
 			return true
 		},

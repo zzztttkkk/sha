@@ -8,7 +8,6 @@ import (
 	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
-	"unicode"
 )
 
 var numMap []bool
@@ -155,20 +154,6 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 					}
 					goto checkCtx
 				}
-
-				// change key to lower in the safe way
-				header := &pocket.header
-				header.buf.Reset()
-				key := utils.S(headerItem.Key)
-				for _, ru := range key {
-					if ru > 255 {
-						header.utf8Key = true
-					}
-					header.buf.WriteRune(unicode.ToLower(ru))
-				}
-				headerItem.Key = headerItem.Key[:0]
-				headerItem.Key = append(headerItem.Key, header.buf.String()...)
-
 				headerItem = nil
 				goto checkCtx
 			}
@@ -180,7 +165,8 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 			if keyDone {
 				headerItem.Val = append(headerItem.Val, b)
 			} else {
-				headerItem.Key = append(headerItem.Key, b)
+				//header key encoding: latin-1
+				headerItem.Key = append(headerItem.Key, toLowerTable[b])
 			}
 			continue
 		// fixed size body

@@ -8,3 +8,5 @@
 /tls
 *.png
 *.pid
+
+/examples/benchmarks/report.html

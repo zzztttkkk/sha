@@ -82,7 +82,7 @@ func Unwrap(ctx context.Context) *RequestCtx {
 	return nil
 }
 
-func (ctx *RequestCtx) Close() { ctx.Response.Header().Set(HeaderConnection, []byte("close")) }
+func (ctx *RequestCtx) Close() { ctx.Response.Header().SetString(HeaderConnection, headerValClose) }
 
 func (ctx *RequestCtx) IsTLS() bool { return ctx.isTLS }
 
