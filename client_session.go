@@ -8,12 +8,10 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"sync"
 	"time"
 )
 
 type CliSession struct {
-	mutex   sync.Mutex
 	address string
 	host    string
 
@@ -45,7 +43,7 @@ type CliSessionOptions struct {
 
 var defaultCliOptions CliSessionOptions
 
-func NewCliSession(address string, isTLS bool, opt *CliSessionOptions) *CliSession {
+func newCliSession(address string, isTLS bool, opt *CliSessionOptions) *CliSession {
 	if opt == nil {
 		opt = &defaultCliOptions
 	}
@@ -80,9 +78,6 @@ func NewCliSession(address string, isTLS bool, opt *CliSessionOptions) *CliSessi
 }
 
 func (s *CliSession) Close() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	if s.conn == nil {
 		return nil
 	}
@@ -93,9 +88,6 @@ func (s *CliSession) Close() error {
 }
 
 func (s *CliSession) Reconnect() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	if s.conn == nil {
 		return
 	}
@@ -111,9 +103,6 @@ func (s *CliSession) Reconnect() {
 }
 
 func (s *CliSession) openConn(ctx context.Context) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	if s.conn != nil {
 		return nil
 	}
@@ -238,9 +227,6 @@ func (s *CliSession) Send(ctx *RequestCtx) error {
 	if err := s.openConn(ctx); err != nil {
 		return err
 	}
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 
 	if err := sendRequest(s.w, &ctx.Request); err != nil {
 		return err

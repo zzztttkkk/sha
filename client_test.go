@@ -29,13 +29,12 @@ func TestCli(t *testing.T) {
 			req.SetMethod(MethodGet)
 			req.SetPathString("/")
 
-			cli.Send(ctx, "https://www.baidu.com:443", func(_ *CliSession, err error) {
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-				fmt.Printf("Res (%s): %d %s\r\n", ctx.TimeSpent(), ctx.Response.StatusCode(), ctx.Response.Phrase())
-			})
+			err := cli.Send(ctx, "https://www.baidu.com:443")
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Printf("Res (%s): %d %s\r\n", ctx.TimeSpent(), ctx.Response.StatusCode(), ctx.Response.Phrase())
 		}()
 	}
 
@@ -45,7 +44,7 @@ func TestCli(t *testing.T) {
 func TestCliRedirect(t *testing.T) {
 	go func() {
 		ListenAndServe("127.0.0.1:5986", RequestHandlerFunc(func(ctx *RequestCtx) {
-			num, _ := strconv.ParseInt(string(ctx.Request.Path()[1:]), 10, 32)
+			num, _ := strconv.ParseInt(ctx.Request.Path()[1:], 10, 32)
 			if num < 100 {
 				ctx.Response.SetStatusCode(StatusMovedPermanently)
 				ctx.Response.Header().SetString(HeaderLocation, fmt.Sprintf("/%d?time=%d", num+1, time.Now().UnixNano()))
@@ -67,18 +66,17 @@ func TestCliRedirect(t *testing.T) {
 	defer ReleaseRequestCtx(ctx)
 
 	ctx.Request.SetPathString("/0")
-	cli.Send(ctx, "127.0.0.1:5986", func(_ *CliSession, err error) {
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		fmt.Printf("Res: %d %s %s\r\n", ctx.Response.StatusCode(), ctx.Response.Phrase(), ctx.Request.History())
-	})
+	err := cli.Send(ctx, "127.0.0.1:5986")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("Res: %d %s %s\r\n", ctx.Response.StatusCode(), ctx.Response.Phrase(), ctx.Request.History())
 }
 
 func TestCliRedirectToAnotherHost(t *testing.T) {
 	go func() {
-		ListenAndServe("", RequestHandlerFunc(func(ctx *RequestCtx) {
+		ListenAndServe("127.0.0.1:5986", RequestHandlerFunc(func(ctx *RequestCtx) {
 			num, _ := strconv.ParseInt(string(ctx.Request.Path()[1:]), 10, 32)
 			if num < 100 {
 				ctx.Response.SetStatusCode(StatusMovedPermanently)
@@ -108,14 +106,13 @@ func TestCliRedirectToAnotherHost(t *testing.T) {
 	defer ReleaseRequestCtx(ctx)
 
 	ctx.Request.SetPathString("/0")
-	cli.Send(ctx, "127.0.0.1:5986", func(_ *CliSession, err error) {
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		fmt.Printf(
-			"Res (%s): %d %s %s\r\n",
-			ctx.TimeSpent(), ctx.Response.StatusCode(), ctx.Response.Phrase(), ctx.Request.History(),
-		)
-	})
+	err := cli.Send(ctx, "127.0.0.1:5986")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf(
+		"Res (%s): %d %s %s\r\n",
+		ctx.TimeSpent(), ctx.Response.StatusCode(), ctx.Response.Phrase(), ctx.Request.History(),
+	)
 }

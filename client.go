@@ -41,6 +41,7 @@ var defaultClientSessionPoolOptions = CliOptions{
 	false,
 }
 
+// NewCli return a concurrency-safe http client, which holds a session map to reuse connections.
 func NewCli(opt *CliOptions) *Cli {
 	cp := &Cli{
 		idling: map[string]chan *CliSession{},
@@ -59,6 +60,7 @@ func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, 
 	key := fmt.Sprintf("%s:%v", addr, isTLS)
 
 	cp.mutex.Lock()
+
 	if cp.closing {
 		cp.mutex.Unlock()
 		return nil, ErrClosedCli
@@ -84,7 +86,7 @@ func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, 
 			return cli, nil
 		default:
 			if int(atomic.LoadInt64(&cp.using)) < cp.Opts.MaxOpen {
-				return NewCliSession(addr, isTLS, &cp.Opts.CliSessionOptions), nil
+				return newCliSession(addr, isTLS, &cp.Opts.CliSessionOptions), nil
 			}
 			n += 2
 			if n > 10 {
@@ -144,10 +146,9 @@ func (cp *Cli) put(s *CliSession) {
 
 var ErrMaxRedirect = errors.New("sha.client: reach the redirect limit")
 
-func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, onDone func(*CliSession, error), redirectCount int, session *CliSession) {
+func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount int, session *CliSession) error {
 	if cp.Opts.MaxRedirect > 0 && redirectCount > cp.Opts.MaxRedirect {
-		onDone(nil, ErrMaxRedirect)
-		return
+		return ErrMaxRedirect
 	}
 
 	reusedSession := session != nil
@@ -155,8 +156,7 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, onDone func(*Cli
 	if !reusedSession {
 		session, err = cp.get(ctx, addr, isTLS)
 		if err != nil {
-			onDone(session, err)
-			return
+			return err
 		}
 	}
 	shouldPutSession := true
@@ -177,46 +177,43 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, onDone func(*Cli
 		ctx.Request.time = begin
 	}
 	if err != nil {
-		onDone(session, err)
-		return
+		return err
 	}
 
 	res := &ctx.Response
 	if res.StatusCode() > 299 && res.StatusCode() < 400 {
-		location, _ := res.Header().Get(HeaderLocation)
-		if len(location) < 1 {
-			onDone(session, err)
-			return
+		if cp.Opts.MaxRedirect == 0 {
+			return nil
 		}
 
-		if cp.Opts.MaxRedirect == 0 {
-			onDone(session, err)
-			return
+		location, _ := res.Header().Get(HeaderLocation)
+		if len(location) < 1 {
+			return nil
 		}
 
 		u, _ := url.Parse(utils.S(location))
-		var _addr string
-		var _isTls bool
+		var redirectLocationAddr string
+		var redirectLocationIsTls bool
 
 		if u == nil {
-			_addr = addr
-			_isTls = isTLS
+			redirectLocationAddr = addr
+			redirectLocationIsTls = isTLS
 			ctx.Request.SetPath(location)
 		} else {
 			if u.Scheme == "" {
-				_isTls = isTLS
+				redirectLocationIsTls = isTLS
 			} else {
-				_isTls = u.Scheme == "https"
+				redirectLocationIsTls = u.Scheme == "https"
 			}
 			if u.Host == "" {
-				_addr = addr
+				redirectLocationAddr = addr
 			} else {
-				_addr = u.Host
-				if !strings.ContainsRune(_addr, ':') {
-					if _isTls {
-						_addr += ":443"
+				redirectLocationAddr = u.Host
+				if !strings.ContainsRune(redirectLocationAddr, ':') {
+					if redirectLocationIsTls {
+						redirectLocationAddr += ":443"
 					} else {
-						_addr += ":80"
+						redirectLocationAddr += ":80"
 					}
 				}
 			}
@@ -230,20 +227,19 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, onDone func(*Cli
 
 		ctx.Response.reset()
 
-		if _addr == addr && _isTls == isTLS {
-			cp.doSend(ctx, addr, isTLS, onDone, redirectCount+1, session)
-			return
+		if redirectLocationAddr == addr && redirectLocationIsTls == isTLS { // redirect to same host
+			return cp.doSend(ctx, addr, isTLS, redirectCount+1, session)
 		}
+
+		// redirect to another host
 		cp.put(session)
 		shouldPutSession = false
-		cp.doSend(ctx, _addr, _isTls, onDone, redirectCount+1, nil)
-		return
+		return cp.doSend(ctx, redirectLocationAddr, redirectLocationIsTls, redirectCount+1, nil)
 	}
-
-	onDone(session, nil)
+	return nil
 }
 
-func (cp *Cli) Send(ctx *RequestCtx, addr string, onDone func(*CliSession, error)) {
+func (cp *Cli) Send(ctx *RequestCtx, addr string) error {
 	var isTLS bool
 	var ind = strings.Index(addr, "://")
 	var protocol string
@@ -257,9 +253,9 @@ func (cp *Cli) Send(ctx *RequestCtx, addr string, onDone func(*CliSession, error
 	switch protocol {
 	case "http", "https":
 		isTLS = protocol == "https"
-		cp.doSend(ctx, addr, isTLS, onDone, 0, nil)
+		return cp.doSend(ctx, addr, isTLS, 0, nil)
 	default:
-		onDone(nil, fmt.Errorf("sha.cli: bad protocol: `%s`", protocol))
+		return fmt.Errorf("sha.cli: bad protocol: `%s`", protocol)
 	}
 }
 

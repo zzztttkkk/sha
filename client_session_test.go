@@ -6,13 +6,12 @@ import (
 )
 
 func TestCliSession(t *testing.T) {
-	cli := NewCliSession(
+	cli := newCliSession(
 		"www.google.com", true,
 		&CliSessionOptions{
 			HTTPProxy: HTTPProxy{Address: "127.0.0.1:50266"},
 		},
 	)
-	defer cli.Close()
 
 	ctx := AcquireRequestCtx(nil)
 	defer ReleaseRequestCtx(ctx)
