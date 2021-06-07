@@ -334,6 +334,8 @@ func (s *Server) serveHTTPConn(conn net.Conn) {
 	s.httpProtocol.ServeConn(context.WithValue(s.baseCtx, CtxKeyConnection, conn), conn)
 }
 
+var DefaultListenAddress = ":5986"
+
 func ListenAndServe(addr string, handler RequestHandler) {
 	if handler == nil {
 		handler = DefaultMux
@@ -342,6 +344,9 @@ func ListenAndServe(addr string, handler RequestHandler) {
 }
 
 func ListenAndServeWithContext(ctx context.Context, addr string, handler RequestHandler) {
+	if addr == "" {
+		addr = DefaultListenAddress
+	}
 	server := DefaultWithContext(ctx)
 	server.Options = defaultServerOption
 	server.Options.Addr = addr
