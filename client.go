@@ -60,6 +60,7 @@ func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, 
 
 	cp.mutex.Lock()
 	if cp.closing {
+		cp.mutex.Unlock()
 		return nil, ErrClosedCli
 	}
 
@@ -96,22 +97,17 @@ func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, 
 
 func (cp *Cli) get(ctx context.Context, addr string, isTLS bool) (*CliSession, error) {
 	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			cli, err := cp._get(ctx, addr, isTLS)
-			if err != nil {
-				return nil, err
-			}
-			if cp.Opts.MaxAge > 0 && time.Now().Unix()-cli.created > cp.Opts.MaxAge {
-				_ = cli.Close()
-				cli = nil
-			}
-			if cli != nil {
-				atomic.AddInt64(&cp.using, 1)
-				return cli, nil
-			}
+		session, err := cp._get(ctx, addr, isTLS)
+		if err != nil {
+			return nil, err
+		}
+		if cp.Opts.MaxAge > 0 && time.Now().Unix()-session.created > cp.Opts.MaxAge {
+			_ = session.Close()
+			session = nil
+		}
+		if session != nil {
+			atomic.AddInt64(&cp.using, 1)
+			return session, nil
 		}
 	}
 }
@@ -120,6 +116,8 @@ func (cp *Cli) put(s *CliSession) {
 	if s == nil {
 		return
 	}
+
+	defer atomic.AddInt64(&cp.using, -1)
 
 	cp.mutex.Lock()
 
@@ -132,8 +130,6 @@ func (cp *Cli) put(s *CliSession) {
 	key := fmt.Sprintf("%s:%v", s.address, s.isTLS)
 	iC := cp.idling[key]
 	cp.mutex.Unlock()
-
-	atomic.AddInt64(&cp.using, -1)
 
 	for i := 2; i > 0; i-- {
 		select {
@@ -247,8 +243,24 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, onDone func(*Cli
 	onDone(session, nil)
 }
 
-func (cp *Cli) Send(ctx *RequestCtx, addr string, isTLS bool, onDone func(*CliSession, error)) {
-	cp.doSend(ctx, addr, isTLS, onDone, 0, nil)
+func (cp *Cli) Send(ctx *RequestCtx, addr string, onDone func(*CliSession, error)) {
+	var isTLS bool
+	var ind = strings.Index(addr, "://")
+	var protocol string
+	if ind > -1 {
+		protocol = addr[:ind]
+		addr = addr[ind+3:]
+	}
+	if len(protocol) < 1 {
+		protocol = "http"
+	}
+	switch protocol {
+	case "http", "https":
+		isTLS = protocol == "https"
+		cp.doSend(ctx, addr, isTLS, onDone, 0, nil)
+	default:
+		onDone(nil, fmt.Errorf("sha.cli: bad protocol: `%s`", protocol))
+	}
 }
 
 func (cp *Cli) Close() error {

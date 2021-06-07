@@ -29,7 +29,7 @@ func TestCli(t *testing.T) {
 			req.SetMethod(MethodGet)
 			req.SetPathString("/")
 
-			cli.Send(ctx, "www.baidu.com:443", true, func(_ *CliSession, err error) {
+			cli.Send(ctx, "https://www.baidu.com:443", func(_ *CliSession, err error) {
 				if err != nil {
 					fmt.Println(err)
 					return
@@ -44,7 +44,7 @@ func TestCli(t *testing.T) {
 
 func TestCliRedirect(t *testing.T) {
 	go func() {
-		ListenAndServe("", RequestHandlerFunc(func(ctx *RequestCtx) {
+		ListenAndServe("127.0.0.1:5986", RequestHandlerFunc(func(ctx *RequestCtx) {
 			num, _ := strconv.ParseInt(string(ctx.Request.Path()[1:]), 10, 32)
 			if num < 100 {
 				ctx.Response.SetStatusCode(StatusMovedPermanently)
@@ -67,7 +67,7 @@ func TestCliRedirect(t *testing.T) {
 	defer ReleaseRequestCtx(ctx)
 
 	ctx.Request.SetPathString("/0")
-	cli.Send(ctx, "127.0.0.1:5986", false, func(_ *CliSession, err error) {
+	cli.Send(ctx, "127.0.0.1:5986", func(_ *CliSession, err error) {
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -108,7 +108,7 @@ func TestCliRedirectToAnotherHost(t *testing.T) {
 	defer ReleaseRequestCtx(ctx)
 
 	ctx.Request.SetPathString("/0")
-	cli.Send(ctx, "127.0.0.1:5986", false, func(_ *CliSession, err error) {
+	cli.Send(ctx, "127.0.0.1:5986", func(_ *CliSession, err error) {
 		if err != nil {
 			fmt.Println(err)
 			return
