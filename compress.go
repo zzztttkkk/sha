@@ -11,15 +11,15 @@ import (
 )
 
 const (
-	gzipStr    = "gzip"
-	deflateStr = "deflate"
-	brotliStr  = "br"
+	CompressionTypeGzip    = "gzip"
+	CompressionTypeDeflate = "deflate"
+	CompressionTypeBrotli  = "br"
 )
 
 var (
-	CompressLevelGzip    = gzip.DefaultCompression
-	CompressLevelDeflate = flate.DefaultCompression
-	CompressLevelBrotli  = brotli.DefaultCompression
+	CompressionLevelGzip    = gzip.DefaultCompression
+	CompressionLevelDeflate = flate.DefaultCompression
+	CompressionLevelBrotli  = brotli.DefaultCompression
 )
 
 type _CompressionWriter interface {
@@ -31,7 +31,7 @@ type _CompressionWriter interface {
 var brWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressBrotli() {
-	ctx.Response.Header().SetString(HeaderContentEncoding, brotliStr)
+	ctx.Response.Header().SetString(HeaderContentEncoding, CompressionTypeBrotli)
 	var cwr *brotli.Writer
 	brI := brWriterPool.Get()
 	w := &ctx.Response._HTTPPocket
@@ -40,16 +40,16 @@ func (ctx *RequestCtx) CompressBrotli() {
 		cwr = brI.(*brotli.Writer)
 		cwr.Reset(w)
 	} else {
-		cwr = brotli.NewWriterLevel(w, CompressLevelBrotli)
+		cwr = brotli.NewWriterLevel(w, CompressionLevelBrotli)
 	}
 	ctx.Response.cw = cwr
-	ctx.Response.cwp = &brWriterPool
+	ctx.Response.cwPool = &brWriterPool
 }
 
 var gzipWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressGzip() {
-	ctx.Response.Header().SetString(HeaderContentEncoding, gzipStr)
+	ctx.Response.Header().SetString(HeaderContentEncoding, CompressionTypeGzip)
 
 	var cwr *gzip.Writer
 	var err error
@@ -60,19 +60,19 @@ func (ctx *RequestCtx) CompressGzip() {
 		cwr = brI.(*gzip.Writer)
 		cwr.Reset(w)
 	} else {
-		cwr, err = gzip.NewWriterLevel(w, CompressLevelGzip)
+		cwr, err = gzip.NewWriterLevel(w, CompressionLevelGzip)
 		if err != nil {
 			panic(err)
 		}
 	}
 	ctx.Response.cw = cwr
-	ctx.Response.cwp = &gzipWriterPool
+	ctx.Response.cwPool = &gzipWriterPool
 }
 
 var deflateWriterPool = sync.Pool{New: func() interface{} { return nil }}
 
 func (ctx *RequestCtx) CompressDeflate() {
-	ctx.Response.Header().SetString(HeaderContentEncoding, deflateStr)
+	ctx.Response.Header().SetString(HeaderContentEncoding, CompressionTypeDeflate)
 
 	var cwr *flate.Writer
 	var err error
@@ -82,13 +82,13 @@ func (ctx *RequestCtx) CompressDeflate() {
 		cwr = brI.(*flate.Writer)
 		cwr.Reset(w)
 	} else {
-		cwr, err = flate.NewWriter(w, CompressLevelDeflate)
+		cwr, err = flate.NewWriter(w, CompressionLevelDeflate)
 		if err != nil {
 			panic(err)
 		}
 	}
 	ctx.Response.cw = cwr
-	ctx.Response.cwp = &deflateWriterPool
+	ctx.Response.cwPool = &deflateWriterPool
 }
 
 var disableCompress = false
@@ -106,15 +106,15 @@ func (ctx *RequestCtx) AutoCompress() {
 
 	for _, headerVal := range ctx.Request.Header().GetAll(HeaderAcceptEncoding) {
 		hsv := utils.S(headerVal)
-		if strings.Contains(hsv, brotliStr) {
+		if strings.Contains(hsv, CompressionTypeBrotli) {
 			ctx.CompressBrotli()
 			return
 		}
-		if strings.Contains(hsv, deflateStr) {
+		if strings.Contains(hsv, CompressionTypeDeflate) {
 			ctx.CompressDeflate()
 			return
 		}
-		if strings.Contains(hsv, gzipStr) {
+		if strings.Contains(hsv, CompressionTypeGzip) {
 			ctx.CompressGzip()
 			return
 		}

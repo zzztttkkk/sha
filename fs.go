@@ -16,7 +16,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
-	"net/url"
+	urllib "net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -34,20 +34,19 @@ var htmlReplacer = strings.NewReplacer(
 	"'", "&#39;",
 )
 
-//goland:noinspection GoImportUsedAsName
-func dirList(ctx *RequestCtx, f http.File) {
+func listDir(ctx *RequestCtx, dir http.File) {
 	res := &ctx.Response
 
-	dirs, err := f.Readdir(-1)
+	contents, err := dir.Readdir(-1)
 	if err != nil {
 		res.statusCode = StatusInternalServerError
 		return
 	}
-	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Name() < dirs[j].Name() })
+	sort.Slice(contents, func(i, j int) bool { return contents[i].Name() < contents[j].Name() })
 
 	res.Header().SetContentType(MIMEHtml)
 	_, _ = fmt.Fprintf(res, "<pre>\n")
-	for _, d := range dirs {
+	for _, d := range contents {
 		name := d.Name()
 		if d.IsDir() {
 			name += "/"
@@ -55,16 +54,17 @@ func dirList(ctx *RequestCtx, f http.File) {
 		// name may contain '?' or '#', which must be escaped to remain
 		// part of the URL path, and not indicate the start of a query
 		// string or fragment.
-		url := url.URL{Path: name}
+		url := urllib.URL{Path: name}
 		_, _ = fmt.Fprintf(res, "<a href=\"%s\">%s</a>\n", url.String(), htmlReplacer.Replace(name))
 	}
 	_, _ = fmt.Fprintf(res, "</pre>\n")
 }
 
-var DirList func(ctx *RequestCtx, f http.File)
+//ListDir list dir contents for request, you can change this function to custom `ListDir`
+var ListDir func(ctx *RequestCtx, dir http.File)
 
 func init() {
-	DirList = dirList
+	ListDir = listDir
 }
 
 // errNoOverlap is returned by serveFileContent's parseRange if first-byte-pos of
@@ -477,7 +477,7 @@ func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, autoIndex
 				return
 			}
 			setLastModified(w, d.ModTime())
-			DirList(ctx, f)
+			ListDir(ctx, f)
 			return
 		}
 		ctx.Response.SetStatusCode(StatusNotFound)

@@ -15,8 +15,8 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 			fmt.Println(ctx.Response.Header())
-			_ = ctx.WriteString(strings.Repeat("Hello!", 100))
-			fmt.Printf("%p %p %p\n", ctx, ctx.Response.cw, ctx.Response.cwp)
+			_ = ctx.WriteString(strings.Repeat("PgUP", 1000))
+			fmt.Printf("%p %p %p\n", ctx, ctx.Response.cw, ctx.Response.cwPool)
 			ctx.Close()
 		}),
 	)

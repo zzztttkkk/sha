@@ -12,7 +12,7 @@ type Response struct {
 	_HTTPPocket
 	statusCode int
 	cw         _CompressionWriter
-	cwp        *sync.Pool
+	cwPool     *sync.Pool
 }
 
 func (res *Response) StatusCode() int { return res.statusCode }
@@ -52,9 +52,9 @@ func (res *Response) reset() {
 	res.statusCode = 0
 	if res.cw != nil {
 		res.cw.Reset(nil)
-		res.cwp.Put(res.cw)
+		res.cwPool.Put(res.cw)
 		res.cw = nil
-		res.cwp = nil
+		res.cwPool = nil
 	}
 }
 
