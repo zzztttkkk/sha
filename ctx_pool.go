@@ -17,6 +17,7 @@ func NewRequestCtxPool(opt *HTTPOptions) *RequestCtxPool {
 	if opt == nil {
 		opt = &defaultHTTPOption
 	}
+	//lint:ignore S1021 `opt` is a pointer, it can be changed, so i copy the value.
 	var eO HTTPOptions
 	eO = *opt
 	return &RequestCtxPool{
@@ -27,11 +28,7 @@ func NewRequestCtxPool(opt *HTTPOptions) *RequestCtxPool {
 	}
 }
 
-var defaultRCtxPool *RequestCtxPool
-
-func init() {
-	defaultRCtxPool = NewRequestCtxPool(nil)
-}
+var defaultRCtxPool *RequestCtxPool = NewRequestCtxPool(nil)
 
 func AcquireRequestCtx(ctx context.Context) *RequestCtx {
 	rctx := defaultRCtxPool.Acquire()

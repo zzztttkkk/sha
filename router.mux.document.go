@@ -2,9 +2,10 @@ package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/sha/validator"
 	"sort"
 	"strings"
+
+	"github.com/zzztttkkk/sha/validator"
 )
 
 type _DocForm struct {
@@ -13,7 +14,7 @@ type _DocForm struct {
 	TagsLogic string   `vld:"logic,optional"`
 }
 
-func (_ _DocForm) Default(name string) func() interface{} {
+func (_DocForm) Default(name string) func() interface{} {
 	switch name {
 	case "TagsLogic":
 		return func() interface{} { return "OR" }

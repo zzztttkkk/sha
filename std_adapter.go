@@ -2,9 +2,10 @@ package sha
 
 import (
 	"context"
-	"github.com/zzztttkkk/sha/utils"
 	"io"
 	"net/http"
+
+	"github.com/zzztttkkk/sha/utils"
 )
 
 func (ctx *RequestCtx) toStdRequest() *http.Request {
@@ -16,6 +17,7 @@ func (ctx *RequestCtx) toStdRequest() *http.Request {
 
 	var _ctx context.Context = ctx
 	req.URL.Params.EachItem(func(item *utils.KvItem) bool {
+		//lint:ignore SA1029 nothing
 		_ctx = context.WithValue(_ctx, string(item.Key), string(item.Val))
 		return true
 	})

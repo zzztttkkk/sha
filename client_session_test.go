@@ -1,6 +1,7 @@
 package sha
 
 import (
+	"context"
 	"fmt"
 	"testing"
 )
@@ -13,7 +14,7 @@ func TestCliSession(t *testing.T) {
 		},
 	)
 
-	ctx := AcquireRequestCtx(nil)
+	ctx := AcquireRequestCtx(context.TODO())
 	defer ReleaseRequestCtx(ctx)
 
 	ctx.Request.SetPathString("/search?q=go")

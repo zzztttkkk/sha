@@ -3,10 +3,6 @@ package sha
 import (
 	"context"
 	"crypto/tls"
-	"github.com/zzztttkkk/sha/internal"
-	"github.com/zzztttkkk/sha/utils"
-	"github.com/zzztttkkk/websocket"
-	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net"
 	"os"
@@ -14,6 +10,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/zzztttkkk/sha/internal"
+	"github.com/zzztttkkk/sha/utils"
+	"github.com/zzztttkkk/websocket"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 type ServerOptions struct {
@@ -116,7 +117,7 @@ func (s *Server) SetHTTPProtocol(protocol HTTPServerProtocol) { s.httpProtocol =
 
 func (s *Server) SetWebSocketProtocol(protocol WebSocketProtocol) { s.websocketProtocol = protocol }
 
-func Default() *Server { return New(nil, nil, nil) }
+func Default() *Server { return New(context.Background(), nil, nil) }
 
 func DefaultWithContext(ctx context.Context) *Server { return New(ctx, nil, nil) }
 

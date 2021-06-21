@@ -11,7 +11,6 @@ package sha
 import (
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/sha/utils"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -22,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/zzztttkkk/sha/utils"
 )
 
 var htmlReplacer = strings.NewReplacer(
@@ -462,7 +463,6 @@ func serveFileSystem(ctx *RequestCtx, fs http.FileSystem, name string, autoIndex
 			defer ff.Close()
 			dd, err := ff.Stat()
 			if err == nil {
-				name = index
 				d = dd
 				f = ff
 			}

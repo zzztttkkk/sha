@@ -2,9 +2,10 @@ package sha
 
 import (
 	"context"
-	"github.com/zzztttkkk/sha/utils"
 	"net"
 	"time"
+
+	"github.com/zzztttkkk/sha/utils"
 )
 
 type HTTPOptions struct {
@@ -38,6 +39,10 @@ type _Http11Protocol struct {
 }
 
 func newHTTP11Protocol(pool *RequestCtxPool) HTTPServerProtocol {
+	if pool == nil {
+		pool = defaultRCtxPool
+	}
+	//lint:ignore SA5011 `pool.opt` can not be a nil
 	option := pool.opt
 	v := &_Http11Protocol{HTTPOptions: *option}
 	if v.BufferPoolSizeLimit > v.MaxBodySize {
@@ -63,7 +68,7 @@ func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx, s *Server) bool {
 		return false
 	}
 	timeout := s.Options.MaxConnectionKeepAlive.Duration
-	if timeout > 0 && timeout-time.Now().Sub(ctx.connTime) <= five {
+	if timeout > 0 && timeout-time.Since(ctx.connTime) <= five {
 		return false
 	}
 

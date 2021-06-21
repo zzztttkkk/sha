@@ -5,9 +5,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"strconv"
+
 	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/utils"
-	"strconv"
 )
 
 var numMap []bool
@@ -210,7 +211,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 					}
 					bodyRemain = int(l)
 					if bodyRemain == 0 {
-						line, _, e = reader.ReadLine()
+						_, _, e = reader.ReadLine()
 						if e != nil {
 							return e
 						}

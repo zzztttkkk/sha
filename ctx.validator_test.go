@@ -3,12 +3,13 @@ package sha
 import (
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/sha/utils"
-	"github.com/zzztttkkk/sha/validator"
 	"regexp"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/zzztttkkk/sha/utils"
+	"github.com/zzztttkkk/sha/validator"
 )
 
 type Time time.Time
@@ -71,7 +72,7 @@ func TestValidator(t *testing.T) {
 }
 
 func TestRequestCtx_ValidateJSON(t *testing.T) {
-	validator.RegisterRegexp("name", regexp.MustCompile("\\w{5}"))
+	validator.RegisterRegexp("name", regexp.MustCompile(`\w{5}`))
 
 	type Form struct {
 		Num  int64  `json:"num" vld:",v=10-50"`

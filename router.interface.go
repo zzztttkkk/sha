@@ -2,8 +2,9 @@ package sha
 
 import (
 	"fmt"
-	"github.com/zzztttkkk/sha/validator"
 	"net/http"
+
+	"github.com/zzztttkkk/sha/validator"
 )
 
 type Middleware interface {
@@ -59,6 +60,7 @@ func middlewaresWrap(middlewares []Middleware, h RequestHandler) RequestHandler 
 }
 
 type _MiddlewareNode struct {
+	//lint:ignore U1000 keep the tree structure
 	p      *_MiddlewareNode
 	local  []Middleware
 	frozen bool

@@ -14,9 +14,9 @@ func TestCli(t *testing.T) {
 	defer cli.Close()
 
 	var wg = &sync.WaitGroup{}
+	wg.Add(50)
 	for i := 0; i < 50; i++ {
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 
 			baseCtx, cancelFunc := context.WithTimeout(context.Background(), time.Millisecond*250)
@@ -91,7 +91,6 @@ func TestCliRedirectToAnotherHost(t *testing.T) {
 				HeaderLocation,
 				fmt.Sprintf("https://www.baidu.com/aaaa?time=%d", time.Now().UnixNano()),
 			)
-			return
 		}))
 	}()
 

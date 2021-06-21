@@ -2,9 +2,10 @@ package sha
 
 import (
 	"embed"
-	"github.com/zzztttkkk/sha/utils"
 	"io"
 	"time"
+
+	"github.com/zzztttkkk/sha/utils"
 )
 
 func NewEmbedFSHandler(fs *embed.FS, modTime time.Time, pathRewrite func(ctx *RequestCtx) string) RequestHandler {
@@ -16,7 +17,7 @@ func NewEmbedFSHandler(fs *embed.FS, modTime time.Time, pathRewrite func(ctx *Re
 	if pathRewrite == nil {
 		pathRewrite = func(ctx *RequestCtx) string {
 			path, _ := ctx.Request.URL.Params.Get("filepath")
-			if len(path) < 0 {
+			if len(path) < 1 {
 				ctx.Response.statusCode = StatusNotFound
 				return ""
 			}

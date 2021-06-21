@@ -3,9 +3,10 @@
 package sha
 
 import (
-	"github.com/zzztttkkk/sha/utils"
 	"sort"
 	"strings"
+
+	"github.com/zzztttkkk/sha/utils"
 )
 
 func newNode(path string) *_Node {
@@ -140,6 +141,7 @@ func (n *_Node) setHandler(handler RequestHandler, fullPath string) (*_Node, err
 			handler = n.handler
 		} else if !oAohOk && nAohOk {
 			handler = n.handler
+			//lint:ignore SA9003 nothing
 		} else {
 			// oAohOK && !nAohOk
 		}

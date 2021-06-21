@@ -3,9 +3,6 @@ package sha
 import (
 	"context"
 	"fmt"
-	"github.com/zzztttkkk/sha/utils"
-	"github.com/zzztttkkk/sha/validator"
-	"github.com/zzztttkkk/websocket"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -16,6 +13,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/zzztttkkk/sha/utils"
+	"github.com/zzztttkkk/sha/validator"
+	"github.com/zzztttkkk/websocket"
 )
 
 type _CustomFormTime time.Time
@@ -105,7 +106,7 @@ func TestServer_Run(t *testing.T) {
 				}
 				fmt.Printf("recved from client: %s\n", d)
 
-				if e = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s", time.Now()))); e != nil {
+				if e = conn.WriteMessage(websocket.TextMessage, []byte(time.Now().String())); e != nil {
 					break
 				}
 			}

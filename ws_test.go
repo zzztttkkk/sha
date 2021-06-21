@@ -3,12 +3,13 @@ package sha
 import (
 	"context"
 	"fmt"
-	"github.com/zzztttkkk/websocket"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/zzztttkkk/websocket"
 )
 
 var mux *Mux
@@ -48,7 +49,7 @@ func init() {
 			for {
 				conn.Subprotocol()
 				time.Sleep(time.Second)
-				_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s", time.Now())))
+				_ = conn.WriteMessage(websocket.TextMessage, []byte(time.Now().String()))
 			}
 		},
 		nil,
@@ -65,7 +66,7 @@ func TestWebSocketProtocol_ServeTLS(t *testing.T) {
 	conf := ServerOptions{}
 	conf.TLS.Key = "./tls/sha.local-key.pem"
 	conf.TLS.Cert = "./tls/sha.local.pem"
-	s := New(nil, nil, &conf)
+	s := New(context.Background(), nil, &conf)
 	s.Handler = mux
 	s.ListenAndServe()
 }

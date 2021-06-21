@@ -3,10 +3,11 @@ package sha
 import (
 	"bytes"
 	"context"
-	"github.com/zzztttkkk/sha/utils"
-	"github.com/zzztttkkk/websocket"
 	"net/http"
 	"sync"
+
+	"github.com/zzztttkkk/sha/utils"
+	"github.com/zzztttkkk/websocket"
 )
 
 type WebSocketOptions struct {
@@ -24,7 +25,6 @@ var defaultWebSocketProtocolOption = WebSocketOptions{
 
 type _WebSocketProtocol struct {
 	opt WebSocketOptions
-	hp  *_Http11Protocol
 }
 
 func NewWebSocketProtocol(opt *WebSocketOptions) WebSocketProtocol {
