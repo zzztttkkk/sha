@@ -4,16 +4,16 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"github.com/zzztttkkk/sha/jsonx"
-	"github.com/zzztttkkk/sha/utils"
 	"io"
 	"mime"
 	"net"
 	"time"
+
+	"github.com/zzztttkkk/sha/jsonx"
+	"github.com/zzztttkkk/sha/utils"
 )
 
-// RequestCtx
-// most of the fields and most of the method return values are read-only, so:
+//RequestCtx most of the fields and most of the method return values are read-only, so:
 // 1, if you want to modify them, you should keep this in mind.
 // 2, if you want to keep them after handling, you should copy them.
 type RequestCtx struct {

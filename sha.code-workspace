@@ -10,5 +10,10 @@
 			"path": "examples\\benchmarks"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"go.addTags": {
+			"tags": "json,db,vld",
+			"promptForTags": true
+		}
+	}
 }

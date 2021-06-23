@@ -46,7 +46,7 @@ func parsePocket(ctx context.Context, reader *bufio.Reader, readBuf []byte, pock
 		headerItem  *utils.KvItem
 		keySep      bool
 		keyDone     bool
-		bodyRemain  int = -1
+		bodyRemain  = -1
 		parseStatus int
 
 		firstLineSize int
