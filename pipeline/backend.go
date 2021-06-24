@@ -23,6 +23,24 @@ var backend Backend
 var runningLock sync.Mutex
 var runningMap = make(map[string]*Task)
 
+func getRunningTask(id string) *Task {
+	runningLock.Lock()
+	defer runningLock.Unlock()
+	return runningMap[id]
+}
+
+func delRunningTask(id string) {
+	runningLock.Lock()
+	defer runningLock.Unlock()
+	delete(runningMap, id)
+}
+
+func setRunningTask(id string, t *Task) {
+	runningLock.Lock()
+	defer runningLock.Unlock()
+	runningMap[id] = t
+}
+
 var DefaultWaitBufferSize = 12
 
 var _baseCtx context.Context
@@ -55,19 +73,12 @@ func Pop(ctx context.Context) (task *Task, err error) {
 	}
 
 	task = &Task{id: id, data: data, status: TaskStatusInit, ctime: time.Now(), typeS: tType, timeout: timeout}
-
-	runningLock.Lock()
-	runningMap[task.id] = task
-	runningLock.Unlock()
-
+	setRunningTask(id, task)
 	return task, nil
 }
 
 func Cancel(ctx context.Context, id string) error {
-	runningLock.Lock()
-	task := runningMap[id]
-	runningLock.Unlock()
-
+	task := getRunningTask(id)
 	if task != nil {
 		task.Cancel()
 		return nil
@@ -113,7 +124,7 @@ func executeTask(task *Task) {
 		}
 
 		task.setStatus(TaskStatusDone)
-		_ = backend.ReportResult(task.id, time.Since(task.ctime), rErr, result)
+		task.cleanUp(rErr, result)
 	}()
 
 	result, rErr = pipeline.Process(ctx, task, _begin)

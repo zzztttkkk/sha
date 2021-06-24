@@ -21,11 +21,11 @@ var _begin interface{} = &nothing{0}
 
 func IsBegin(v interface{}) bool { return v == _begin }
 
-var ErrCancled = errors.New("sha.pipeline: task is canceled")
+var ErrCanceled = errors.New("sha.pipeline: task is canceled")
 
 func (pl *Pipeline) Process(ctx context.Context, task *Task, prevResult interface{}) (interface{}, error) {
-	if task.Status() == TaskStatusCanceld {
-		return nil, ErrCancled
+	if task.Status() == TaskStatusCanceled {
+		return nil, ErrCanceled
 	}
 	select {
 	case <-ctx.Done():
@@ -55,7 +55,7 @@ func (pl *Pipeline) AppendHandler(name string, handler Handler) *Pipeline {
 var pipelineSync sync.Mutex
 var pipelineMap = make(map[string]*Pipeline)
 
-func NewPipeline(name string, handler Handler, taskType string) *Pipeline {
+func NewPipeline(name string, taskType string, handler Handler) *Pipeline {
 	pl := &Pipeline{false, name, handler, nil}
 
 	pipelineSync.Lock()

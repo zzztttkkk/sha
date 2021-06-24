@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"log"
 	"sync/atomic"
 	"time"
 )
@@ -11,7 +12,7 @@ const (
 	TaskStatusUnknown = TaskStatus(iota)
 	TaskStatusInit
 	TaskStatusRunning
-	TaskStatusCanceld
+	TaskStatusCanceled
 	TaskStatusDone
 )
 
@@ -42,24 +43,24 @@ func (task *Task) Cancel() {
 	if task.Status() == TaskStatusDone {
 		return
 	}
-	task.setStatus(TaskStatusCanceld)
-	task.cleanUp()
+	task.setStatus(TaskStatusCanceled)
+	task.cleanUp(ErrCanceled, nil)
 }
 
 func (task *Task) Err() error { return task.err }
 
-func (task *Task) cleanUp() {
-	runningLock.Lock()
-	delete(runningMap, task.id)
-	runningLock.Unlock()
-
-	if task.cFn == nil {
-		return
-	}
-
+func (task *Task) cleanUp(err error, result interface{}) {
 	if atomic.LoadInt32(&task.cFnFlag) != 0 {
 		return
 	}
 	atomic.StoreInt32(&task.cFnFlag, 1)
-	task.cFn()
+
+	delRunningTask(task.id)
+	if err = backend.ReportResult(task.id, time.Since(task.ctime), err, result); err != nil {
+		log.Printf("sha.pipeline: report error `%s`\r\n", err.Error())
+	}
+
+	if task.cFn != nil {
+		task.cFn()
+	}
 }
