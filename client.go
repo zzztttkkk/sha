@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/zzztttkkk/sha/utils"
 	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/zzztttkkk/sha/utils"
 )
 
 type CliOptions struct {
@@ -193,24 +194,24 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount in
 
 		u, _ := url.Parse(utils.S(location))
 		var redirectLocationAddr string
-		var redirectLocationIsTls bool
+		var redirectLocationIsTLS bool
 
 		if u == nil {
 			redirectLocationAddr = addr
-			redirectLocationIsTls = isTLS
+			redirectLocationIsTLS = isTLS
 			ctx.Request.SetPath(location)
 		} else {
 			if u.Scheme == "" {
-				redirectLocationIsTls = isTLS
+				redirectLocationIsTLS = isTLS
 			} else {
-				redirectLocationIsTls = u.Scheme == "https"
+				redirectLocationIsTLS = u.Scheme == "https"
 			}
 			if u.Host == "" {
 				redirectLocationAddr = addr
 			} else {
 				redirectLocationAddr = u.Host
 				if !strings.ContainsRune(redirectLocationAddr, ':') {
-					if redirectLocationIsTls {
+					if redirectLocationIsTLS {
 						redirectLocationAddr += ":443"
 					} else {
 						redirectLocationAddr += ":80"
@@ -227,14 +228,14 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount in
 
 		ctx.Response.reset()
 
-		if redirectLocationAddr == addr && redirectLocationIsTls == isTLS { // redirect to same host
+		if redirectLocationAddr == addr && redirectLocationIsTLS == isTLS { // redirect to same host
 			return cp.doSend(ctx, addr, isTLS, redirectCount+1, session)
 		}
 
 		// redirect to another host
 		cp.put(session)
 		shouldPutSession = false
-		return cp.doSend(ctx, redirectLocationAddr, redirectLocationIsTls, redirectCount+1, nil)
+		return cp.doSend(ctx, redirectLocationAddr, redirectLocationIsTLS, redirectCount+1, nil)
 	}
 	return nil
 }

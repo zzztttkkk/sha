@@ -30,7 +30,7 @@ func MustAuth(ctx context.Context) Subject {
 	return s
 }
 
-func Use(manager Manager) { implOnce.Do(func() { impl = manager }) }
+func Init(manager Manager) { implOnce.Do(func() { impl = manager }) }
 
 var ErrUnauthenticatedOperation = errors.New("sha.rbac: unauthenticated operation")
 
