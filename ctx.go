@@ -159,6 +159,8 @@ func (ctx *RequestCtx) WriteString(s string) error {
 	return e
 }
 
+type Message map[string]interface{}
+
 func (ctx *RequestCtx) WriteJSON(v interface{}) error {
 	ctx.Response.Header().SetContentType(MIMEJson)
 	encoder := jsonx.NewEncoder(ctx)

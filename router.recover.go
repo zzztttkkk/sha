@@ -37,12 +37,12 @@ func init() {
 }
 
 var (
-	errType                        = reflect.TypeOf((*error)(nil)).Elem()
-	httpResErrType                 = reflect.TypeOf((*HTTPResponseError)(nil)).Elem()
-	httpErrType                    = reflect.TypeOf((*HTTPError)(nil)).Elem()
-	CallersFramesSkip          int = 0
-	CallersFramesSize          int = 20
-	InternalServerErrorMessage     = `<h1>Oops, an unknown internal server error occurred.`
+	errType                    = reflect.TypeOf((*error)(nil)).Elem()
+	httpResErrType             = reflect.TypeOf((*HTTPResponseError)(nil)).Elem()
+	httpErrType                = reflect.TypeOf((*HTTPError)(nil)).Elem()
+	CallersFramesSkip          = 0
+	CallersFramesSize          = 20
+	InternalServerErrorMessage = `<h1>Oops, an unknown internal server error occurred.`
 )
 
 func defaultRecover(ctx *RequestCtx, v interface{}) {

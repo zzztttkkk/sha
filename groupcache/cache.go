@@ -50,11 +50,11 @@ var defaultExpires = Expires{
 }
 
 type GroupOptions struct {
-	Prefix     string
-	Expires    Expires
-	RetryLimit int
-	RetrySleep time.Duration
-	MaxWait    int
+	Prefix     string             `toml:"prefix"`
+	Expires    Expires            `toml:"expires"`
+	RetryLimit int                `toml:"retry-limit"`
+	RetrySleep utils.TomlDuration `toml:"retry-sleep"`
+	MaxWait    int                `toml:"max-wait"`
 }
 
 type Group struct {
@@ -70,7 +70,7 @@ type Group struct {
 var defaultGroupOpts = GroupOptions{
 	Expires:    defaultExpires,
 	RetryLimit: 0,
-	RetrySleep: time.Millisecond * 50,
+	RetrySleep: utils.TomlDuration{Duration: time.Millisecond * 50},
 	MaxWait:    50,
 }
 
@@ -82,6 +82,23 @@ func New(name string, opts *GroupOptions) *Group {
 		opts = &defaultGroupOpts
 	}
 	g.Opts = *opts
+
+	if g.Opts.Expires.Missing.Duration == 0 {
+		g.Opts.Expires.Missing.Duration = defaultExpires.Missing.Duration
+	}
+
+	if g.Opts.Expires.Default.Duration == 0 {
+		g.Opts.Expires.Default.Duration = defaultExpires.Default.Duration
+	}
+
+	if g.Opts.RetrySleep.Duration == 0 {
+		g.Opts.RetrySleep.Duration = defaultGroupOpts.RetrySleep.Duration
+	}
+
+	if g.Opts.MaxWait == 0 {
+		g.Opts.MaxWait = defaultGroupOpts.MaxWait
+	}
+
 	g.sf = internal.NewSingleflightGroup(int32(g.Opts.MaxWait))
 	return g
 }
@@ -199,7 +216,7 @@ func (g *Group) Do(ctx context.Context, loader string, dist interface{}, args Na
 			err = g.do(ctx, loader, dist, args)
 			if err == ErrRetryAfter && opts.RetryLimit > 0 && retry < opts.RetryLimit {
 				retry++
-				time.Sleep(opts.RetrySleep + time.Millisecond*time.Duration(rand.Int()%15))
+				time.Sleep(opts.RetrySleep.Duration + time.Millisecond*time.Duration(rand.Int()%15))
 				continue
 			}
 			if err == errNil {
@@ -212,13 +229,29 @@ func (g *Group) Do(ctx context.Context, loader string, dist interface{}, args Na
 
 // dist must be a pointer
 func _copy(dist, src interface{}) {
-	rv := reflect.ValueOf(src)
-	if rv.Kind() == reflect.Ptr {
-		if dist == src {
-			return
-		}
-		reflect.ValueOf(dist).Elem().Set(rv.Elem())
+	dv := reflect.ValueOf(dist)
+	dt := dv.Type()
+	sv := reflect.ValueOf(src)
+	st := sv.Type()
+
+	if st.Kind() != reflect.Ptr { // int ==> *int
+		dv.Elem().Set(sv)
 		return
 	}
-	reflect.ValueOf(dist).Elem().Set(rv)
+
+	if st == dt { // *int ==> *int
+		dv.Elem().Set(sv.Elem())
+		return
+	}
+
+	if dt.Elem() == st { // *int ==> **int
+		dv.Elem().Set(sv)
+		return
+	}
+
+	if st.Elem() == dt { // **int ==> *int
+		dv.Elem().Set(sv.Elem().Elem())
+		return
+	}
+	panic(fmt.Errorf("sha.groupcache: can not copy `%v` to `%v`", src, dist))
 }

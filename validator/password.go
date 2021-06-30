@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"github.com/zzztttkkk/sha/utils"
 	"golang.org/x/crypto/bcrypt"
@@ -58,5 +59,22 @@ func (p *Password) Validate() error {
 func (p *Password) BcryptHash(cost int) ([]byte, error) { return bcrypt.GenerateFromPassword(*p, cost) }
 
 func (p *Password) MatchTo(hash []byte) bool { return bcrypt.CompareHashAndPassword(hash, *p) == nil }
+
+func (p *Password) Scan(v interface{}) error {
+	switch rv := v.(type) {
+	case []byte:
+		*p = rv
+		return nil
+	case string:
+		*p = utils.B(rv)
+		return nil
+	default:
+		return ErrBadPassword
+	}
+}
+
+func (p *Password) Value() (driver.Value, error) {
+	return []byte(*p), nil
+}
 
 var _ Field = (*Password)(nil)

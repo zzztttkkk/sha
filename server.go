@@ -18,9 +18,8 @@ import (
 )
 
 type ServerOptions struct {
-	Network string `json:"network" toml:"network"`
-	Addr    string `json:"addr" toml:"addr"`
-	TLS     struct {
+	Addr string `json:"addr" toml:"addr"`
+	TLS  struct {
 		AutoCertDomains []string `json:"auto_cert_domains" toml:"auto-cert-domains"`
 		Key             string   `json:"key" toml:"key"`
 		Cert            string   `json:"cert" toml:"cert"`
@@ -36,7 +35,6 @@ type ServerOptions struct {
 }
 
 var defaultServerOption = ServerOptions{
-	Network:                "tcp4",
 	Addr:                   "127.0.0.1:5986",
 	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
 	ReadTimeout:            utils.TomlDuration{Duration: time.Second * 10},
@@ -102,6 +100,7 @@ func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server 
 	if ctx == nil {
 		ctx = context.Background()
 	}
+
 	return &Server{
 		Options: *opt,
 		baseCtx: ctx,
@@ -132,7 +131,10 @@ func (s *Server) Listen() net.Listener {
 		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _ = ctx.WriteString("Hello World!\n") })
 	}
 
-	listener, err := net.Listen(s.Options.Network, s.Options.Addr)
+	if s.Options.Addr == "" {
+		s.Options.Addr = "127.0.0.1:5986"
+	}
+	listener, err := net.Listen("tcp4", s.Options.Addr)
 	if err != nil {
 		panic(err)
 	}
