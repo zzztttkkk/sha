@@ -34,7 +34,7 @@ type Cli struct {
 	closing bool
 }
 
-var defaultClientSessionPoolOptions = CliOptions{
+var defaultClientOptions = CliOptions{
 	defaultCliOptions,
 	600, // 10min
 	10, 10,
@@ -48,9 +48,10 @@ func NewCli(opt *CliOptions) *Cli {
 		idling: map[string]chan *CliSession{},
 	}
 	if opt == nil {
-		cp.Opts = defaultClientSessionPoolOptions
+		cp.Opts = defaultClientOptions
 	} else {
 		cp.Opts = *opt
+		utils.Merge(&cp.Opts, defaultClientOptions)
 	}
 	return cp
 }

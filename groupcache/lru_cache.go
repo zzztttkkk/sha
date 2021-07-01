@@ -2,6 +2,7 @@ package groupcache
 
 import (
 	"container/list"
+	"context"
 	"github.com/zzztttkkk/sha/utils"
 	"sync"
 	"time"
@@ -9,7 +10,7 @@ import (
 
 type _LRUItem struct {
 	key    []byte
-	val    interface{}
+	val    []byte
 	expire int64
 }
 
@@ -33,7 +34,7 @@ func (s *LRUCacheStorage) getEle(key string) *list.Element {
 	return nil
 }
 
-func (s *LRUCacheStorage) Get(key string) (interface{}, bool) {
+func (s *LRUCacheStorage) Get(_ context.Context, key string) ([]byte, bool) {
 	ele := s.getEle(key)
 	if ele == nil {
 		return nil, false
@@ -58,7 +59,7 @@ func (s *LRUCacheStorage) del(element *list.Element) {
 	s.items = append(s.items, item)
 }
 
-func (s *LRUCacheStorage) Set(key string, val interface{}, expire time.Duration) {
+func (s *LRUCacheStorage) Set(_ context.Context, key string, val []byte, expire time.Duration) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -96,14 +97,17 @@ func (s *LRUCacheStorage) Set(key string, val interface{}, expire time.Duration)
 	}
 }
 
-func (s *LRUCacheStorage) Del(key string) {
-	ele := s.getEle(key)
-	if ele == nil {
-		return
-	}
+func (s *LRUCacheStorage) Del(_ context.Context, keys ...string) {
 	s.Lock()
 	defer s.Unlock()
-	s.del(ele)
+
+	for _, key := range keys {
+		ele := s.getEle(key)
+		if ele == nil {
+			return
+		}
+		s.del(ele)
+	}
 }
 
 func NewLRUCache(cap int) *LRUCacheStorage {

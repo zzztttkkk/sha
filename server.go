@@ -89,23 +89,18 @@ const (
 var serverPrepareFunc []func(s *Server)
 
 func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server {
-	if opt == nil {
-		opt = &defaultServerOption
-	}
-
+	s := &Server{baseCtx: ctx}
 	if pool == nil {
-		pool = defaultRCtxPool
+		s.pool = defaultRCtxPool
 	}
 
-	if ctx == nil {
-		ctx = context.Background()
+	if opt == nil {
+		s.Options = defaultServerOption
+	} else {
+		s.Options = *opt
+		utils.Merge(&s.Options, defaultServerOption)
 	}
-
-	return &Server{
-		Options: *opt,
-		baseCtx: ctx,
-		pool:    pool,
-	}
+	return s
 }
 
 func (s *Server) BeforeShutdown(fn func(server *Server)) {
@@ -131,9 +126,6 @@ func (s *Server) Listen() net.Listener {
 		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _ = ctx.WriteString("Hello World!\n") })
 	}
 
-	if s.Options.Addr == "" {
-		s.Options.Addr = "127.0.0.1:5986"
-	}
 	listener, err := net.Listen("tcp4", s.Options.Addr)
 	if err != nil {
 		panic(err)
@@ -337,8 +329,6 @@ func (s *Server) serveHTTPConn(conn net.Conn) {
 	s.httpProtocol.ServeConn(context.WithValue(s.baseCtx, CtxKeyConnection, conn), conn)
 }
 
-var DefaultListenAddress = ":5986"
-
 func ListenAndServe(addr string, handler RequestHandler) {
 	if handler == nil {
 		handler = DefaultMux
@@ -347,11 +337,7 @@ func ListenAndServe(addr string, handler RequestHandler) {
 }
 
 func ListenAndServeWithContext(ctx context.Context, addr string, handler RequestHandler) {
-	if addr == "" {
-		addr = DefaultListenAddress
-	}
 	server := DefaultWithContext(ctx)
-	server.Options = defaultServerOption
 	server.Options.Addr = addr
 	server.Handler = handler
 	server.ListenAndServe()

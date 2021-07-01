@@ -25,15 +25,15 @@ type MuxOptions struct {
 	AutoHandleDocs          bool                                 `json:"auto_handle_docs" toml:"auto-handle-docs"`
 }
 
-var defaultMuxOption MuxOptions
+var defaultMuxOption = MuxOptions{
+	DoTrailingSlashRedirect: true,
+	NoFound:                 func(ctx *RequestCtx) { ctx.Response.SetStatusCode(StatusNotFound) },
+	Recover:                 defaultRecover,
+	AutoHandleOptions:       true,
+	AutoHandleDocs:          true,
+}
 
 func init() {
-	defaultMuxOption.DoTrailingSlashRedirect = true
-	defaultMuxOption.NoFound = func(ctx *RequestCtx) { ctx.Response.SetStatusCode(StatusNotFound) }
-	defaultMuxOption.Recover = defaultRecover
-	defaultMuxOption.AutoHandleOptions = true
-	defaultMuxOption.AutoHandleDocs = true
-
 	serverPrepareFunc = append(serverPrepareFunc, func(s *Server) {
 		h := s.Handler
 		if m, ok := h.(*Mux); ok && m.Opts.AutoHandleDocs {
@@ -379,15 +379,17 @@ func (m *Mux) String() string {
 }
 
 func NewMux(opts *MuxOptions) *Mux {
-	if opts == nil {
-		opts = &defaultMuxOption
-	}
-
 	mux := &Mux{
-		Opts:        *opts,
 		documents:   map[string]map[string]validator.Document{},
 		customTrees: map[string]*_RadixTree{},
 		all:         map[string]map[string]string{},
+	}
+
+	if opts == nil {
+		mux.Opts = defaultMuxOption
+	} else {
+		mux.Opts = *opts
+		utils.Merge(&mux.Opts, defaultMuxOption)
 	}
 
 	opts = &mux.Opts
@@ -433,6 +435,10 @@ func NewMux(opts *MuxOptions) *Mux {
 
 var DefaultMux = NewMux(nil)
 
-func HandleFunc(method, path string, handler RequestHandler) {
-	DefaultMux.HTTP(method, path, handler)
+func HandleFunc(method, path string, handler RequestHandler) { DefaultMux.HTTP(method, path, handler) }
+
+func Methods(router Router, methods []string, path string, handler RequestHandler) {
+	for _, method := range methods {
+		router.HTTP(method, path, handler)
+	}
 }

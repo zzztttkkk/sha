@@ -21,9 +21,8 @@ type CliSession struct {
 	r    *bufio.Reader
 	w    *bufio.Writer
 
-	isTLS   bool
-	opt     *CliSessionOptions
-	httpOpt *HTTPOptions
+	isTLS bool
+	opt   *CliSessionOptions
 }
 
 type HTTPProxy struct {
@@ -39,6 +38,13 @@ type CliSessionOptions struct {
 	InsecureSkipVerify   bool
 	TLSConfig            *tls.Config
 	RequestCtxPreChecker func(ctx *RequestCtx)
+}
+
+func (o *CliSessionOptions) h2tpOpts() *HTTPOptions {
+	if o.HTTPOptions != nil {
+		return o.HTTPOptions
+	}
+	return &defaultHTTPOption
 }
 
 var defaultCliOptions CliSessionOptions
@@ -68,12 +74,6 @@ func newCliSession(address string, isTLS bool, opt *CliSessionOptions) *CliSessi
 		}
 	}
 	s.address = address
-
-	if s.opt.HTTPOptions != nil {
-		s.httpOpt = s.opt.HTTPOptions
-	} else {
-		s.httpOpt = &defaultHTTPOption
-	}
 	return s
 }
 
@@ -163,7 +163,7 @@ func (s *CliSession) openConn(ctx context.Context) error {
 		} else {
 			r.Reset(proxyC)
 		}
-		e = parseResponse(ctx, r, make([]byte, 128), &res, s.httpOpt)
+		e = parseResponse(ctx, r, make([]byte, 128), &res, s.opt.h2tpOpts())
 		if e != nil {
 			return e
 		}
@@ -231,7 +231,7 @@ func (s *CliSession) Send(ctx *RequestCtx) error {
 	if err := sendRequest(s.w, &ctx.Request); err != nil {
 		return err
 	}
-	return parseResponse(ctx, s.r, ctx.readBuf, &ctx.Response, s.httpOpt)
+	return parseResponse(ctx, s.r, ctx.readBuf, &ctx.Response, s.opt.h2tpOpts())
 }
 
 func (s *CliSession) Conn() net.Conn { return s.conn }

@@ -54,3 +54,9 @@ func TestLoadTomlToStructPointer(t *testing.T) {
 	}
 	panic(err)
 }
+
+func TestRedis(t *testing.T) {
+	var cfg = RedisConfig{Addrs: []string{"1270.0.0.1:16379"}}
+	fmt.Println(cfg.Cli())
+	fmt.Println(cfg.Mode)
+}

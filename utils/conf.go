@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/imdario/mergo"
 	"github.com/zzztttkkk/sha/internal"
 	"io/ioutil"
 	"log"
@@ -174,4 +175,10 @@ func LoadToml(conf interface{}, fp string, logFileContent bool) error {
 		log.Printf("sha.utils.config: load from file `%s`\n%s\n", fp, v)
 	}
 	return nil
+}
+
+func Merge(dist, src interface{}, opts ...func(*mergo.Config)) {
+	if err := mergo.Merge(dist, src, opts...); err != nil {
+		panic(err)
+	}
 }
