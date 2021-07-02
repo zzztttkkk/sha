@@ -18,32 +18,21 @@ import (
 // 2, if you want to keep them after handling, you should copy them.
 type RequestCtx struct {
 	noCopy
-
 	ctx        context.Context
 	cancelFunc func()
-
-	readBuf []byte
-	conn    net.Conn
-	r       *bufio.Reader
-	w       *bufio.Writer
+	readBuf    []byte
+	conn       net.Conn
+	r          *bufio.Reader
+	w          *bufio.Writer
+	connTime   time.Time
+	isTLS      bool
+	hijacked   bool
 
 	Request  Request
 	Response Response
 
-	// user data
-	UserData userData
-
-	// time
-	connTime time.Time
-
-	isTLS bool
-
-	hijacked bool
-
-	// err
-	err interface{}
-
-	// session
+	UserData  userData
+	err       interface{}
 	sessionOK bool
 	session   Session
 }
@@ -120,6 +109,7 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 func (ctx *RequestCtx) prepareForNextRequest() {
 	ctx.Request.Reset()
 	ctx.Response.reset()
+
 	ctx.UserData.Reset()
 	ctx.err = nil
 	ctx.sessionOK = false

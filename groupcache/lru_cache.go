@@ -102,9 +102,9 @@ func (s *LRUCacheStorage) Del(_ context.Context, keys ...string) {
 	defer s.Unlock()
 
 	for _, key := range keys {
-		ele := s.getEle(key)
+		ele := s.m[key]
 		if ele == nil {
-			return
+			continue
 		}
 		s.del(ele)
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/zzztttkkk/sha/utils"
 	"math/rand"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -52,18 +53,18 @@ type Group struct {
 	name    string
 	sf      *internal.SingleflightGroup
 	loads   map[string]DataLoader
-	cpys    map[string]func(dist, src interface{})
 	storage Storage
 }
 
 var defaultGroupOpts = Options{
+	Prefix:     "groupcache",
 	Expires:    defaultExpires,
 	RetrySleep: utils.TomlDuration{Duration: time.Millisecond * 50},
 	MaxWait:    50,
 }
 
 func New(name string, opts *Options) *Group {
-	g := &Group{loads: map[string]DataLoader{}, cpys: map[string]func(dist interface{}, src interface{}){}}
+	g := &Group{loads: map[string]DataLoader{}}
 	g.name = name
 
 	if opts == nil {
@@ -91,11 +92,6 @@ func (g *Group) RegisterLoader(name string, loader DataLoader) *Group {
 	return g
 }
 
-func (g *Group) RegisterCopyFunc(name string, cpy func(dist, src interface{})) *Group {
-	g.cpys[name] = cpy
-	return g
-}
-
 var emptyVal = []byte("")
 
 var ErrBadCacheValue = errors.New("sha.groupcache: bad cache")
@@ -103,11 +99,16 @@ var ErrRetryAfter = internal.ErrRetryAfter
 var ErrNotFound = errors.New("sha.groupcache: not found")
 var errNil = errors.New("sha.groupcache: nil")
 
-func (g *Group) MakeKey(loaderName, argsName string) string {
-	if len(g.Opts.Prefix) < 1 {
-		return fmt.Sprintf("groupcache:%s:%s:%s", g.name, loaderName, argsName)
-	}
-	return fmt.Sprintf("%s:%s:%s:%s", g.Opts.Prefix, g.name, loaderName, argsName)
+func (g *Group) MakeKey(loaderName string, args NamedArgs) string {
+	var buf strings.Builder
+	buf.WriteString(g.Opts.Prefix)
+	buf.WriteRune(':')
+	buf.WriteString(g.name)
+	buf.WriteRune(':')
+	buf.WriteString(loaderName)
+	buf.WriteRune(':')
+	buf.WriteString(args.Name())
+	return buf.String()
 }
 
 // DoWithExpire dist must be a pointer
@@ -122,7 +123,7 @@ func (g *Group) do(ctx context.Context, loaderName string, dist interface{}, arg
 	ret, e := g.sf.Do(
 		args.Name(),
 		func() (interface{}, error) {
-			key := g.MakeKey(loaderName, args.Name())
+			key := g.MakeKey(loaderName, args)
 			_bytes, found := g.storage.Get(ctx, key)
 
 			if found {
@@ -158,12 +159,7 @@ func (g *Group) do(ctx context.Context, loaderName string, dist interface{}, arg
 	)
 
 	if e == nil {
-		cpy := g.cpys[loaderName]
-		if cpy == nil {
-			_copy(dist, ret)
-		} else {
-			cpy(dist, ret)
-		}
+		_copy(dist, ret)
 	}
 	return e
 }
@@ -190,6 +186,12 @@ func (g *Group) Do(ctx context.Context, loader string, dist interface{}, args Na
 		}
 	}
 }
+
+func (g *Group) MakeInvalid(ctx context.Context, loaderName string, args NamedArgs) {
+	g.storage.Del(ctx, g.MakeKey(loaderName, args))
+}
+
+func (g *Group) Storage() Storage { return g.storage }
 
 // dist must be a pointer
 func _copy(dist, src interface{}) {

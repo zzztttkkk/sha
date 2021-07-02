@@ -72,4 +72,8 @@ func TestAddReturnValue(t *testing.T) {
 	}
 
 	wg.Wait()
+
+	fmt.Println(redisGroup.Storage().Get(context.Background(), redisGroup.MakeKey("add-return-pointer", &arg)))
+	redisGroup.MakeInvalid(context.Background(), "add-return-pointer", &arg)
+	fmt.Println(redisGroup.Storage().Get(context.Background(), redisGroup.MakeKey("add-return-pointer", &arg)))
 }
