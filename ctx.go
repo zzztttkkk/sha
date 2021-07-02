@@ -121,6 +121,7 @@ func (ctx *RequestCtx) prepareForNextRequest() {
 	ctx.Request.Reset()
 	ctx.Response.reset()
 	ctx.UserData.Reset()
+	ctx.err = nil
 	ctx.sessionOK = false
 }
 

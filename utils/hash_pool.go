@@ -48,16 +48,16 @@ func (hp *HashPool) put(v *_HashWrapper) {
 	hp.pool.Put(v)
 }
 
-func (hp *HashPool) Sum(v []byte, dist []byte) []byte {
+func (hp *HashPool) Sum(v []byte, dist []byte) {
 	h := hp.get()
 	defer hp.put(h)
 
 	_, _ = h.Write(hp.secret)
 	_, _ = h.Write(v)
-
 	hex.Encode(dist, h.Sum(h.sumDist))
-	return dist
 }
+
+func (hp *HashPool) SumString(v string, dist []byte) { hp.Sum(B(v), dist) }
 
 func (hp *HashPool) Equal(v []byte, h []byte) bool {
 	if len(h) != hp.size*2 {

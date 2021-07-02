@@ -44,11 +44,6 @@ type Expires struct {
 	Missing utils.TomlDuration `json:"missing" toml:"missing"`
 }
 
-var defaultExpires = Expires{
-	Default: utils.TomlDuration{Duration: time.Hour * 5},
-	Missing: utils.TomlDuration{Duration: time.Minute * 2},
-}
-
 type GroupOptions struct {
 	Prefix     string             `toml:"prefix"`
 	Expires    Expires            `toml:"expires"`
@@ -68,7 +63,10 @@ type Group struct {
 }
 
 var defaultGroupOpts = GroupOptions{
-	Expires:    defaultExpires,
+	Expires: Expires{
+		Default: utils.TomlDuration{Duration: time.Hour * 5},
+		Missing: utils.TomlDuration{Duration: time.Minute * 2},
+	},
 	RetryLimit: 0,
 	RetrySleep: utils.TomlDuration{Duration: time.Millisecond * 50},
 	MaxWait:    50,
@@ -84,11 +82,11 @@ func New(name string, opts *GroupOptions) *Group {
 	g.Opts = *opts
 
 	if g.Opts.Expires.Missing.Duration == 0 {
-		g.Opts.Expires.Missing.Duration = defaultExpires.Missing.Duration
+		g.Opts.Expires.Missing.Duration = time.Hour * 5
 	}
 
 	if g.Opts.Expires.Default.Duration == 0 {
-		g.Opts.Expires.Default.Duration = defaultExpires.Default.Duration
+		g.Opts.Expires.Default.Duration = time.Minute * 2
 	}
 
 	if g.Opts.RetrySleep.Duration == 0 {
