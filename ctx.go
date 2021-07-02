@@ -34,7 +34,7 @@ type RequestCtx struct {
 	UserData  userData
 	err       interface{}
 	sessionOK bool
-	session   Session
+	session   []byte
 }
 
 func (ctx *RequestCtx) TimeSpent() time.Duration {
@@ -113,6 +113,7 @@ func (ctx *RequestCtx) prepareForNextRequest() {
 	ctx.UserData.Reset()
 	ctx.err = nil
 	ctx.sessionOK = false
+	ctx.session = ctx.session[:0]
 }
 
 func (ctx *RequestCtx) resetConn() {
