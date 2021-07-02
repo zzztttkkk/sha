@@ -20,18 +20,8 @@ type NamedArgs interface {
 
 type DataLoader func(ctx context.Context, args NamedArgs) (ret interface{}, err error)
 
-type Convertor interface {
-	Encode(v interface{}) ([]byte, error)
-	Decode(v []byte, dist interface{}) error
-}
-
-type _JSONConvertor struct{}
-
-func (_JSONConvertor) Encode(v interface{}) ([]byte, error) { return jsonx.Marshal(v) }
-
-func (_JSONConvertor) Decode(v []byte, dist interface{}) error { return jsonx.Unmarshal(v, dist) }
-
-var DefaultBytesConvertor = _JSONConvertor{}
+var Marshal = jsonx.Marshal
+var Unmarshal = jsonx.Unmarshal
 
 type Storage interface {
 	Set(ctx context.Context, k string, v []byte, expire time.Duration)
@@ -44,7 +34,12 @@ type Expires struct {
 	Missing utils.TomlDuration `json:"missing" toml:"missing"`
 }
 
-type GroupOptions struct {
+var defaultExpires = Expires{
+	Default: utils.TomlDuration{Duration: time.Hour * 5},
+	Missing: utils.TomlDuration{Duration: time.Minute * 2},
+}
+
+type Options struct {
 	Prefix     string             `toml:"prefix"`
 	Expires    Expires            `toml:"expires"`
 	RetryLimit int                `toml:"retry-limit"`
@@ -53,48 +48,29 @@ type GroupOptions struct {
 }
 
 type Group struct {
-	Opts    GroupOptions
+	Opts    Options
 	name    string
 	sf      *internal.SingleflightGroup
 	loads   map[string]DataLoader
 	cpys    map[string]func(dist, src interface{})
 	storage Storage
-	conv    Convertor
 }
 
-var defaultGroupOpts = GroupOptions{
-	Expires: Expires{
-		Default: utils.TomlDuration{Duration: time.Hour * 5},
-		Missing: utils.TomlDuration{Duration: time.Minute * 2},
-	},
-	RetryLimit: 0,
+var defaultGroupOpts = Options{
+	Expires:    defaultExpires,
 	RetrySleep: utils.TomlDuration{Duration: time.Millisecond * 50},
 	MaxWait:    50,
 }
 
-func New(name string, opts *GroupOptions) *Group {
+func New(name string, opts *Options) *Group {
 	g := &Group{loads: map[string]DataLoader{}, cpys: map[string]func(dist interface{}, src interface{}){}}
 	g.name = name
 
 	if opts == nil {
-		opts = &defaultGroupOpts
-	}
-	g.Opts = *opts
-
-	if g.Opts.Expires.Missing.Duration == 0 {
-		g.Opts.Expires.Missing.Duration = time.Hour * 5
-	}
-
-	if g.Opts.Expires.Default.Duration == 0 {
-		g.Opts.Expires.Default.Duration = time.Minute * 2
-	}
-
-	if g.Opts.RetrySleep.Duration == 0 {
-		g.Opts.RetrySleep.Duration = defaultGroupOpts.RetrySleep.Duration
-	}
-
-	if g.Opts.MaxWait == 0 {
-		g.Opts.MaxWait = defaultGroupOpts.MaxWait
+		g.Opts = defaultGroupOpts
+	} else {
+		g.Opts = *opts
+		utils.Merge(&g.Opts, defaultGroupOpts)
 	}
 
 	g.sf = internal.NewSingleflightGroup(int32(g.Opts.MaxWait))
@@ -108,11 +84,6 @@ func (g *Group) SetStorage(s Storage) *Group {
 
 func (g *Group) SetRedisStorage(r redis.Cmdable) *Group {
 	return g.SetStorage(RedisStorage(r))
-}
-
-func (g *Group) SetConvertor(c Convertor) *Group {
-	g.conv = c
-	return g
 }
 
 func (g *Group) RegisterLoader(name string, loader DataLoader) *Group {
@@ -146,11 +117,6 @@ func (g *Group) do(ctx context.Context, loaderName string, dist interface{}, arg
 		return fmt.Errorf("sha.groupcache: name `%s` is not exists in group `%s`", loaderName, g.name)
 	}
 
-	conv := g.conv
-	if conv == nil {
-		conv = DefaultBytesConvertor
-	}
-
 	opts := &g.Opts
 
 	ret, e := g.sf.Do(
@@ -164,7 +130,7 @@ func (g *Group) do(ctx context.Context, loaderName string, dist interface{}, arg
 					return nil, ErrNotFound
 				}
 
-				err := conv.Decode(_bytes, dist)
+				err := Unmarshal(_bytes, dist)
 				if err != nil { // bad cached value or bad dist, but i trust the caller
 					g.storage.Del(ctx, key)
 					return nil, ErrBadCacheValue
@@ -182,7 +148,7 @@ func (g *Group) do(ctx context.Context, loaderName string, dist interface{}, arg
 				return nil, errNil
 			}
 
-			_bytes, e = conv.Encode(_val)
+			_bytes, e = Marshal(_val)
 			if e != nil {
 				panic(e)
 			}

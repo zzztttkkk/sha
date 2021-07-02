@@ -3,32 +3,27 @@ package sha
 import (
 	"bufio"
 	"context"
+	"github.com/zzztttkkk/sha/utils"
 	"sync"
 )
 
 type RequestCtxPool struct {
 	sync.Pool
-	readSize  int
-	writeSize int
-	opt       *HTTPOptions
+	opt HTTPOptions
 }
 
 func NewRequestCtxPool(opt *HTTPOptions) *RequestCtxPool {
+	pool := &RequestCtxPool{Pool: sync.Pool{New: func() interface{} { return &RequestCtx{} }}}
 	if opt == nil {
-		opt = &defaultHTTPOption
+		pool.opt = defaultHTTPOption
+	} else {
+		pool.opt = *opt
+		utils.Merge(&pool.opt, defaultHTTPOption)
 	}
-	//lint:ignore S1021 `opt` is a pointer, it can be changed, so i copy the value.
-	var eO HTTPOptions
-	eO = *opt
-	return &RequestCtxPool{
-		Pool:      sync.Pool{New: func() interface{} { return &RequestCtx{} }},
-		readSize:  eO.ReadBufferSize,
-		writeSize: eO.SendBufferSize,
-		opt:       &eO,
-	}
+	return pool
 }
 
-var defaultRCtxPool *RequestCtxPool = NewRequestCtxPool(nil)
+var defaultRCtxPool = NewRequestCtxPool(nil)
 
 func AcquireRequestCtx(ctx context.Context) *RequestCtx {
 	rctx := defaultRCtxPool.Acquire()
@@ -44,20 +39,18 @@ func ReleaseRequestCtx(ctx *RequestCtx) {
 func (p *RequestCtxPool) Acquire() *RequestCtx {
 	ctx := p.Get().(*RequestCtx)
 	if ctx.readBuf == nil {
-		ctx.readBuf = make([]byte, p.readSize)
+		ctx.readBuf = make([]byte, p.opt.ReadBufferSize)
 	}
 	if ctx.r == nil {
-		ctx.r = bufio.NewReaderSize(nil, p.readSize)
+		ctx.r = bufio.NewReaderSize(nil, p.opt.ReadBufferSize)
 	}
 	if ctx.w == nil {
-		ctx.w = bufio.NewWriterSize(nil, p.writeSize)
+		ctx.w = bufio.NewWriterSize(nil, p.opt.ReadBufferSize)
 	}
 	return ctx
 }
 
-func (p *RequestCtxPool) Release(ctx *RequestCtx) {
-	p.release(ctx, true)
-}
+func (p *RequestCtxPool) Release(ctx *RequestCtx) { p.release(ctx, true) }
 
 func (p *RequestCtxPool) release(ctx *RequestCtx, unprepared bool) {
 	if p.opt.BufferPoolSizeLimit > 0 {

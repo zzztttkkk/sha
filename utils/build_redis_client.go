@@ -20,6 +20,8 @@ type RedisConfig struct {
 	} `toml:"-"`
 }
 
+var defaultRedisConfig = RedisConfig{Mode: "singleton"}
+
 func (cfg *RedisConfig) Cli() redis.Cmdable {
 	cfg.internal.once.Do(func() { cfg.buildRedisCli() })
 	return cfg.internal.cli
@@ -29,6 +31,8 @@ func (cfg *RedisConfig) buildRedisCli() (cli redis.Cmdable) {
 	defer func() {
 		cfg.internal.cli = cli
 	}()
+
+	Merge(cfg, &defaultRedisConfig)
 
 	switch strings.ToLower(cfg.Mode) {
 	case "singleton":

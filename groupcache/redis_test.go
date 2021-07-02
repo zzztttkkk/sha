@@ -28,7 +28,7 @@ type Item struct {
 	Sum int
 }
 
-var c = New("test", nil).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7, Addr: "127.0.0.1:16379"})).RegisterLoader(
+var redisGroup = New("test", nil).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7, Addr: "127.0.0.1:16379"})).RegisterLoader(
 	"add-return-value",
 	func(ctx context.Context, args NamedArgs) (ret interface{}, err error) {
 		v := args.(*_AddArgs)
@@ -44,22 +44,11 @@ var c = New("test", nil).SetRedisStorage(redis.NewClient(&redis.Options{DB: 7, A
 		fmt.Printf("--------------Calc: %d %d\n", v.A, v.B)
 		return &Item{v.A + v.B}, err
 	},
-).RegisterCopyFunc(
-	"add-return-pointer",
-	func(dist, src interface{}) {
-		dPtr := dist.(**Item)
-		switch tv := src.(type) {
-		case *Item:
-			*dPtr = tv
-		case **Item:
-			*dPtr = *tv
-		}
-	},
 )
 
 func init() {
-	c.Opts.RetryLimit = 5
-	c.Opts.RetrySleep = time.Millisecond * 300
+	redisGroup.Opts.RetryLimit = 5
+	redisGroup.Opts.RetrySleep.Duration = time.Millisecond * 300
 }
 
 func TestAddReturnValue(t *testing.T) {
@@ -72,7 +61,7 @@ func TestAddReturnValue(t *testing.T) {
 		go func(ind int) {
 			defer wg.Done()
 			var ret *Item
-			if err := c.Do(context.Background(), "add-return-pointer", &ret, &arg); err != nil {
+			if err := redisGroup.Do(context.Background(), "add-return-pointer", &ret, &arg); err != nil {
 				if err == ErrRetryAfter {
 					fmt.Println("retry after")
 					return

@@ -8,6 +8,7 @@ require (
 	github.com/go-redis/redis/v8 v8.4.11
 	github.com/goccy/go-json v0.5.1
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
+	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/klauspost/compress v1.11.2
 	github.com/zzztttkkk/sqlx v0.0.6
 	github.com/zzztttkkk/websocket v1.4.3

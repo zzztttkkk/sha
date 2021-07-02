@@ -27,7 +27,7 @@ var defaultHTTPOption = HTTPOptions{
 }
 
 type _Http11Protocol struct {
-	HTTPOptions
+	*HTTPOptions
 
 	OnParseError func(conn net.Conn, err error) bool                  // keep connection if return true
 	OnWriteError func(conn net.Conn, ctx *RequestCtx, err error) bool // keep connection if return true
@@ -42,15 +42,9 @@ func newHTTP11Protocol(pool *RequestCtxPool) HTTPServerProtocol {
 	if pool == nil {
 		pool = defaultRCtxPool
 	}
-	//lint:ignore SA5011 `pool.opt` can not be a nil
-	option := pool.opt
-	v := &_Http11Protocol{HTTPOptions: *option}
+	v := &_Http11Protocol{HTTPOptions: &pool.opt}
 	if v.BufferPoolSizeLimit > v.MaxBodySize {
 		v.BufferPoolSizeLimit = v.MaxBodySize
-	}
-
-	if pool == nil {
-		pool = defaultRCtxPool
 	}
 	v.pool = pool
 	return v
@@ -97,7 +91,7 @@ func (protocol *_Http11Protocol) handle(ctx *RequestCtx, server *Server) bool {
 		_ = ctx.conn.SetReadDeadline(time.Now().Add(readTimeout))
 	}
 
-	err := parseRequest(ctx, ctx.r, ctx.readBuf, &ctx.Request, &protocol.HTTPOptions)
+	err := parseRequest(ctx, ctx.r, ctx.readBuf, &ctx.Request, protocol.HTTPOptions)
 	if err != nil {
 		if protocol.OnParseError != nil {
 			return protocol.OnParseError(ctx.conn, err)
