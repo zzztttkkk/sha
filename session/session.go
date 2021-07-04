@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"github.com/zzztttkkk/sha"
 	"github.com/zzztttkkk/sha/utils"
 	"io"
 	"time"
@@ -17,18 +16,16 @@ type Session []byte
 
 func (s *Session) String() string { return utils.S(*s) }
 
-func (s *Session) Key() string { return utils.S((*s)[len(opts.Suffix)+1:]) }
-
 func (s *Session) Set(ctx context.Context, key string, val interface{}) error {
 	v, e := Marshal(val)
 	if e != nil {
 		return e
 	}
-	return backend.SessionSet(ctx, s.Key(), key, v)
+	return rcli.HSet(ctx, utils.S(*s), key, v).Err()
 }
 
 func (s *Session) Get(ctx context.Context, key string, dist interface{}) bool {
-	v, e := backend.SessionGet(ctx, s.Key(), key)
+	v, e := rcli.HGet(ctx, utils.S(*s), key).Bytes()
 	if e != nil {
 		return false
 	}
@@ -36,19 +33,16 @@ func (s *Session) Get(ctx context.Context, key string, dist interface{}) bool {
 }
 
 func (s *Session) Del(ctx context.Context, keys ...string) error {
-	return backend.SessionDel(ctx, s.Key(), keys...)
+	return rcli.HDel(ctx, utils.S(*s), keys...).Err()
 }
 
-func (s *Session) Destroy(ctx context.Context) error { return backend.Del(ctx, utils.S(*s)) }
+func (s *Session) Destroy(ctx context.Context) error { return rcli.Del(ctx, utils.S(*s)).Err() }
 
 func (s *Session) Clear(ctx context.Context) error {
-	return backend.ClearSession(ctx, utils.S(*s))
+	return rcli.EvalSha(ctx, clearScriptHash, []string{utils.S(*s)}).Err()
 }
 
 func (s *Session) GenerateImageCaptcha(ctx context.Context, w io.Writer) error {
-	if ImageCaptchaGenerator == nil {
-		return sha.StatusError(sha.StatusNotImplemented)
-	}
 	token, err := ImageCaptchaGenerator.GenerateTo(ctx, w)
 	if err != nil {
 		return err
@@ -59,9 +53,6 @@ func (s *Session) GenerateImageCaptcha(ctx context.Context, w io.Writer) error {
 }
 
 func (s *Session) GenerateAudioCaptcha(ctx context.Context, w io.Writer) error {
-	if AudioCaptchaGenerator == nil {
-		return sha.StatusError(sha.StatusNotImplemented)
-	}
 	token, err := AudioCaptchaGenerator.GenerateTo(ctx, w)
 	if err != nil {
 		return err
@@ -113,9 +104,9 @@ func (s *Session) VerifyCRSFToken(ctx context.Context, token string) bool {
 }
 
 func (s *Session) GetAll(ctx context.Context) map[string]string {
-	return backend.SessionGetAll(ctx, utils.S(*s))
+	return rcli.HGetAll(ctx, utils.S(*s)).Val()
 }
 
 func (s *Session) Incr(ctx context.Context, key string, increment int64) (int64, error) {
-	return backend.SessionIncr(ctx, utils.S(*s), key, increment)
+	return rcli.HIncrBy(ctx, utils.S(*s), key, increment).Result()
 }

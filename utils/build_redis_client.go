@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"strings"
-	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type RedisConfig struct {
@@ -15,7 +16,7 @@ type RedisConfig struct {
 	Addrs    []string `toml:"addrs"`
 
 	internal struct {
-		once sync.Once
+		flag int32
 		cli  redis.Cmdable
 	} `toml:"-"`
 }
@@ -23,7 +24,14 @@ type RedisConfig struct {
 var defaultRedisConfig = RedisConfig{Mode: "singleton"}
 
 func (cfg *RedisConfig) Cli() redis.Cmdable {
-	cfg.internal.once.Do(func() { cfg.buildRedisCli() })
+	if cfg.internal.cli == nil {
+		if atomic.CompareAndSwapInt32(&cfg.internal.flag, 0, 1) {
+			cfg.buildRedisCli()
+		}
+		for cfg.internal.cli == nil {
+			time.Sleep(time.Millisecond * 10)
+		}
+	}
 	return cfg.internal.cli
 }
 
