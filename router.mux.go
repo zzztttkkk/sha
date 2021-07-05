@@ -23,14 +23,11 @@ type MuxOptions struct {
 	CORSOriginToName        func(origin []byte) string           `json:"-" toml:"-"`
 	Recover                 func(ctx *RequestCtx, v interface{}) `json:"recover" toml:"-"`
 	AutoHandleDocs          bool                                 `json:"auto_handle_docs" toml:"auto-handle-docs"`
-}
-
-var defaultMuxOption = MuxOptions{
-	DoTrailingSlashRedirect: true,
-	NoFound:                 func(ctx *RequestCtx) { ctx.Response.SetStatusCode(StatusNotFound) },
-	Recover:                 defaultRecover,
-	AutoHandleOptions:       true,
-	AutoHandleDocs:          true,
+	Session                 struct {
+		Enabled     bool           `json:"enabled" toml:"enabled"`
+		SessionOpts SessionOptions `json:"session_opts" toml:"session-opts"`
+		CookieOpts  CookieOptions  `json:"cookie_opts" toml:"cookie-opts"`
+	} `json:"session" toml:"session"`
 }
 
 func init() {
@@ -80,7 +77,7 @@ func isFileContentHandler(h RequestHandler) bool {
 	return ok
 }
 
-func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler RequestHandler) {
+func (m *Mux) HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestHandler) {
 	var middlewares []Middleware
 	var document validator.Document
 	if opt != nil {
@@ -180,7 +177,7 @@ func (m *Mux) HTTPWithOptions(opt *HandlerOptions, method, path string, handler 
 }
 
 func (m *Mux) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
-	m.HTTPWithOptions(&HandlerOptions{Document: validator.NewDocument(form, nil)}, method, path, handler)
+	m.HTTPWithOptions(&RouteOptions{Document: validator.NewDocument(form, nil)}, method, path, handler)
 }
 
 func (m *Mux) NewGroup(prefix string) Router {
@@ -190,7 +187,7 @@ func (m *Mux) NewGroup(prefix string) Router {
 	}
 }
 
-func (m *Mux) Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions) {
+func (m *Mux) Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *RouteOptions) {
 	m.HTTPWithOptions(opt, "get", path, wshToHandler(handlerFunc))
 }
 
@@ -211,7 +208,7 @@ func makeFileSystemHandler(path string, fs http.FileSystem, autoIndex bool) Requ
 	return &_FileSystemHandler{autoIndex: autoIndex, fs: fs}
 }
 
-func (m *Mux) FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool) {
+func (m *Mux) FileSystem(opt *RouteOptions, method, path string, fs http.FileSystem, autoIndex bool) {
 	m.HTTPWithOptions(
 		opt,
 		method, path,
@@ -245,7 +242,7 @@ func makeFileContentHandler(path, filepath string) RequestHandler {
 	return &_FileContentHandler{fp: filepath}
 }
 
-func (m *Mux) File(opt *HandlerOptions, method, path, filepath string) {
+func (m *Mux) File(opt *RouteOptions, method, path, filepath string) {
 	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(path, filepath))
 }
 
@@ -379,6 +376,14 @@ func (m *Mux) String() string {
 }
 
 func NewMux(opts *MuxOptions) *Mux {
+	var defaultMuxOption = MuxOptions{
+		DoTrailingSlashRedirect: true,
+		NoFound:                 func(ctx *RequestCtx) { ctx.Response.SetStatusCode(StatusNotFound) },
+		Recover:                 defaultRecover,
+		AutoHandleOptions:       true,
+		AutoHandleDocs:          true,
+	}
+
 	mux := &Mux{
 		documents:   map[string]map[string]validator.Document{},
 		customTrees: map[string]*_RadixTree{},
@@ -426,6 +431,18 @@ func NewMux(opts *MuxOptions) *Mux {
 			}
 
 			corsOptions.writeHeader(ctx, origin)
+			next()
+		}))
+	}
+
+	if opts.Session.Enabled {
+		InitSession(&opts.Session.SessionOpts, &opts.Session.CookieOpts)
+		mux.Use(MiddlewareFunc(func(ctx *RequestCtx, next func()) {
+			_, err := ctx.Session()
+			if err != nil {
+				ctx.SetError(err)
+				return
+			}
 			next()
 		}))
 	}

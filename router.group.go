@@ -9,7 +9,7 @@ import (
 )
 
 type _MuxItem struct {
-	opt     *HandlerOptions
+	opt     *RouteOptions
 	path    string
 	method  string
 	handler RequestHandler
@@ -32,15 +32,15 @@ func (m *MuxGroup) AddGroup(group *MuxGroup) {
 	group.BindTo(m)
 }
 
-func (m *MuxGroup) Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions) {
+func (m *MuxGroup) Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *RouteOptions) {
 	m.HTTPWithOptions(opt, "get", path, wshToHandler(handlerFunc))
 }
 
-func (m *MuxGroup) FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool) {
+func (m *MuxGroup) FileSystem(opt *RouteOptions, method, path string, fs http.FileSystem, autoIndex bool) {
 	m.HTTPWithOptions(opt, method, path, makeFileSystemHandler(path, fs, autoIndex))
 }
 
-func (m *MuxGroup) File(opt *HandlerOptions, method, path, filepath string) {
+func (m *MuxGroup) File(opt *RouteOptions, method, path, filepath string) {
 	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(path, filepath))
 }
 
@@ -50,7 +50,7 @@ func (m *MuxGroup) HTTP(method, path string, handler RequestHandler) {
 
 var _ Router = (*MuxGroup)(nil)
 
-func (m *MuxGroup) HTTPWithOptions(opt *HandlerOptions, method, path string, handler RequestHandler) {
+func (m *MuxGroup) HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestHandler) {
 	if m.lazy {
 		opt = m.copyMiddleware(opt)
 		m.cache = append(m.cache, &_MuxItem{opt: opt, path: m.prefix + path, method: method, handler: handler})
@@ -61,12 +61,12 @@ func (m *MuxGroup) HTTPWithOptions(opt *HandlerOptions, method, path string, han
 }
 
 func (m *MuxGroup) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
-	m.HTTPWithOptions(&HandlerOptions{Document: validator.NewDocument(form, nil)}, method, path, handler)
+	m.HTTPWithOptions(&RouteOptions{Document: validator.NewDocument(form, nil)}, method, path, handler)
 }
 
-func (m *MuxGroup) copyMiddleware(opt *HandlerOptions) *HandlerOptions {
+func (m *MuxGroup) copyMiddleware(opt *RouteOptions) *RouteOptions {
 	if opt == nil {
-		opt = &HandlerOptions{}
+		opt = &RouteOptions{}
 	}
 	om := opt.Middlewares
 	opt.Middlewares = make([]Middleware, 0)
@@ -75,7 +75,7 @@ func (m *MuxGroup) copyMiddleware(opt *HandlerOptions) *HandlerOptions {
 	return opt
 }
 
-func (m *MuxGroup) add(method, path string, handler RequestHandler, opt *HandlerOptions) {
+func (m *MuxGroup) add(method, path string, handler RequestHandler, opt *RouteOptions) {
 	opt = m.copyMiddleware(opt)
 	if m.parent != nil {
 		m.parent.add(method, path, handler, opt)

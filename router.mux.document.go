@@ -43,7 +43,7 @@ func mapAppend(m map[string]map[string]validator.Document, path, method string, 
 
 func (m *Mux) ServeDocuments(method, path string, middleware ...Middleware) {
 	m.HTTPWithOptions(
-		&HandlerOptions{Document: validator.NewDocument(_DocForm{}, nil), Middlewares: middleware},
+		&RouteOptions{Document: validator.NewDocument(_DocForm{}, nil), Middlewares: middleware},
 		method, path,
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			var form _DocForm

@@ -3,6 +3,7 @@ package sha
 import (
 	"context"
 	"fmt"
+	"github.com/zzztttkkk/sha/auth"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -45,15 +46,42 @@ func (fi *_CustomFormInt) FromBytes(v []byte) error {
 
 func (fi *_CustomFormInt) Validate() error { return nil }
 
+type IntSubject int64
+
+func (i IntSubject) GetID() string {
+	return fmt.Sprintf("%d", i)
+}
+
+func (i IntSubject) Info(ctx context.Context) interface{} {
+	return nil
+}
+
 func TestServer_Run(t *testing.T) {
-	mux := NewMux(nil)
+	auth.Init(auth.ManagerFunc(func(ctx context.Context) (auth.Subject, error) {
+		uidBytes, _ := Unwrap(ctx).Request.Header().Get("uid")
+		if len(uidBytes) < 1 {
+			return nil, auth.ErrUnauthenticatedOperation
+		}
+		uid, err := strconv.ParseInt(utils.S(uidBytes), 10, 64)
+		if err != nil {
+			return nil, auth.ErrUnauthenticatedOperation
+		}
+		return IntSubject(uid), nil
+	}))
+
+	opts := &MuxOptions{}
+	opts.Session.Enabled = true
+	opts.Session.SessionOpts.Redis.Addrs = append(opts.Session.SessionOpts.Redis.Addrs, "127.0.0.1:16379")
+	opts.Session.CookieOpts.HTTPOnly = true
+	opts.Session.CookieOpts.Domain = "*.sha.io"
+
+	mux := NewMux(opts)
 	mux.HTTP(
 		"get",
 		"/compress",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 			_ = ctx.WriteString(strings.Repeat("Hello World!", 100))
-			panic(111)
 		}),
 	)
 
@@ -79,7 +107,7 @@ func TestServer_Run(t *testing.T) {
 	}
 
 	mux.HTTPWithOptions(
-		&HandlerOptions{Document: validator.NewDocument(Form{}, nil)},
+		&RouteOptions{Document: validator.NewDocument(Form{}, nil)},
 		"post",
 		"/form",
 		RequestHandlerFunc(func(ctx *RequestCtx) {

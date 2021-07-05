@@ -10,6 +10,7 @@ import (
 type Request interface {
 	GetSessionID() *[]byte
 	SetSessionID()
+	UserAgent() string
 }
 
 type Session []byte
@@ -109,4 +110,8 @@ func (s *Session) GetAll(ctx context.Context) map[string]string {
 
 func (s *Session) Incr(ctx context.Context, key string, increment int64) (int64, error) {
 	return rcli.HIncrBy(ctx, utils.S(*s), key, increment).Result()
+}
+
+func (s *Session) Size(ctx context.Context) int64 {
+	return rcli.HLen(ctx, utils.S(*s)).Val()
 }

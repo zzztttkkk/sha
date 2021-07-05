@@ -34,14 +34,6 @@ type ServerOptions struct {
 	Pid                string `json:"pid" toml:"pid"`                             //pid file path
 }
 
-var defaultServerOption = ServerOptions{
-	Addr:                   "127.0.0.1:5986",
-	MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
-	ReadTimeout:            utils.TomlDuration{Duration: time.Second * 10},
-	IdleTimeout:            utils.TomlDuration{Duration: time.Second * 30},
-	WriteTimeout:           utils.TomlDuration{Duration: time.Second * 10},
-}
-
 type Server struct {
 	Options ServerOptions
 
@@ -89,6 +81,14 @@ const (
 var serverPrepareFunc []func(s *Server)
 
 func New(ctx context.Context, pool *RequestCtxPool, opt *ServerOptions) *Server {
+	var defaultServerOption = ServerOptions{
+		Addr:                   "127.0.0.1:5986",
+		MaxConnectionKeepAlive: utils.TomlDuration{Duration: time.Minute * 5},
+		ReadTimeout:            utils.TomlDuration{Duration: time.Second * 10},
+		IdleTimeout:            utils.TomlDuration{Duration: time.Second * 30},
+		WriteTimeout:           utils.TomlDuration{Duration: time.Second * 10},
+	}
+
 	s := &Server{baseCtx: ctx}
 	if pool == nil {
 		s.pool = defaultRCtxPool

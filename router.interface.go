@@ -17,18 +17,18 @@ func (f MiddlewareFunc) Process(ctx *RequestCtx, next func()) {
 	f(ctx, next)
 }
 
-type HandlerOptions struct {
+type RouteOptions struct {
 	Middlewares []Middleware
 	Document    validator.Document
 }
 
 type Router interface {
-	HTTPWithOptions(opt *HandlerOptions, method, path string, handler RequestHandler)
+	HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestHandler)
 	HTTP(method, path string, handler RequestHandler)
 	HTTPWithForm(method, path string, handler RequestHandler, form interface{})
-	Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *HandlerOptions)
-	FileSystem(opt *HandlerOptions, method, path string, fs http.FileSystem, autoIndex bool)
-	File(opt *HandlerOptions, method, path, filepath string)
+	Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *RouteOptions)
+	FileSystem(opt *RouteOptions, method, path string, fs http.FileSystem, autoIndex bool)
+	File(opt *RouteOptions, method, path, filepath string)
 
 	Use(middlewares ...Middleware)
 	Frozen()

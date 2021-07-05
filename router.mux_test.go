@@ -49,7 +49,7 @@ func TestMux(t *testing.T) {
 	mux.HTTP("get", "/book/{name}/", makeHandler(4))
 	mux.HTTP("get", "/book/{name}/{chapter}/", makeHandler(5))
 	mux.HTTPWithOptions(
-		&HandlerOptions{
+		&RouteOptions{
 			Middlewares: []Middleware{
 				MiddlewareFunc(func(ctx *RequestCtx, next func()) {
 					_ = ctx.WriteString("handler middleware 1\n")

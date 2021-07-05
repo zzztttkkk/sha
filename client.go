@@ -34,16 +34,16 @@ type Cli struct {
 	closing bool
 }
 
-var defaultClientOptions = CliOptions{
-	defaultCliOptions,
-	600, // 10min
-	10, 10,
-	0,
-	false,
-}
-
 // NewCli return a concurrency-safe http client, which holds a session map to reuse connections.
 func NewCli(opt *CliOptions) *Cli {
+	var defaultClientOptions = CliOptions{
+		defaultCliOptions,
+		600, // 10min
+		10, 10,
+		0,
+		false,
+	}
+
 	cp := &Cli{
 		idling: map[string]chan *CliSession{},
 	}

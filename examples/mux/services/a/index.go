@@ -17,7 +17,7 @@ func init() {
 	Group.AddGroup(b.Group)
 
 	Group.HTTPWithOptions(
-		&sha.HandlerOptions{
+		&sha.RouteOptions{
 			Middlewares: []sha.Middleware{
 				h.NewPrintMiddleware("a.s.m1"),
 				h.NewPrintMiddleware("a.s.m2"),

@@ -21,7 +21,7 @@ func (TestForm) Default(fieldName string) func() interface{} {
 func TestRequestCtx_Validate(t *testing.T) {
 	mux := NewMux(nil)
 	mux.HTTPWithOptions(
-		&HandlerOptions{Document: validator.NewDocument(TestForm{}, nil)},
+		&RouteOptions{Document: validator.NewDocument(TestForm{}, nil)},
 		"get",
 		"/",
 		RequestHandlerFunc(

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net"
@@ -53,7 +54,24 @@ func (ctx *RequestCtx) Err() error { return ctx.ctx.Err() }
 
 func (ctx *RequestCtx) Value(key interface{}) interface{} { return ctx.ctx.Value(key) }
 
-func (ctx *RequestCtx) SetError(v interface{}) { ctx.err = v }
+type WrappedError struct {
+	A interface{}
+	B interface{}
+}
+
+func (we *WrappedError) Error() string { return fmt.Sprintf("wrapped error: %v, %v", we.A, we.B) }
+
+func (ctx *RequestCtx) SetError(v interface{}) {
+	if v == nil {
+		panic(errors.New("sha: nil"))
+	}
+
+	if ctx.err == nil {
+		ctx.err = v
+	} else {
+		ctx.err = WrappedError{ctx.err, v}
+	}
+}
 
 func (ctx *RequestCtx) Wrap() context.Context {
 	return context.WithValue(ctx, CtxKeyRequestCtx, ctx)
