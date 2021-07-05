@@ -187,7 +187,7 @@ func (g *Group) Do(ctx context.Context, loader string, dist interface{}, args Na
 	}
 }
 
-func (g *Group) MakeInvalid(ctx context.Context, loaderName string, args NamedArgs) {
+func (g *Group) Invalidate(ctx context.Context, loaderName string, args NamedArgs) {
 	g.storage.Del(ctx, g.MakeKey(loaderName, args))
 }
 
@@ -200,22 +200,22 @@ func _copy(dist, src interface{}) {
 	sv := reflect.ValueOf(src)
 	st := sv.Type()
 
-	if st.Kind() != reflect.Ptr { // int ==> *int
+	if st.Kind() != reflect.Ptr { // T ==> *T
 		dv.Elem().Set(sv)
 		return
 	}
 
-	if st == dt { // *int ==> *int
+	if st == dt { // *T ==> *T
 		dv.Elem().Set(sv.Elem())
 		return
 	}
 
-	if dt.Elem() == st { // *int ==> **int
+	if dt.Elem() == st { // *T ==> **T
 		dv.Elem().Set(sv)
 		return
 	}
 
-	if st.Elem() == dt { // **int ==> *int
+	if st.Elem() == dt { // **T ==> *T
 		dv.Elem().Set(sv.Elem().Elem())
 		return
 	}
