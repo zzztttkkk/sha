@@ -17,6 +17,12 @@ type Manager interface {
 	Auth(ctx context.Context) (Subject, error)
 }
 
+type ManagerFunc func(ctx context.Context) (Subject, error)
+
+func (f ManagerFunc) Auth(ctx context.Context) (Subject, error) {
+	return f(ctx)
+}
+
 var implOnce sync.Once
 var impl Manager
 

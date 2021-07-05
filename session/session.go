@@ -14,14 +14,14 @@ type Request interface {
 
 type Session []byte
 
-func (s *Session) String() string { return utils.S(*s) }
+func (s Session) String() string { return utils.S(s) }
 
 func (s *Session) Set(ctx context.Context, key string, val interface{}) error {
 	v, e := Marshal(val)
 	if e != nil {
 		return e
 	}
-	return rcli.HSet(ctx, utils.S(*s), key, v).Err()
+	return rcli.EvalSha(ctx, updateScriptHash, []string{utils.S(*s), key}, v, maxage).Err()
 }
 
 func (s *Session) Get(ctx context.Context, key string, dist interface{}) bool {
