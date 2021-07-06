@@ -109,8 +109,8 @@ func newImageWithString(str []rune, faces []*_SyncCachedFace, option *ImageOptio
 	return img
 }
 
-func RenderOneFont(fontname string, txt []rune, option *ImageOptions) image.Image {
-	return newImageWithString(txt, []*_SyncCachedFace{getFaceByName(fontname)}, option)
+func RenderOneFont(fontName string, txt []rune, option *ImageOptions) image.Image {
+	return newImageWithString(txt, []*_SyncCachedFace{getFaceByName(fontName)}, option)
 }
 
 func RenderSomeFonts(count int, txt []rune, option *ImageOptions) image.Image {

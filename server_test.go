@@ -84,7 +84,6 @@ func TestServer_Run(t *testing.T) {
 		"get",
 		"/compress",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
-			ctx.AutoCompress()
 			_ = ctx.WriteString(strings.Repeat("Hello World!", 100))
 		}),
 	)

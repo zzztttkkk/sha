@@ -10,7 +10,5 @@ func GetUnexportedField(field reflect.Value) interface{} {
 }
 
 func SetUnexportedField(field reflect.Value, value interface{}) {
-	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).
-		Elem().
-		Set(reflect.ValueOf(value))
+	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(value))
 }
