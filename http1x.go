@@ -23,7 +23,7 @@ var defaultHTTPOption = HTTPOptions{
 	MaxHeaderPartSize:   1024 * 16,
 	MaxBodySize:         1024 * 1024 * 10,
 	ReadBufferSize:      2048,
-	BufferPoolSizeLimit: 2048,
+	BufferPoolSizeLimit: 4096,
 }
 
 type _Http11Protocol struct {
@@ -52,7 +52,6 @@ func newHTTP11Protocol(pool *RequestCtxPool) HTTPServerProtocol {
 
 const (
 	headerValClose = "close"
-	keepAlive      = "keep-alive"
 	upgrade        = "upgrade"
 	five           = time.Second * 5
 )
@@ -83,7 +82,7 @@ func (protocol *_Http11Protocol) keepalive(ctx *RequestCtx, s *Server) bool {
 func (protocol *_Http11Protocol) handle(ctx *RequestCtx, server *Server) bool {
 	defer func() {
 		ctx.cancelFunc()
-		ctx.prepareForNextRequest()
+		ctx.prepareForNextRequest(protocol.BufferPoolSizeLimit)
 	}()
 
 	readTimeout := server.Options.ReadTimeout.Duration

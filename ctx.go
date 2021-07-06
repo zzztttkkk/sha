@@ -124,9 +124,9 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 	return utils.S(inPlaceLowercase(v))
 }
 
-func (ctx *RequestCtx) prepareForNextRequest() {
-	ctx.Request.Reset()
-	ctx.Response.reset()
+func (ctx *RequestCtx) prepareForNextRequest(maxCap int) {
+	ctx.Request.Reset(maxCap)
+	ctx.Response.reset(maxCap)
 
 	ctx.UserData.Reset()
 	ctx.err = nil
@@ -145,11 +145,11 @@ func (ctx *RequestCtx) resetConn() {
 	ctx.Request.header.fromOutSide = false
 }
 
-func (ctx *RequestCtx) Reset() {
+func (ctx *RequestCtx) Reset(maxCap int) {
 	if ctx.ctx == nil {
 		return
 	}
-	ctx.prepareForNextRequest()
+	ctx.prepareForNextRequest(maxCap)
 	ctx.resetConn()
 }
 

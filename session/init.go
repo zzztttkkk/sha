@@ -23,8 +23,10 @@ type Options struct {
 	MaxAge utils.TomlDuration `json:"max_age" toml:"max-age"`
 
 	Captcha struct {
-		MaxAge utils.TomlDuration `json:"max_age" toml:"max-age"`
-		Skip   bool               `json:"skip" toml:"skip"`
+		MaxAge     utils.TomlDuration   `json:"max_age" toml:"max-age"`
+		Skip       bool                 `json:"skip" toml:"skip"`
+		Fonts      []string             `json:"fonts" toml:"fonts"`
+		ImgOptions captcha.ImageOptions `json:"img_options" toml:"img-options"`
 	} `json:"captcha" toml:"captcha"`
 
 	CSRF struct {
@@ -107,6 +109,8 @@ func Init(opt *Options) {
 		rcli = opts.Redis.Cli()
 		PrefixLength = len(opt.Prefix)
 		maxage = int64(opts.MaxAge.Duration / time.Second)
+
+		_initCaptcha()
 
 		var err error
 		updateScriptHash, err = rcli.ScriptLoad(

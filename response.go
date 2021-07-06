@@ -47,8 +47,8 @@ func (res *Response) Write(p []byte) (int, error) {
 	return res._HTTPPocket.Write(p)
 }
 
-func (res *Response) reset() {
-	res._HTTPPocket.reset()
+func (res *Response) reset(maxCap int) {
+	res._HTTPPocket.reset(maxCap)
 	res.statusCode = 0
 	if res.cw != nil {
 		res.cw.Reset(nil)

@@ -218,10 +218,10 @@ func (cm *_CookieManager) Update(host, item string) error {
 			case "httponly":
 				obj.HTTPOnly = true
 			case "samesite":
-				break
 			default:
 				return fmt.Errorf("sha: bad cookie value `%s`", item)
 			}
+			continue
 		}
 
 		_key := strings.ToLower(strings.TrimSpace(kv[:ind]))
@@ -253,7 +253,6 @@ func (cm *_CookieManager) Update(host, item string) error {
 		case "samesite":
 			switch _val {
 			case "":
-				break
 			case "lax":
 				obj.SameSite = CookieSameSiteLax
 			case "strict":

@@ -40,7 +40,7 @@ func (p *_HTTPPocket) GUID() []byte {
 
 func (p *_HTTPPocket) ResetGUID() { p.guid = p.guid[:0] }
 
-func (p *_HTTPPocket) reset() {
+func (p *_HTTPPocket) reset(maxCap int) {
 	p.fl1 = p.fl1[:0]
 	p.fl2 = p.fl2[:0]
 	p.fl3 = p.fl3[:0]
@@ -51,7 +51,9 @@ func (p *_HTTPPocket) reset() {
 
 	if p.body != nil {
 		p.body.Reset()
-		bodyBufPool.Put(p.body)
+		if maxCap > 0 && p.body.Cap() <= maxCap {
+			bodyBufPool.Put(p.body)
+		}
 		p.body = nil
 	}
 }
