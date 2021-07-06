@@ -32,7 +32,7 @@ func AcquireRequestCtx(ctx context.Context) *RequestCtx {
 }
 
 func ReleaseRequestCtx(ctx *RequestCtx) {
-	ctx.Reset()
+	ctx.Reset(defaultRCtxPool.opt.BufferPoolSizeLimit)
 	defaultRCtxPool.Put(ctx)
 }
 
@@ -63,7 +63,7 @@ func (p *RequestCtxPool) release(ctx *RequestCtx, unprepared bool) {
 	}
 
 	if unprepared {
-		ctx.prepareForNextRequest()
+		ctx.prepareForNextRequest(p.opt.BufferPoolSizeLimit)
 	}
 	ctx.resetConn()
 	p.Put(ctx)

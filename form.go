@@ -82,11 +82,14 @@ func (file *FormFile) meta() {
 	file.FileName = v["filename"]
 }
 
-func (file *FormFile) reset() {
+func (file *FormFile) reset(maxCap int) {
 	file.Name = ""
 	file.FileName = ""
 	file.Header.Reset()
 	file.buf = file.buf[:0]
+	if maxCap > 0 && cap(file.buf) > maxCap {
+		file.buf = nil
+	}
 	file.cursor = 0
 }
 
@@ -295,7 +298,7 @@ func (req *Request) parseMultiPartForm() bool {
 					current.meta()
 
 					if len(current.Name) < 1 {
-						current.reset()
+						current.reset(0)
 						formFilePool.Put(current)
 					} else {
 						if len(current.FileName) > 0 {
@@ -304,7 +307,7 @@ func (req *Request) parseMultiPartForm() bool {
 							item := req.bodyForm.AppendBytes(nil, nil)
 							item.Key = append(item.Key, current.Name...)
 							item.Val = append(item.Val, current.buf...)
-							current.reset()
+							current.reset(0)
 							formFilePool.Put(current)
 						}
 					}

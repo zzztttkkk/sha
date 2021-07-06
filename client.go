@@ -227,7 +227,7 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount in
 			}
 		}
 
-		ctx.Response.reset()
+		ctx.Response.reset(cp.Opts.HTTPOptions.BufferPoolSizeLimit)
 
 		if redirectLocationAddr == addr && redirectLocationIsTLS == isTLS { // redirect to same host
 			return cp.doSend(ctx, addr, isTLS, redirectCount+1, session)

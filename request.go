@@ -71,8 +71,8 @@ type Request struct {
 	history []string // redirect history
 }
 
-func (req *Request) Reset() {
-	req._HTTPPocket.reset()
+func (req *Request) Reset(maxCap int) {
+	req._HTTPPocket.reset(maxCap)
 	req._method = 0
 
 	req.URL.reset()
@@ -84,7 +84,7 @@ func (req *Request) Reset() {
 	req.bodyStatus = _BodyUnParsed
 
 	for _, f := range req.files {
-		f.reset()
+		f.reset(maxCap)
 		formFilePool.Put(f)
 	}
 	req.files = req.files[:0]

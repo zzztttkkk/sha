@@ -23,6 +23,7 @@ type MuxOptions struct {
 	CORSOriginToName        func(origin []byte) string           `json:"-" toml:"-"`
 	Recover                 func(ctx *RequestCtx, v interface{}) `json:"recover" toml:"-"`
 	AutoHandleDocs          bool                                 `json:"auto_handle_docs" toml:"auto-handle-docs"`
+	AutoCompress            bool                                 `json:"auto_compress" toml:"auto-compress"`
 	Session                 struct {
 		Enabled     bool           `json:"enabled" toml:"enabled"`
 		SessionOpts SessionOptions `json:"session_opts" toml:"session-opts"`
@@ -382,6 +383,7 @@ func NewMux(opts *MuxOptions) *Mux {
 		Recover:                 defaultRecover,
 		AutoHandleOptions:       true,
 		AutoHandleDocs:          true,
+		AutoCompress:            true,
 	}
 
 	mux := &Mux{
@@ -398,6 +400,14 @@ func NewMux(opts *MuxOptions) *Mux {
 	}
 
 	opts = &mux.Opts
+
+	if opts.AutoCompress {
+		mux.Use(MiddlewareFunc(func(ctx *RequestCtx, next func()) {
+			ctx.AutoCompress()
+			next()
+		}))
+	}
+
 	if len(opts.CORS) > 0 {
 		if opts.CORSOriginToName == nil {
 			panic(fmt.Errorf("sha.mux: nil CORSOriginToName"))

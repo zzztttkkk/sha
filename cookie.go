@@ -141,3 +141,4 @@ func (req *Request) CookieValue(key string) ([]byte, bool) {
 	}
 	return req.cookies.Get(key)
 }
+

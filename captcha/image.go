@@ -14,14 +14,17 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-type Options struct {
+type ImageOptions struct {
 	OffsetX int
 	OffsetY int
-	Lines   int
-	Color   color.Color
+	Color   *color.RGBA
 }
 
-var defaultOption = &Options{}
+var defaultOption = &ImageOptions{
+	OffsetX: 6,
+	OffsetY: 6,
+}
+var black = color.RGBA{A: 255}
 
 func randFace(faces []*_SyncCachedFace) *_SyncCachedFace {
 	l := len(faces)
@@ -31,7 +34,7 @@ func randFace(faces []*_SyncCachedFace) *_SyncCachedFace {
 	return faces[int(rand.Uint32())%l]
 }
 
-func newImageWithString(str []rune, faces []*_SyncCachedFace, option *Options) image.Image {
+func newImageWithString(str []rune, faces []*_SyncCachedFace, option *ImageOptions) image.Image {
 	if option == nil {
 		option = defaultOption
 	}
@@ -46,12 +49,7 @@ func newImageWithString(str []rune, faces []*_SyncCachedFace, option *Options) i
 	// color has not effect on the machine
 	c := option.Color
 	if c == nil {
-		c = color.RGBA{
-			R: uint8(rand.Uint32() % 255),
-			G: uint8(rand.Uint32() % 255),
-			B: uint8(rand.Uint32() % 255),
-			A: uint8(rand.Uint32()%55) + 200,
-		}
+		c = &black
 	}
 
 	var dx = int(float32(option.OffsetX+1)*1.5) / 2
@@ -111,10 +109,10 @@ func newImageWithString(str []rune, faces []*_SyncCachedFace, option *Options) i
 	return img
 }
 
-func RenderOneFont(fontname string, txt []rune, option *Options) image.Image {
-	return newImageWithString(txt, []*_SyncCachedFace{getFaceByName(fontname)}, option)
+func RenderOneFont(fontName string, txt []rune, option *ImageOptions) image.Image {
+	return newImageWithString(txt, []*_SyncCachedFace{getFaceByName(fontName)}, option)
 }
 
-func RenderSomeFonts(count int, txt []rune, option *Options) image.Image {
+func RenderSomeFonts(count int, txt []rune, option *ImageOptions) image.Image {
 	return newImageWithString(txt, getFaceByCount(count), option)
 }

@@ -22,6 +22,8 @@ func init() {
 
 var defaultRandBytesPool = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var Base58BytesPool = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+var defaultRandRunePool = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var Base58RunesPool = []rune("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 
 func RandByte(pool []byte) byte {
 	if pool == nil {
@@ -39,5 +41,24 @@ func RandBytes(dist, pool []byte) {
 func RandBase58Bytes(dist []byte) {
 	for i := 0; i < len(dist); i++ {
 		dist[i] = RandByte(Base58BytesPool)
+	}
+}
+
+func RandRune(pool []rune) rune {
+	if pool == nil {
+		pool = defaultRandRunePool
+	}
+	return pool[mrandlib.Intn(len(pool))]
+}
+
+func RandRunes(dist, pool []rune) {
+	for i := 0; i < len(dist); i++ {
+		dist[i] = RandRune(pool)
+	}
+}
+
+func RandBase58Runes(dist []rune) {
+	for i := 0; i < len(dist); i++ {
+		dist[i] = RandRune(Base58RunesPool)
 	}
 }

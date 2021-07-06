@@ -72,6 +72,10 @@ func TestServer_Run(t *testing.T) {
 	opts := &MuxOptions{}
 	opts.Session.Enabled = true
 	opts.Session.SessionOpts.Redis.Addrs = append(opts.Session.SessionOpts.Redis.Addrs, "127.0.0.1:16379")
+	opts.Session.SessionOpts.Captcha.Fonts = []string{
+		"微软雅黑|C:/Windows/Fonts/simkai.ttf|32|true",
+		"SourceCodePro|C:/Windows/Fonts/SourceCodePro-Light.ttf|32|false",
+	}
 	opts.Session.CookieOpts.HTTPOnly = true
 	opts.Session.CookieOpts.Domain = "*.sha.io"
 
@@ -80,7 +84,6 @@ func TestServer_Run(t *testing.T) {
 		"get",
 		"/compress",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
-			ctx.AutoCompress()
 			_ = ctx.WriteString(strings.Repeat("Hello World!", 100))
 		}),
 	)
@@ -91,6 +94,16 @@ func TestServer_Run(t *testing.T) {
 		RequestHandlerFunc(func(ctx *RequestCtx) {
 			_ = ctx.WriteString("Hello World!")
 			ctx.Close()
+		}),
+	)
+
+	mux.HTTP(
+		MethodGet,
+		"/captcha.png",
+		RequestHandlerFunc(func(ctx *RequestCtx) {
+			if err := ctx.MustSession().GenerateImageCaptcha(ctx, ctx); err != nil {
+				ctx.SetError(err)
+			}
 		}),
 	)
 

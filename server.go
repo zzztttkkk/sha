@@ -338,7 +338,9 @@ func ListenAndServe(addr string, handler RequestHandler) {
 
 func ListenAndServeWithContext(ctx context.Context, addr string, handler RequestHandler) {
 	server := DefaultWithContext(ctx)
-	server.Options.Addr = addr
+	if len(addr) > 0 {
+		server.Options.Addr = addr
+	}
 	server.Handler = handler
 	server.ListenAndServe()
 }

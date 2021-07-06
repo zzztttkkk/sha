@@ -14,14 +14,13 @@ import (
 
 func init() {
 	RegisterFont("微软雅黑", "C:/Windows/Fonts/simkai.ttf", &truetype.Options{Size: 64}, true)
-	RegisterFont("更纱黑体UI-SC", "C:/Windows/Fonts/sarasa-ui-sc-extralightitalic.ttf", &truetype.Options{Size: 64}, true)
 }
 
 func TestNewImage(t *testing.T) {
 	img := RenderOneFont(
 		"*",
 		[]rune("21598"),
-		&Options{
+		&ImageOptions{
 			OffsetX: 16, OffsetY: 10,
 		},
 	)
@@ -32,7 +31,7 @@ func TestNewImage(t *testing.T) {
 	img = RenderSomeFonts(
 		-1,
 		[]rune("我可以吞下玻璃而不伤身体"),
-		&Options{
+		&ImageOptions{
 			OffsetX: 16, OffsetY: 16,
 		},
 	)
@@ -67,7 +66,7 @@ func TestConcurrency(t *testing.T) {
 			img := RenderOneFont(
 				"*",
 				[]rune("21598"),
-				&Options{
+				&ImageOptions{
 					OffsetX: 16, OffsetY: 16,
 				},
 			)

@@ -36,7 +36,7 @@ func (kvs *Kvs) Cap() int { return cap(kvs.lst) }
 
 func (kvs *Kvs) String() string {
 	buf := strings.Builder{}
-	buf.WriteString("kvs[")
+	buf.WriteString("sha.kvs{")
 	kvs.EachItem(
 		func(item *KvItem) bool {
 			buf.Write(item.Key)
@@ -47,7 +47,7 @@ func (kvs *Kvs) String() string {
 			return true
 		},
 	)
-	buf.WriteByte(']')
+	buf.WriteByte('}')
 	return buf.String()
 }
 
