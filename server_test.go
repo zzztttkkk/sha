@@ -168,7 +168,7 @@ func TestServer_Run(t *testing.T) {
 		"get",
 		"/chunked",
 		RequestHandlerFunc(func(ctx *RequestCtx) {
-			f, e := os.Open("./engine.go")
+			f, e := os.Open("./request.go")
 			if e != nil {
 				ctx.SetError(e)
 				return

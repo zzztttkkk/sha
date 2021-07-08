@@ -99,7 +99,7 @@ func (res *Response) SetCookie(k, v string, options *CookieOptions) {
 func (req *Request) Cookies() *utils.Kvs { return &req.cookies }
 
 func (req *Request) CookieValue(key string) ([]byte, bool) {
-	if !req.cookieParsed {
+	if !req.flags.Has(_ReqFlagCookieParsed) {
 		v, ok := req.Header().Get(HeaderCookie)
 		if ok {
 			var item *utils.KvItem
@@ -137,8 +137,7 @@ func (req *Request) CookieValue(key string) ([]byte, bool) {
 				}
 			}
 		}
-		req.cookieParsed = true
+		req.flags.Add(_ReqFlagCookieParsed)
 	}
 	return req.cookies.Get(key)
 }
-

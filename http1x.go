@@ -103,7 +103,8 @@ func (protocol *_Http11Protocol) handle(ctx *RequestCtx, server *Server) bool {
 	}
 
 	server.Handler.Handle(ctx)
-	if ctx.hijacked { // another protocol process has been completed
+	req := &ctx.Request
+	if req.flags.Has(_ReqFlagHijacked) { // another protocol process has been completed
 		return false
 	}
 	shouldKeepAlive := protocol.keepalive(ctx, server)
@@ -129,7 +130,9 @@ func (protocol *_Http11Protocol) ServeConn(ctx context.Context, conn net.Conn) {
 	server := ctx.Value(CtxKeyServer).(*Server)
 
 	rctx := protocol.pool.Acquire()
-	rctx.isTLS = server.isTLS
+	if server.isTLS {
+		rctx.Request.flags.Add(_ReqFlagIsTLS)
+	}
 	defer protocol.pool.release(rctx, false)
 
 	rctx.setConnection(conn)

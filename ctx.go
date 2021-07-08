@@ -26,16 +26,12 @@ type RequestCtx struct {
 	r          *bufio.Reader
 	w          *bufio.Writer
 	connTime   time.Time
-	isTLS      bool
-	hijacked   bool
 
 	Request  Request
 	Response Response
 
-	UserData  userData
-	err       interface{}
-	sessionOK bool
-	session   []byte
+	UserData userData
+	err      interface{}
 }
 
 func (ctx *RequestCtx) TimeSpent() time.Duration {
@@ -91,7 +87,7 @@ func Unwrap(ctx context.Context) *RequestCtx {
 
 func (ctx *RequestCtx) Close() { ctx.Response.Header().SetString(HeaderConnection, headerValClose) }
 
-func (ctx *RequestCtx) IsTLS() bool { return ctx.isTLS }
+func (ctx *RequestCtx) IsTLS() bool { return ctx.Request.flags.Has(_ReqFlagIsTLS) }
 
 func (ctx *RequestCtx) Conn() net.Conn { return ctx.conn }
 
@@ -99,13 +95,8 @@ func (ctx *RequestCtx) RemoteAddr() net.Addr { return ctx.conn.RemoteAddr() }
 
 func (ctx *RequestCtx) LocalAddr() net.Addr { return ctx.conn.LocalAddr() }
 
-var ErrRequestHijacked = errors.New("sha: request is already hijacked")
-
 func (ctx *RequestCtx) Hijack() net.Conn {
-	if ctx.hijacked {
-		panic(ErrRequestHijacked)
-	}
-	ctx.hijacked = true
+	ctx.Request.hijack()
 	return ctx.conn
 }
 
@@ -129,11 +120,8 @@ func (ctx *RequestCtx) UpgradeProtocol() string {
 func (ctx *RequestCtx) prepareForNextRequest(maxCap int) {
 	ctx.Request.Reset(maxCap)
 	ctx.Response.reset(maxCap)
-
 	ctx.UserData.Reset()
 	ctx.err = nil
-	ctx.sessionOK = false
-	ctx.session = ctx.session[:0]
 }
 
 func (ctx *RequestCtx) resetConn() {

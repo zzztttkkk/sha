@@ -18,19 +18,19 @@ func (sra _SessionReqAdaptor) UserAgent() string {
 	return utils.S(ua)
 }
 
-func (sra _SessionReqAdaptor) GetSessionID() *[]byte { return &(sra.ctx.session) }
+func (sra _SessionReqAdaptor) GetSessionID() *[]byte { return &(sra.ctx.Request.session) }
 
 func (sra _SessionReqAdaptor) SetSessionID() {
 	if sra.byHeader {
-		sra.ctx.Response.Header().Append(sessionOpts.HeaderName, sra.ctx.session[session.PrefixLength:])
+		sra.ctx.Response.Header().Append(sessionOpts.HeaderName, sra.ctx.Request.session[session.PrefixLength:])
 		sra.ctx.Response.Header().AppendString(
 			sessionOpts.HeaderMaxAgeName,
 			strconv.FormatInt(int64(sessionOpts.MaxAge.Duration/time.Second), 10),
 		)
 	} else {
-		sra.ctx.Response.SetCookie(sessionOpts.CookieName, utils.S(sra.ctx.session[session.PrefixLength:]), &sessionCookieOpts)
+		sra.ctx.Response.SetCookie(sessionOpts.CookieName, utils.S(sra.ctx.Request.session[session.PrefixLength:]), &sessionCookieOpts)
 	}
-	sra.ctx.sessionOK = true
+	sra.ctx.Request.flags.Add(_ReqFlagSessionOK)
 }
 
 type SessionOptions struct {
@@ -74,25 +74,27 @@ func InitSession(opt *SessionOptions, cookieOpts *CookieOptions) {
 }
 
 func (ctx *RequestCtx) Session() (session.Session, error) {
-	if !ctx.sessionOK {
-		if ctx.session == nil {
-			ctx.session = make([]byte, 0, 25)
+	req := &ctx.Request
+
+	if !req.flags.Has(_ReqFlagSessionOK) {
+		if req.session == nil {
+			req.session = make([]byte, 0, 25)
 		}
 
 		byHeader := false
-		sid, _ := ctx.Request.CookieValue(sessionOpts.CookieName)
+		sid, _ := req.CookieValue(sessionOpts.CookieName)
 		if len(sid) > 0 {
-			ctx.session = append(ctx.session, sid...)
+			req.session = append(req.session, sid...)
 		} else {
-			sid, _ = ctx.Request.Header().Get(sessionOpts.HeaderName)
+			sid, _ = req.Header().Get(sessionOpts.HeaderName)
 			if len(sid) > 0 {
 				byHeader = true
-				ctx.session = append(ctx.session, sid...)
+				req.session = append(req.session, sid...)
 			}
 		}
 		return session.New(ctx, _SessionReqAdaptor{ctx, byHeader})
 	}
-	return ctx.session, nil
+	return req.session, nil
 }
 
 func (ctx *RequestCtx) MustSession() session.Session {
@@ -100,5 +102,5 @@ func (ctx *RequestCtx) MustSession() session.Session {
 	if e != nil {
 		panic(e)
 	}
-	return ctx.session
+	return ctx.Request.session
 }

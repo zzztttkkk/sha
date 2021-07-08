@@ -94,13 +94,15 @@ func (ctx *RequestCtx) CompressDeflate() {
 var disableCompress = false
 
 // DisableCompress keep raw response body when debugging
-func DisableCompress() {
-	disableCompress = true
-}
+func DisableCompress() { disableCompress = true }
 
 // AutoCompress br > deflate > gzip
 func (ctx *RequestCtx) AutoCompress() {
 	if disableCompress {
+		return
+	}
+
+	if ctx.Response.cw != nil {
 		return
 	}
 

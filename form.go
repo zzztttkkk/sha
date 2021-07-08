@@ -166,10 +166,10 @@ func (files FormFiles) GetAll(name string) []*FormFile {
 }
 
 func (req *Request) parseQuery() {
-	if req.queryParsed {
+	if req.flags.Has(_ReqFlagQueryParsed) {
 		return
 	}
-	req.queryParsed = true
+	req.flags.Add(_ReqFlagQueryParsed)
 	if len(req.URL.Query) > 0 {
 		req.query.FromURLEncoded(req.URL.Query)
 	}

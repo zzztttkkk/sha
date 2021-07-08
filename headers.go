@@ -50,7 +50,7 @@ const (
 	HeaderCookie      = "CookieValue"
 	HeaderExpect      = "Expect"
 	HeaderMaxForwards = "Max-Forwards"
-	HeaderSetCookie   = "Set-CookieValue"
+	HeaderSetCookie   = "Add-CookieValue"
 
 	// CORS
 	HeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"

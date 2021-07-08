@@ -150,7 +150,7 @@ func (n *_Node) setHandler(handler RequestHandler, fullPath string) (*_Node, err
 	n.handler = handler
 	foundTSR := false
 
-	// Set TSR in method
+	// Add TSR in method
 	for i := range n.children {
 		child := n.children[i]
 

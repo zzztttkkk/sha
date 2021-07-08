@@ -44,6 +44,7 @@ func sendCompressedChunkedStream(buf *bufio.Writer, ctx *RequestCtx, stream io.R
 	)
 	res := &ctx.Response
 	rBuf := ctx.readBuf
+
 	for {
 		l, e := stream.Read(rBuf)
 		if e != nil {
@@ -58,7 +59,10 @@ func sendCompressedChunkedStream(buf *bufio.Writer, ctx *RequestCtx, stream io.R
 		if _, e = cw.Write(rBuf[:l]); e != nil {
 			return e
 		}
-		l = res.body.Len()
+		l = 0
+		if res.body != nil {
+			l = res.body.Len()
+		}
 		if l < 1 {
 			continue
 		}

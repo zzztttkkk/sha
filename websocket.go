@@ -91,7 +91,7 @@ func (p *_WebSocketProtocol) Handshake(ctx *RequestCtx) (string, bool, bool) {
 var websocketWriteBufferPool sync.Pool
 
 func (p *_WebSocketProtocol) Hijack(ctx *RequestCtx, subProtocol string, compress bool) *websocket.Conn {
-	ctx.hijacked = true
+	ctx.Hijack()
 	return websocket.NewConnExt(
 		ctx.conn, subProtocol, true, compress,
 		p.opt.ReadBufferSize, p.opt.WriteBufferSize,

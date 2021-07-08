@@ -2,7 +2,9 @@ package sha
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"github.com/zzztttkkk/sha/internal"
 	"github.com/zzztttkkk/sha/jsonx"
 	"github.com/zzztttkkk/sha/utils"
 	"strconv"
@@ -25,7 +27,6 @@ func (up *URLParams) GetInt(name string, base int) (int64, bool) {
 }
 
 type URL struct {
-	ok     bool
 	Host   []byte
 	Port   []byte
 	Path   []byte
@@ -38,7 +39,6 @@ func (u *URL) String() string {
 }
 
 func (u *URL) reset() {
-	u.ok = false
 	u.Host = nil
 	u.Port = nil
 	u.Path = nil
@@ -46,43 +46,43 @@ func (u *URL) reset() {
 	u.Params.Reset()
 }
 
+const (
+	_ReqFlagHijacked = uint8(iota + 1)
+	_ReqFlagSessionOK
+	_ReqFlagQueryParsed
+	_ReqFlagCookieParsed
+	_ReqFlagUrlOK
+	_ReqFlagIsTLS
+)
+
 type Request struct {
 	noCopy
 	_HTTPPocket
 
-	_method _Method
-
-	URL         URL
-	queryParsed bool
-
-	// forms
-	query      Form
-	bodyStatus int // 0: unparsed; 1: unsupported content type; 2: parsed
-	bodyForm   Form
-	// forms ---  multipart
+	_method       _Method
+	flags         internal.Status16
+	URL           URL
+	query         Form
+	bodyStatus    int // 0: unparsed; 1: unsupported content type; 2: parsed
+	bodyForm      Form
 	files         FormFiles
 	boundaryBegin []byte
 	boundaryEnd   []byte
 	boundaryLine  []byte
-
-	cookies      utils.Kvs
-	cookieParsed bool
-
-	history []string // redirect history
+	session       []byte
+	cookies       utils.Kvs
+	history       []string // redirect history
 }
 
 func (req *Request) Reset(maxCap int) {
 	req._HTTPPocket.reset(maxCap)
 	req._method = 0
 
+	req.flags.Reset()
 	req.URL.reset()
-
-	req.queryParsed = false
 	req.query.Reset()
-
 	req.bodyForm.Reset()
 	req.bodyStatus = _BodyUnParsed
-
 	for _, f := range req.files {
 		f.reset(maxCap)
 		formFilePool.Put(f)
@@ -91,10 +91,17 @@ func (req *Request) Reset(maxCap int) {
 	req.boundaryBegin = req.boundaryBegin[:0]
 	req.boundaryEnd = req.boundaryEnd[:0]
 	req.boundaryLine = req.boundaryLine[:0]
-
 	req.cookies.Reset()
-	req.cookieParsed = false
 	req.history = nil
+}
+
+var ErrRequestHijacked = errors.New("sha: request is already hijacked")
+
+func (req *Request) hijack() {
+	if req.flags.Has(_ReqFlagHijacked) {
+		panic(ErrRequestHijacked)
+	}
+	req.flags.Add(_ReqFlagHijacked)
 }
 
 func (req *Request) History() []string { return req.history }
@@ -134,7 +141,7 @@ func (req *Request) SetPath(path []byte) *Request {
 func (req *Request) SetPathString(path string) *Request {
 	req.fl2 = req.fl2[:0]
 	req.fl2 = append(req.fl2, path...)
-	req.URL.ok = false
+	req.flags.Del(_ReqFlagUrlOK)
 	return req
 }
 
@@ -209,12 +216,12 @@ func (req *Request) methodToEnum() {
 }
 
 func (req *Request) parsePath() {
-	if req.URL.ok {
+	if req.flags.Has(_ReqFlagUrlOK) {
 		return
 	}
 	rawPath := req.RawPath()
 	u := &req.URL
-	u.ok = true
+	req.flags.Add(_ReqFlagUrlOK)
 
 	portInd := bytes.IndexByte(rawPath, ':')
 	if portInd >= 0 {
