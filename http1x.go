@@ -29,8 +29,8 @@ var defaultHTTPOption = HTTPOptions{
 type _Http11Protocol struct {
 	*HTTPOptions
 
-	OnParseError func(conn net.Conn, err error) bool                  // keep connection if return true
-	OnWriteError func(conn net.Conn, ctx *RequestCtx, err error) bool // keep connection if return true
+	OnParseError func(conn net.Conn, err error) bool             // keep connection if return true
+	OnWriteError func(conn net.Conn, ctx *RequestCtx, err error) // keep connection if return true
 
 	ReadBufferSize  int
 	WriteBufferSize int
@@ -98,6 +98,10 @@ func (protocol *_Http11Protocol) handle(ctx *RequestCtx, server *Server) bool {
 		return false
 	}
 
+	if server.OnNewRequestCtx != nil && server.OnNewRequestCtx(ctx) {
+		return false
+	}
+
 	server.Handler.Handle(ctx)
 	if ctx.hijacked { // another protocol process has been completed
 		return false
@@ -110,7 +114,7 @@ func (protocol *_Http11Protocol) handle(ctx *RequestCtx, server *Server) bool {
 	}
 	if err := sendResponse(ctx.w, &ctx.Response); err != nil {
 		if protocol.OnWriteError != nil {
-			return protocol.OnWriteError(ctx.conn, ctx, err)
+			protocol.OnWriteError(ctx.conn, ctx, err)
 		}
 		return false
 	}

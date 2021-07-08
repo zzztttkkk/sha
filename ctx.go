@@ -93,6 +93,8 @@ func (ctx *RequestCtx) Close() { ctx.Response.Header().SetString(HeaderConnectio
 
 func (ctx *RequestCtx) IsTLS() bool { return ctx.isTLS }
 
+func (ctx *RequestCtx) Conn() net.Conn { return ctx.conn }
+
 func (ctx *RequestCtx) RemoteAddr() net.Addr { return ctx.conn.RemoteAddr() }
 
 func (ctx *RequestCtx) LocalAddr() net.Addr { return ctx.conn.LocalAddr() }

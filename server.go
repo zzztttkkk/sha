@@ -37,7 +37,9 @@ type ServerOptions struct {
 type Server struct {
 	Options ServerOptions
 
-	OnConnectionAccepted func(conn net.Conn) bool
+	OnNewConnection  func(conn net.Conn) bool
+	OnNewRequestCtx  func(req *RequestCtx) bool
+	OnConnectionLost func(conn net.Conn)
 
 	baseCtx           context.Context
 	Handler           RequestHandler
@@ -264,7 +266,7 @@ func (s *Server) Serve(l net.Listener) {
 		}
 
 		go func(c net.Conn) {
-			if s.OnConnectionAccepted != nil && !s.OnConnectionAccepted(c) {
+			if s.OnNewConnection != nil && !s.OnNewConnection(c) {
 				return
 			}
 
@@ -272,6 +274,9 @@ func (s *Server) Serve(l net.Listener) {
 			defer func() {
 				_ = c.Close()
 				atomic.AddInt64(&s.aliveConns, -1)
+				if s.OnConnectionLost != nil {
+					s.OnConnectionLost(c)
+				}
 			}()
 
 			serve(c)
@@ -279,7 +284,7 @@ func (s *Server) Serve(l net.Listener) {
 	}
 
 	// waiting for shutdown
-	if s.shutdownChan == nil {
+	for s.shutdownChan == nil {
 		s.Shutdown()
 	}
 	<-(*s.shutdownChan)
