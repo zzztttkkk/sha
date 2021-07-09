@@ -182,7 +182,11 @@ func (cli *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount i
 	}()
 
 	if cli.Opts.KeepRedirectHistory {
-		ctx.Request.history = append(ctx.Request.history, string(ctx.Request.fl2))
+		if session == nil {
+			ctx.Request.history = append(ctx.Request.history, fmt.Sprintf("%s%s", addr, utils.S(ctx.Request.fl2)))
+		} else {
+			ctx.Request.history = append(ctx.Request.history, string(ctx.Request.fl2))
+		}
 	}
 
 	begin := ctx.Request.time
