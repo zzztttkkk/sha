@@ -127,7 +127,6 @@ func (jar *CookieJar) Update(host, item string) error {
 				obj.HTTPOnly = true
 			case "samesite":
 			default:
-				return fmt.Errorf("sha: bad cookie value `%s`", item)
 			}
 			continue
 		}
@@ -175,7 +174,6 @@ func (jar *CookieJar) Update(host, item string) error {
 			case "none":
 				obj.SameSite = CookieSameSizeNone
 			default:
-				return fmt.Errorf("sha: bad cookie value `%s`, unexpected samesite value", item)
 			}
 		default:
 		}
@@ -257,7 +255,9 @@ func (jar *CookieJar) Cookies(domain, path string) []*CookieItem {
 	domain = removePortAndLowercase(domain)
 	if net.ParseIP(domain) != nil && !isDomain(domain) {
 		for _, item := range jar.all[domain] {
-			lst = append(lst, item)
+			if strings.HasPrefix(path, item.Path) {
+				lst = append(lst, item)
+			}
 		}
 		return lst
 	}

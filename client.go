@@ -25,7 +25,7 @@ type CliOptions struct {
 	MaxRedirect         int
 	KeepRedirectHistory bool
 	EnableCookie        bool
-	CookiePersistence   string
+	CookieStoragePath   string
 }
 
 type Cli struct {
@@ -61,8 +61,8 @@ func NewCli(opt *CliOptions) *Cli {
 
 	if cp.Opts.EnableCookie {
 		cp.jar = NewCookieJar()
-		if cp.Opts.CookiePersistence != "" {
-			_ = cp.jar.LoadIfExists(cp.Opts.CookiePersistence)
+		if cp.Opts.CookieStoragePath != "" {
+			_ = cp.jar.LoadIfExists(cp.Opts.CookieStoragePath)
 		}
 	}
 	return cp
@@ -289,8 +289,8 @@ func (cli *Cli) Close() error {
 		}
 	}
 
-	if cli.jar != nil && cli.Opts.CookiePersistence != "" {
-		return cli.jar.SaveTo(cli.Opts.CookiePersistence)
+	if cli.jar != nil && cli.Opts.CookieStoragePath != "" {
+		return cli.jar.SaveTo(cli.Opts.CookieStoragePath)
 	}
 	return nil
 }

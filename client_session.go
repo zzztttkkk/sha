@@ -40,7 +40,8 @@ type CliConnectionOptions struct {
 	HTTPProxy            HTTPProxy
 	InsecureSkipVerify   bool
 	TLSConfig            *tls.Config
-	RequestCtxPreChecker func(ctx *RequestCtx)
+	BeforeSendRequest    []func(ctx *RequestCtx, host string) error
+	AfterReceiveResponse []func(ctx *RequestCtx, err error)
 }
 
 func (o *CliConnectionOptions) h2tpOpts() *HTTPOptions {
@@ -215,8 +216,10 @@ func (conn *CliConnection) openConn(ctx context.Context) error {
 }
 
 func (conn *CliConnection) Send(ctx *RequestCtx) error {
-	if conn.opt.RequestCtxPreChecker != nil {
-		conn.opt.RequestCtxPreChecker(ctx)
+	for _, fn := range conn.opt.BeforeSendRequest {
+		if err := fn(ctx, conn.host); err != nil {
+			return err
+		}
 	}
 
 	if conn.jar != nil {
@@ -243,6 +246,9 @@ func (conn *CliConnection) Send(ctx *RequestCtx) error {
 		for _, v := range ctx.Response.Header().GetAll(HeaderSetCookie) {
 			_ = conn.jar.Update(conn.host, utils.S(v))
 		}
+	}
+	for _, fn := range conn.opt.AfterReceiveResponse {
+		fn(ctx, err)
 	}
 	return err
 }
