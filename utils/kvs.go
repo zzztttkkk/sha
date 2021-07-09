@@ -122,6 +122,19 @@ func (kvs *Kvs) Get(k string) ([]byte, bool) {
 	return nil, false
 }
 
+func (kvs *Kvs) GetItem(k string) *KvItem {
+	for i := 0; i < len(kvs.lst); i++ {
+		item := &(kvs.lst[i])
+		if item.invalid {
+			continue
+		}
+		if string(item.Key) == k {
+			return item
+		}
+	}
+	return nil
+}
+
 func (kvs *Kvs) GetAll(k string) [][]byte {
 	var rv [][]byte
 

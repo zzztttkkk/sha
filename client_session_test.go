@@ -7,11 +7,12 @@ import (
 )
 
 func TestCliSession(t *testing.T) {
-	cli := newCliSession(
+	cli := newCliConn(
 		"www.google.com", true,
-		&CliSessionOptions{
+		&CliConnectionOptions{
 			HTTPProxy: HTTPProxy{Address: "127.0.0.1:51651"},
 		},
+		nil,
 	)
 
 	ctx := AcquireRequestCtx(context.TODO())

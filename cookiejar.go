@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -38,6 +39,7 @@ func (item *CookieItem) String() string {
 
 type CookieJar struct {
 	all map[string]map[string]*CookieItem
+	rw  sync.RWMutex
 }
 
 func (jar *CookieJar) append(opt *CookieItem) {
@@ -85,7 +87,25 @@ func removePortAndLowercase(s string) string {
 	return strings.ToLower(s)
 }
 
+var cookieExpiresFmt = []string{time.RFC1123, time.RFC850, "Mon, 02-Jan-06 15:04:05 MST"}
+
+func parseCookieDatetime(v string) (time.Time, bool) {
+	for _, f := range cookieExpiresFmt {
+		t, e := time.Parse(f, v)
+		if e == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
 func (jar *CookieJar) Update(host, item string) error {
+	jar.rw.Lock()
+	defer jar.rw.Unlock()
+
+	if strings.HasPrefix(host, "www.") {
+		host = host[3:]
+	}
 	host = removePortAndLowercase(host)
 
 	var obj = &CookieItem{Created: time.Now()}
@@ -112,7 +132,7 @@ func (jar *CookieJar) Update(host, item string) error {
 			continue
 		}
 
-		_key := strings.ToLower(strings.TrimSpace(kv[:ind]))
+		_key := strings.TrimSpace(kv[:ind])
 		_val := strings.TrimSpace(kv[ind+1:])
 		if len(obj.Key) < 1 {
 			obj.Key = _key
@@ -123,7 +143,7 @@ func (jar *CookieJar) Update(host, item string) error {
 			continue
 		}
 
-		switch _key {
+		switch strings.ToLower(_key) {
 		case "domain":
 			_val = strings.ToLower(_val)
 			if !checkDomain(_val, host) {
@@ -132,15 +152,15 @@ func (jar *CookieJar) Update(host, item string) error {
 			obj.Domain = _val
 		case "path":
 			obj.Path = _val
-		case "maxage":
+		case "max-age", "maxage":
 			v, e := strconv.ParseInt(_val, 10, 64)
 			if e != nil {
 				return fmt.Errorf("sha: bad cookie value `%s`, maxage is not a int", item)
 			}
 			obj.MaxAge = v
 		case "expires":
-			t, e := time.Parse(time.RFC1123, _val)
-			if e != nil {
+			t, ok := parseCookieDatetime(_val)
+			if !ok {
 				return fmt.Errorf("sha: bad cookie value `%s`, expires is not a valid time", item)
 			}
 			obj.Expires = t
@@ -158,18 +178,23 @@ func (jar *CookieJar) Update(host, item string) error {
 				return fmt.Errorf("sha: bad cookie value `%s`, unexpected samesite value", item)
 			}
 		default:
-			return fmt.Errorf("sha: bad cookie value `%s`, unexpected cookie attribute", item)
 		}
 	}
 
 	if len(obj.Domain) < 1 {
 		obj.Domain = host
 	}
+	if len(obj.Path) < 1 {
+		obj.Path = "/"
+	}
 	jar.append(obj)
 	return nil
 }
 
 func (jar *CookieJar) Load(reader io.Reader) error {
+	jar.rw.Lock()
+	defer jar.rw.Unlock()
+
 	allBytes, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return err
@@ -198,6 +223,9 @@ func (jar *CookieJar) LoadIfExists(fp string) error {
 }
 
 func (jar *CookieJar) Save(writer io.Writer) error {
+	jar.rw.RLock()
+	defer jar.rw.RUnlock()
+
 	var items []*CookieItem
 	for _, m := range jar.all {
 		for _, v := range m {
@@ -207,13 +235,12 @@ func (jar *CookieJar) Save(writer io.Writer) error {
 			items = append(items, v)
 		}
 	}
-	fmt.Println(items)
 	encoder := jsonx.NewEncoder(writer)
 	return encoder.Encode(items)
 }
 
 func (jar *CookieJar) SaveTo(fp string) error {
-	f, e := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE, 0644)
+	f, e := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if e != nil {
 		return e
 	}
@@ -221,7 +248,10 @@ func (jar *CookieJar) SaveTo(fp string) error {
 	return jar.Save(f)
 }
 
-func (jar *CookieJar) Cookies(domain string) []*CookieItem {
+func (jar *CookieJar) Cookies(domain, path string) []*CookieItem {
+	jar.rw.RLock()
+	defer jar.rw.RUnlock()
+
 	var lst []*CookieItem
 
 	domain = removePortAndLowercase(domain)
@@ -236,11 +266,36 @@ func (jar *CookieJar) Cookies(domain string) []*CookieItem {
 	for d, dm := range jar.all {
 		if strings.HasSuffix(domain, d) {
 			for _, item := range dm {
-				lst = append(lst, item)
+				if strings.HasPrefix(path, item.Path) {
+					lst = append(lst, item)
+				}
 			}
 		}
 	}
 	return lst
+}
+
+func (jar *CookieJar) toRCtx(ctx *RequestCtx, host string) {
+	var buf strings.Builder
+	cookies := jar.Cookies(host, ctx.Request.Path())
+	end := len(cookies) - 1
+	for idx, item := range cookies {
+		buf.WriteString(item.Key)
+		buf.WriteByte('=')
+		buf.WriteString(item.Value)
+		if idx < end {
+			buf.WriteString("; ")
+		}
+	}
+	// https://stackoverflow.com/a/18967872/6683474
+	// It looks like the use of multiple Cookie headers is, in fact, prohibited!
+	item := ctx.Request.Header().GetItem(HeaderCookie)
+	if item == nil {
+		ctx.Request.Header().AppendString(HeaderCookie, buf.String())
+	} else {
+		item.Val = append(item.Val, "; "...)
+		item.Val = append(item.Val, buf.String()...)
+	}
 }
 
 func NewCookieJar() *CookieJar { return &CookieJar{all: map[string]map[string]*CookieItem{}} }

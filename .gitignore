@@ -9,5 +9,6 @@
 *.png
 *.pid
 *.cookies.json
+cookies.json
 
 /examples/benchmarks/report.html

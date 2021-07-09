@@ -14,7 +14,7 @@ import (
 )
 
 type CliOptions struct {
-	CliSessionOptions
+	CliConnectionOptions
 	MaxAge  int64
 	MaxIdle int
 	MaxOpen int
@@ -24,14 +24,17 @@ type CliOptions struct {
 	// >0: limit on the number of redirects
 	MaxRedirect         int
 	KeepRedirectHistory bool
+	EnableCookie        bool
+	CookiePersistence   string
 }
 
 type Cli struct {
 	mutex   sync.Mutex
-	idling  map[string]chan *CliSession
+	idling  map[string]chan *CliConnection
 	using   int64
 	Opts    CliOptions
 	closing bool
+	jar     *CookieJar
 }
 
 // NewCli return a concurrency-safe http client, which holds a session map to reuse connections.
@@ -42,10 +45,12 @@ func NewCli(opt *CliOptions) *Cli {
 		10, 10,
 		0,
 		false,
+		true,
+		"",
 	}
 
 	cp := &Cli{
-		idling: map[string]chan *CliSession{},
+		idling: map[string]chan *CliConnection{},
 	}
 	if opt == nil {
 		cp.Opts = defaultClientOptions
@@ -53,27 +58,34 @@ func NewCli(opt *CliOptions) *Cli {
 		cp.Opts = *opt
 		utils.Merge(&cp.Opts, defaultClientOptions)
 	}
+
+	if cp.Opts.EnableCookie {
+		cp.jar = NewCookieJar()
+		if cp.Opts.CookiePersistence != "" {
+			_ = cp.jar.LoadIfExists(cp.Opts.CookiePersistence)
+		}
+	}
 	return cp
 }
 
 var ErrClosedCli = errors.New("sha.cli: closed")
 
-func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, error) {
+func (cli *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliConnection, error) {
 	key := fmt.Sprintf("%s:%v", addr, isTLS)
 
-	cp.mutex.Lock()
+	cli.mutex.Lock()
 
-	if cp.closing {
-		cp.mutex.Unlock()
+	if cli.closing {
+		cli.mutex.Unlock()
 		return nil, ErrClosedCli
 	}
 
-	iC := cp.idling[key]
+	iC := cli.idling[key]
 	if iC == nil {
-		iC = make(chan *CliSession, cp.Opts.MaxIdle)
-		cp.idling[key] = iC
+		iC = make(chan *CliConnection, cli.Opts.MaxIdle)
+		cli.idling[key] = iC
 	}
-	cp.mutex.Unlock()
+	cli.mutex.Unlock()
 
 	var n time.Duration = 0
 
@@ -87,8 +99,8 @@ func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, 
 			}
 			return cli, nil
 		default:
-			if int(atomic.LoadInt64(&cp.using)) < cp.Opts.MaxOpen {
-				return newCliSession(addr, isTLS, &cp.Opts.CliSessionOptions), nil
+			if int(atomic.LoadInt64(&cli.using)) < cli.Opts.MaxOpen {
+				return newCliConn(addr, isTLS, &cli.Opts.CliConnectionOptions, cli.jar), nil
 			}
 			n += 2
 			if n > 10 {
@@ -99,41 +111,41 @@ func (cp *Cli) _get(ctx context.Context, addr string, isTLS bool) (*CliSession, 
 	}
 }
 
-func (cp *Cli) get(ctx context.Context, addr string, isTLS bool) (*CliSession, error) {
+func (cli *Cli) get(ctx context.Context, addr string, isTLS bool) (*CliConnection, error) {
 	for {
-		session, err := cp._get(ctx, addr, isTLS)
+		session, err := cli._get(ctx, addr, isTLS)
 		if err != nil {
 			return nil, err
 		}
-		if cp.Opts.MaxAge > 0 && time.Now().Unix()-session.created > cp.Opts.MaxAge {
+		if cli.Opts.MaxAge > 0 && time.Now().Unix()-session.created > cli.Opts.MaxAge {
 			_ = session.Close()
 			session = nil
 		}
 		if session != nil {
-			atomic.AddInt64(&cp.using, 1)
+			atomic.AddInt64(&cli.using, 1)
 			return session, nil
 		}
 	}
 }
 
-func (cp *Cli) put(s *CliSession) {
+func (cli *Cli) put(s *CliConnection) {
 	if s == nil {
 		return
 	}
 
-	defer atomic.AddInt64(&cp.using, -1)
+	defer atomic.AddInt64(&cli.using, -1)
 
-	cp.mutex.Lock()
+	cli.mutex.Lock()
 
-	if cp.closing {
+	if cli.closing {
 		_ = s.Close()
-		cp.mutex.Unlock()
+		cli.mutex.Unlock()
 		return
 	}
 
 	key := fmt.Sprintf("%s:%v", s.address, s.isTLS)
-	iC := cp.idling[key]
-	cp.mutex.Unlock()
+	iC := cli.idling[key]
+	cli.mutex.Unlock()
 
 	for i := 2; i > 0; i-- {
 		select {
@@ -148,15 +160,15 @@ func (cp *Cli) put(s *CliSession) {
 
 var ErrMaxRedirect = errors.New("sha.client: reach the redirect limit")
 
-func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount int, session *CliSession) error {
-	if cp.Opts.MaxRedirect > 0 && redirectCount > cp.Opts.MaxRedirect {
+func (cli *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount int, session *CliConnection) error {
+	if cli.Opts.MaxRedirect > 0 && redirectCount > cli.Opts.MaxRedirect {
 		return ErrMaxRedirect
 	}
 
 	reusedSession := session != nil
 	var err error
 	if !reusedSession {
-		session, err = cp.get(ctx, addr, isTLS)
+		session, err = cli.get(ctx, addr, isTLS)
 		if err != nil {
 			return err
 		}
@@ -166,10 +178,10 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount in
 		if reusedSession || !shouldPutSession {
 			return
 		}
-		cp.put(session)
+		cli.put(session)
 	}()
 
-	if cp.Opts.KeepRedirectHistory {
+	if cli.Opts.KeepRedirectHistory {
 		ctx.Request.history = append(ctx.Request.history, string(ctx.Request.fl2))
 	}
 
@@ -184,7 +196,7 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount in
 
 	res := &ctx.Response
 	if res.StatusCode() > 299 && res.StatusCode() < 400 {
-		if cp.Opts.MaxRedirect == 0 {
+		if cli.Opts.MaxRedirect == 0 {
 			return nil
 		}
 
@@ -227,21 +239,21 @@ func (cp *Cli) doSend(ctx *RequestCtx, addr string, isTLS bool, redirectCount in
 			}
 		}
 
-		ctx.Response.reset(cp.Opts.HTTPOptions.BufferPoolSizeLimit)
+		ctx.Response.reset(cli.Opts.HTTPOptions.BufferPoolSizeLimit)
 
 		if redirectLocationAddr == addr && redirectLocationIsTLS == isTLS { // redirect to same host
-			return cp.doSend(ctx, addr, isTLS, redirectCount+1, session)
+			return cli.doSend(ctx, addr, isTLS, redirectCount+1, session)
 		}
 
 		// redirect to another host
-		cp.put(session)
+		cli.put(session)
 		shouldPutSession = false
-		return cp.doSend(ctx, redirectLocationAddr, redirectLocationIsTLS, redirectCount+1, nil)
+		return cli.doSend(ctx, redirectLocationAddr, redirectLocationIsTLS, redirectCount+1, nil)
 	}
 	return nil
 }
 
-func (cp *Cli) Send(ctx *RequestCtx, addr string) error {
+func (cli *Cli) Send(ctx *RequestCtx, addr string) error {
 	var isTLS bool
 	var ind = strings.Index(addr, "://")
 	var protocol string
@@ -255,26 +267,30 @@ func (cp *Cli) Send(ctx *RequestCtx, addr string) error {
 	switch protocol {
 	case "http", "https":
 		isTLS = protocol == "https"
-		return cp.doSend(ctx, addr, isTLS, 0, nil)
+		return cli.doSend(ctx, addr, isTLS, 0, nil)
 	default:
 		return fmt.Errorf("sha.cli: bad protocol: `%s`", protocol)
 	}
 }
 
-func (cp *Cli) Close() error {
-	cp.mutex.Lock()
-	defer cp.mutex.Unlock()
+func (cli *Cli) Close() error {
+	cli.mutex.Lock()
+	defer cli.mutex.Unlock()
 
-	if cp.closing {
+	if cli.closing {
 		return nil
 	}
-	cp.closing = true
+	cli.closing = true
 
-	for _, cn := range cp.idling {
+	for _, cn := range cli.idling {
 		close(cn)
 		for v := range cn {
 			_ = v.Close()
 		}
+	}
+
+	if cli.jar != nil && cli.Opts.CookiePersistence != "" {
+		return cli.jar.SaveTo(cli.Opts.CookiePersistence)
 	}
 	return nil
 }

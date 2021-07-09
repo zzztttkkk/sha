@@ -6,12 +6,13 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/zzztttkkk/sha/utils"
 	"net"
 	"strings"
 	"time"
 )
 
-type CliSession struct {
+type CliConnection struct {
 	address string
 	host    string
 
@@ -22,7 +23,9 @@ type CliSession struct {
 	w    *bufio.Writer
 
 	isTLS bool
-	opt   *CliSessionOptions
+	opt   *CliConnectionOptions
+
+	jar *CookieJar
 }
 
 type HTTPProxy struct {
@@ -32,7 +35,7 @@ type HTTPProxy struct {
 	IsTLS     bool
 }
 
-type CliSessionOptions struct {
+type CliConnectionOptions struct {
 	HTTPOptions          *HTTPOptions
 	HTTPProxy            HTTPProxy
 	InsecureSkipVerify   bool
@@ -40,21 +43,21 @@ type CliSessionOptions struct {
 	RequestCtxPreChecker func(ctx *RequestCtx)
 }
 
-func (o *CliSessionOptions) h2tpOpts() *HTTPOptions {
+func (o *CliConnectionOptions) h2tpOpts() *HTTPOptions {
 	if o.HTTPOptions != nil {
 		return o.HTTPOptions
 	}
 	return &defaultHTTPOption
 }
 
-var defaultCliOptions CliSessionOptions
+var defaultCliOptions CliConnectionOptions
 
-func newCliSession(address string, isTLS bool, opt *CliSessionOptions) *CliSession {
+func newCliConn(address string, isTLS bool, opt *CliConnectionOptions, jar *CookieJar) *CliConnection {
 	if opt == nil {
 		opt = &defaultCliOptions
 	}
 
-	s := &CliSession{opt: opt, isTLS: isTLS, created: time.Now().Unix()}
+	s := &CliConnection{opt: opt, isTLS: isTLS, created: time.Now().Unix(), jar: jar}
 	ind := strings.IndexRune(address, ':')
 	if ind > -1 {
 		s.host = address[:ind]
@@ -77,50 +80,50 @@ func newCliSession(address string, isTLS bool, opt *CliSessionOptions) *CliSessi
 	return s
 }
 
-func (s *CliSession) Close() error {
-	if s.conn == nil {
+func (conn *CliConnection) Close() error {
+	if conn.conn == nil {
 		return nil
 	}
 
-	e := s.conn.Close()
-	s.conn = nil
+	e := conn.conn.Close()
+	conn.conn = nil
 	return e
 }
 
-func (s *CliSession) Reconnect() {
-	if s.conn == nil {
+func (conn *CliConnection) Reconnect() {
+	if conn.conn == nil {
 		return
 	}
 
-	_ = s.conn.Close()
-	s.conn = nil
-	if s.r != nil {
-		s.r.Reset(nil)
+	_ = conn.conn.Close()
+	conn.conn = nil
+	if conn.r != nil {
+		conn.r.Reset(nil)
 	}
-	if s.w != nil {
-		s.w.Reset(nil)
+	if conn.w != nil {
+		conn.w.Reset(nil)
 	}
 }
 
-func (s *CliSession) openConn(ctx context.Context) error {
-	if s.conn != nil {
+func (conn *CliConnection) openConn(ctx context.Context) error {
+	if conn.conn != nil {
 		return nil
 	}
 
 	var c net.Conn
 	var e error
-	var w = s.w
-	var r = s.r
+	var w = conn.w
+	var r = conn.r
 
-	proxy := &s.opt.HTTPProxy
+	proxy := &conn.opt.HTTPProxy
 	if len(proxy.Address) > 0 {
 		var buf bytes.Buffer
 		buf.WriteString("CONNECT ")
-		buf.WriteString(s.address)
+		buf.WriteString(conn.address)
 		buf.WriteByte(' ')
 		buf.WriteString("HTTP/1.1\r\n")
 		buf.WriteString("Host: ")
-		buf.WriteString(s.address)
+		buf.WriteString(conn.address)
 		buf.WriteString("\r\n")
 
 		if proxy.AuthFunc != nil {
@@ -163,39 +166,39 @@ func (s *CliSession) openConn(ctx context.Context) error {
 		} else {
 			r.Reset(proxyC)
 		}
-		e = parseResponse(ctx, r, make([]byte, 128), &res, s.opt.h2tpOpts())
+		e = parseResponse(ctx, r, make([]byte, 128), &res, conn.opt.h2tpOpts())
 		if e != nil {
 			return e
 		}
 		if res.statusCode != StatusOK {
 			return fmt.Errorf("sha.clent: bad proxy response, %d %s", res.StatusCode(), res.Phrase())
 		}
-		if s.isTLS {
-			if s.opt.TLSConfig == nil {
-				s.opt.TLSConfig = &tls.Config{}
-				if s.opt.InsecureSkipVerify {
-					s.opt.TLSConfig.InsecureSkipVerify = true
+		if conn.isTLS {
+			if conn.opt.TLSConfig == nil {
+				conn.opt.TLSConfig = &tls.Config{}
+				if conn.opt.InsecureSkipVerify {
+					conn.opt.TLSConfig.InsecureSkipVerify = true
 				} else {
-					s.opt.TLSConfig.ServerName = strings.Split(s.address, ":")[0]
+					conn.opt.TLSConfig.ServerName = strings.Split(conn.address, ":")[0]
 				}
 			}
 
-			c = tls.Client(proxyC, s.opt.TLSConfig)
+			c = tls.Client(proxyC, conn.opt.TLSConfig)
 		} else {
 			c = proxyC
 		}
 	} else {
-		if s.isTLS {
-			c, e = tls.Dial("tcp", s.address, s.opt.TLSConfig)
+		if conn.isTLS {
+			c, e = tls.Dial("tcp", conn.address, conn.opt.TLSConfig)
 		} else {
-			c, e = net.Dial("tcp", s.address)
+			c, e = net.Dial("tcp", conn.address)
 		}
 	}
 
 	if e != nil {
 		return e
 	}
-	s.conn = c
+	conn.conn = c
 	if r == nil {
 		r = bufio.NewReader(c)
 	} else {
@@ -206,14 +209,18 @@ func (s *CliSession) openConn(ctx context.Context) error {
 	} else {
 		w.Reset(c)
 	}
-	s.r = r
-	s.w = w
+	conn.r = r
+	conn.w = w
 	return nil
 }
 
-func (s *CliSession) Send(ctx *RequestCtx) error {
-	if s.opt.RequestCtxPreChecker != nil {
-		s.opt.RequestCtxPreChecker(ctx)
+func (conn *CliConnection) Send(ctx *RequestCtx) error {
+	if conn.opt.RequestCtxPreChecker != nil {
+		conn.opt.RequestCtxPreChecker(ctx)
+	}
+
+	if conn.jar != nil {
+		conn.jar.toRCtx(ctx, conn.host)
 	}
 
 	if ctx.ctx == nil {
@@ -224,14 +231,20 @@ func (s *CliSession) Send(ctx *RequestCtx) error {
 		ctx.readBuf = make([]byte, 512)
 	}
 
-	if err := s.openConn(ctx); err != nil {
+	if err := conn.openConn(ctx); err != nil {
 		return err
 	}
 
-	if err := sendRequest(s.w, &ctx.Request); err != nil {
+	if err := sendRequest(conn.w, &ctx.Request); err != nil {
 		return err
 	}
-	return parseResponse(ctx, s.r, ctx.readBuf, &ctx.Response, s.opt.h2tpOpts())
+	err := parseResponse(ctx, conn.r, ctx.readBuf, &ctx.Response, conn.opt.h2tpOpts())
+	if conn.jar != nil && err == nil {
+		for _, v := range ctx.Response.Header().GetAll(HeaderSetCookie) {
+			_ = conn.jar.Update(conn.host, utils.S(v))
+		}
+	}
+	return err
 }
 
-func (s *CliSession) Conn() net.Conn { return s.conn }
+func (conn *CliConnection) Conn() net.Conn { return conn.conn }

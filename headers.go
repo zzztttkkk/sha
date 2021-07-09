@@ -47,10 +47,10 @@ const (
 	HeaderAcceptLanguage = "Accept-Language"
 
 	// Controls
-	HeaderCookie      = "CookieValue"
+	HeaderCookie      = "Cookie"
 	HeaderExpect      = "Expect"
 	HeaderMaxForwards = "Max-Forwards"
-	HeaderSetCookie   = "Add-CookieValue"
+	HeaderSetCookie   = "Set-Cookie"
 
 	// CORS
 	HeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"
