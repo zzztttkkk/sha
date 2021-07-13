@@ -42,7 +42,7 @@ type Server struct {
 	OnConnectionLost func(conn net.Conn)
 
 	baseCtx           context.Context
-	Handler           RequestHandler
+	Handler           RequestCtxHandler
 	httpProtocol      HTTPServerProtocol
 	websocketProtocol WebSocketProtocol
 
@@ -125,7 +125,7 @@ func (s *Server) BeforeAccept(fn func(s *Server)) {
 
 func (s *Server) Listen() net.Listener {
 	if s.Handler == nil {
-		s.Handler = RequestHandlerFunc(func(ctx *RequestCtx) { _ = ctx.WriteString("Hello World!\n") })
+		s.Handler = RequestCtxHandlerFunc(func(ctx *RequestCtx) { _ = ctx.WriteString("Hello World!\n") })
 	}
 
 	listener, err := net.Listen("tcp4", s.Options.Addr)
@@ -334,14 +334,14 @@ func (s *Server) serveHTTPConn(conn net.Conn) {
 	s.httpProtocol.ServeConn(context.WithValue(s.baseCtx, CtxKeyConnection, conn), conn)
 }
 
-func ListenAndServe(addr string, handler RequestHandler) {
+func ListenAndServe(addr string, handler RequestCtxHandler) {
 	if handler == nil {
 		handler = DefaultMux
 	}
 	ListenAndServeWithContext(context.Background(), addr, handler)
 }
 
-func ListenAndServeWithContext(ctx context.Context, addr string, handler RequestHandler) {
+func ListenAndServeWithContext(ctx context.Context, addr string, handler RequestCtxHandler) {
 	server := DefaultWithContext(ctx)
 	if len(addr) > 0 {
 		server.Options.Addr = addr

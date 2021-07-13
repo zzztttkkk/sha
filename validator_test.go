@@ -24,7 +24,7 @@ func TestRequestCtx_Validate(t *testing.T) {
 		&RouteOptions{Document: validator.NewDocument(TestForm{}, nil)},
 		"get",
 		"/",
-		RequestHandlerFunc(
+		RequestCtxHandlerFunc(
 			func(ctx *RequestCtx) {
 				form := TestForm{}
 				ctx.MustValidateForm(&form)

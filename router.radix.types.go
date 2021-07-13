@@ -11,7 +11,7 @@ type _NodeType uint8
 type _NodeWildcard struct {
 	path     string
 	paramKey string
-	handler  RequestHandler
+	handler  RequestCtxHandler
 }
 
 type _Node struct {
@@ -19,7 +19,7 @@ type _Node struct {
 
 	path         string
 	tsr          bool
-	handler      RequestHandler
+	handler      RequestCtxHandler
 	hasWildChild bool
 	children     []*_Node
 	wildcard     *_NodeWildcard

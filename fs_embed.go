@@ -8,7 +8,7 @@ import (
 	"github.com/zzztttkkk/sha/utils"
 )
 
-func NewEmbedFSHandler(fs *embed.FS, modTime time.Time, pathRewrite func(ctx *RequestCtx) string) RequestHandler {
+func NewEmbedFSHandler(fs *embed.FS, modTime time.Time, pathRewrite func(ctx *RequestCtx) string) RequestCtxHandler {
 	var mt time.Time
 	if modTime.IsZero() {
 		mt = time.Now()
@@ -25,7 +25,7 @@ func NewEmbedFSHandler(fs *embed.FS, modTime time.Time, pathRewrite func(ctx *Re
 		}
 	}
 
-	return RequestHandlerFunc(func(ctx *RequestCtx) {
+	return RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 		w := &ctx.Response
 		r := &ctx.Request
 

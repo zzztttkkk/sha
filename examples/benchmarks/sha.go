@@ -9,7 +9,7 @@ func (_ Sha) Name() string {
 }
 
 func (_ Sha) HelloWorld(address string) {
-	sha.ListenAndServe(address, sha.RequestHandlerFunc(func(ctx *sha.RequestCtx) {
+	sha.ListenAndServe(address, sha.RequestCtxHandlerFunc(func(ctx *sha.RequestCtx) {
 		_ = ctx.WriteString("HelloWorld!")
 	}))
 }

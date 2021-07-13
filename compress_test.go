@@ -12,7 +12,7 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 	mux.HTTP(
 		"get",
 		"/",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 			fmt.Println(ctx.Response.Header())
 			_ = ctx.WriteString(strings.Repeat("PgUP", 1000))
@@ -24,7 +24,7 @@ func TestRequestCtx_AutoCompress(t *testing.T) {
 	mux.HTTP(
 		"get",
 		"/a",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 			_ = ctx.WriteString(strings.Repeat("Hello!", 100))
 			ctx.Response.ResetBody()

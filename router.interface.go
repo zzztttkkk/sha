@@ -23,9 +23,9 @@ type RouteOptions struct {
 }
 
 type Router interface {
-	HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestHandler)
-	HTTP(method, path string, handler RequestHandler)
-	HTTPWithForm(method, path string, handler RequestHandler, form interface{})
+	HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestCtxHandler)
+	HTTP(method, path string, handler RequestCtxHandler)
+	HTTPWithForm(method, path string, handler RequestCtxHandler, form interface{})
 	Websocket(path string, handlerFunc WebsocketHandlerFunc, opt *RouteOptions)
 	FileSystem(opt *RouteOptions, method, path string, fs http.FileSystem, autoIndex bool)
 	File(opt *RouteOptions, method, path, filepath string)
@@ -37,8 +37,8 @@ type Router interface {
 	AddGroup(group *MuxGroup)
 }
 
-func middlewaresWrap(middlewares []Middleware, h RequestHandler) RequestHandler {
-	return RequestHandlerFunc(func(ctx *RequestCtx) {
+func middlewaresWrap(middlewares []Middleware, h RequestCtxHandler) RequestCtxHandler {
+	return RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 		cursor := -1
 
 		var next func()

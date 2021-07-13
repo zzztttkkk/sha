@@ -14,8 +14,8 @@ func NewPrintMiddleware(s string) sha.Middleware {
 	)
 }
 
-func NewPrintHandler(s string) sha.RequestHandler {
-	return sha.RequestHandlerFunc(
+func NewPrintHandler(s string) sha.RequestCtxHandler {
+	return sha.RequestCtxHandlerFunc(
 		func(ctx *sha.RequestCtx) {
 			fmt.Println(s)
 		},

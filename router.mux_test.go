@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func makeHandler(v int) RequestHandler {
-	return RequestHandlerFunc(func(ctx *RequestCtx) {
+func makeHandler(v int) RequestCtxHandler {
+	return RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 		fmt.Println(v, &ctx.Request.URL.Params)
 		_ = ctx.WriteString("Hello!")
 	})

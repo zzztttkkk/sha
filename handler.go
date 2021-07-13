@@ -1,9 +1,9 @@
 package sha
 
-type RequestHandler interface {
+type RequestCtxHandler interface {
 	Handle(ctx *RequestCtx)
 }
 
-type RequestHandlerFunc func(ctx *RequestCtx)
+type RequestCtxHandlerFunc func(ctx *RequestCtx)
 
-func (fn RequestHandlerFunc) Handle(ctx *RequestCtx) { fn(ctx) }
+func (fn RequestCtxHandlerFunc) Handle(ctx *RequestCtx) { fn(ctx) }

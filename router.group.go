@@ -12,7 +12,7 @@ type _MuxItem struct {
 	opt     *RouteOptions
 	path    string
 	method  string
-	handler RequestHandler
+	handler RequestCtxHandler
 }
 
 type MuxGroup struct {
@@ -44,13 +44,13 @@ func (m *MuxGroup) File(opt *RouteOptions, method, path, filepath string) {
 	m.HTTPWithOptions(opt, method, path, makeFileContentHandler(path, filepath))
 }
 
-func (m *MuxGroup) HTTP(method, path string, handler RequestHandler) {
+func (m *MuxGroup) HTTP(method, path string, handler RequestCtxHandler) {
 	m.HTTPWithOptions(nil, method, path, handler)
 }
 
 var _ Router = (*MuxGroup)(nil)
 
-func (m *MuxGroup) HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestHandler) {
+func (m *MuxGroup) HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestCtxHandler) {
 	if m.lazy {
 		opt = m.copyMiddleware(opt)
 		m.cache = append(m.cache, &_MuxItem{opt: opt, path: m.prefix + path, method: method, handler: handler})
@@ -60,7 +60,7 @@ func (m *MuxGroup) HTTPWithOptions(opt *RouteOptions, method, path string, handl
 	m.add(method, m.prefix+path, handler, opt)
 }
 
-func (m *MuxGroup) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
+func (m *MuxGroup) HTTPWithForm(method, path string, handler RequestCtxHandler, form interface{}) {
 	m.HTTPWithOptions(&RouteOptions{Document: validator.NewDocument(form, nil)}, method, path, handler)
 }
 
@@ -75,7 +75,7 @@ func (m *MuxGroup) copyMiddleware(opt *RouteOptions) *RouteOptions {
 	return opt
 }
 
-func (m *MuxGroup) add(method, path string, handler RequestHandler, opt *RouteOptions) {
+func (m *MuxGroup) add(method, path string, handler RequestCtxHandler, opt *RouteOptions) {
 	opt = m.copyMiddleware(opt)
 	if m.parent != nil {
 		m.parent.add(method, path, handler, opt)

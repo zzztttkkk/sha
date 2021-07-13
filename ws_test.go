@@ -19,7 +19,7 @@ func init() {
 	mux.HTTP(
 		MethodGet,
 		"/",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			res := ctx.Response
 			res.Header().SetContentType(MIMEHtml)
 			f, _ := os.Open("./ws.html")

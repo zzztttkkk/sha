@@ -83,7 +83,7 @@ func TestServer_Run(t *testing.T) {
 	mux.HTTP(
 		"get",
 		"/compress",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			_ = ctx.WriteString(strings.Repeat("Hello World!", 100))
 		}),
 	)
@@ -91,7 +91,7 @@ func TestServer_Run(t *testing.T) {
 	mux.HTTP(
 		"get",
 		"/close",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			_ = ctx.WriteString("Hello World!")
 			ctx.Close()
 		}),
@@ -100,7 +100,7 @@ func TestServer_Run(t *testing.T) {
 	mux.HTTP(
 		MethodGet,
 		"/captcha.png",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			if err := ctx.MustSession().GenerateImageCaptcha(ctx, ctx); err != nil {
 				ctx.SetError(err)
 			}
@@ -123,7 +123,7 @@ func TestServer_Run(t *testing.T) {
 		&RouteOptions{Document: validator.NewDocument(Form{}, nil)},
 		"post",
 		"/form",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			ctx.Response.Header().SetContentType(MIMEText)
 			var form Form
 			ctx.MustValidateForm(&form)
@@ -158,7 +158,7 @@ func TestServer_Run(t *testing.T) {
 	mux.HTTP(
 		"get",
 		"/hello",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			fmt.Println(ctx.Request.Header())
 			_ = ctx.WriteString("hello world")
 		}),
@@ -167,7 +167,7 @@ func TestServer_Run(t *testing.T) {
 	mux.HTTP(
 		"get",
 		"/chunked",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			f, e := os.Open("./request.go")
 			if e != nil {
 				ctx.SetError(e)
@@ -184,7 +184,7 @@ func TestServer_Run(t *testing.T) {
 	mux.HTTP(
 		"get",
 		"/compress_chunked",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			ctx.AutoCompress()
 
 			f, e := os.Open("./server.go")
@@ -202,7 +202,7 @@ func TestServer_Run(t *testing.T) {
 
 	ctx, cancelFunc := signal.NotifyContext(context.Background())
 
-	mux.HTTP(MethodGet, "/stop", RequestHandlerFunc(func(ctx *RequestCtx) { cancelFunc() }))
+	mux.HTTP(MethodGet, "/stop", RequestCtxHandlerFunc(func(ctx *RequestCtx) { cancelFunc() }))
 	fmt.Println(mux)
 
 	ListenAndServeWithContext(ctx, "127.0.0.1:8080", mux)
@@ -220,7 +220,7 @@ func TestStdHttp(t *testing.T) {
 }
 
 func TestPoolGC(t *testing.T) {
-	ListenAndServe("", RequestHandlerFunc(func(ctx *RequestCtx) {
+	ListenAndServe("", RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 		fmt.Printf("%p\r\n", ctx)
 		runtime.GC()
 	}))

@@ -43,7 +43,7 @@ func TestCli(t *testing.T) {
 
 func TestCliRedirect(t *testing.T) {
 	go func() {
-		ListenAndServe("127.0.0.1:5986", RequestHandlerFunc(func(ctx *RequestCtx) {
+		ListenAndServe("127.0.0.1:5986", RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			num, _ := strconv.ParseInt(ctx.Request.Path()[1:], 10, 32)
 			if num < 100 {
 				ctx.Response.SetStatusCode(StatusMovedPermanently)
@@ -76,7 +76,7 @@ func TestCliRedirect(t *testing.T) {
 
 func TestCliRedirectToAnotherHost(t *testing.T) {
 	go func() {
-		ListenAndServe("127.0.0.1:5986", RequestHandlerFunc(func(ctx *RequestCtx) {
+		ListenAndServe("127.0.0.1:5986", RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			num, _ := strconv.ParseInt(string(ctx.Request.Path()[1:]), 10, 32)
 			if num < 100 {
 				ctx.Response.SetStatusCode(StatusMovedPermanently)

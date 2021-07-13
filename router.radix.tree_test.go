@@ -9,14 +9,14 @@ import (
 	"testing"
 )
 
-func generateHandler() RequestHandler {
+func generateHandler() RequestCtxHandler {
 	hex := make([]byte, 10)
 	utils.RandBytes(hex, nil)
-	return RequestHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.Write(hex) })
+	return RequestCtxHandlerFunc(func(ctx *RequestCtx) { _, _ = ctx.Write(hex) })
 }
 
 func testHandlerAndParams(
-	t *testing.T, tree *_RadixTree, reqPath string, handler RequestHandler, wantTSR bool, params map[string]interface{},
+	t *testing.T, tree *_RadixTree, reqPath string, handler RequestCtxHandler, wantTSR bool, params map[string]interface{},
 ) {
 	for _, ctx := range []*RequestCtx{new(RequestCtx), nil} {
 		h, tsr := tree.Get(reqPath, ctx)
@@ -51,7 +51,7 @@ func Test_Tree(t *testing.T) {
 	type args struct {
 		path    string
 		reqPath string
-		handler RequestHandler
+		handler RequestCtxHandler
 	}
 
 	type want struct {
@@ -304,7 +304,7 @@ func Test_TreeMutable(t *testing.T) {
 }
 
 func Benchmark_Get(b *testing.B) {
-	handler := RequestHandlerFunc(func(ctx *RequestCtx) {})
+	handler := RequestCtxHandlerFunc(func(ctx *RequestCtx) {})
 
 	tree := newRadixTree()
 
@@ -333,7 +333,7 @@ func Benchmark_Get(b *testing.B) {
 }
 
 func Benchmark_GetWithRegex(b *testing.B) {
-	handler := RequestHandlerFunc(func(ctx *RequestCtx) {})
+	handler := RequestCtxHandlerFunc(func(ctx *RequestCtx) {})
 
 	tree := newRadixTree()
 	ctx := new(RequestCtx)
@@ -348,7 +348,7 @@ func Benchmark_GetWithRegex(b *testing.B) {
 }
 
 func Benchmark_GetWithParams(b *testing.B) {
-	handler := RequestHandlerFunc(func(ctx *RequestCtx) {})
+	handler := RequestCtxHandlerFunc(func(ctx *RequestCtx) {})
 
 	tree := newRadixTree()
 	ctx := new(RequestCtx)
@@ -363,7 +363,7 @@ func Benchmark_GetWithParams(b *testing.B) {
 }
 
 func Benchmark_FindCaseInsensitivePath(b *testing.B) {
-	handler := RequestHandlerFunc(func(ctx *RequestCtx) {})
+	handler := RequestCtxHandlerFunc(func(ctx *RequestCtx) {})
 
 	tree := newRadixTree()
 	pool := utils.NewBufferPoll(1024)

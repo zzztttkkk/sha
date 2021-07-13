@@ -45,7 +45,7 @@ func (m *Mux) ServeDocuments(method, path string, middleware ...Middleware) {
 	m.HTTPWithOptions(
 		&RouteOptions{Document: validator.NewDocument(_DocForm{}, nil), Middlewares: middleware},
 		method, path,
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			var form _DocForm
 			ctx.MustValidateForm(&form)
 			ctx.Response.Header().SetContentType(MIMEMarkdown)

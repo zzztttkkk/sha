@@ -8,7 +8,7 @@ import (
 func TestNewRouteGroup(t *testing.T) {
 	mux := NewMux(nil)
 
-	handler := RequestHandlerFunc(func(ctx *RequestCtx) {})
+	handler := RequestCtxHandlerFunc(func(ctx *RequestCtx) {})
 
 	groupA := NewRouteGroup("/a")
 	groupAB := NewRouteGroup("/b")

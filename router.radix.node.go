@@ -121,12 +121,12 @@ func newAutoOptions(method string) *_AutoOptionsHandler {
 	return aoh
 }
 
-func isAutoOptionsHandler(h RequestHandler) bool {
+func isAutoOptionsHandler(h RequestCtxHandler) bool {
 	_, ok := h.(*_AutoOptionsHandler)
 	return ok
 }
 
-func (n *_Node) setHandler(handler RequestHandler, fullPath string) (*_Node, error) {
+func (n *_Node) setHandler(handler RequestCtxHandler, fullPath string) (*_Node, error) {
 	if n.handler != nil || n.tsr {
 		oAoh, oAohOk := n.handler.(*_AutoOptionsHandler)
 		nAoh, nAohOk := handler.(*_AutoOptionsHandler)
@@ -173,7 +173,7 @@ func (n *_Node) setHandler(handler RequestHandler, fullPath string) (*_Node, err
 	return n, nil
 }
 
-func (n *_Node) insert(path, fullPath string, handler RequestHandler) (*_Node, error) {
+func (n *_Node) insert(path, fullPath string, handler RequestCtxHandler) (*_Node, error) {
 	end := segmentEndIndex(path, true)
 	child := newNode(path)
 
@@ -258,7 +258,7 @@ func (n *_Node) insert(path, fullPath string, handler RequestHandler) (*_Node, e
 }
 
 // add adds the handler to _Node for the given path
-func (n *_Node) add(path, fullPath string, handler RequestHandler) (*_Node, error) {
+func (n *_Node) add(path, fullPath string, handler RequestCtxHandler) (*_Node, error) {
 	if len(path) == 0 {
 		return n.setHandler(handler, fullPath)
 	}
@@ -312,7 +312,7 @@ func (n *_Node) add(path, fullPath string, handler RequestHandler) (*_Node, erro
 	return n.insert(path, fullPath, handler)
 }
 
-func (n *_Node) getFromChild(path string, ctx *RequestCtx) (RequestHandler, bool) {
+func (n *_Node) getFromChild(path string, ctx *RequestCtx) (RequestCtxHandler, bool) {
 	var parent *_Node
 
 	parentIndex, childIndex := 0, 0

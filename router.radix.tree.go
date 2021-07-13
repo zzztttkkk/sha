@@ -20,7 +20,7 @@ func newRadixTree() *_RadixTree {
 //
 // WARNING: Not concurrency-safe!
 //goland:noinspection GoNilness
-func (t *_RadixTree) Add(path string, handler RequestHandler) {
+func (t *_RadixTree) Add(path string, handler RequestCtxHandler) {
 	if !strings.HasPrefix(path, "/") {
 		panicf("path must begin with '/' in path '%s'", path)
 	} else if handler == nil {
@@ -69,7 +69,7 @@ func (t *_RadixTree) Add(path string, handler RequestHandler) {
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (t *_RadixTree) Get(path string, ctx *RequestCtx) (RequestHandler, bool) {
+func (t *_RadixTree) Get(path string, ctx *RequestCtx) (RequestCtxHandler, bool) {
 	if len(path) > len(t.root.path) {
 		if path[:len(t.root.path)] != t.root.path {
 			return nil, false

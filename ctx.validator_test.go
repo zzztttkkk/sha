@@ -57,7 +57,7 @@ func (t *TV01Form) Default(name string) func() interface{} {
 func TestValidator(t *testing.T) {
 	ListenAndServe(
 		"127.0.0.1:5986",
-		RequestHandlerFunc(func(ctx *RequestCtx) {
+		RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 			var form TV01Form
 
 			if err := ctx.ValidateForm(&form); err != nil {
@@ -95,7 +95,7 @@ func TestPwd(t *testing.T) {
 	}
 
 	mux := NewMux(nil)
-	mux.HTTP(MethodGet, "/", RequestHandlerFunc(func(ctx *RequestCtx) {
+	mux.HTTP(MethodGet, "/", RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 		var form Form
 		if err := ctx.ValidateForm(&form); err != nil {
 			ctx.SetError(err)

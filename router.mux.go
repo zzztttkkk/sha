@@ -62,23 +62,23 @@ func (m *Mux) Frozen() { m.frozen = true }
 
 func (m *Mux) AddGroup(group *MuxGroup) { group.BindTo(m) }
 
-func (m *Mux) HTTP(method, path string, handler RequestHandler) {
+func (m *Mux) HTTP(method, path string, handler RequestCtxHandler) {
 	m.HTTPWithOptions(nil, method, path, handler)
 }
 
 var _ Router = (*Mux)(nil)
 
-func isFileSystemHandler(h RequestHandler) bool {
+func isFileSystemHandler(h RequestCtxHandler) bool {
 	_, ok := h.(*_FileSystemHandler)
 	return ok
 }
 
-func isFileContentHandler(h RequestHandler) bool {
+func isFileContentHandler(h RequestCtxHandler) bool {
 	_, ok := h.(*_FileContentHandler)
 	return ok
 }
 
-func (m *Mux) HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestHandler) {
+func (m *Mux) HTTPWithOptions(opt *RouteOptions, method, path string, handler RequestCtxHandler) {
 	var middlewares []Middleware
 	var document validator.Document
 	if opt != nil {
@@ -177,7 +177,7 @@ func (m *Mux) HTTPWithOptions(opt *RouteOptions, method, path string, handler Re
 	m2[method] = handlerDesc
 }
 
-func (m *Mux) HTTPWithForm(method, path string, handler RequestHandler, form interface{}) {
+func (m *Mux) HTTPWithForm(method, path string, handler RequestCtxHandler, form interface{}) {
 	m.HTTPWithOptions(&RouteOptions{Document: validator.NewDocument(form, nil)}, method, path, handler)
 }
 
@@ -202,7 +202,7 @@ func (fh *_FileSystemHandler) Handle(ctx *RequestCtx) {
 	serveFileSystem(ctx, fh.fs, filepath.Clean(utils.S(fp)), fh.autoIndex)
 }
 
-func makeFileSystemHandler(path string, fs http.FileSystem, autoIndex bool) RequestHandler {
+func makeFileSystemHandler(path string, fs http.FileSystem, autoIndex bool) RequestCtxHandler {
 	if !strings.HasSuffix(path, "/{filepath:*}") {
 		panic(fmt.Errorf("sha.mux: path must endswith `/{filepath:*}`"))
 	}
@@ -236,7 +236,7 @@ func (fh *_FileContentHandler) Handle(ctx *RequestCtx) {
 	serveFileContent(ctx, d.Name(), d.ModTime(), d.Size(), f)
 }
 
-func makeFileContentHandler(path, filepath string) RequestHandler {
+func makeFileContentHandler(path, filepath string) RequestCtxHandler {
 	if strings.Contains(path, "{") {
 		panic(fmt.Errorf("sha.mux: path can not contains `{.*}`"))
 	}
@@ -462,9 +462,9 @@ func NewMux(opts *MuxOptions) *Mux {
 
 var DefaultMux = NewMux(nil)
 
-func HandleFunc(method, path string, handler RequestHandler) { DefaultMux.HTTP(method, path, handler) }
+func HandleFunc(method, path string, handler RequestCtxHandler) { DefaultMux.HTTP(method, path, handler) }
 
-func Methods(router Router, methods []string, path string, handler RequestHandler) {
+func Methods(router Router, methods []string, path string, handler RequestCtxHandler) {
 	for _, method := range methods {
 		router.HTTP(method, path, handler)
 	}

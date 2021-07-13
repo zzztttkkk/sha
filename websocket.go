@@ -101,8 +101,8 @@ func (p *_WebSocketProtocol) Hijack(ctx *RequestCtx, subProtocol string, compres
 
 type WebsocketHandlerFunc func(ctx context.Context, req *Request, conn *websocket.Conn)
 
-func wshToHandler(wsh WebsocketHandlerFunc) RequestHandler {
-	return RequestHandlerFunc(func(ctx *RequestCtx) {
+func wshToHandler(wsh WebsocketHandlerFunc) RequestCtxHandler {
+	return RequestCtxHandlerFunc(func(ctx *RequestCtx) {
 		p := ctx.UpgradeProtocol()
 		if p != websocketStr {
 			ctx.Response.statusCode = StatusBadRequest
