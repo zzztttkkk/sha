@@ -81,6 +81,10 @@ func confReflectMap(filePath string, value reflect.Value, path []string) {
 		}
 	}
 
+	if value.IsValid() {
+		return
+	}
+
 	if value.Kind() == reflect.Interface {
 		value = reflect.ValueOf(value.Interface())
 	}
